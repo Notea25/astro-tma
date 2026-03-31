@@ -5,7 +5,7 @@
 
 import { motion } from 'framer-motion'
 import { usePayment } from '@/hooks/usePayment'
-import { useAppStore } from '@/stores/app'
+
 
 interface PremiumGateProps {
   productId: string
