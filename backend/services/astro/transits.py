@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from kerykeion import AstrologicalSubjectFactory
-from kerykeion.aspects.synastry_aspects import SynastryAspects
+from kerykeion import SynastryAspects
 
 from core.logging import get_logger
 from services.astro.natal import NatalChartData, _PLANET_ATTRS
