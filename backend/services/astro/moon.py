@@ -8,7 +8,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from kerykeion import AstrologicalSubjectFactory
-from kerykeion.moon_phase_factory import MoonPhaseFactory
+from kerykeion import MoonPhaseDetailsFactory
 
 from core.logging import get_logger
 
@@ -65,7 +65,7 @@ def get_moon_phase(dt: datetime | None = None) -> MoonPhaseInfo:
         lat=0.0, lng=0.0, tz_str="UTC",
         online=False,
     )
-    factory = MoonPhaseFactory(subject)
+    factory = MoonPhaseDetailsFactory(subject)
     phase = factory.get_phase()
 
     # Kerykeion returns phase as dict or dataclass depending on version

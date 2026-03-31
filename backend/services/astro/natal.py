@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Any
 
 from kerykeion import AstrologicalSubjectFactory
-from kerykeion.aspects.natal_aspects import NatalAspects
+from kerykeion import NatalAspects
 
 from core.logging import get_logger
 
