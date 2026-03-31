@@ -44,14 +44,17 @@ export function useTelegramBackButton(onBack: () => void, enabled = true) {
 
 export function useHaptic() {
   return {
-    impact: (style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft' = 'light') =>
-      WebApp.HapticFeedback.impactOccurred(style),
-    notification: (type: 'error' | 'success' | 'warning') =>
-      WebApp.HapticFeedback.notificationOccurred(type),
-    selection: () => WebApp.HapticFeedback.selectionChanged(),
+    impact: (style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft' = 'light') => {
+      try { WebApp.HapticFeedback.impactOccurred(style) } catch(e) { /* not available */ }
+    },
+    notification: (type: 'error' | 'success' | 'warning') => {
+      try { WebApp.HapticFeedback.notificationOccurred(type) } catch(e) { /* not available */ }
+    },
+    selection: () => {
+      try { WebApp.HapticFeedback.selectionChanged() } catch(e) { /* not available */ }
+    },
   }
 }
-
 export function useStarsPayment() {
   const { impact, notification } = useHaptic()
 
