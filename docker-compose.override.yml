@@ -1,0 +1,18 @@
+# Local development overrides — NOT committed to production
+version: '3.9'
+services:
+  backend:
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    environment:
+      APP_ENV: development
+      APP_DEBUG: "true"
+
+  postgres:
+    ports:
+      - "5432:5432"   # expose locally for DB GUI tools
+
+  redis:
+    ports:
+      - "6379:6379"

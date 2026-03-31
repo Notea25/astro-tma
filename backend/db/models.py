@@ -1,0 +1,190 @@
+"""All ORM models — grouped by domain. One file = easy grep, easy schema overview."""
+import enum
+from datetime import datetime
+from typing import Any
+from sqlalchemy import (
+    BigInteger, Boolean, DateTime, Enum, Float, ForeignKey,
+    Integer, JSON, String, Text, UniqueConstraint, func,
+)
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from db.database import Base
+
+
+# ── Enums ──────────────────────────────────────────────────────────────────────
+class ZodiacSign(str, enum.Enum):
+    ARIES = "aries"; TAURUS = "taurus"; GEMINI = "gemini"; CANCER = "cancer"
+    LEO = "leo"; VIRGO = "virgo"; LIBRA = "libra"; SCORPIO = "scorpio"
+    SAGITTARIUS = "sagittarius"; CAPRICORN = "capricorn"
+    AQUARIUS = "aquarius"; PISCES = "pisces"
+
+class SubscriptionPlan(str, enum.Enum):
+    FREE = "free"; PREMIUM_MONTH = "premium_month"; PREMIUM_YEAR = "premium_year"
+
+class SubscriptionStatus(str, enum.Enum):
+    ACTIVE = "active"; EXPIRED = "expired"; CANCELLED = "cancelled"
+
+class PurchaseStatus(str, enum.Enum):
+    PENDING = "pending"; COMPLETED = "completed"
+    REFUNDED = "refunded"; FAILED = "failed"
+
+class TarotArcana(str, enum.Enum):
+    MAJOR = "major"; WANDS = "wands"; CUPS = "cups"
+    SWORDS = "swords"; PENTACLES = "pentacles"
+
+class HoroscopePeriod(str, enum.Enum):
+    TODAY = "today"; TOMORROW = "tomorrow"
+    WEEK = "week"; MONTH = "month"; YEAR = "year"
+
+
+# ── Mixin ─────────────────────────────────────────────────────────────────────
+class TimestampMixin:
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(),
+        onupdate=func.now(), nullable=False)
+
+
+# ── User ──────────────────────────────────────────────────────────────────────
+class User(TimestampMixin, Base):
+    __tablename__ = "users"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)  # = tg_user_id
+    tg_username: Mapped[str | None] = mapped_column(String(64))
+    tg_first_name: Mapped[str] = mapped_column(String(128))
+    tg_last_name: Mapped[str | None] = mapped_column(String(128))
+    tg_language_code: Mapped[str] = mapped_column(String(8), default="ru")
+    tg_is_premium: Mapped[bool] = mapped_column(Boolean, default=False)
+    birth_date: Mapped[datetime | None] = mapped_column(DateTime)
+    birth_time_known: Mapped[bool] = mapped_column(Boolean, default=False)
+    birth_city: Mapped[str | None] = mapped_column(String(128))
+    birth_lat: Mapped[float | None] = mapped_column(Float)
+    birth_lng: Mapped[float | None] = mapped_column(Float)
+    birth_tz: Mapped[str | None] = mapped_column(String(64))
+    sun_sign: Mapped[ZodiacSign | None] = mapped_column(Enum(ZodiacSign))
+    push_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    natal_chart: Mapped["NatalChart | None"] = relationship(
+        back_populates="user", uselist=False, cascade="all, delete-orphan")
+    subscriptions: Mapped[list["Subscription"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan")
+    purchases: Mapped[list["Purchase"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan")
+    tarot_readings: Mapped[list["TarotReading"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan")
+
+
+# ── Natal Chart ───────────────────────────────────────────────────────────────
+class NatalChart(TimestampMixin, Base):
+    """Pre-computed via Kerykeion. Stored as JSON — never recalculate unless birth data changes."""
+    __tablename__ = "natal_charts"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), unique=True)
+    sun_sign: Mapped[str] = mapped_column(String(32))
+    moon_sign: Mapped[str] = mapped_column(String(32))
+    ascendant_sign: Mapped[str | None] = mapped_column(String(32))
+    chart_data: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    chart_svg_url: Mapped[str | None] = mapped_column(Text)
+    user: Mapped["User"] = relationship(back_populates="natal_chart")
+
+
+# ── Interpretation ────────────────────────────────────────────────────────────
+class Interpretation(Base):
+    """Content DB: planet × sign (× house × aspect) → text. Written by astrologers."""
+    __tablename__ = "interpretations"
+    __table_args__ = (UniqueConstraint("planet", "sign", "house", "aspect"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    planet: Mapped[str] = mapped_column(String(32))
+    sign: Mapped[str] = mapped_column(String(32))
+    house: Mapped[int | None] = mapped_column(Integer)
+    aspect: Mapped[str | None] = mapped_column(String(32))
+    text_ru: Mapped[str] = mapped_column(Text, nullable=False)
+    text_en: Mapped[str | None] = mapped_column(Text)
+
+
+# ── Daily Horoscope ───────────────────────────────────────────────────────────
+class DailyHoroscope(TimestampMixin, Base):
+    """Generated nightly by APScheduler. DB copy is backup to Redis cache."""
+    __tablename__ = "daily_horoscopes"
+    __table_args__ = (UniqueConstraint("sign", "date", "period"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    sign: Mapped[ZodiacSign] = mapped_column(Enum(ZodiacSign), nullable=False)
+    date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    period: Mapped[HoroscopePeriod] = mapped_column(Enum(HoroscopePeriod), nullable=False)
+    text_ru: Mapped[str] = mapped_column(Text, nullable=False)
+    love_score: Mapped[int] = mapped_column(Integer, default=50)
+    career_score: Mapped[int] = mapped_column(Integer, default=50)
+    health_score: Mapped[int] = mapped_column(Integer, default=50)
+    luck_score: Mapped[int] = mapped_column(Integer, default=50)
+    aspects_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+
+
+# ── Tarot ─────────────────────────────────────────────────────────────────────
+class TarotCard(Base):
+    """78-card deck — static data seeded once via migration."""
+    __tablename__ = "tarot_cards"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name_ru: Mapped[str] = mapped_column(String(100), unique=True)
+    name_en: Mapped[str] = mapped_column(String(100), unique=True)
+    arcana: Mapped[TarotArcana] = mapped_column(Enum(TarotArcana))
+    number: Mapped[int] = mapped_column(Integer)
+    emoji: Mapped[str] = mapped_column(String(8))
+    upright_ru: Mapped[str] = mapped_column(Text)
+    reversed_ru: Mapped[str] = mapped_column(Text)
+    keywords_ru: Mapped[list[str]] = mapped_column(JSON)
+    element: Mapped[str | None] = mapped_column(String(20))
+    image_key: Mapped[str | None] = mapped_column(String(128))
+    position_meanings: Mapped[list["TarotPositionMeaning"]] = relationship(
+        back_populates="card", cascade="all, delete-orphan")
+
+
+class TarotPositionMeaning(Base):
+    """Card meaning in specific spread position. e.g. Star in position 2 = 'present'."""
+    __tablename__ = "tarot_position_meanings"
+    __table_args__ = (UniqueConstraint("card_id", "spread_type", "position"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    card_id: Mapped[int] = mapped_column(Integer, ForeignKey("tarot_cards.id", ondelete="CASCADE"))
+    spread_type: Mapped[str] = mapped_column(String(32))
+    position: Mapped[int] = mapped_column(Integer)
+    position_name_ru: Mapped[str] = mapped_column(String(64))
+    meaning_ru: Mapped[str] = mapped_column(Text)
+    card: Mapped["TarotCard"] = relationship(back_populates="position_meanings")
+
+
+class TarotReading(TimestampMixin, Base):
+    """User reading history. Cards stored as JSON array."""
+    __tablename__ = "tarot_readings"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"))
+    spread_type: Mapped[str] = mapped_column(String(32))
+    cards_json: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False)
+    user: Mapped["User"] = relationship(back_populates="tarot_readings")
+
+
+# ── Payments ──────────────────────────────────────────────────────────────────
+class Subscription(TimestampMixin, Base):
+    __tablename__ = "subscriptions"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"))
+    plan: Mapped[SubscriptionPlan] = mapped_column(Enum(SubscriptionPlan))
+    status: Mapped[SubscriptionStatus] = mapped_column(
+        Enum(SubscriptionStatus), default=SubscriptionStatus.ACTIVE)
+    stars_paid: Mapped[int] = mapped_column(Integer)
+    tg_payment_charge_id: Mapped[str] = mapped_column(String(256), unique=True)
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    user: Mapped["User"] = relationship(back_populates="subscriptions")
+
+
+class Purchase(TimestampMixin, Base):
+    """One-time purchase. Every Stars transaction = one row."""
+    __tablename__ = "purchases"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"))
+    product_id: Mapped[str] = mapped_column(String(64))
+    status: Mapped[PurchaseStatus] = mapped_column(
+        Enum(PurchaseStatus), default=PurchaseStatus.PENDING)
+    stars_amount: Mapped[int] = mapped_column(Integer)
+    tg_payment_charge_id: Mapped[str | None] = mapped_column(String(256), unique=True)
+    payload: Mapped[str] = mapped_column(String(512))
+    user: Mapped["User"] = relationship(back_populates="purchases")
