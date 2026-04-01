@@ -5,7 +5,7 @@
    ════════════════════════════════════════════════════════════════════════════ */
 
 /* ── Fonts ─────────────────────────────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
 
 /* ── Design Tokens ─────────────────────────────────────────────────────────── */
 :root {
@@ -147,7 +147,7 @@ body::after {
   padding: 0 var(--content-px);
 }
 .splash-title {
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family: 'Playfair Display', Georgia, serif;
   font-size: clamp(48px, 14vw, 72px);
   font-weight: 700;
   letter-spacing: 0.3em;
