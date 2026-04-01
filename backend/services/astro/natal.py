@@ -58,13 +58,28 @@ class NatalChartData:
     raw: dict[str, Any]            # full kerykeion dump for future use
 
 
-# Russian sign names mapping
+# Kerykeion v5 returns abbreviated sign names ("Ari", "Tau", …)
+# Normalize to full name for consistency
+_SIGN_ABBR_TO_FULL: dict[str, str] = {
+    "Ari": "Aries", "Tau": "Taurus", "Gem": "Gemini", "Can": "Cancer",
+    "Leo": "Leo",   "Vir": "Virgo",  "Lib": "Libra",  "Sco": "Scorpio",
+    "Sag": "Sagittarius", "Cap": "Capricorn", "Aqu": "Aquarius", "Pis": "Pisces",
+}
+
+# Russian sign names mapping (full names)
 _SIGN_RU: dict[str, str] = {
     "Aries": "Овен", "Taurus": "Телец", "Gemini": "Близнецы",
     "Cancer": "Рак", "Leo": "Лев", "Virgo": "Дева",
     "Libra": "Весы", "Scorpio": "Скорпион", "Sagittarius": "Стрелец",
     "Capricorn": "Козерог", "Aquarius": "Водолей", "Pisces": "Рыбы",
 }
+
+
+def _normalize_sign(raw: str | None) -> str:
+    """Convert kerykeion v5 abbreviated sign to full name."""
+    if not raw:
+        return "Unknown"
+    return _SIGN_ABBR_TO_FULL.get(raw, raw)
 
 _PLANET_ATTRS = [
     "sun", "moon", "mercury", "venus", "mars",
@@ -134,7 +149,7 @@ def calculate_natal(
     planets: dict[str, PlanetPosition] = {}
     for attr in _PLANET_ATTRS:
         p = getattr(subject, attr)
-        sign = p.sign or "Unknown"
+        sign = _normalize_sign(p.sign)
         planets[attr] = PlanetPosition(
             name=attr,
             sign=sign,
@@ -150,8 +165,8 @@ def calculate_natal(
     houses = [
         {
             "number": i + 1,
-            "sign": h.sign or "Unknown",
-            "sign_ru": _SIGN_RU.get(h.sign or "", h.sign or ""),
+            "sign": _normalize_sign(h.sign),
+            "sign_ru": _SIGN_RU.get(_normalize_sign(h.sign), _normalize_sign(h.sign)),
             "degree": round(h.abs_pos or 0.0, 4),
         }
         for i, h in enumerate(subject.houses_list)
@@ -175,8 +190,8 @@ def calculate_natal(
 
     chart = NatalChartData(
         **planets,
-        ascendant_sign=asc.sign if asc else None,
-        mc_sign=mc.sign if mc else None,
+        ascendant_sign=_normalize_sign(asc.sign) if asc else None,
+        mc_sign=_normalize_sign(mc.sign) if mc else None,
         houses=houses,
         aspects=aspects,
         raw=subject.model_dump(),

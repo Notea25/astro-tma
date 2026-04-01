@@ -65,20 +65,21 @@ def get_moon_phase(dt: datetime | None = None) -> MoonPhaseInfo:
         lat=0.0, lng=0.0, tz_str="UTC",
         online=False,
     )
-    factory = MoonPhaseDetailsFactory(subject)
-    # v5: attributes live on the factory itself; v4: .get_phase() returned a dataclass
-    phase = factory.get_phase() if callable(getattr(factory, "get_phase", None)) else factory
+    # kerykeion v5: MoonPhaseDetailsFactory.from_subject() → MoonPhaseOverviewModel
+    overview = MoonPhaseDetailsFactory.from_subject(subject)
+    moon = overview.moon  # MoonPhaseMoonSummaryModel
 
-    phase_name = (
-        getattr(phase, "moon_phase", None)
-        or getattr(phase, "phase_name", None)
-        or "Full Moon"
-    )
-    illumination = (
-        getattr(phase, "moon_illumination", None)
-        or getattr(phase, "illumination", None)
-        or 0.5
-    )
+    phase_name = moon.phase_name or "Full Moon"
+
+    # illumination is stored as "100%" string; convert to 0.0–1.0
+    try:
+        illum_str = str(moon.illumination).replace("%", "").strip()
+        illumination = round(float(illum_str) / 100, 3)
+    except (ValueError, TypeError):
+        try:
+            illumination = round(moon.detailed.illumination_details.visible_fraction, 3)
+        except Exception:
+            illumination = 0.5
 
     return MoonPhaseInfo(
         phase_name=phase_name,
