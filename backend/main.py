@@ -68,10 +68,10 @@ app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 app.add_middleware(
     SessionMiddleware,
     secret_key=settings.APP_SECRET_KEY,
-    https_only=True,
+    https_only=False,
     same_site="lax",
-    session_cookie="astro_session",
-    max_age=86400,
+    session_cookie="session",
+    max_age=86400 * 14,
 )
 
 # ── CORS ───────────────────────────────────────────────────────────────────────
