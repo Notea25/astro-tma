@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     CACHE_TTL_NATAL: int = 604800       # 7d — natal never changes
     CACHE_TTL_COMPATIBILITY: int = 86400
 
+    # Admin panel
+    ADMIN_USERNAME: str = "admin"
+    ADMIN_PASSWORD: str = "changeme"
+
     # Anthropic
     ANTHROPIC_API_KEY: str = ""
 

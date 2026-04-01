@@ -14,6 +14,7 @@ from typing import AsyncGenerator
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.sessions import SessionMiddleware
 
 from api.routes import compatibility, horoscope, natal, payments, tarot, users
 from core.cache import close_redis, init_redis
@@ -58,6 +59,9 @@ app = FastAPI(
     redoc_url=None,
     lifespan=lifespan,
 )
+
+# ── Session (required by SQLAdmin auth) ───────────────────────────────────────
+app.add_middleware(SessionMiddleware, secret_key=settings.APP_SECRET_KEY, https_only=False)
 
 # ── CORS ───────────────────────────────────────────────────────────────────────
 # Telegram Mini Apps are served from *.telegram.org in production
@@ -112,6 +116,11 @@ app.include_router(tarot.router,         prefix="/api")
 app.include_router(compatibility.router, prefix="/api")
 app.include_router(natal.router,         prefix="/api")
 app.include_router(payments.router,      prefix="/api")
+
+
+# ── Admin ─────────────────────────────────────────────────────────────────────
+from admin import create_admin
+create_admin(app)
 
 
 @app.get("/health")
