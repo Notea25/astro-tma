@@ -67,9 +67,6 @@ export function Home() {
           </h1>
           <p className="screen-date">{today}</p>
         </div>
-        <div className="header-avatar" onClick={() => impact('light')}>
-          {signInfo?.emoji ?? '🌟'}
-        </div>
       </div>
 
       {/* Period tabs */}
