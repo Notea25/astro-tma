@@ -7,6 +7,7 @@ import { Tarot }         from '@/components/screens/Tarot'
 import { Compatibility } from '@/components/screens/Compatibility'
 import { Moon }          from '@/components/screens/Moon'
 import { Natal }         from '@/components/screens/Natal'
+import { Profile }       from '@/components/screens/Profile'
 import { BottomNav }     from '@/components/ui/BottomNav'
 import { usersApi }      from '@/services/api'
 import { useAppStore }   from '@/stores/app'
@@ -50,6 +51,7 @@ export default function App() {
           {screen === 'compatibility' && <Compatibility />}
           {screen === 'moon'          && <Moon />}
           {screen === 'natal'         && <Natal />}
+          {screen === 'profile'       && <Profile />}
         </motion.div>
       </AnimatePresence>
 

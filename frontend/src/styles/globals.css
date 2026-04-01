@@ -353,6 +353,26 @@ body::before {
 .planet-row__sign { font-size: 13px; color: var(--text); margin-bottom: 2px; }
 .planet-row__desc { font-size: 11px; color: var(--muted); }
 
+/* ── Natal extras ──────────────────────────────────────────────────────────── */
+.natal-summary-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; font-size: 13px; }
+.natal-summary-label { color: var(--muted); min-width: 110px; }
+.natal-summary-value { color: var(--text); }
+.natal-loading { font-size: 13px; color: var(--muted); padding: 12px 0; text-align: center; }
+.natal-interpretations { margin-top: 8px; }
+.natal-interp-item { margin-bottom: 16px; }
+.natal-interp-item__title { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); margin-bottom: 4px; }
+.natal-interp-item__text { font-size: 13px; color: var(--text-dim); line-height: 1.6; margin: 0; }
+
+/* ── Profile ───────────────────────────────────────────────────────────────── */
+.profile-card { display: flex; align-items: center; gap: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 20px 24px; margin-bottom: 16px; }
+.profile-avatar { width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, var(--lavender), var(--gold)); display: flex; align-items: center; justify-content: center; font-family: 'Cormorant Garamond', serif; font-size: 24px; color: #fff; flex-shrink: 0; }
+.profile-name { font-family: 'Cormorant Garamond', serif; font-size: 22px; margin-bottom: 2px; }
+.profile-sign { font-size: 13px; color: var(--muted); }
+.profile-birth-empty { font-size: 13px; color: var(--muted); line-height: 1.6; margin: 0 0 4px; }
+.profile-edit-form { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.profile-edit-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.profile-error { font-size: 12px; color: #e57373; margin-top: 8px; text-align: center; }
+
 /* ── Loading ───────────────────────────────────────────────────────────────── */
 .loading-spinner { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 32px 0; }
 .spinner-moon { font-size: 36px; }
