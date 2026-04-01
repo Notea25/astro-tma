@@ -101,6 +101,15 @@ export function Natal() {
                       <span className="natal-summary-value">{summary.birth_city}</span>
                     </div>
                   )}
+                  {summary?.birth_lat != null && summary?.birth_lng != null && (
+                    <div className="natal-summary-row">
+                      <span className="natal-summary-label">🌐 Коорд.:</span>
+                      <span className="natal-summary-value natal-coords">
+                        {summary.birth_lat.toFixed(4)}° {summary.birth_lat >= 0 ? 'с.ш.' : 'ю.ш.'}
+                        &nbsp;&nbsp;{summary.birth_lng.toFixed(4)}° {summary.birth_lng >= 0 ? 'в.д.' : 'з.д.'}
+                      </span>
+                    </div>
+                  )}
                 </>
               )}
             </motion.div>

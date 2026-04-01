@@ -87,6 +87,8 @@ export interface NatalSummaryResponse {
   ascendant_sign: string | null
   birth_city: string | null
   birth_time_known: boolean
+  birth_lat: number | null
+  birth_lng: number | null
 }
 
 export interface PlanetData {

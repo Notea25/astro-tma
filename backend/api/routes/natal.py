@@ -39,11 +39,13 @@ async def get_natal_summary(
     chart = user.natal_chart
     return {
         "has_chart": True,
-        "sun_sign":       chart.sun_sign,
-        "moon_sign":      chart.moon_sign,
-        "ascendant_sign": chart.ascendant_sign,
-        "birth_city":     user.birth_city,
+        "sun_sign":         chart.sun_sign,
+        "moon_sign":        chart.moon_sign,
+        "ascendant_sign":   chart.ascendant_sign,
+        "birth_city":       user.birth_city,
         "birth_time_known": user.birth_time_known,
+        "birth_lat":        user.birth_lat,
+        "birth_lng":        user.birth_lng,
     }
 
 
