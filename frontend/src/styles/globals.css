@@ -176,12 +176,12 @@ body::after {
 /* ── Profile Avatar Button ─────────────────────────────────────────────────── */
 .profile-avatar-btn {
   position: fixed;
-  top: calc(var(--safe-top) + 48px);
+  top: calc(var(--safe-top) + 46px);
   right: var(--content-px);
-  z-index: 100;
-  width: 40px; height: 40px;
+  z-index: 110;
+  width: 38px; height: 38px;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(201,168,76,0.2), rgba(124,92,191,0.2));
+  background: linear-gradient(135deg, rgba(201,168,76,0.15), rgba(124,92,191,0.15));
   border: 0.5px solid var(--gold-border);
   color: var(--gold-light);
   font-family: 'DM Sans', sans-serif;
@@ -189,7 +189,8 @@ body::after {
   font-weight: 500;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, transform 0.15s;
+  -webkit-tap-highlight-color: transparent;
 }
 .profile-avatar-btn:active { border-color: var(--gold); transform: scale(0.9); }
 
@@ -246,9 +247,7 @@ body::after {
 /* ── Screen Headers ────────────────────────────────────────────────────────── */
 .screen-header {
   padding: calc(var(--safe-top) + 44px) var(--content-px) 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  padding-right: calc(var(--content-px) + 50px);
 }
 
 .screen-title {

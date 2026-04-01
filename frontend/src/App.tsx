@@ -93,7 +93,7 @@ export default function App() {
       {showAvatar && (
         <button
           className="profile-avatar-btn"
-          onClick={() => { setScreen('profile') }}
+          onClick={() => setScreen('profile')}
           aria-label="Профиль"
         >
           {initial}
