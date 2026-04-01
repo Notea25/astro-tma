@@ -17,7 +17,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
-from api.routes import compatibility, horoscope, natal, payments, tarot, users
+from api.routes import compatibility, horoscope, mac, natal, payments, tarot, users
 from core.cache import close_redis, init_redis
 from core.logging import get_logger, setup_logging
 from core.settings import settings
@@ -127,6 +127,7 @@ app.include_router(tarot.router,         prefix="/api")
 app.include_router(compatibility.router, prefix="/api")
 app.include_router(natal.router,         prefix="/api")
 app.include_router(payments.router,      prefix="/api")
+app.include_router(mac.router,           prefix="/api")
 
 
 # ── Admin ─────────────────────────────────────────────────────────────────────

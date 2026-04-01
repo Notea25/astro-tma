@@ -113,6 +113,22 @@ export interface NatalFullResponse {
   reading: string | null
 }
 
+export interface MacCardResponse {
+  id: number
+  name_ru: string
+  category: string
+  emoji: string
+  description_ru: string
+  question_ru: string
+  affirmation_ru: string
+  image_url?: string | null
+}
+
+export interface MacReadingResponse {
+  reading_id: number
+  card: MacCardResponse
+}
+
 export interface ProductInfo {
   id: string
   name: string

@@ -27,6 +27,13 @@ class PurchaseStatus(str, enum.Enum):
     PENDING = "pending"; COMPLETED = "completed"
     REFUNDED = "refunded"; FAILED = "failed"
 
+class MacCategory(str, enum.Enum):
+    EMOTIONS = "emotions"
+    RELATIONSHIPS = "relationships"
+    SELF = "self"
+    SHADOW = "shadow"
+    RESOURCES = "resources"
+
 class TarotArcana(str, enum.Enum):
     MAJOR = "major"; WANDS = "wands"; CUPS = "cups"
     SWORDS = "swords"; PENTACLES = "pentacles"
@@ -188,3 +195,27 @@ class Purchase(TimestampMixin, Base):
     tg_payment_charge_id: Mapped[str | None] = mapped_column(String(256), unique=True)
     payload: Mapped[str] = mapped_column(String(512))
     user: Mapped["User"] = relationship(back_populates="purchases")
+
+
+# ── MAC (Metaphorical Associative Cards) ─────────────────────────────────────
+class MacCard(Base):
+    """60 metaphorical cards in 5 categories — static data."""
+    __tablename__ = "mac_cards"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name_ru: Mapped[str] = mapped_column(String(100), unique=True)
+    category: Mapped[MacCategory] = mapped_column(
+        Enum(MacCategory, values_callable=lambda e: [x.value for x in e]))
+    emoji: Mapped[str] = mapped_column(String(8))
+    description_ru: Mapped[str] = mapped_column(Text)
+    question_ru: Mapped[str] = mapped_column(Text)  # reflective question
+    affirmation_ru: Mapped[str] = mapped_column(Text)  # positive affirmation
+    image_key: Mapped[str | None] = mapped_column(String(128))
+
+
+class MacReading(TimestampMixin, Base):
+    """User MAC reading history."""
+    __tablename__ = "mac_readings"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"))
+    card_id: Mapped[int] = mapped_column(Integer, ForeignKey("mac_cards.id"))
+    card: Mapped["MacCard"] = relationship()
