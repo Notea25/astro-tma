@@ -5,12 +5,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.middleware.telegram_auth import get_tg_user
-from api.schemas.user import SetupBirthDataRequest, SetupBirthDataResponse, UserProfile
+from api.schemas.user import SetGenderRequest, SetupBirthDataRequest, SetupBirthDataResponse, UserProfile
 from core.cache import cache_delete, key_natal, key_user_premium
 from core.logging import get_logger
 from core.settings import settings
 from db.database import get_db
-from db.models import ZodiacSign
+from db.models import Gender, ZodiacSign
 from services.astro.natal import calculate_natal, chart_to_json
 from services.users import repository as user_repo
 
@@ -53,6 +53,36 @@ async def upsert_me(
     return UserProfile(
         id=user.id,
         name=user.tg_first_name,
+        gender=user.gender.value if user.gender else None,
+        sun_sign=user.sun_sign.value if user.sun_sign else None,
+        birth_city=user.birth_city,
+        birth_time_known=user.birth_time_known,
+        push_enabled=user.push_enabled,
+        is_premium=is_prem,
+        created_at=user.created_at,
+    )
+
+
+@router.post("/me/gender", response_model=UserProfile)
+async def set_gender(
+    body: SetGenderRequest,
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Set user gender."""
+    user = await user_repo.get_by_id(db, tg_user["id"])
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+
+    gender_enum = Gender(body.gender)
+    user.gender = gender_enum
+    await db.commit()
+
+    is_prem = await user_repo.is_premium(db, user.id)
+    return UserProfile(
+        id=user.id,
+        name=user.tg_first_name,
+        gender=user.gender.value if user.gender else None,
         sun_sign=user.sun_sign.value if user.sun_sign else None,
         birth_city=user.birth_city,
         birth_time_known=user.birth_time_known,

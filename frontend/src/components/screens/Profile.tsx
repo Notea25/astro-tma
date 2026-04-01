@@ -57,7 +57,7 @@ export function Profile() {
   return (
     <div className="screen profile-screen">
       <div className="screen-header">
-        <h2 className="screen-title">👤 Профиль</h2>
+        <h2 className="screen-title">Профиль</h2>
         <p className="screen-subtitle">Личный кабинет</p>
       </div>
 
@@ -73,11 +73,12 @@ export function Profile() {
           </div>
           <div className="profile-info">
             <div className="profile-name">{user?.name ?? 'Пользователь'}</div>
-            {userSign && (
-              <div className="profile-sign">
-                {userSign.emoji} {userSign.label}
-              </div>
-            )}
+            <div className="profile-meta">
+              {user?.gender && (
+                <span>{user.gender === 'male' ? 'М' : 'Ж'}</span>
+              )}
+              {userSign && <span>{userSign.label}</span>}
+            </div>
           </div>
         </motion.div>
 

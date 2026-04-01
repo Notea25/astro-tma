@@ -589,6 +589,41 @@ body::after {
 .step-title { font-family: 'Playfair Display', Georgia, serif; font-size: var(--fs-h2); font-weight: 400; color: var(--text); margin-bottom: 6px; }
 .step-desc { font-size: var(--fs-small); color: var(--text-dim); margin-bottom: 24px; line-height: 1.5; }
 
+/* ── Gender Selection ──────────────────────────────────────────────────────── */
+.gender-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 8px;
+}
+.gender-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: clamp(24px, 7vw, 36px) 16px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--card-radius);
+  cursor: pointer;
+  transition: all 0.25s;
+  color: var(--text-dim);
+  -webkit-tap-highlight-color: transparent;
+}
+.gender-card__icon { transition: color 0.25s; }
+.gender-card__label {
+  font-family: 'DM Sans', sans-serif;
+  font-size: var(--fs-body);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+.gender-card--selected,
+.gender-card:active {
+  border-color: var(--gold-border);
+  background: var(--gold-glow);
+  color: var(--gold-light);
+}
+
 /* ── Zodiac Picker ─────────────────────────────────────────────────────────── */
 .zodiac-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: clamp(6px, 2vw, 10px); margin-bottom: 24px; }
 .zodiac-btn {

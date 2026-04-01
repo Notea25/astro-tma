@@ -9,7 +9,6 @@ import { useHaptic } from '@/hooks/useTelegram'
 import type { ZodiacSign } from '@/types'
 import { ZODIAC_SIGNS } from '@/types'
 
-// Map sign to approximate birth month range for auto-detection
 function signFromDate(date: Date): ZodiacSign {
   const m = date.getMonth() + 1
   const d = date.getDate()
@@ -27,10 +26,28 @@ function signFromDate(date: Date): ZodiacSign {
   return 'pisces'
 }
 
-type Step = 'welcome' | 'birth_date' | 'birth_city' | 'sign_confirm'
+type Step = 'welcome' | 'gender' | 'birth_date' | 'birth_city' | 'sign_confirm'
+
+function GenderIcon({ type, size = 64 }: { type: 'male' | 'female'; size?: number }) {
+  if (type === 'male') {
+    return (
+      <svg width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <circle cx="24" cy="40" r="16" />
+        <path d="M36 28L52 12M52 12H40M52 12v12" />
+      </svg>
+    )
+  }
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <circle cx="32" cy="24" r="16" />
+      <path d="M32 40v18M24 50h16" />
+    </svg>
+  )
+}
 
 export function Onboarding() {
   const [step, setStep] = useState<Step>('welcome')
+  const [gender, setGender] = useState<'male' | 'female' | null>(null)
   const [birthDate, setBirthDate] = useState('')
   const [birthTime, setBirthTime] = useState('')
   const [birthTimeKnown, setBirthTimeKnown] = useState(false)
@@ -46,6 +63,11 @@ export function Onboarding() {
     onSuccess: (user) => setUser(user),
   })
 
+  const genderMutation = useMutation({
+    mutationFn: (g: string) => usersApi.setGender(g),
+    onSuccess: (user) => setUser(user),
+  })
+
   const birthMutation = useMutation({
     mutationFn: usersApi.setupBirth,
     onSuccess: () => {
@@ -54,6 +76,16 @@ export function Onboarding() {
       setScreen('home')
     },
   })
+
+  const handleGenderSelect = async (g: 'male' | 'female') => {
+    impact('medium')
+    setGender(g)
+    // Ensure user exists, then set gender
+    const user = await upsertMutation.mutateAsync()
+    setUser(user)
+    await genderMutation.mutateAsync(g)
+    setStep('birth_date')
+  }
 
   const handleDateNext = () => {
     if (!birthDate) return
@@ -65,7 +97,6 @@ export function Onboarding() {
 
   const handleFinish = async () => {
     impact('medium')
-    // Ensure user exists first
     const user = await upsertMutation.mutateAsync()
     setUser(user)
 
@@ -81,7 +112,6 @@ export function Onboarding() {
         ...(cityCoords ?? {}),
       })
     } else {
-      // Skip birth data — go straight to home
       setOnboardingComplete(true)
       setScreen('home')
     }
@@ -108,10 +138,10 @@ export function Onboarding() {
           </p>
           <motion.button
             className="btn-primary"
-            onClick={() => { impact('light'); setStep('birth_date') }}
+            onClick={() => { impact('light'); setStep('gender') }}
             whileTap={{ scale: 0.97 }}
           >
-            Начать путешествие ✦
+            Начать путешествие
           </motion.button>
           <button
             className="btn-ghost"
@@ -127,6 +157,50 @@ export function Onboarding() {
         </motion.div>
       )}
 
+      {/* Gender step */}
+      {step === 'gender' && (
+        <motion.div
+          className="onboarding__step"
+          initial={{ opacity: 0, x: 30 }}
+          animate={{ opacity: 1, x: 0 }}
+        >
+          <div className="step-header">
+            <button className="btn-back" onClick={() => setStep('welcome')}>&#8592;</button>
+            <div className="step-dots">
+              <span className="dot active" /><span className="dot" /><span className="dot" /><span className="dot" />
+            </div>
+          </div>
+          <h2 className="step-title">Кто вы?</h2>
+          <p className="step-desc">Это поможет сделать предсказания точнее</p>
+
+          <div className="gender-grid">
+            <motion.button
+              className={`gender-card ${gender === 'male' ? 'gender-card--selected' : ''}`}
+              onClick={() => handleGenderSelect('male')}
+              whileTap={{ scale: 0.95 }}
+              disabled={genderMutation.isPending || upsertMutation.isPending}
+            >
+              <div className="gender-card__icon">
+                <GenderIcon type="male" size={56} />
+              </div>
+              <span className="gender-card__label">Мужчина</span>
+            </motion.button>
+
+            <motion.button
+              className={`gender-card ${gender === 'female' ? 'gender-card--selected' : ''}`}
+              onClick={() => handleGenderSelect('female')}
+              whileTap={{ scale: 0.95 }}
+              disabled={genderMutation.isPending || upsertMutation.isPending}
+            >
+              <div className="gender-card__icon">
+                <GenderIcon type="female" size={56} />
+              </div>
+              <span className="gender-card__label">Женщина</span>
+            </motion.button>
+          </div>
+        </motion.div>
+      )}
+
       {/* Birth date step */}
       {step === 'birth_date' && (
         <motion.div
@@ -135,9 +209,9 @@ export function Onboarding() {
           animate={{ opacity: 1, x: 0 }}
         >
           <div className="step-header">
-            <button className="btn-back" onClick={() => setStep('welcome')}>←</button>
+            <button className="btn-back" onClick={() => setStep('gender')}>&#8592;</button>
             <div className="step-dots">
-              <span className="dot active" /><span className="dot" /><span className="dot" />
+              <span className="dot done" /><span className="dot active" /><span className="dot" /><span className="dot" />
             </div>
           </div>
           <h2 className="step-title">Дата рождения</h2>
@@ -179,7 +253,7 @@ export function Onboarding() {
             disabled={!birthDate}
             whileTap={{ scale: 0.97 }}
           >
-            Далее →
+            Далее
           </motion.button>
         </motion.div>
       )}
@@ -192,9 +266,9 @@ export function Onboarding() {
           animate={{ opacity: 1, x: 0 }}
         >
           <div className="step-header">
-            <button className="btn-back" onClick={() => setStep('birth_date')}>←</button>
+            <button className="btn-back" onClick={() => setStep('birth_date')}>&#8592;</button>
             <div className="step-dots">
-              <span className="dot done" /><span className="dot active" /><span className="dot" />
+              <span className="dot done" /><span className="dot done" /><span className="dot active" /><span className="dot" />
             </div>
           </div>
           <h2 className="step-title">Город рождения</h2>
@@ -211,8 +285,8 @@ export function Onboarding() {
             />
             {cityCoords && (
               <div className="city-autocomplete__confirmed">
-                ✓ {cityCoords.lat.toFixed(4)}° {cityCoords.lat >= 0 ? 'с.ш.' : 'ю.ш.'}
-                &nbsp;&nbsp;{cityCoords.lng.toFixed(4)}° {cityCoords.lng >= 0 ? 'в.д.' : 'з.д.'}
+                {cityCoords.lat.toFixed(4)} {cityCoords.lat >= 0 ? 'N' : 'S'}
+                &nbsp;&nbsp;{cityCoords.lng.toFixed(4)} {cityCoords.lng >= 0 ? 'E' : 'W'}
               </div>
             )}
           </div>
@@ -222,9 +296,9 @@ export function Onboarding() {
             disabled={!birthCity}
             whileTap={{ scale: 0.97 }}
           >
-            Далее →
+            Далее
           </motion.button>
-          <button className="btn-ghost" onClick={() => { setStep('sign_confirm') }}>
+          <button className="btn-ghost" onClick={() => setStep('sign_confirm')}>
             Пропустить
           </button>
         </motion.div>
@@ -238,15 +312,15 @@ export function Onboarding() {
           animate={{ opacity: 1, x: 0 }}
         >
           <div className="step-header">
-            <button className="btn-back" onClick={() => setStep('birth_city')}>←</button>
+            <button className="btn-back" onClick={() => setStep('birth_city')}>&#8592;</button>
             <div className="step-dots">
-              <span className="dot done" /><span className="dot done" /><span className="dot active" />
+              <span className="dot done" /><span className="dot done" /><span className="dot done" /><span className="dot active" />
             </div>
           </div>
           <h2 className="step-title">Подтвердите знак</h2>
           <p className="step-desc">
             {selectedSign
-              ? `Ваш знак: ${ZODIAC_SIGNS.find(s => s.value === selectedSign)?.emoji} ${ZODIAC_SIGNS.find(s => s.value === selectedSign)?.label}`
+              ? `Ваш знак: ${ZODIAC_SIGNS.find(s => s.value === selectedSign)?.label}`
               : 'Выберите ваш солнечный знак'}
           </p>
           <ZodiacPicker value={selectedSign} onChange={setSelectedSign} />
@@ -256,7 +330,7 @@ export function Onboarding() {
             disabled={!selectedSign || birthMutation.isPending || upsertMutation.isPending}
             whileTap={{ scale: 0.97 }}
           >
-            {birthMutation.isPending ? '⏳ Считаем карту...' : 'Начать ✦'}
+            {birthMutation.isPending ? 'Считаем карту...' : 'Начать'}
           </motion.button>
         </motion.div>
       )}

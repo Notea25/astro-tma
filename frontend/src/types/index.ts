@@ -3,6 +3,7 @@
 export interface UserProfile {
   id: number
   name: string
+  gender: string | null
   sun_sign: string | null
   birth_city: string | null
   birth_time_known: boolean

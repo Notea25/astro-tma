@@ -17,6 +17,10 @@ class ZodiacSign(str, enum.Enum):
     SAGITTARIUS = "sagittarius"; CAPRICORN = "capricorn"
     AQUARIUS = "aquarius"; PISCES = "pisces"
 
+class Gender(str, enum.Enum):
+    MALE = "male"
+    FEMALE = "female"
+
 class SubscriptionPlan(str, enum.Enum):
     FREE = "free"; PREMIUM_MONTH = "premium_month"; PREMIUM_YEAR = "premium_year"
 
@@ -61,6 +65,8 @@ class User(TimestampMixin, Base):
     tg_last_name: Mapped[str | None] = mapped_column(String(128))
     tg_language_code: Mapped[str] = mapped_column(String(8), default="ru")
     tg_is_premium: Mapped[bool] = mapped_column(Boolean, default=False)
+    gender: Mapped[Gender | None] = mapped_column(
+        Enum(Gender, values_callable=lambda e: [x.value for x in e]), nullable=True)
     birth_date: Mapped[datetime | None] = mapped_column(DateTime)
     birth_time_known: Mapped[bool] = mapped_column(Boolean, default=False)
     birth_city: Mapped[str | None] = mapped_column(String(128))

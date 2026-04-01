@@ -42,6 +42,8 @@ async function request<T>(
 // ── Users ──────────────────────────────────────────────────────────────────────
 export const usersApi = {
   upsertMe: () => request<import('@/types').UserProfile>('POST', '/users/me'),
+  setGender: (gender: string) =>
+    request<import('@/types').UserProfile>('POST', '/users/me/gender', { gender }),
   setupBirth: (data: {
     birth_date: string
     birth_time_known: boolean
