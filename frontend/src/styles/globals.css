@@ -144,7 +144,7 @@ body::after {
 .splash-content {
   position: relative; z-index: 1;
   text-align: center;
-  margin-bottom: 15vh;
+  padding: 0 var(--content-px);
 }
 .splash-title {
   font-family: 'Playfair Display', Georgia, serif;
@@ -153,24 +153,24 @@ body::after {
   letter-spacing: 0.3em;
   color: #fff;
   text-shadow: 0 0 50px rgba(201,168,76,0.35), 0 2px 20px rgba(0,0,0,0.5);
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 .splash-divider {
-  width: 60px;
+  width: 48px;
   height: 1.5px;
-  background: rgba(255,255,255,0.5);
-  margin: 0 auto 14px;
+  background: rgba(255,255,255,0.45);
+  margin: 0 auto 16px;
 }
 .splash-subtitle {
   font-family: 'DM Sans', sans-serif;
   font-size: var(--fs-body);
   color: rgba(230,225,245,0.8);
   font-weight: 500;
-  letter-spacing: 0.12em;
-  margin-bottom: 28px;
+  letter-spacing: 0.1em;
+  margin-bottom: 32px;
 }
-.splash-dots { display: flex; justify-content: center; gap: 6px; }
-.splash-dots span { width: 5px; height: 5px; border-radius: 50%; background: rgba(201,168,76,0.6); }
+.splash-dots { display: flex; justify-content: center; gap: 8px; }
+.splash-dots span { width: 5px; height: 5px; border-radius: 50%; background: rgba(201,168,76,0.5); }
 
 /* ── App Shell ─────────────────────────────────────────────────────────────── */
 .app {
@@ -260,7 +260,7 @@ body::after {
 
 /* ── Screen Headers ────────────────────────────────────────────────────────── */
 .screen-header {
-  padding: calc(var(--safe-top) + 44px) var(--content-px) 16px;
+  padding: calc(var(--safe-top) + 44px) var(--content-px) 12px;
   padding-right: calc(var(--content-px) + 50px);
 }
 
@@ -291,8 +291,9 @@ body::after {
 .screen-date {
   font-size: var(--fs-xs);
   color: var(--gold-dim);
-  margin-top: 4px;
+  margin-top: 6px;
   letter-spacing: 0.08em;
+  text-transform: capitalize;
 }
 
 .screen-content {
@@ -307,7 +308,7 @@ body::after {
   font-size: var(--fs-h3);
   font-weight: 400;
   color: var(--text);
-  margin: 24px 0 14px;
+  margin: 20px 0 12px;
   letter-spacing: 0.01em;
 }
 
@@ -354,10 +355,10 @@ body::after {
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--gold-dim);
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
-.card-sign-row { display: flex; align-items: center; gap: clamp(10px, 3vw, 14px); margin-bottom: 16px; }
+.card-sign-row { display: flex; align-items: center; gap: clamp(10px, 3vw, 14px); margin-bottom: 14px; }
 .sign-badge {
   width: clamp(44px, 12vw, 54px); height: clamp(44px, 12vw, 54px);
   border-radius: 50%;
@@ -427,7 +428,7 @@ body::after {
 /* ── Period Tabs ───────────────────────────────────────────────────────────── */
 .period-tabs {
   display: flex; gap: 8px;
-  padding: 0 var(--content-px) 16px;
+  padding: 0 var(--content-px) 14px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
