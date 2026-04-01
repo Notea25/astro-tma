@@ -575,6 +575,51 @@ body::after {
 }
 
 /* ── City Autocomplete ─────────────────────────────────────────────────────── */
+.city-autocomplete { position: relative; }
+.city-autocomplete__input-wrap { position: relative; }
+.city-autocomplete__spinner {
+  position: absolute;
+  right: 14px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+}
+.city-autocomplete__dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0; right: 0;
+  z-index: 50;
+  background: var(--surface-solid);
+  border: 0.5px solid var(--gold-border);
+  border-radius: 14px;
+  padding: 6px 0;
+  list-style: none;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+  overflow: hidden;
+}
+.city-autocomplete__option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.city-autocomplete__option:active {
+  background: var(--gold-glow);
+}
+.city-autocomplete__option-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+.city-autocomplete__option-text {
+  font-size: var(--fs-body);
+  color: var(--text);
+  line-height: 1.35;
+}
+.city-autocomplete__option + .city-autocomplete__option {
+  border-top: 0.5px solid rgba(255,255,255,0.04);
+}
 .city-autocomplete__confirmed {
   margin-top: 10px;
   padding-left: 16px;
