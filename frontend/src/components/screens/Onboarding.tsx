@@ -51,7 +51,8 @@ export function Onboarding() {
   const [birthDay, setBirthDay] = useState('')
   const [birthMonth, setBirthMonth] = useState('')
   const [birthYear, setBirthYear] = useState('')
-  const [birthTime, setBirthTime] = useState('')
+  const [birthHour, setBirthHour] = useState('')
+  const [birthMinute, setBirthMinute] = useState('')
   const [birthTimeKnown, setBirthTimeKnown] = useState(false)
   const [birthCity, setBirthCity] = useState('')
   const [cityCoords, setCityCoords] = useState<{ lat: number; lng: number } | null>(null)
@@ -114,9 +115,10 @@ export function Onboarding() {
     setUser(user)
 
     if (birthDate && birthCity) {
-      const datetime = birthTimeKnown && birthTime
-        ? `${birthDate}T${birthTime}:00`
-        : `${birthDate}T12:00:00`
+      const timeStr = birthTimeKnown && birthHour && birthMinute
+        ? `${birthHour.padStart(2, '0')}:${birthMinute.padStart(2, '0')}`
+        : '12:00'
+      const datetime = `${birthDate}T${timeStr}:00`
 
       await birthMutation.mutateAsync({
         birth_date: datetime,
@@ -271,12 +273,31 @@ export function Onboarding() {
           {birthTimeKnown && (
             <div className="form-group">
               <label className="form-label">Время рождения</label>
-              <input
-                type="time"
-                className="form-input form-input--time"
-                value={birthTime}
-                onChange={(e) => setBirthTime(e.target.value)}
-              />
+              <div className="time-inputs">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  className="form-input date-input"
+                  placeholder="ЧЧ"
+                  maxLength={2}
+                  value={birthHour}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, '')
+                    setBirthHour(v)
+                    if (v.length === 2) (e.target.nextElementSibling?.nextElementSibling as HTMLInputElement)?.focus()
+                  }}
+                />
+                <span className="time-separator">:</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  className="form-input date-input"
+                  placeholder="ММ"
+                  maxLength={2}
+                  value={birthMinute}
+                  onChange={(e) => setBirthMinute(e.target.value.replace(/\D/g, ''))}
+                />
+              </div>
             </div>
           )}
           <motion.button
