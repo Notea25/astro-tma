@@ -552,9 +552,9 @@ body::after {
 
 /* ── Onboarding ────────────────────────────────────────────────────────────── */
 .onboarding {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
   min-height: 100vh; min-height: 100dvh;
-  padding: 40px var(--content-px);
+  padding: calc(var(--safe-top) + 60px) var(--content-px) 40px;
 }
 .onboarding__step { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 0; }
 .onboarding__moon {
