@@ -144,27 +144,37 @@ async def health():
 # ── Scheduled jobs ─────────────────────────────────────────────────────────────
 async def _generate_daily_horoscopes() -> None:
     """
-    Pre-generate and cache horoscopes for all 12 signs.
+    Pre-generate and cache horoscopes for all 12 signs via LLM.
     Runs nightly at 00:05 UTC via APScheduler.
+    Falls back to generic texts if LLM unavailable.
     """
     from datetime import date
     from db.models import ZodiacSign
     from core.cache import cache_set, key_horoscope
-    from services.astro.transits import build_energy_scores
     from api.routes.horoscope import _GENERIC_TEXTS, _SIGN_RU
     from api.schemas.horoscope import EnergyScores, HoroscopeResponse
+    from services.astro.llm_horoscope import (
+        generate_daily_horoscope, generate_energy_scores_llm, _fallback_scores,
+    )
 
-    today = date.today().isoformat()
+    today_date = date.today()
+    today = today_date.isoformat()
     log.info("scheduler.horoscopes_generating", date=today)
 
     for sign in ZodiacSign:
         try:
-            scores = build_energy_scores([], sign.value)
-            text = _GENERIC_TEXTS.get(sign.value, "")
+            # Generate text via LLM
+            text = await generate_daily_horoscope(sign.value, today_date, "today")
+            if not text:
+                text = _GENERIC_TEXTS.get(sign.value, "")
+
+            # Generate scores via LLM
+            scores = await generate_energy_scores_llm(sign.value, today_date)
+
             response = HoroscopeResponse(
                 sign=sign.value,
                 sign_ru=_SIGN_RU.get(sign.value, sign.value),
-                date=date.today(),
+                date=today_date,
                 period="today",
                 text_ru=text,
                 energy=EnergyScores(**scores),
@@ -172,6 +182,7 @@ async def _generate_daily_horoscopes() -> None:
             )
             cache_key = key_horoscope(sign.value, today, "today")
             await cache_set(cache_key, response.model_dump(mode="json"), 90000)
+            log.info("scheduler.horoscope_ok", sign=sign.value)
         except Exception as e:
             log.error("scheduler.horoscope_failed", sign=sign.value, error=str(e))
 

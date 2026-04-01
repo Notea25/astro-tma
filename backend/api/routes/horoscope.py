@@ -75,8 +75,14 @@ async def get_today_horoscope(
     if cached:
         return HoroscopeResponse(**cached)
 
-    text = _GENERIC_TEXTS.get(sign, _GENERIC_TEXTS["aries"])
-    scores = build_energy_scores([], sign)
+    # Try LLM generation
+    from services.astro.llm_horoscope import (
+        generate_daily_horoscope, generate_energy_scores_llm,
+    )
+    text = await generate_daily_horoscope(sign, date.today(), "today")
+    if not text:
+        text = _GENERIC_TEXTS.get(sign, _GENERIC_TEXTS["aries"])
+    scores = await generate_energy_scores_llm(sign, date.today())
 
     response = HoroscopeResponse(
         sign=sign,
@@ -114,19 +120,34 @@ async def get_period_horoscope(
         raise HTTPException(status.HTTP_402_PAYMENT_REQUIRED, "Premium required")
 
     sign = user.sun_sign.value if user.sun_sign else "aries"
-    # For non-today periods, use generic text with period modifier
-    text = f"[{period.upper()}] " + _GENERIC_TEXTS.get(sign, "")
-    scores = build_energy_scores([], sign)
+    today = date.today()
 
-    return HoroscopeResponse(
+    # Check cache
+    cache_key = key_horoscope(sign, today.isoformat(), period)
+    cached = await cache_get(cache_key)
+    if cached:
+        return HoroscopeResponse(**cached)
+
+    # Generate via LLM
+    from services.astro.llm_horoscope import (
+        generate_daily_horoscope, generate_energy_scores_llm,
+    )
+    text = await generate_daily_horoscope(sign, today, period)
+    if not text:
+        text = _GENERIC_TEXTS.get(sign, "")
+    scores = await generate_energy_scores_llm(sign, today)
+
+    response = HoroscopeResponse(
         sign=sign,
         sign_ru=_SIGN_RU.get(sign, sign),
-        date=date.today(),
+        date=today,
         period=period,
         text_ru=text,
         energy=EnergyScores(**scores),
         is_personalised=bool(user.natal_chart),
     )
+    await cache_set(cache_key, response.model_dump(mode="json"), settings.CACHE_TTL_HOROSCOPE)
+    return response
 
 
 @router.get("/moon", response_model=MoonPhaseResponse)
