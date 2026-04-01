@@ -136,33 +136,55 @@ async def setup_birth_data(
     )
 
 
-async def _geocode_city(city: str) -> dict:
-    """
-    Resolve city name to lat/lng/tz via GeoNames free API.
-    Falls back to Moscow if resolution fails.
-    """
+async def _get_timezone(lat: float, lng: float) -> str:
+    """Resolve timezone from coordinates via timeapi.io (free, no key)."""
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.get(
-                "http://api.geonames.org/searchJSON",
-                params={
-                    "q": city,
-                    "maxRows": 1,
-                    "username": settings.GEONAMES_USERNAME,
-                    "style": "FULL",
-                },
+                "https://timeapi.io/api/timezone/coordinate",
+                params={"latitude": lat, "longitude": lng},
             )
         data = resp.json()
-        if data.get("geonames"):
-            geo = data["geonames"][0]
-            return {
-                "city": geo.get("name", city),
-                "lat": float(geo["lat"]),
-                "lng": float(geo["lng"]),
-                "tz": geo.get("timezone", {}).get("timeZoneId", "UTC"),
-            }
+        return data.get("timeZone", "UTC")
+    except Exception:
+        return "UTC"
+
+
+async def _geocode_city(city: str) -> dict:
+    """
+    Resolve city name to lat/lng/tz via Nominatim (OpenStreetMap).
+    Free, no API key required. Falls back to Moscow on failure.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            resp = await client.get(
+                "https://nominatim.openstreetmap.org/search",
+                params={
+                    "q": city,
+                    "format": "json",
+                    "limit": 1,
+                    "addressdetails": 1,
+                },
+                headers={"User-Agent": "astro-tma/1.0"},
+            )
+        data = resp.json()
+        if data:
+            place = data[0]
+            lat = float(place["lat"])
+            lng = float(place["lon"])
+            name = (
+                place.get("address", {}).get("city")
+                or place.get("address", {}).get("town")
+                or place.get("address", {}).get("village")
+                or place.get("name")
+                or city
+            )
+            tz = await _get_timezone(lat, lng)
+            log.info("geocode.ok", city=name, lat=lat, lng=lng, tz=tz)
+            return {"city": name, "lat": lat, "lng": lng, "tz": tz}
     except Exception as e:
         log.warning("geocode.failed", city=city, error=str(e))
 
     # Default fallback
+    log.warning("geocode.fallback_moscow", city=city)
     return {"city": city, "lat": 55.7558, "lng": 37.6176, "tz": "Europe/Moscow"}
