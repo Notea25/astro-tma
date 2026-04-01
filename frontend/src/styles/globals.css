@@ -178,6 +178,29 @@ body::before {
   background: var(--gold); border-radius: 1px;
 }
 
+/* ── Profile avatar button ─────────────────────────────────────────────────── */
+.profile-avatar-btn {
+  position: fixed;
+  top: calc(var(--safe-top) + clamp(36px, 10vw, 52px));
+  right: var(--px);
+  z-index: 100;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-soft);
+  background: rgba(160,125,232,.15);
+  color: var(--lavender);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+}
+.profile-avatar-btn:active {
+  transform: scale(0.9);
+  background: rgba(160,125,232,.3);
+}
+
 /* ── Screen headers ────────────────────────────────────────────────────────── */
 .screen-header {
   padding: calc(var(--safe-top) + clamp(36px, 10vw, 52px)) var(--px) var(--space-md);

@@ -86,10 +86,23 @@ export default function App() {
     )
   }
 
+  const { user } = useAppStore()
   const showNav = screen !== 'onboarding'
+  const showAvatar = showNav && screen !== 'profile'
+  const initial = user?.name?.[0]?.toUpperCase() || '?'
 
   return (
     <div className="app">
+      {showAvatar && (
+        <button
+          className="profile-avatar-btn"
+          onClick={() => { setScreen('profile') }}
+          aria-label="Профиль"
+        >
+          {initial}
+        </button>
+      )}
+
       <AnimatePresence mode="wait">
         <motion.div
           key={screen}
