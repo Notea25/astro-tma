@@ -201,26 +201,26 @@ async def get_moon_calendar(
 async def _personalised_horoscope(
     user, sign: str, today: str, period: str
 ) -> HoroscopeResponse:
-    """Build a transit-personalised horoscope using the user's natal chart."""
-    from services.astro.natal import NatalChartData
-    import json
+    """Build a personalised horoscope via LLM, with transit fallback."""
+    from services.astro.llm_horoscope import (
+        generate_daily_horoscope, generate_energy_scores_llm,
+    )
 
-    chart_data = user.natal_chart.chart_data
-    transits = calculate_transits(None, None)  # current sky vs natal
-    scores = build_energy_scores(transits, sign)
+    # Check cache first
+    cache_key = key_horoscope(sign, today, period)
+    cached = await cache_get(cache_key)
+    if cached:
+        # Mark as personalised
+        cached["is_personalised"] = True
+        return HoroscopeResponse(**cached)
 
-    # Build richer text based on active transits
-    top_transit = transits[0] if transits else None
-    if top_transit:
-        text = (
-            f"{_GENERIC_TEXTS.get(sign, '')} "
-            f"Активный транзит: {top_transit['transit_planet']} "
-            f"{top_transit['aspect']} вашему натальному {top_transit['natal_planet']}."
-        )
-    else:
-        text = _GENERIC_TEXTS.get(sign, "")
+    # Generate via LLM
+    text = await generate_daily_horoscope(sign, date.today(), period)
+    if not text:
+        text = _GENERIC_TEXTS.get(sign, _GENERIC_TEXTS["aries"])
+    scores = await generate_energy_scores_llm(sign, date.today())
 
-    return HoroscopeResponse(
+    response = HoroscopeResponse(
         sign=sign,
         sign_ru=_SIGN_RU.get(sign, sign),
         date=date.today(),
@@ -229,3 +229,5 @@ async def _personalised_horoscope(
         energy=EnergyScores(**scores),
         is_personalised=True,
     )
+    await cache_set(cache_key, response.model_dump(mode="json"), settings.CACHE_TTL_HOROSCOPE)
+    return response
