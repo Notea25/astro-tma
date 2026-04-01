@@ -30,6 +30,7 @@ function SplashScreen() {
         transition={{ duration: 0.8, ease: 'easeOut' }}
       >
         <h1 className="splash-title">ASTRO</h1>
+        <div className="splash-divider" />
         <motion.p
           className="splash-subtitle"
           initial={{ opacity: 0, y: 10 }}
