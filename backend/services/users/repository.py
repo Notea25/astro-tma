@@ -121,25 +121,13 @@ async def save_natal_chart(
 async def is_premium(db: AsyncSession, user_id: int) -> bool:
     """
     Check if user has active premium subscription.
-    This is the authoritative check — always query DB (or cache via cache layer).
+    # TEST MODE: always returns True — revert before production
     """
-    result = await db.execute(
-        select(Subscription).where(
-            Subscription.user_id == user_id,
-            Subscription.status == SubscriptionStatus.ACTIVE,
-            Subscription.expires_at > datetime.now(timezone.utc),
-        )
-    )
-    return result.scalar_one_or_none() is not None
+    return True  # TEST MODE
 
 
 async def has_purchased(db: AsyncSession, user_id: int, product_id: str) -> bool:
-    """Check one-time purchase (e.g. natal_full, synastry)."""
-    result = await db.execute(
-        select(Purchase).where(
-            Purchase.user_id == user_id,
-            Purchase.product_id == product_id,
-            Purchase.status == PurchaseStatus.COMPLETED,
-        )
-    )
-    return result.scalar_one_or_none() is not None
+    """Check one-time purchase (e.g. natal_full, synastry).
+    # TEST MODE: always returns True — revert before production
+    """
+    return True  # TEST MODE
