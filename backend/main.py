@@ -15,6 +15,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from api.routes import compatibility, horoscope, natal, payments, tarot, users
 from core.cache import close_redis, init_redis
@@ -60,8 +61,18 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Trust X-Forwarded-Proto from nginx so the app generates https:// URLs
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+
 # ── Session (required by SQLAdmin auth) ───────────────────────────────────────
-app.add_middleware(SessionMiddleware, secret_key=settings.APP_SECRET_KEY, https_only=False)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.APP_SECRET_KEY,
+    https_only=True,
+    same_site="lax",
+    session_cookie="astro_session",
+    max_age=86400,
+)
 
 # ── CORS ───────────────────────────────────────────────────────────────────────
 # Telegram Mini Apps are served from *.telegram.org in production

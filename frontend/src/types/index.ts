@@ -56,6 +56,7 @@ export interface TarotCardDetail {
   position_name_ru: string
   position_meaning_ru: string | null
   keywords_ru: string[]
+  image_url?: string | null
 }
 
 export interface TarotSpreadResponse {

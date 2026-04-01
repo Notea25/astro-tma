@@ -48,7 +48,14 @@ function TarotCardFlip({ card, index }: { card: TarotCardDetail; index: number }
           <p className="tarot-card__tap-hint">Нажмите</p>
         </div>
         <div className="tarot-card-flip__back">
-          <span className="tarot-card__emoji">{card.emoji}</span>
+          {card.image_url
+            ? <img
+                src={card.image_url}
+                alt={card.name_ru}
+                className={`tarot-card__img ${card.reversed ? 'tarot-card__img--reversed' : ''}`}
+              />
+            : <span className="tarot-card__emoji">{card.emoji}</span>
+          }
           <p className="tarot-card__name">
             {card.name_ru}
             {card.reversed && <span className="tarot-card__rev"> ↓</span>}

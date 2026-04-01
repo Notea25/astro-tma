@@ -116,9 +116,21 @@ MAJOR_ARCANA = [
      "keywords_ru": ["завершение", "успех", "интеграция", "целостность"]},
 ]
 
+_SUIT_PREFIX = {"wands": "wa", "cups": "cu", "swords": "sw", "pentacles": "pe"}
+
+def _image_key(arcana: str, number: int, suit: str = "") -> str:
+    """Return the Rider-Waite image filename for ekelen/tarot-api CDN."""
+    if arcana == "major":
+        return f"ar{number:02d}.jpg"
+    prefix = _SUIT_PREFIX.get(suit, "wa")
+    return f"{prefix}{number:02d}.jpg"
+
+
 def get_all_cards_seed() -> list[dict]:
     """Return all 78 cards ready for DB insertion."""
-    cards = list(MAJOR_ARCANA)  # 22 major
+    cards = []
+    for card in MAJOR_ARCANA:
+        cards.append({**card, "image_key": _image_key("major", card["number"])})
 
     # Generate 56 minor arcana (4 suits × 14 cards)
     suits = [
@@ -151,6 +163,7 @@ def get_all_cards_seed() -> list[dict]:
                 "name_ru": name_ru,
                 "emoji": emoji,
                 "element": element,
+                "image_key": _image_key("minor", num, suit_en),
                 "upright_ru": f"Значение {name_ru} в прямом положении — позитивные аспекты {suit_ru.lower()} стихии.",
                 "reversed_ru": f"Значение {name_ru} в перевёрнутом положении — заблокированная энергия {suit_ru.lower()}.",
                 "keywords_ru": [suit_en, f"number_{num}"],

@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.middleware.telegram_auth import get_tg_user
-from api.schemas.tarot import DrawSpreadRequest, TarotCardDetail, TarotSpreadResponse
+from api.schemas.tarot import DrawSpreadRequest, TarotCardDetail, TarotSpreadResponse, _IMAGE_BASE
 from core.logging import get_logger
 from db.database import get_db
 from db.models import TarotCard, TarotPositionMeaning, TarotReading
@@ -94,6 +94,7 @@ async def draw_tarot(
             position_name_ru=drawn_card.position_name_ru,
             position_meaning_ru=pos_meaning,
             keywords_ru=card.keywords_ru,
+            image_url=(_IMAGE_BASE + card.image_key) if card.image_key else None,
         ))
 
     return TarotSpreadResponse(

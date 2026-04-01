@@ -28,6 +28,7 @@ async def seed():
                 upright_ru=card["upright_ru"], reversed_ru=card["reversed_ru"],
                 keywords_ru=card["keywords_ru"],
                 element=card.get("element"),
+                image_key=card.get("image_key"),
             ))
         await session.commit()
         print(f"✅ Seeded {len(cards_data)} tarot cards")

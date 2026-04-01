@@ -1,6 +1,9 @@
 from pydantic import BaseModel
 
 
+_IMAGE_BASE = "https://raw.githubusercontent.com/ekelen/tarot-api/master/static/cards/"
+
+
 class TarotCardDetail(BaseModel):
     id: int
     name_ru: str
@@ -12,6 +15,7 @@ class TarotCardDetail(BaseModel):
     position_name_ru: str
     position_meaning_ru: str | None
     keywords_ru: list[str]
+    image_url: str | None
 
 
 class TarotSpreadResponse(BaseModel):
