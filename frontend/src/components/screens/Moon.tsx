@@ -16,11 +16,12 @@ export function Moon() {
     staleTime: 1000 * 60 * 60,
   })
 
-  const { data: calendar } = useQuery({
+  const { data: calendarResp } = useQuery({
     queryKey: ['moon-calendar', year, month],
     queryFn: () => horoscopeApi.getMoonCalendar(year, month),
     staleTime: 1000 * 60 * 60 * 24,
   })
+  const calendar = calendarResp?.days
 
   const MONTH_NAMES = [
     'Январь','Февраль','Март','Апрель','Май','Июнь',
