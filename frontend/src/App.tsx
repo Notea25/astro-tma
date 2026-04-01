@@ -44,17 +44,19 @@ function SplashScreen() {
 }
 
 export default function App() {
-  const { screen, setScreen, onboardingComplete, setUser } = useAppStore()
+  const { screen, setScreen, onboardingComplete, setUser, user } = useAppStore()
   const [ready, setReady] = useState(false)
+  const [synced, setSynced] = useState(false)
   useTelegramReady()
 
   const syncUser = useMutation({
     mutationFn: usersApi.upsertMe,
-    onSuccess: (user) => {
-      setUser(user)
-      if (onboardingComplete) {
-        setScreen('home')
-      }
+    onSuccess: (u) => {
+      setUser(u)
+      setSynced(true)
+    },
+    onError: () => {
+      setSynced(true)
     },
   })
 
@@ -64,32 +66,27 @@ export default function App() {
     return () => clearTimeout(timer)
   }, [])
 
-  // Show splash while syncing user (only for returning users)
-  if (!ready && onboardingComplete) {
-    return (
-      <div className="app">
-        <AnimatePresence mode="wait">
-          <SplashScreen />
-        </AnimatePresence>
-      </div>
-    )
-  }
+  // After both splash timer and sync are done, navigate
+  useEffect(() => {
+    if (ready && synced && onboardingComplete && screen === 'onboarding') {
+      setScreen('home')
+    }
+  }, [ready, synced])
 
-  // New users go straight to onboarding (no splash)
-  if (!ready && !onboardingComplete) {
-    return (
-      <div className="app">
-        <AnimatePresence mode="wait">
-          <SplashScreen />
-        </AnimatePresence>
-      </div>
-    )
-  }
-
-  const { user } = useAppStore()
-  const showNav = screen !== 'onboarding'
+  const showSplash = !ready || (!synced && onboardingComplete)
+  const showNav = !showSplash && screen !== 'onboarding'
   const showAvatar = showNav && screen !== 'profile'
   const initial = user?.name?.[0]?.toUpperCase() || '?'
+
+  if (showSplash) {
+    return (
+      <div className="app">
+        <AnimatePresence mode="wait">
+          <SplashScreen />
+        </AnimatePresence>
+      </div>
+    )
+  }
 
   return (
     <div className="app">
