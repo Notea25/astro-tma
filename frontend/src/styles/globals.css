@@ -23,8 +23,8 @@
   --red:          #ff6b6b;
 
   /* Typography */
-  --font-serif: 'Playfair Display', Georgia, serif;
-  --font-sans:  'DM Sans', -apple-system, sans-serif;
+  --font-serif: 'Inter', -apple-system, sans-serif;
+  --font-sans:  'Inter', -apple-system, sans-serif;
 
   /* Fluid type scale */
   --text-xs:   clamp(10px, 2.5vw, 11px);
@@ -231,7 +231,7 @@ body::before {
 .horoscope-text {
   font-family: var(--font-serif);
   font-size: var(--text-md); line-height: 1.75;
-  color: var(--text-dim); font-style: italic;
+  color: var(--text-dim); font-style: normal;
 }
 
 /* ── Energy bars ───────────────────────────────────────────────────────────── */
@@ -487,7 +487,7 @@ body::before {
 .tarot-card__meaning { margin-top: var(--space-xs); }
 .tarot-card__meaning-text {
   font-family: var(--font-serif); font-size: var(--text-md);
-  line-height: 1.65; color: var(--text-dim); font-style: italic;
+  line-height: 1.65; color: var(--text-dim); font-style: normal;
 }
 .tarot-card__keywords { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 .keyword-chip {
@@ -529,7 +529,7 @@ body::before {
 .score-circle__label { font-size: var(--text-xs); color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
 .compat-description {
   font-family: var(--font-serif); font-size: var(--text-md);
-  line-height: 1.75; color: var(--text-dim); font-style: italic; margin-bottom: var(--space-lg);
+  line-height: 1.75; color: var(--text-dim); font-style: normal; margin-bottom: var(--space-lg);
 }
 .compat-list {
   background: rgba(255,255,255,.02); border: 1px solid var(--border-soft);
@@ -669,7 +669,7 @@ body::before {
 .natal-reading__text {
   font-family: var(--font-serif); font-size: var(--text-md);
   color: var(--text-dim); line-height: 1.8;
-  white-space: pre-wrap; margin: 0; font-style: italic;
+  white-space: pre-wrap; margin: 0; font-style: normal;
 }
 .natal-interpretations { margin-top: var(--space-sm); }
 .natal-interp-item { margin-bottom: var(--space-md); }
