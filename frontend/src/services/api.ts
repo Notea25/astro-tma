@@ -56,7 +56,7 @@ export const horoscopeApi = {
     request<import('@/types').HoroscopeResponse>('GET', `/horoscope/period?period=${period}`),
   getMoon: () => request<import('@/types').MoonPhaseResponse>('GET', '/horoscope/moon'),
   getMoonCalendar: (year: number, month: number) =>
-    request<import('@/types').MoonCalendarDay[]>('GET',
+    request<{ year: number; month: number; days: import('@/types').MoonCalendarDay[] }>('GET',
       `/horoscope/moon/calendar?year=${year}&month=${month}`),
 }
 
