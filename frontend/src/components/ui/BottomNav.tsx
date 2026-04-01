@@ -2,16 +2,17 @@ import { motion } from 'framer-motion'
 import type { Screen } from '@/stores/app'
 import { useAppStore } from '@/stores/app'
 import { useHaptic } from '@/hooks/useTelegram'
+import { IconHome, IconTarot, IconCompat, IconMoon, IconNatal, IconMirror } from './Icons'
 
-interface NavItem { id: Screen; label: string; icon: string }
+interface NavItem { id: Screen; label: string; Icon: (p: { size?: number }) => JSX.Element }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: 'home',          label: 'Главная',  icon: '🏠' },
-  { id: 'tarot',         label: 'Таро',     icon: '🃏' },
-  { id: 'compatibility', label: 'Союзы',    icon: '💫' },
-  { id: 'moon',          label: 'Луна',     icon: '🌙' },
-  { id: 'natal',         label: 'Карта',    icon: '⭕' },
-  { id: 'mac',           label: 'Зеркало',  icon: '🔮' },
+  { id: 'home',          label: 'Главная',  Icon: IconHome },
+  { id: 'tarot',         label: 'Таро',     Icon: IconTarot },
+  { id: 'compatibility', label: 'Союзы',    Icon: IconCompat },
+  { id: 'moon',          label: 'Луна',     Icon: IconMoon },
+  { id: 'natal',         label: 'Карта',    Icon: IconNatal },
+  { id: 'mac',           label: 'Зеркало',  Icon: IconMirror },
 ]
 
 export function BottomNav() {
@@ -34,7 +35,7 @@ export function BottomNav() {
             className={`nav-item ${active ? 'active' : ''}`}
             onClick={() => handleNav(item.id)}
           >
-            <span className="nav-icon">{item.icon}</span>
+            <span className="nav-icon"><item.Icon size={22} /></span>
             <span className="nav-label">{item.label}</span>
             {active && (
               <motion.div

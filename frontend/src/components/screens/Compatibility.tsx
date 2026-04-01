@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ZodiacPicker } from '@/components/ui/ZodiacPicker'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { IconHeart, ZODIAC_ICONS } from '@/components/ui/Icons'
 import { compatibilityApi } from '@/services/api'
 import { useAppStore } from '@/stores/app'
 import { useHaptic } from '@/hooks/useTelegram'
@@ -48,7 +49,7 @@ export function Compatibility() {
   return (
     <div className="screen compat-screen">
       <div className="screen-header">
-        <h2 className="screen-title">💫 Совместимость</h2>
+        <h2 className="screen-title">Совместимость</h2>
         <p className="screen-subtitle">Проверьте астрологическую совместимость</p>
       </div>
 
@@ -60,18 +61,22 @@ export function Compatibility() {
             onClick={() => { impact('light'); setShowPickerFor('a') }}
             whileTap={{ scale: 0.94 }}
           >
-            <span className="compat-sign-btn__emoji">{signAInfo?.emoji ?? '?'}</span>
+            <span className="compat-sign-btn__emoji">
+              {signA && ZODIAC_ICONS[signA] ? (() => { const Z = ZODIAC_ICONS[signA]; return <Z size={32} /> })() : '?'}
+            </span>
             <span className="compat-sign-btn__label">{signAInfo?.label ?? 'Выбрать'}</span>
           </motion.div>
 
-          <div className="compat-heart">❤️</div>
+          <div className="compat-heart"><IconHeart size={24} /></div>
 
           <motion.div
             className={`compat-sign-btn ${signB ? 'has-sign' : ''}`}
             onClick={() => { impact('light'); setShowPickerFor('b') }}
             whileTap={{ scale: 0.94 }}
           >
-            <span className="compat-sign-btn__emoji">{signBInfo?.emoji ?? '?'}</span>
+            <span className="compat-sign-btn__emoji">
+              {signB && ZODIAC_ICONS[signB] ? (() => { const Z = ZODIAC_ICONS[signB]; return <Z size={32} /> })() : '?'}
+            </span>
             <span className="compat-sign-btn__label">{signBInfo?.label ?? 'Выбрать'}</span>
           </motion.div>
         </div>
