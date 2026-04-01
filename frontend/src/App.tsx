@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Onboarding }    from '@/components/screens/Onboarding'
@@ -14,24 +14,79 @@ import { usersApi }      from '@/services/api'
 import { useAppStore }   from '@/stores/app'
 import { useTelegramReady } from '@/hooks/useTelegram'
 
+function SplashScreen() {
+  return (
+    <motion.div
+      className="splash-screen"
+      initial={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <motion.div
+        className="splash-content"
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.6, ease: 'easeOut' }}
+      >
+        <div className="splash-icon">&#9734;</div>
+        <h1 className="splash-title">Astro</h1>
+        <p className="splash-subtitle">Ваш персональный астролог</p>
+        <motion.div
+          className="splash-dots"
+          animate={{ opacity: [0.3, 1, 0.3] }}
+          transition={{ duration: 1.2, repeat: Infinity }}
+        >
+          <span /><span /><span />
+        </motion.div>
+      </motion.div>
+    </motion.div>
+  )
+}
+
 export default function App() {
   const { screen, setScreen, onboardingComplete, setUser } = useAppStore()
+  const [ready, setReady] = useState(false)
   useTelegramReady()
 
-  // Sync user on every app open
   const syncUser = useMutation({
     mutationFn: usersApi.upsertMe,
     onSuccess: (user) => {
       setUser(user)
-      if (onboardingComplete && screen === 'onboarding') {
+      if (onboardingComplete) {
         setScreen('home')
       }
+      setReady(true)
+    },
+    onError: () => {
+      setReady(true)
     },
   })
 
   useEffect(() => {
     syncUser.mutate()
   }, [])
+
+  // Show splash while syncing user (only for returning users)
+  if (!ready && onboardingComplete) {
+    return (
+      <div className="app">
+        <AnimatePresence mode="wait">
+          <SplashScreen />
+        </AnimatePresence>
+      </div>
+    )
+  }
+
+  // New users go straight to onboarding (no splash)
+  if (!ready && !onboardingComplete) {
+    return (
+      <div className="app">
+        <AnimatePresence mode="wait">
+          <SplashScreen />
+        </AnimatePresence>
+      </div>
+    )
+  }
 
   const showNav = screen !== 'onboarding'
 
