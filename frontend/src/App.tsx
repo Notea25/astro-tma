@@ -53,7 +53,7 @@ function SplashScreen() {
 }
 
 export default function App() {
-  const { screen, setScreen, onboardingComplete, setUser } = useAppStore()
+  const { screen, setScreen, onboardingComplete, setOnboardingComplete, setUser } = useAppStore()
   const [ready, setReady] = useState(false)
   const [synced, setSynced] = useState(false)
   useTelegramReady()
@@ -62,6 +62,10 @@ export default function App() {
     mutationFn: usersApi.upsertMe,
     onSuccess: (u) => {
       setUser(u)
+      // If user has no gender/sign — they were deleted or never completed onboarding
+      if (!u.gender && !u.sun_sign) {
+        setOnboardingComplete(false)
+      }
       setSynced(true)
     },
     onError: () => {
