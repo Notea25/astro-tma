@@ -53,7 +53,7 @@ function SplashScreen() {
 }
 
 export default function App() {
-  const { screen, setScreen, onboardingComplete, setUser, user } = useAppStore()
+  const { screen, setScreen, onboardingComplete, setUser } = useAppStore()
   const [ready, setReady] = useState(false)
   const [synced, setSynced] = useState(false)
   useTelegramReady()
@@ -84,8 +84,6 @@ export default function App() {
 
   const showSplash = !ready || (!synced && onboardingComplete)
   const showNav = !showSplash && screen !== 'onboarding'
-  const showAvatar = screen === 'home'
-  const initial = user?.name?.[0]?.toUpperCase() || '?'
 
   if (showSplash) {
     return (
