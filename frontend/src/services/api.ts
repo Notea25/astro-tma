@@ -60,6 +60,12 @@ export const horoscopeApi = {
       `/horoscope/moon/calendar?year=${year}&month=${month}`),
 }
 
+// ── Natal ──────────────────────────────────────────────────────────────────────
+export const natalApi = {
+  getSummary: () => request<import('@/types').NatalSummaryResponse>('GET', '/natal/summary'),
+  getFull: () => request<import('@/types').NatalFullResponse>('GET', '/natal/full'),
+}
+
 // ── Tarot ──────────────────────────────────────────────────────────────────────
 export const tarotApi = {
   draw: (spread_type: string) =>

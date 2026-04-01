@@ -80,6 +80,35 @@ export interface CompatibilityResponse {
   is_deep_analysis: boolean
 }
 
+export interface NatalSummaryResponse {
+  has_chart: boolean
+  sun_sign: string | null
+  moon_sign: string | null
+  ascendant_sign: string | null
+  birth_city: string | null
+  birth_time_known: boolean
+}
+
+export interface PlanetData {
+  sign: string
+  sign_ru: string
+  degree: number
+  sign_degree: number
+  house: number
+  retrograde: boolean
+  speed: number
+}
+
+export interface NatalFullResponse {
+  sun_sign: string
+  moon_sign: string
+  ascendant_sign: string | null
+  planets: Record<string, PlanetData>
+  houses: { number: number; sign: string; sign_ru: string; degree: number }[]
+  aspects: { p1: string; p2: string; aspect: string; orb: number; applying: boolean }[]
+  interpretations: { planet: string; category: string; text: string }[]
+}
+
 export interface ProductInfo {
   id: string
   name: string
