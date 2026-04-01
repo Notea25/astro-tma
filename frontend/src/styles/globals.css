@@ -562,10 +562,16 @@ body::after {
   letter-spacing: 0.05em;
 }
 .date-input--year { flex: 1.5; }
-.form-input--time {
-  font-size: var(--fs-h3) !important;
-  text-align: center;
-  letter-spacing: 0.05em;
+.time-inputs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.time-inputs .date-input { flex: 1; }
+.time-separator {
+  font-size: var(--fs-h2);
+  color: var(--text-dim);
+  font-weight: 300;
 }
 
 /* ── Onboarding ────────────────────────────────────────────────────────────── */
