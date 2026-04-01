@@ -574,6 +574,15 @@ body::after {
   font-weight: 300;
 }
 
+/* ── City Autocomplete ─────────────────────────────────────────────────────── */
+.city-autocomplete__confirmed {
+  margin-top: 10px;
+  padding-left: 16px;
+  font-size: var(--fs-small);
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+}
+
 /* ── Onboarding ────────────────────────────────────────────────────────────── */
 .onboarding {
   display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
