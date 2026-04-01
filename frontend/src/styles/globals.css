@@ -5,7 +5,7 @@
    ════════════════════════════════════════════════════════════════════════════ */
 
 /* ── Fonts ─────────────────────────────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300;1,9..40,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 /* ── Design Tokens ─────────────────────────────────────────────────────────── */
 :root {
@@ -69,7 +69,7 @@ html { height: 100%; -webkit-text-size-adjust: 100%; }
 body, #root { height: 100%; }
 
 body {
-  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Inter', -apple-system, sans-serif;
   background: var(--bg);
   color: var(--text);
   overflow-x: hidden;
@@ -147,7 +147,7 @@ body::after {
   padding: 0 var(--content-px);
 }
 .splash-title {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'Inter', -apple-system, sans-serif;
   font-size: clamp(48px, 14vw, 72px);
   font-weight: 700;
   letter-spacing: 0.3em;
@@ -162,7 +162,7 @@ body::after {
   margin: 0 auto 20px;
 }
 .splash-subtitle {
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', -apple-system, sans-serif;
   font-size: var(--fs-body);
   color: rgba(230,225,245,0.8);
   font-weight: 500;
@@ -213,7 +213,7 @@ body::after {
   border: none;
   background: none;
   color: var(--text-muted);
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', -apple-system, sans-serif;
   font-size: var(--fs-nav);
   letter-spacing: 0.04em;
   cursor: pointer;
@@ -247,10 +247,10 @@ body::after {
 }
 
 .screen-title {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'Inter', -apple-system, sans-serif;
   font-size: var(--fs-h1);
-  font-weight: 400;
-  color: var(--text);
+  font-weight: 600;
+  color: #fff;
   letter-spacing: -0.01em;
   line-height: 1.2;
 }
@@ -263,10 +263,10 @@ body::after {
 }
 
 .screen-greeting {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'Inter', -apple-system, sans-serif;
   font-size: var(--fs-h1);
-  font-weight: 300;
-  color: var(--text);
+  font-weight: 600;
+  color: #fff;
   line-height: 1.2;
 }
 
@@ -286,10 +286,10 @@ body::after {
 }
 
 .section-title {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'Inter', -apple-system, sans-serif;
   font-size: var(--fs-h3);
-  font-weight: 400;
-  color: var(--text);
+  font-weight: 600;
+  color: #fff;
   margin: 20px 0 12px;
   letter-spacing: 0.01em;
 }
@@ -301,7 +301,7 @@ body::after {
   background: linear-gradient(135deg, rgba(201,168,76,0.15), rgba(124,92,191,0.15));
   border: 0.5px solid var(--gold-border);
   display: flex; align-items: center; justify-content: center;
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', -apple-system, sans-serif;
   font-size: 14px; font-weight: 500;
   color: var(--gold-light);
   cursor: pointer;
@@ -334,7 +334,7 @@ body::after {
 }
 
 .card-tag {
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', -apple-system, sans-serif;
   font-size: var(--fs-xs);
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -352,15 +352,15 @@ body::after {
   font-size: clamp(22px, 6vw, 28px);
   flex-shrink: 0;
 }
-.sign-name { font-family: 'Playfair Display', Georgia, serif; font-size: var(--fs-h3); font-weight: 400; color: var(--text); }
+.sign-name { font-family: 'Inter', -apple-system, sans-serif; font-size: var(--fs-h3); font-weight: 600; color: #fff; }
 .sign-dates { font-size: var(--fs-xs); color: var(--text-dim); margin-top: 2px; }
 
 .horoscope-text {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'Inter', -apple-system, sans-serif;
   font-size: var(--fs-body);
-  font-weight: 300;
+  font-weight: 400;
   line-height: 1.75;
-  color: var(--text-soft);
+  color: var(--text);
   font-style: normal;
 }
 
@@ -387,7 +387,7 @@ body::after {
 }
 .moon-card:active { border-color: rgba(160,125,232,0.3); }
 .moon-card__emoji { font-size: clamp(32px, 9vw, 42px); flex-shrink: 0; }
-.moon-card__title { font-family: 'Playfair Display', Georgia, serif; font-size: var(--fs-body); color: var(--lavender); margin-bottom: 3px; }
+.moon-card__title { font-family: 'Inter', -apple-system, sans-serif; font-size: var(--fs-body); color: var(--lavender); margin-bottom: 3px; }
 .moon-card__desc { font-size: var(--fs-small); color: var(--text-dim); line-height: 1.5; }
 
 /* ── Quick Actions Grid ────────────────────────────────────────────────────── */
@@ -447,7 +447,7 @@ body::after {
   border: none; border-radius: var(--btn-radius);
   padding: clamp(14px, 4vw, 17px);
   color: #0f0c08;
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', -apple-system, sans-serif;
   font-size: var(--fs-body); font-weight: 500;
   letter-spacing: 0.08em;
   cursor: pointer;
@@ -513,7 +513,7 @@ body::after {
   color: var(--gold); background: var(--gold-glow);
   border: 0.5px solid var(--gold-border); padding: 4px 14px; border-radius: 20px;
 }
-.premium-gate__title { font-family: 'Playfair Display', Georgia, serif; font-size: var(--fs-h3); color: var(--text); }
+.premium-gate__title { font-family: 'Inter', -apple-system, sans-serif; font-size: var(--fs-h3); color: var(--text); }
 .premium-gate__desc { font-size: var(--fs-small); color: var(--text-dim); }
 .premium-badge {
   font-size: var(--fs-xs); color: var(--gold);
@@ -535,7 +535,7 @@ body::after {
   border-radius: 12px;
   padding: clamp(12px, 3.5vw, 15px) 16px;
   color: var(--text);
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', -apple-system, sans-serif;
   font-size: var(--fs-body);
   outline: none;
   transition: border-color 0.2s;
@@ -643,7 +643,7 @@ body::after {
   margin: 0 auto 32px;
 }
 .onboarding__title {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'Inter', -apple-system, sans-serif;
   font-size: var(--fs-hero); font-weight: 300;
   color: var(--gold-light); text-align: center;
   margin-bottom: 8px; letter-spacing: -0.02em;
@@ -664,7 +664,7 @@ body::after {
 .dot.active { background: var(--gold); }
 .dot.done { background: var(--gold-dim); }
 
-.step-title { font-family: 'Playfair Display', Georgia, serif; font-size: var(--fs-h2); font-weight: 400; color: var(--text); margin-bottom: 6px; }
+.step-title { font-family: 'Inter', -apple-system, sans-serif; font-size: var(--fs-h2); font-weight: 600; color: #fff; margin-bottom: 6px; }
 .step-desc { font-size: var(--fs-small); color: var(--text-dim); margin-bottom: 24px; line-height: 1.5; }
 
 /* ── Gender Selection ──────────────────────────────────────────────────────── */
@@ -690,7 +690,7 @@ body::after {
 }
 .gender-card__icon { transition: color 0.25s; }
 .gender-card__label {
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', -apple-system, sans-serif;
   font-size: var(--fs-body);
   font-weight: 500;
   letter-spacing: 0.04em;
@@ -774,7 +774,7 @@ body::after {
 .tarot-card__rev { color: var(--red); }
 .tarot-card__meaning { margin-top: 4px; }
 .tarot-card__meaning-text {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'Inter', -apple-system, sans-serif;
   font-size: var(--fs-body); line-height: 1.65;
   color: var(--text-soft); font-style: normal;
 }
@@ -803,7 +803,7 @@ body::after {
 .compat-heart { font-size: clamp(22px, 6vw, 28px); }
 .compat-result { margin-top: 24px; }
 .compat-overall { text-align: center; margin-bottom: 24px; }
-.compat-overall__score { font-family: 'Playfair Display', Georgia, serif; font-size: clamp(56px, 16vw, 72px); color: var(--gold); line-height: 1; }
+.compat-overall__score { font-family: 'Inter', -apple-system, sans-serif; font-size: clamp(56px, 16vw, 72px); color: var(--gold); line-height: 1; }
 .compat-overall__tier { font-size: var(--fs-body); color: var(--text-dim); margin-top: 4px; }
 .tier-high { color: var(--green); }
 .tier-medium { color: var(--gold); }
@@ -822,7 +822,7 @@ body::after {
 .score-circle__label { font-size: var(--fs-xs); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
 
 .compat-description {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'Inter', -apple-system, sans-serif;
   font-size: var(--fs-body); line-height: 1.7;
   color: var(--text-soft); font-style: normal; margin-bottom: 20px;
 }
@@ -834,7 +834,7 @@ body::after {
 .compat-list__item { font-size: var(--fs-small); color: var(--text-dim); margin-bottom: 6px; line-height: 1.4; }
 
 /* ── MAC Cards (Зеркало Души) ─────────────────────────────────────────────── */
-.mac-intro { text-align: center; margin-bottom: 24px; font-family: 'Playfair Display', Georgia, serif; font-size: var(--fs-body); color: var(--text-soft); line-height: 1.7; }
+.mac-intro { text-align: center; margin-bottom: 24px; font-family: 'Inter', -apple-system, sans-serif; font-size: var(--fs-body); color: var(--text-soft); line-height: 1.7; }
 .mac-intro p { margin-bottom: 6px; }
 .mac-deck { display: flex; justify-content: center; align-items: center; height: 180px; position: relative; margin-bottom: 24px; }
 .mac-deck-card {
@@ -853,10 +853,10 @@ body::after {
 }
 .mac-card--revealed { cursor: default; }
 .mac-card__emoji { font-size: clamp(48px, 12vw, 72px); margin-bottom: 12px; }
-.mac-card__name { font-family: 'Playfair Display', Georgia, serif; font-size: var(--fs-h2); color: var(--gold); margin-bottom: 8px; }
+.mac-card__name { font-family: 'Inter', -apple-system, sans-serif; font-size: var(--fs-h2); color: var(--gold); margin-bottom: 8px; }
 .mac-card__tap-hint { font-size: var(--fs-xs); color: var(--text-muted); margin-top: 8px; }
 .mac-card__content { text-align: left; }
-.mac-card__description { font-family: 'Playfair Display', Georgia, serif; font-size: var(--fs-body); line-height: 1.7; color: var(--text-soft); margin-bottom: 16px; }
+.mac-card__description { font-family: 'Inter', -apple-system, sans-serif; font-size: var(--fs-body); line-height: 1.7; color: var(--text-soft); margin-bottom: 16px; }
 .mac-card__question, .mac-card__affirmation {
   background: rgba(255,255,255,.03); border-radius: 12px;
   padding: 12px 16px; margin-bottom: 8px;
@@ -880,7 +880,7 @@ body::after {
   overflow-y: auto; -webkit-overflow-scrolling: touch;
 }
 .modal-handle { width: 36px; height: 4px; background: rgba(255,255,255,0.12); border-radius: 2px; margin: 0 auto 16px; }
-.modal-title { font-family: 'Playfair Display', Georgia, serif; font-size: var(--fs-h2); color: var(--gold-light); margin-bottom: 20px; text-align: center; }
+.modal-title { font-family: 'Inter', -apple-system, sans-serif; font-size: var(--fs-h2); color: var(--gold-light); margin-bottom: 20px; text-align: center; }
 
 /* ── Moon Screen ───────────────────────────────────────────────────────────── */
 .moon-hero { text-align: center; padding: 16px 0 8px; }
@@ -892,7 +892,7 @@ body::after {
   padding: clamp(16px, 5vw, 22px);
   margin-bottom: 16px; text-align: center;
 }
-.moon-phase-card__name { font-family: 'Playfair Display', Georgia, serif; font-size: var(--fs-h2); color: var(--lavender); margin-bottom: 6px; }
+.moon-phase-card__name { font-family: 'Inter', -apple-system, sans-serif; font-size: var(--fs-h2); color: var(--lavender); margin-bottom: 6px; }
 .moon-phase-card__illum { font-size: var(--fs-small); color: var(--text-dim); margin-bottom: 12px; }
 .moon-phase-card__desc { font-size: var(--fs-body); color: var(--text-soft); line-height: 1.65; }
 
@@ -936,7 +936,7 @@ body::after {
 .natal-card__tag { font-size: var(--fs-xs); letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold-dim); margin-bottom: 16px; }
 .natal-sign-row { display: flex; align-items: center; gap: clamp(10px, 3vw, 14px); margin-bottom: 14px; }
 .natal-sign-emoji { font-size: clamp(32px, 9vw, 42px); }
-.natal-sign-name { font-family: 'Playfair Display', Georgia, serif; font-size: var(--fs-h2); }
+.natal-sign-name { font-family: 'Inter', -apple-system, sans-serif; font-size: var(--fs-h2); }
 .natal-sign-dates { font-size: var(--fs-small); color: var(--text-dim); margin-top: 2px; }
 .natal-card__text { font-size: var(--fs-body); color: var(--text-dim); line-height: 1.65; }
 
