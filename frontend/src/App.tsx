@@ -55,15 +55,13 @@ export default function App() {
       if (onboardingComplete) {
         setScreen('home')
       }
-      setReady(true)
-    },
-    onError: () => {
-      setReady(true)
     },
   })
 
   useEffect(() => {
     syncUser.mutate()
+    const timer = setTimeout(() => setReady(true), 2500)
+    return () => clearTimeout(timer)
   }, [])
 
   // Show splash while syncing user (only for returning users)
