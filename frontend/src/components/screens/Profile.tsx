@@ -169,7 +169,10 @@ export function Profile() {
                   }}
                 />
                 {selectedCoords && (
-                  <div className="city-autocomplete__confirmed">✓ Координаты определены</div>
+                  <div className="city-autocomplete__confirmed">
+                    ✓ {selectedCoords.lat.toFixed(4)}° {selectedCoords.lat >= 0 ? 'с.ш.' : 'ю.ш.'}
+                    &nbsp;&nbsp;{selectedCoords.lng.toFixed(4)}° {selectedCoords.lng >= 0 ? 'в.д.' : 'з.д.'}
+                  </div>
                 )}
               </div>
 

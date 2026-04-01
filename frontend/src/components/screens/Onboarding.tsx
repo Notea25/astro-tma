@@ -210,7 +210,10 @@ export function Onboarding() {
               }}
             />
             {cityCoords && (
-              <div className="city-autocomplete__confirmed">✓ Координаты определены</div>
+              <div className="city-autocomplete__confirmed">
+                ✓ {cityCoords.lat.toFixed(4)}° {cityCoords.lat >= 0 ? 'с.ш.' : 'ю.ш.'}
+                &nbsp;&nbsp;{cityCoords.lng.toFixed(4)}° {cityCoords.lng >= 0 ? 'в.д.' : 'з.д.'}
+              </div>
             )}
           </div>
           <motion.button
