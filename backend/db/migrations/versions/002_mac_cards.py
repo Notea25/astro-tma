@@ -20,7 +20,12 @@ mac_category_enum = postgresql.ENUM(
 
 
 def upgrade() -> None:
-    op.execute("CREATE TYPE IF NOT EXISTS maccategory AS ENUM ('emotions','relationships','self','shadow','resources')")
+    op.execute("""
+        DO $$ BEGIN
+            CREATE TYPE maccategory AS ENUM ('emotions','relationships','self','shadow','resources');
+        EXCEPTION WHEN duplicate_object THEN NULL;
+        END $$
+    """)
 
     op.create_table(
         'mac_cards',
