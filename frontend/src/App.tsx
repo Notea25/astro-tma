@@ -84,7 +84,7 @@ export default function App() {
 
   const showSplash = !ready || (!synced && onboardingComplete)
   const showNav = !showSplash && screen !== 'onboarding'
-  const showAvatar = showNav && screen !== 'profile'
+  const showAvatar = screen === 'home'
   const initial = user?.name?.[0]?.toUpperCase() || '?'
 
   if (showSplash) {
@@ -99,16 +99,6 @@ export default function App() {
 
   return (
     <div className="app">
-      {showAvatar && (
-        <button
-          className="profile-avatar-btn"
-          onClick={() => setScreen('profile')}
-          aria-label="Профиль"
-        >
-          {initial}
-        </button>
-      )}
-
       <AnimatePresence mode="wait">
         <motion.div
           key={screen}

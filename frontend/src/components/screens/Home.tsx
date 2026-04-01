@@ -67,6 +67,13 @@ export function Home() {
           </h1>
           <p className="screen-date">{today}</p>
         </div>
+        <button
+          className="header-avatar"
+          onClick={() => { impact('light'); setScreen('profile') }}
+          aria-label="Профиль"
+        >
+          {user?.name?.[0]?.toUpperCase() || '?'}
+        </button>
       </div>
 
       {/* Period tabs */}
