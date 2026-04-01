@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     CACHE_TTL_NATAL: int = 604800       # 7d — natal never changes
     CACHE_TTL_COMPATIBILITY: int = 86400
 
+    # Anthropic
+    ANTHROPIC_API_KEY: str = ""
+
     # GeoNames
     GEONAMES_USERNAME: str = "demo"
 

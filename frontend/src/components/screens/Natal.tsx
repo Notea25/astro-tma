@@ -135,6 +135,14 @@ export function Natal() {
                   <div className="natal-loading">Нет данных — добавьте дату рождения</div>
                 )}
 
+                {/* LLM Reading */}
+                {full?.reading && (
+                  <div className="natal-reading">
+                    <div className="natal-card__tag" style={{ marginTop: '1.25rem' }}>✦ Персональная интерпретация</div>
+                    <p className="natal-reading__text">{full.reading}</p>
+                  </div>
+                )}
+
                 {/* Interpretations */}
                 {full?.interpretations && full.interpretations.length > 0 && (
                   <div className="natal-interpretations">

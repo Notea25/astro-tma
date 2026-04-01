@@ -358,6 +358,8 @@ body::before {
 .natal-summary-label { color: var(--muted); min-width: 110px; }
 .natal-summary-value { color: var(--text); }
 .natal-loading { font-size: 13px; color: var(--muted); padding: 12px 0; text-align: center; }
+.natal-reading { margin-top: 4px; }
+.natal-reading__text { font-size: 14px; color: var(--text-dim); line-height: 1.75; white-space: pre-wrap; margin: 0; }
 .natal-interpretations { margin-top: 8px; }
 .natal-interp-item { margin-bottom: 16px; }
 .natal-interp-item__title { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); margin-bottom: 4px; }

@@ -107,6 +107,7 @@ export interface NatalFullResponse {
   houses: { number: number; sign: string; sign_ru: string; degree: number }[]
   aspects: { p1: string; p2: string; aspect: string; orb: number; applying: boolean }[]
   interpretations: { planet: string; category: string; text: string }[]
+  reading: string | null
 }
 
 export interface ProductInfo {

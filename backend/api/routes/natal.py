@@ -5,10 +5,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.middleware.telegram_auth import get_tg_user
 from core.cache import cache_get, cache_set, key_natal
+from core.logging import get_logger
 from core.settings import settings
 from db.database import get_db
 from services.astro.interpreter import get_natal_interpretation
+from services.astro.llm_interpreter import generate_natal_reading
 from services.users import repository as user_repo
+
+log = get_logger(__name__)
 
 router = APIRouter(prefix="/natal", tags=["natal"])
 
@@ -88,17 +92,33 @@ async def get_natal_full(
         planet_signs=planet_signs,
     )
 
+    # Generate LLM interpretation if API key is set
+    llm_reading: str | None = None
+    if settings.ANTHROPIC_API_KEY:
+        try:
+            llm_reading = await generate_natal_reading(
+                sun_sign=chart.sun_sign,
+                moon_sign=chart.moon_sign,
+                ascendant_sign=chart.ascendant_sign,
+                planets=planets,
+                aspects=chart.chart_data.get("aspects", [])[:10],
+                api_key=settings.ANTHROPIC_API_KEY,
+            )
+        except Exception as e:
+            log.error("natal.llm_failed", user_id=user.id, error=str(e))
+
     result = {
         "sun_sign":       chart.sun_sign,
         "moon_sign":      chart.moon_sign,
         "ascendant_sign": chart.ascendant_sign,
         "planets":        planets,
         "houses":         chart.chart_data.get("houses", []),
-        "aspects":        chart.chart_data.get("aspects", [])[:10],  # top 10
+        "aspects":        chart.chart_data.get("aspects", [])[:10],
         "interpretations": [
             {"planet": b.planet, "category": b.category, "text": b.text}
             for b in interp_blocks
         ],
+        "reading": llm_reading,
     }
 
     await cache_set(cache_key, result, settings.CACHE_TTL_NATAL)
