@@ -153,13 +153,13 @@ body::after {
   letter-spacing: 0.3em;
   color: #fff;
   text-shadow: 0 0 50px rgba(201,168,76,0.35), 0 2px 20px rgba(0,0,0,0.5);
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 .splash-divider {
   width: 48px;
   height: 1.5px;
   background: rgba(255,255,255,0.45);
-  margin: 0 auto 16px;
+  margin: 0 auto 20px;
 }
 .splash-subtitle {
   font-family: 'DM Sans', sans-serif;
