@@ -82,6 +82,11 @@ export const compatibilityApi = {
 }
 
 // ── Payments ───────────────────────────────────────────────────────────────────
+export const macApi = {
+  draw: () => request<import('@/types').MacReadingResponse>('POST', '/mac/draw'),
+  history: () => request<import('@/types').MacCardResponse[]>('GET', '/mac/history'),
+}
+
 export const paymentsApi = {
   getProducts: () => request<import('@/types').ProductInfo[]>('GET', '/payments/products'),
   createInvoice: (product_id: string) =>

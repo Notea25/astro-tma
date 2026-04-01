@@ -538,6 +538,36 @@ body::before {
 .compat-list__title { font-size: var(--text-sm); font-weight: 600; color: var(--text); margin-bottom: 10px; }
 .compat-list__item { font-size: var(--text-sm); color: var(--text-dim); margin-bottom: 6px; line-height: 1.45; }
 
+/* ── MAC Cards (Зеркало Души) ─────────────────────────────────────────────── */
+.mac-intro { text-align: center; margin-bottom: var(--space-lg); font-family: var(--font-serif); font-size: var(--text-md); color: var(--text2); line-height: 1.7; }
+.mac-intro p { margin-bottom: var(--space-xs); }
+.mac-deck { display: flex; justify-content: center; align-items: center; height: 180px; position: relative; margin-bottom: var(--space-lg); }
+.mac-deck-card {
+  width: 100px; height: 140px; background: linear-gradient(135deg, #1a1040 0%, #2a1860 100%);
+  border: 1px solid rgba(160,125,232,.4); border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  position: absolute; box-shadow: 0 4px 20px rgba(0,0,0,.4);
+}
+.mac-deck-symbol { font-size: 32px; opacity: 0.6; }
+.mac-card {
+  background: linear-gradient(180deg, rgba(160,125,232,.08) 0%, rgba(255,255,255,.02) 100%);
+  border: 1px solid rgba(160,125,232,.25); border-radius: 20px;
+  padding: var(--space-lg); text-align: center; cursor: pointer;
+  margin-bottom: var(--space-md); transition: all 0.3s ease;
+}
+.mac-card--revealed { cursor: default; }
+.mac-card__emoji { font-size: clamp(48px, 12vw, 72px); margin-bottom: var(--space-sm); }
+.mac-card__name { font-family: var(--font-serif); font-size: var(--text-xl); color: var(--gold); margin-bottom: var(--space-sm); }
+.mac-card__tap-hint { font-size: var(--text-xs); color: var(--text3); margin-top: var(--space-sm); }
+.mac-card__content { text-align: left; }
+.mac-card__description { font-family: var(--font-serif); font-size: var(--text-md); line-height: 1.7; color: var(--text1); margin-bottom: var(--space-md); }
+.mac-card__question, .mac-card__affirmation {
+  background: rgba(255,255,255,.03); border-radius: 12px;
+  padding: var(--space-sm) var(--space-md); margin-bottom: var(--space-sm);
+}
+.mac-card__question p, .mac-card__affirmation p { font-family: var(--font-serif); font-size: var(--text-sm); line-height: 1.6; color: var(--text1); margin: 0; }
+.mac-card__label { font-size: var(--text-xs); color: var(--lavender); text-transform: uppercase; letter-spacing: 0.1em; display: block; margin-bottom: 4px; }
+
 /* ── Modal ─────────────────────────────────────────────────────────────────── */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 200; display: flex; align-items: flex-end; backdrop-filter: blur(8px); }
 .modal-sheet {

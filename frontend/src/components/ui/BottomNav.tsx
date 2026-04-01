@@ -11,6 +11,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'compatibility', label: 'Союзы',    icon: '💫' },
   { id: 'moon',          label: 'Луна',     icon: '🌙' },
   { id: 'natal',         label: 'Карта',    icon: '⭕' },
+  { id: 'mac',           label: 'Зеркало',  icon: '🔮' },
   { id: 'profile',      label: 'Профиль',  icon: '👤' },
 ]
 

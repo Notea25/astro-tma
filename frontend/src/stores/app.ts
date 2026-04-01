@@ -8,7 +8,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { UserProfile, ZodiacSign } from '@/types'
 
-export type Screen = 'onboarding' | 'home' | 'tarot' | 'compatibility' | 'moon' | 'natal' | 'profile'
+export type Screen = 'onboarding' | 'home' | 'tarot' | 'compatibility' | 'moon' | 'natal' | 'mac' | 'profile'
 
 interface AppState {
   screen: Screen

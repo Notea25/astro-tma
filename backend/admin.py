@@ -10,7 +10,7 @@ from starlette.requests import Request
 from core.settings import settings
 from db.database import engine
 from db.models import (
-    DailyHoroscope, Interpretation, NatalChart,
+    DailyHoroscope, Interpretation, MacCard, MacReading, NatalChart,
     Purchase, Subscription, TarotCard,
     TarotPositionMeaning, TarotReading, User,
 )
@@ -138,6 +138,31 @@ class SubscriptionAdmin(ModelView, model=Subscription):
     can_delete = True
 
 
+class MacCardAdmin(ModelView, model=MacCard):
+    name = "МАК-карта"
+    name_plural = "МАК-карты"
+    icon = "fa-solid fa-eye"
+    column_list = [MacCard.id, MacCard.name_ru, MacCard.category, MacCard.emoji]
+    column_searchable_list = [MacCard.name_ru]
+    column_sortable_list = [MacCard.category]
+    can_create = True
+    can_edit = True
+    can_delete = True
+    page_size = 60
+
+
+class MacReadingAdmin(ModelView, model=MacReading):
+    name = "МАК-расклад"
+    name_plural = "МАК-расклады"
+    icon = "fa-solid fa-mirror"
+    column_list = [MacReading.id, MacReading.user_id, MacReading.card_id, MacReading.created_at]
+    column_sortable_list = [MacReading.created_at]
+    can_create = False
+    can_edit = False
+    can_delete = True
+    page_size = 50
+
+
 class PurchaseAdmin(ModelView, model=Purchase):
     name = "Покупка"
     name_plural = "Покупки"
@@ -162,7 +187,8 @@ def create_admin(app) -> Admin:
     for view in [
         UserAdmin, NatalChartAdmin, InterpretationAdmin,
         DailyHoroscopeAdmin, TarotCardAdmin, TarotPositionMeaningAdmin,
-        TarotReadingAdmin, SubscriptionAdmin, PurchaseAdmin,
+        TarotReadingAdmin, MacCardAdmin, MacReadingAdmin,
+        SubscriptionAdmin, PurchaseAdmin,
     ]:
         admin.add_view(view)
     return admin
