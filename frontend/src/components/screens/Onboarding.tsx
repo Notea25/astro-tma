@@ -48,7 +48,9 @@ function GenderIcon({ type, size = 64 }: { type: 'male' | 'female'; size?: numbe
 export function Onboarding() {
   const [step, setStep] = useState<Step>('welcome')
   const [gender, setGender] = useState<'male' | 'female' | null>(null)
-  const [birthDate, setBirthDate] = useState('')
+  const [birthDay, setBirthDay] = useState('')
+  const [birthMonth, setBirthMonth] = useState('')
+  const [birthYear, setBirthYear] = useState('')
   const [birthTime, setBirthTime] = useState('')
   const [birthTimeKnown, setBirthTimeKnown] = useState(false)
   const [birthCity, setBirthCity] = useState('')
@@ -87,10 +89,21 @@ export function Onboarding() {
     setStep('birth_date')
   }
 
+  const birthDate = birthYear && birthMonth && birthDay
+    ? `${birthYear}-${birthMonth.padStart(2, '0')}-${birthDay.padStart(2, '0')}`
+    : ''
+
+  const isBirthDateValid = () => {
+    if (!birthDay || !birthMonth || !birthYear) return false
+    const d = parseInt(birthDay), m = parseInt(birthMonth), y = parseInt(birthYear)
+    if (d < 1 || d > 31 || m < 1 || m > 12 || y < 1900 || y > new Date().getFullYear()) return false
+    return true
+  }
+
   const handleDateNext = () => {
-    if (!birthDate) return
+    if (!isBirthDateValid()) return
     impact('light')
-    const date = new Date(birthDate)
+    const date = new Date(parseInt(birthYear), parseInt(birthMonth) - 1, parseInt(birthDay))
     setSelectedSign(signFromDate(date))
     setStep('birth_city')
   }
@@ -207,13 +220,43 @@ export function Onboarding() {
           <p className="step-desc">Нужна для расчёта персонального гороскопа</p>
           <div className="form-group">
             <label className="form-label">Дата рождения</label>
-            <input
-              type="date"
-              className="form-input"
-              value={birthDate}
-              onChange={(e) => setBirthDate(e.target.value)}
-              max={new Date().toISOString().split('T')[0]}
-            />
+            <div className="date-inputs">
+              <input
+                type="text"
+                inputMode="numeric"
+                className="form-input date-input"
+                placeholder="ДД"
+                maxLength={2}
+                value={birthDay}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, '')
+                  setBirthDay(v)
+                  if (v.length === 2) (e.target.nextElementSibling as HTMLInputElement)?.focus()
+                }}
+              />
+              <input
+                type="text"
+                inputMode="numeric"
+                className="form-input date-input"
+                placeholder="ММ"
+                maxLength={2}
+                value={birthMonth}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, '')
+                  setBirthMonth(v)
+                  if (v.length === 2) (e.target.nextElementSibling as HTMLInputElement)?.focus()
+                }}
+              />
+              <input
+                type="text"
+                inputMode="numeric"
+                className="form-input date-input date-input--year"
+                placeholder="ГГГГ"
+                maxLength={4}
+                value={birthYear}
+                onChange={(e) => setBirthYear(e.target.value.replace(/\D/g, ''))}
+              />
+            </div>
           </div>
           <div className="form-group">
             <label className="form-label checkbox-label">
@@ -230,7 +273,7 @@ export function Onboarding() {
               <label className="form-label">Время рождения</label>
               <input
                 type="time"
-                className="form-input"
+                className="form-input form-input--time"
                 value={birthTime}
                 onChange={(e) => setBirthTime(e.target.value)}
               />
@@ -239,7 +282,7 @@ export function Onboarding() {
           <motion.button
             className="btn-primary"
             onClick={handleDateNext}
-            disabled={!birthDate}
+            disabled={!isBirthDateValid()}
             whileTap={{ scale: 0.97 }}
           >
             Далее
