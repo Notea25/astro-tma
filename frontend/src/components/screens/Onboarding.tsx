@@ -143,17 +143,6 @@ export function Onboarding() {
           >
             Начать путешествие
           </motion.button>
-          <button
-            className="btn-ghost"
-            onClick={async () => {
-              const user = await upsertMutation.mutateAsync()
-              setUser(user)
-              setOnboardingComplete(true)
-              setScreen('home')
-            }}
-          >
-            Пропустить
-          </button>
         </motion.div>
       )}
 
@@ -298,9 +287,6 @@ export function Onboarding() {
           >
             Далее
           </motion.button>
-          <button className="btn-ghost" onClick={() => setStep('sign_confirm')}>
-            Пропустить
-          </button>
         </motion.div>
       )}
 
