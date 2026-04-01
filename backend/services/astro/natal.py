@@ -161,27 +161,35 @@ def calculate_natal(
             speed=round(p.speed or 0.0, 4),
         )
 
-    # Houses
-    houses = [
-        {
-            "number": i + 1,
-            "sign": _normalize_sign(h.sign),
-            "sign_ru": _SIGN_RU.get(_normalize_sign(h.sign), _normalize_sign(h.sign)),
-            "degree": round(h.abs_pos or 0.0, 4),
-        }
-        for i, h in enumerate(subject.houses_list)
-    ]
+    # Houses — v5 uses houses_names_list + individual attrs (first_house, etc.)
+    houses: list[dict] = []
+    house_name_list = getattr(subject, "houses_names_list", None)
+    if house_name_list:
+        for i, house_name in enumerate(house_name_list):
+            h = getattr(subject, house_name.lower(), None)
+            if h:
+                s = _normalize_sign(h.sign)
+                houses.append({
+                    "number": i + 1,
+                    "sign": s,
+                    "sign_ru": _SIGN_RU.get(s, s),
+                    "degree": round(h.abs_pos or 0.0, 4),
+                })
 
-    # Aspects
+    # Aspects — v5 uses .aspect (str, already lowercase) and .aspect_movement
     natal_aspects = NatalAspects(subject)
     aspects: list[AspectData] = []
     for a in natal_aspects.all_aspects:
+        # v5: aspect attr is "sextile" etc.; v4 used aspect_name
+        aspect_name = getattr(a, "aspect", None) or getattr(a, "aspect_name", "")
+        if callable(aspect_name):
+            aspect_name = aspect_name()
         aspects.append(AspectData(
             p1=a.p1_name,
             p2=a.p2_name,
-            aspect=a.aspect_name.lower(),
+            aspect=str(aspect_name).lower(),
             orb=round(a.orbit, 2),
-            applying=bool(getattr(a, "applying", False)),
+            applying=str(getattr(a, "aspect_movement", "")).lower() == "applying",
         ))
 
     # Ascendant / MC — attribute names differ between kerykeion versions
