@@ -5,6 +5,7 @@ import { usersApi } from '@/services/api'
 import { useAppStore } from '@/stores/app'
 import { useHaptic } from '@/hooks/useTelegram'
 import { ZODIAC_SIGNS } from '@/types'
+import { CityAutocomplete, type CityOption } from '@/components/ui/CityAutocomplete'
 
 export function Profile() {
   const { user, setUser } = useAppStore()
@@ -16,6 +17,7 @@ export function Profile() {
   const [birthTime, setBirthTime] = useState('')
   const [birthTimeKnown, setBirthTimeKnown] = useState(user?.birth_time_known ?? false)
   const [birthCity, setBirthCity] = useState(user?.birth_city ?? '')
+  const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [savedCity, setSavedCity] = useState<string | null>(null)
 
   const userSign = ZODIAC_SIGNS.find(s => s.value === user?.sun_sign)
@@ -46,6 +48,7 @@ export function Profile() {
       birth_date: datetime,
       birth_time_known: birthTimeKnown,
       birth_city: birthCity,
+      ...(selectedCoords ?? {}),
     })
   }
 
@@ -157,13 +160,17 @@ export function Profile() {
 
               <div className="form-group">
                 <label className="form-label">Город рождения</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="Москва, Лондон, Нью-Йорк..."
+                <CityAutocomplete
                   value={birthCity}
-                  onChange={(e) => setBirthCity(e.target.value)}
+                  onChange={(v) => { setBirthCity(v); setSelectedCoords(null) }}
+                  onSelect={(opt: CityOption) => {
+                    setBirthCity(opt.displayName)
+                    setSelectedCoords({ lat: opt.lat, lng: opt.lng })
+                  }}
                 />
+                {selectedCoords && (
+                  <div className="city-autocomplete__confirmed">✓ Координаты определены</div>
+                )}
               </div>
 
               <div className="profile-edit-actions">

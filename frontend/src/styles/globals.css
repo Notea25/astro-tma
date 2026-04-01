@@ -365,6 +365,17 @@ body::before {
 .natal-interp-item__title { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); margin-bottom: 4px; }
 .natal-interp-item__text { font-size: 13px; color: var(--text-dim); line-height: 1.6; margin: 0; }
 
+/* ── City Autocomplete ─────────────────────────────────────────────────────── */
+.city-autocomplete { position: relative; }
+.city-autocomplete__input-wrap { position: relative; }
+.city-autocomplete__spinner { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 14px; }
+.city-autocomplete__dropdown { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; z-index: 100; list-style: none; margin: 0; padding: 4px 0; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+.city-autocomplete__option { display: flex; align-items: center; gap: 8px; padding: 10px 14px; cursor: pointer; transition: background .15s; }
+.city-autocomplete__option:hover { background: rgba(160,125,232,.12); }
+.city-autocomplete__option-icon { font-size: 14px; flex-shrink: 0; }
+.city-autocomplete__option-text { font-size: 13px; color: var(--text); line-height: 1.3; }
+.city-autocomplete__confirmed { font-size: 11px; color: #81c784; margin-top: 5px; }
+
 /* ── Profile ───────────────────────────────────────────────────────────────── */
 .profile-card { display: flex; align-items: center; gap: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 20px 24px; margin-bottom: 16px; }
 .profile-avatar { width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, var(--lavender), var(--gold)); display: flex; align-items: center; justify-content: center; font-family: 'Cormorant Garamond', serif; font-size: 24px; color: #fff; flex-shrink: 0; }

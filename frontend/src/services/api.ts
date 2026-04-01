@@ -46,6 +46,8 @@ export const usersApi = {
     birth_date: string
     birth_time_known: boolean
     birth_city: string
+    lat?: number
+    lng?: number
   }) => request('POST', '/users/me/birth', data),
 }
 

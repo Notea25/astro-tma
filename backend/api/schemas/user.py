@@ -17,6 +17,9 @@ class SetupBirthDataRequest(BaseModel):
     birth_date: datetime
     birth_time_known: bool = False
     birth_city: str = Field(..., min_length=2, max_length=128)
+    # Optional: pre-resolved coordinates from frontend autocomplete
+    lat: float | None = None
+    lng: float | None = None
 
 
 class SetupBirthDataResponse(BaseModel):

@@ -77,8 +77,13 @@ async def setup_birth_data(
     if not user:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
 
-    # Geocode birth city
-    geo = await _geocode_city(body.birth_city)
+    # Use pre-resolved coordinates if provided, otherwise geocode
+    if body.lat is not None and body.lng is not None:
+        tz = await _get_timezone(body.lat, body.lng)
+        geo = {"city": body.birth_city, "lat": body.lat, "lng": body.lng, "tz": tz}
+        log.info("geocode.from_client", city=body.birth_city, lat=body.lat, lng=body.lng)
+    else:
+        geo = await _geocode_city(body.birth_city)
 
     # Calculate natal chart
     chart = None

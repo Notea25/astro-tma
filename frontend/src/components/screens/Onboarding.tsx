@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useMutation } from '@tanstack/react-query'
 import { ZodiacPicker } from '@/components/ui/ZodiacPicker'
+import { CityAutocomplete, type CityOption } from '@/components/ui/CityAutocomplete'
 import { usersApi } from '@/services/api'
 import { useAppStore } from '@/stores/app'
 import { useHaptic } from '@/hooks/useTelegram'
@@ -34,6 +35,7 @@ export function Onboarding() {
   const [birthTime, setBirthTime] = useState('')
   const [birthTimeKnown, setBirthTimeKnown] = useState(false)
   const [birthCity, setBirthCity] = useState('')
+  const [cityCoords, setCityCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [selectedSign, setSelectedSign] = useState<ZodiacSign | null>(null)
 
   const { setUser, setOnboardingComplete, setScreen } = useAppStore()
@@ -76,6 +78,7 @@ export function Onboarding() {
         birth_date: datetime,
         birth_time_known: birthTimeKnown,
         birth_city: birthCity,
+        ...(cityCoords ?? {}),
       })
     } else {
       // Skip birth data — go straight to home
@@ -198,13 +201,17 @@ export function Onboarding() {
           <p className="step-desc">Нужен для точного расчёта домов натальной карты</p>
           <div className="form-group">
             <label className="form-label">Город рождения</label>
-            <input
-              type="text"
-              className="form-input"
-              placeholder="Москва, Лондон, Нью-Йорк..."
+            <CityAutocomplete
               value={birthCity}
-              onChange={(e) => setBirthCity(e.target.value)}
+              onChange={(v) => { setBirthCity(v); setCityCoords(null) }}
+              onSelect={(opt: CityOption) => {
+                setBirthCity(opt.displayName)
+                setCityCoords({ lat: opt.lat, lng: opt.lng })
+              }}
             />
+            {cityCoords && (
+              <div className="city-autocomplete__confirmed">✓ Координаты определены</div>
+            )}
           </div>
           <motion.button
             className="btn-primary"
