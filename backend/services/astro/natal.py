@@ -71,6 +71,28 @@ _PLANET_ATTRS = [
     "jupiter", "saturn", "uranus", "neptune", "pluto",
 ]
 
+# Kerykeion v5 returns house as string; map to int 1–12
+_HOUSE_STR_TO_INT: dict[str, int] = {
+    "First_House": 1, "Second_House": 2, "Third_House": 3,
+    "Fourth_House": 4, "Fifth_House": 5, "Sixth_House": 6,
+    "Seventh_House": 7, "Eighth_House": 8, "Ninth_House": 9,
+    "Tenth_House": 10, "Eleventh_House": 11, "Twelfth_House": 12,
+}
+
+
+def _parse_house(point) -> int:
+    """Extract house number from a KerykeionPointModel (v5-compatible)."""
+    # v5 uses .house (str like "First_House"), v4 used .house_name (int)
+    for attr in ("house", "house_name"):
+        val = getattr(point, attr, None)
+        if val is None:
+            continue
+        if isinstance(val, int):
+            return val
+        if isinstance(val, str):
+            return _HOUSE_STR_TO_INT.get(val, 1)
+    return 1
+
 
 def calculate_natal(
     name: str,
@@ -112,13 +134,14 @@ def calculate_natal(
     planets: dict[str, PlanetPosition] = {}
     for attr in _PLANET_ATTRS:
         p = getattr(subject, attr)
+        sign = p.sign or "Unknown"
         planets[attr] = PlanetPosition(
             name=attr,
-            sign=p.sign,
-            sign_ru=_SIGN_RU.get(p.sign, p.sign),
-            degree=round(p.abs_pos, 4),
-            sign_degree=round(p.position, 4),
-            house=p.house_name if isinstance(p.house_name, int) else 1,
+            sign=sign,
+            sign_ru=_SIGN_RU.get(sign, sign),
+            degree=round(p.abs_pos or 0.0, 4),
+            sign_degree=round(p.position or 0.0, 4),
+            house=_parse_house(p),
             retrograde=bool(p.retrograde),
             speed=round(p.speed or 0.0, 4),
         )
@@ -127,9 +150,9 @@ def calculate_natal(
     houses = [
         {
             "number": i + 1,
-            "sign": h.sign,
-            "sign_ru": _SIGN_RU.get(h.sign, h.sign),
-            "degree": round(h.abs_pos, 4),
+            "sign": h.sign or "Unknown",
+            "sign_ru": _SIGN_RU.get(h.sign or "", h.sign or ""),
+            "degree": round(h.abs_pos or 0.0, 4),
         }
         for i, h in enumerate(subject.houses_list)
     ]
@@ -146,8 +169,9 @@ def calculate_natal(
             applying=bool(getattr(a, "applying", False)),
         ))
 
-    asc = subject.ascendant
-    mc = subject.medium_coeli
+    # Ascendant / MC — attribute names differ between kerykeion versions
+    asc = getattr(subject, "ascendant", None) or getattr(subject, "first_house", None)
+    mc = getattr(subject, "medium_coeli", None) or getattr(subject, "tenth_house", None)
 
     chart = NatalChartData(
         **planets,

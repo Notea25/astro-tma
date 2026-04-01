@@ -81,18 +81,26 @@ async def setup_birth_data(
     geo = await _geocode_city(body.birth_city)
 
     # Calculate natal chart
-    chart = calculate_natal(
-        name=user.tg_first_name,
-        birth_dt=body.birth_date,
-        lat=geo["lat"],
-        lng=geo["lng"],
-        tz_str=geo["tz"],
-        birth_time_known=body.birth_time_known,
+    chart = None
+    try:
+        chart = calculate_natal(
+            name=user.tg_first_name,
+            birth_dt=body.birth_date,
+            lat=geo["lat"],
+            lng=geo["lng"],
+            tz_str=geo["tz"],
+            birth_time_known=body.birth_time_known,
+        )
+    except Exception as e:
+        log.error("natal.calculation_failed", user_id=user.id, error=str(e))
+
+    sun_sign_enum = (
+        _KERY_TO_ENUM.get(chart.sun.sign, ZodiacSign.ARIES)
+        if chart and chart.sun and chart.sun.sign
+        else ZodiacSign.ARIES
     )
 
-    sun_sign_enum = _KERY_TO_ENUM.get(chart.sun.sign, ZodiacSign.ARIES)
-
-    # Persist birth data + natal chart
+    # Persist birth data
     await user_repo.update_birth_data(
         db, user,
         birth_date=body.birth_date,
@@ -103,22 +111,25 @@ async def setup_birth_data(
         tz_str=geo["tz"],
         sun_sign=sun_sign_enum,
     )
-    await user_repo.save_natal_chart(
-        db,
-        user_id=user.id,
-        sun_sign=chart.sun.sign,
-        moon_sign=chart.moon.sign,
-        ascendant_sign=chart.ascendant_sign,
-        chart_data=chart_to_json(chart),
-    )
+
+    # Persist natal chart only if calculation succeeded
+    if chart:
+        await user_repo.save_natal_chart(
+            db,
+            user_id=user.id,
+            sun_sign=chart.sun.sign if chart.sun else "",
+            moon_sign=chart.moon.sign if chart.moon else "",
+            ascendant_sign=chart.ascendant_sign,
+            chart_data=chart_to_json(chart),
+        )
 
     # Invalidate caches
     await cache_delete(key_natal(user.id))
 
     return SetupBirthDataResponse(
         sun_sign=sun_sign_enum.value,
-        moon_sign=chart.moon.sign,
-        ascendant_sign=chart.ascendant_sign,
+        moon_sign=chart.moon.sign if chart and chart.moon else "",
+        ascendant_sign=chart.ascendant_sign if chart else None,
         city_resolved=geo["city"],
         lat=geo["lat"],
         lng=geo["lng"],

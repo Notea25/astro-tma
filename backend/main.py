@@ -68,6 +68,7 @@ app.add_middleware(
         "https://web.telegram.org",
         "https://webk.telegram.org",
         "https://webz.telegram.org",
+        "https://astro-tma.vercel.app",
         "http://localhost:5173",   # Vite dev server
         "http://localhost:3000",
     ],

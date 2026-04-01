@@ -66,11 +66,19 @@ def get_moon_phase(dt: datetime | None = None) -> MoonPhaseInfo:
         online=False,
     )
     factory = MoonPhaseDetailsFactory(subject)
-    phase = factory.get_phase()
+    # v5: attributes live on the factory itself; v4: .get_phase() returned a dataclass
+    phase = factory.get_phase() if callable(getattr(factory, "get_phase", None)) else factory
 
-    # Kerykeion returns phase as dict or dataclass depending on version
-    phase_name = phase.moon_phase if hasattr(phase, "moon_phase") else str(phase)
-    illumination = phase.moon_illumination if hasattr(phase, "moon_illumination") else 0.5
+    phase_name = (
+        getattr(phase, "moon_phase", None)
+        or getattr(phase, "phase_name", None)
+        or "Full Moon"
+    )
+    illumination = (
+        getattr(phase, "moon_illumination", None)
+        or getattr(phase, "illumination", None)
+        or 0.5
+    )
 
     return MoonPhaseInfo(
         phase_name=phase_name,

@@ -60,7 +60,7 @@ class User(TimestampMixin, Base):
     birth_lat: Mapped[float | None] = mapped_column(Float)
     birth_lng: Mapped[float | None] = mapped_column(Float)
     birth_tz: Mapped[str | None] = mapped_column(String(64))
-    sun_sign: Mapped[ZodiacSign | None] = mapped_column(Enum(ZodiacSign))
+    sun_sign: Mapped[ZodiacSign | None] = mapped_column(Enum(ZodiacSign, values_callable=lambda e: [x.value for x in e]))
     push_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
 
     natal_chart: Mapped["NatalChart | None"] = relationship(
@@ -108,9 +108,9 @@ class DailyHoroscope(TimestampMixin, Base):
     __tablename__ = "daily_horoscopes"
     __table_args__ = (UniqueConstraint("sign", "date", "period"),)
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    sign: Mapped[ZodiacSign] = mapped_column(Enum(ZodiacSign), nullable=False)
+    sign: Mapped[ZodiacSign] = mapped_column(Enum(ZodiacSign, values_callable=lambda e: [x.value for x in e]), nullable=False)
     date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    period: Mapped[HoroscopePeriod] = mapped_column(Enum(HoroscopePeriod), nullable=False)
+    period: Mapped[HoroscopePeriod] = mapped_column(Enum(HoroscopePeriod, values_callable=lambda e: [x.value for x in e]), nullable=False)
     text_ru: Mapped[str] = mapped_column(Text, nullable=False)
     love_score: Mapped[int] = mapped_column(Integer, default=50)
     career_score: Mapped[int] = mapped_column(Integer, default=50)
@@ -126,7 +126,7 @@ class TarotCard(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name_ru: Mapped[str] = mapped_column(String(100), unique=True)
     name_en: Mapped[str] = mapped_column(String(100), unique=True)
-    arcana: Mapped[TarotArcana] = mapped_column(Enum(TarotArcana))
+    arcana: Mapped[TarotArcana] = mapped_column(Enum(TarotArcana, values_callable=lambda e: [x.value for x in e]))
     number: Mapped[int] = mapped_column(Integer)
     emoji: Mapped[str] = mapped_column(String(8))
     upright_ru: Mapped[str] = mapped_column(Text)
@@ -166,9 +166,9 @@ class Subscription(TimestampMixin, Base):
     __tablename__ = "subscriptions"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"))
-    plan: Mapped[SubscriptionPlan] = mapped_column(Enum(SubscriptionPlan))
+    plan: Mapped[SubscriptionPlan] = mapped_column(Enum(SubscriptionPlan, values_callable=lambda e: [x.value for x in e]))
     status: Mapped[SubscriptionStatus] = mapped_column(
-        Enum(SubscriptionStatus), default=SubscriptionStatus.ACTIVE)
+        Enum(SubscriptionStatus, values_callable=lambda e: [x.value for x in e]), default=SubscriptionStatus.ACTIVE)
     stars_paid: Mapped[int] = mapped_column(Integer)
     tg_payment_charge_id: Mapped[str] = mapped_column(String(256), unique=True)
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
@@ -183,7 +183,7 @@ class Purchase(TimestampMixin, Base):
     user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"))
     product_id: Mapped[str] = mapped_column(String(64))
     status: Mapped[PurchaseStatus] = mapped_column(
-        Enum(PurchaseStatus), default=PurchaseStatus.PENDING)
+        Enum(PurchaseStatus, values_callable=lambda e: [x.value for x in e]), default=PurchaseStatus.PENDING)
     stars_amount: Mapped[int] = mapped_column(Integer)
     tg_payment_charge_id: Mapped[str | None] = mapped_column(String(256), unique=True)
     payload: Mapped[str] = mapped_column(String(512))
