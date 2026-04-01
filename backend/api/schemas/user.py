@@ -5,12 +5,17 @@ from pydantic import BaseModel, Field
 class UserProfile(BaseModel):
     id: int
     name: str
+    gender: str | None
     sun_sign: str | None
     birth_city: str | None
     birth_time_known: bool
     push_enabled: bool
     is_premium: bool
     created_at: datetime
+
+
+class SetGenderRequest(BaseModel):
+    gender: str  # "male" | "female"
 
 
 class SetupBirthDataRequest(BaseModel):
