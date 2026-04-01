@@ -22,19 +22,27 @@ function SplashScreen() {
       exit={{ opacity: 0 }}
       transition={{ duration: 0.5 }}
     >
+      <img src="/splash-bg.jpg" alt="" className="splash-bg" />
       <motion.div
         className="splash-content"
-        initial={{ scale: 0.8, opacity: 0 }}
+        initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.6, ease: 'easeOut' }}
+        transition={{ duration: 0.8, ease: 'easeOut' }}
       >
-        <div className="splash-icon">&#9734;</div>
-        <h1 className="splash-title">Astro</h1>
-        <p className="splash-subtitle">Ваш персональный астролог</p>
+        <h1 className="splash-title">ASTRO</h1>
+        <motion.p
+          className="splash-subtitle"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.6 }}
+        >
+          Ваш персональный астролог
+        </motion.p>
         <motion.div
           className="splash-dots"
+          initial={{ opacity: 0 }}
           animate={{ opacity: [0.3, 1, 0.3] }}
-          transition={{ duration: 1.2, repeat: Infinity }}
+          transition={{ delay: 0.8, duration: 1.2, repeat: Infinity }}
         >
           <span /><span /><span />
         </motion.div>

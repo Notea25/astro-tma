@@ -130,33 +130,41 @@ body::after {
 /* ── Splash Screen ─────────────────────────────────────────────────────────── */
 .splash-screen {
   position: fixed; inset: 0; z-index: 999;
-  background: var(--bg);
+  background: #040820;
   display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
 }
-.splash-content { text-align: center; }
-.splash-icon {
-  font-size: clamp(48px, 14vw, 72px);
-  color: var(--gold);
-  margin-bottom: 16px;
-  line-height: 1;
+.splash-bg {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  object-position: center bottom;
+  opacity: 0.7;
+}
+.splash-content {
+  position: relative; z-index: 1;
+  text-align: center;
+  margin-bottom: 15vh;
 }
 .splash-title {
-  font-family: 'DM Sans', sans-serif;
-  font-size: clamp(28px, 8vw, 40px);
-  font-weight: 300;
-  letter-spacing: 0.15em;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(42px, 12vw, 64px);
+  font-weight: 400;
+  letter-spacing: 0.25em;
   color: #fff;
-  margin-bottom: 6px;
+  text-shadow: 0 0 40px rgba(201,168,76,0.3), 0 2px 20px rgba(0,0,0,0.5);
+  margin-bottom: 10px;
 }
 .splash-subtitle {
+  font-family: 'DM Sans', sans-serif;
   font-size: var(--fs-small);
-  color: var(--text-dim);
+  color: rgba(200,195,220,0.7);
   font-weight: 300;
-  letter-spacing: 0.05em;
-  margin-bottom: 24px;
+  letter-spacing: 0.12em;
+  margin-bottom: 28px;
 }
 .splash-dots { display: flex; justify-content: center; gap: 6px; }
-.splash-dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--lavender); }
+.splash-dots span { width: 5px; height: 5px; border-radius: 50%; background: rgba(201,168,76,0.6); }
 
 /* ── App Shell ─────────────────────────────────────────────────────────────── */
 .app {
