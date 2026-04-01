@@ -5,6 +5,14 @@ import { useAppStore } from '@/stores/app'
 import { natalApi } from '@/services/api'
 import { ZODIAC_SIGNS } from '@/types'
 
+// Backend returns English sign names — translate to Russian
+const SIGN_EN_TO_RU: Record<string, string> = {
+  Aries: 'Овен', Taurus: 'Телец', Gemini: 'Близнецы', Cancer: 'Рак',
+  Leo: 'Лев', Virgo: 'Дева', Libra: 'Весы', Scorpio: 'Скорпион',
+  Sagittarius: 'Стрелец', Capricorn: 'Козерог', Aquarius: 'Водолей', Pisces: 'Рыбы',
+}
+const toRu = (s: string | null | undefined) => (s ? (SIGN_EN_TO_RU[s] ?? s) : '—')
+
 const PLANET_ROWS = [
   { key: 'sun',     label: '☉ Солнце',   desc: 'Ядро личности, творческая сила' },
   { key: 'moon',    label: '☽ Луна',     desc: 'Эмоции, интуиция, подсознание' },
@@ -71,20 +79,20 @@ export function Natal() {
                   <div className="natal-sign-row">
                     <span className="natal-sign-emoji">{userSign?.emoji ?? '☉'}</span>
                     <div>
-                      <div className="natal-sign-name">{userSign?.label ?? sunSign}</div>
+                      <div className="natal-sign-name">{userSign?.label ?? toRu(sunSign)}</div>
                       <div className="natal-sign-dates">{userSign?.dates}</div>
                     </div>
                   </div>
                   {summary?.moon_sign && (
                     <div className="natal-summary-row">
                       <span className="natal-summary-label">☽ Луна:</span>
-                      <span className="natal-summary-value">{summary.moon_sign}</span>
+                      <span className="natal-summary-value">{toRu(summary.moon_sign)}</span>
                     </div>
                   )}
                   {summary?.ascendant_sign && (
                     <div className="natal-summary-row">
                       <span className="natal-summary-label">AC Асцендент:</span>
-                      <span className="natal-summary-value">{summary.ascendant_sign}</span>
+                      <span className="natal-summary-value">{toRu(summary.ascendant_sign)}</span>
                     </div>
                   )}
                   {summary?.birth_city && (
