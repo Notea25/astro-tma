@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { EnergyBars } from '@/components/ui/EnergyBars'
 import { PremiumGate } from '@/components/ui/PremiumGate'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { IconSparkle, IconCards, IconHeart, IconChart, IconCalendar, ZODIAC_ICONS } from '@/components/ui/Icons'
 import { horoscopeApi } from '@/services/api'
 import { useAppStore } from '@/stores/app'
 import { useHaptic } from '@/hooks/useTelegram'
@@ -101,9 +102,14 @@ export function Home() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <div className="card-tag">✦ Персональный гороскоп</div>
+            <div className="card-tag"><IconSparkle size={10} /> Персональный гороскоп</div>
             <div className="card-sign-row">
-              <div className="sign-badge">{signInfo?.emoji ?? '✨'}</div>
+              <div className="sign-badge">
+                {user?.sun_sign && ZODIAC_ICONS[user.sun_sign]
+                  ? (() => { const Z = ZODIAC_ICONS[user.sun_sign!]; return <Z size={26} /> })()
+                  : <IconSparkle size={20} />
+                }
+              </div>
               <div>
                 <div className="sign-name">{signInfo?.label ?? 'Ваш знак'}</div>
                 <div className="sign-dates">{signInfo?.dates}</div>
@@ -131,7 +137,7 @@ export function Home() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <div className="card-tag">✦ {PERIOD_LABELS[period]}</div>
+              <div className="card-tag"><IconSparkle size={10} /> {PERIOD_LABELS[period]}</div>
               {isLoading
                 ? <LoadingSpinner />
                 : <p className="horoscope-text">{horoscope?.text_ru}</p>
@@ -158,19 +164,19 @@ export function Home() {
         {/* Quick actions */}
         <h3 className="section-title">Исследуйте</h3>
         <div className="quick-grid">
-          {[
-            { icon: '🃏', label: 'Таро',        sub: 'Расклад на день', screen: 'tarot' },
-            { icon: '💫', label: 'Совместимость', sub: 'Проверьте союз',  screen: 'compatibility' },
-            { icon: '⭕', label: 'Натальная карта', sub: 'Ваш план',      screen: 'natal' },
-            { icon: '🌙', label: 'Лунный календарь', sub: 'Фазы луны',   screen: 'moon' },
-          ].map((item) => (
+          {([
+            { Icon: IconCards,    label: 'Таро',            sub: 'Расклад на день',  screen: 'tarot' },
+            { Icon: IconHeart,    label: 'Совместимость',   sub: 'Проверьте союз',   screen: 'compatibility' },
+            { Icon: IconChart,    label: 'Натальная карта', sub: 'Ваш портрет',      screen: 'natal' },
+            { Icon: IconCalendar, label: 'Лунный календарь', sub: 'Фазы луны',       screen: 'moon' },
+          ] as const).map((item) => (
             <motion.div
               key={item.label}
               className="quick-card"
               onClick={() => { impact('light'); setScreen(item.screen as any) }}
               whileTap={{ scale: 0.94 }}
             >
-              <span className="quick-card__icon">{item.icon}</span>
+              <span className="quick-card__icon"><item.Icon size={26} /></span>
               <span className="quick-card__label">{item.label}</span>
               <span className="quick-card__sub">{item.sub}</span>
             </motion.div>

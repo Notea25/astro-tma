@@ -32,7 +32,7 @@ export function Moon() {
   return (
     <div className="screen moon-screen">
       <div className="screen-header">
-        <h2 className="screen-title">🌙 Лунный календарь</h2>
+        <h2 className="screen-title">Лунный календарь</h2>
         <p className="screen-subtitle">{MONTH_NAMES[month - 1]} {year}</p>
       </div>
 

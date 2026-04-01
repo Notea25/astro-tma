@@ -47,7 +47,7 @@ export function Natal() {
   return (
     <div className="screen natal-screen">
       <div className="screen-header">
-        <h2 className="screen-title">⭕ Натальная карта</h2>
+        <h2 className="screen-title">Натальная карта</h2>
         <p className="screen-subtitle">Ваш космический портрет</p>
       </div>
 

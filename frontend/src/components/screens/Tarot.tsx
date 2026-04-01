@@ -116,7 +116,7 @@ export function Tarot() {
     return (
       <div className="screen tarot-screen">
         <div className="screen-header">
-          <h2 className="screen-title">🃏 Таро</h2>
+          <h2 className="screen-title">Таро</h2>
           <p className="screen-subtitle">Выберите расклад</p>
         </div>
         <div className="screen-content">
@@ -154,7 +154,7 @@ export function Tarot() {
   return (
     <div className="screen tarot-screen">
       <div className="screen-header">
-        <h2 className="screen-title">🃏 {spreadInfo.name}</h2>
+        <h2 className="screen-title">{spreadInfo.name}</h2>
         <p className="screen-subtitle">
           {reading ? 'Нажмите на карту, чтобы открыть' : 'Сосредоточьтесь на вопросе'}
         </p>
