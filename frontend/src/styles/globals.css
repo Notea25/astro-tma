@@ -961,3 +961,70 @@ body::after {
 ::-webkit-scrollbar { width: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.15); border-radius: 2px; }
+
+/* ── Profile Screen ────────────────────────────────────────────────────────── */
+.profile-card {
+  display: flex;
+  align-items: center;
+  gap: clamp(12px, 4vw, 18px);
+  background: var(--glass);
+  border: 0.5px solid var(--glass-border);
+  border-radius: var(--card-radius);
+  padding: clamp(16px, 5vw, 22px);
+  margin-bottom: 16px;
+}
+.profile-avatar {
+  width: clamp(48px, 13vw, 60px);
+  height: clamp(48px, 13vw, 60px);
+  border-radius: 50%;
+  background: var(--gold-glow);
+  border: 1.5px solid var(--gold-border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(20px, 5.5vw, 26px);
+  color: var(--gold-light);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.profile-info { min-width: 0; }
+.profile-name {
+  font-size: var(--fs-h2);
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.profile-meta {
+  display: flex; gap: 8px; margin-top: 4px;
+  font-size: var(--fs-small); color: var(--text-dim);
+}
+.profile-meta span {
+  background: rgba(255,255,255,0.06);
+  border-radius: 6px; padding: 2px 8px;
+}
+.profile-birth-info { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
+.profile-birth-empty { font-size: var(--fs-small); color: var(--text-dim); line-height: 1.5; }
+.profile-edit-form { display: flex; flex-direction: column; gap: 0; }
+.profile-edit-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.profile-error { font-size: var(--fs-small); color: #f87171; margin-top: 8px; text-align: center; }
+
+.gender-toggle {
+  display: flex; gap: 8px;
+}
+.gender-btn {
+  flex: 1;
+  padding: 10px 0;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
+  color: var(--text-dim);
+  font-size: var(--fs-body);
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.gender-btn.active {
+  border-color: var(--gold-border);
+  background: var(--gold-glow);
+  color: var(--gold-light);
+  font-weight: 500;
+}

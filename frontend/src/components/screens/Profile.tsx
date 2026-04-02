@@ -19,6 +19,7 @@ export function Profile() {
   const [birthCity, setBirthCity] = useState(user?.birth_city ?? '')
   const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [savedCity, setSavedCity] = useState<string | null>(null)
+  const [gender, setGender] = useState(user?.gender ?? '')
 
   const userSign = ZODIAC_SIGNS.find(s => s.value === user?.sun_sign)
 
@@ -29,27 +30,40 @@ export function Profile() {
       impact('medium')
       setSavedCity(resp.city_resolved ?? birthCity)
       setEditing(false)
-      // Refresh user in store
       const updated = await usersApi.upsertMe()
       setUser(updated)
-      // Invalidate natal queries so Natal tab re-fetches fresh data
       queryClient.invalidateQueries({ queryKey: ['natal-summary'] })
       queryClient.invalidateQueries({ queryKey: ['natal-full'] })
     },
   })
 
-  const handleSave = () => {
-    if (!birthDate || !birthCity) return
+  const genderMutation = useMutation({
+    mutationFn: (g: string) => usersApi.setGender(g),
+    onSuccess: async (updated: any) => {
+      setUser(updated)
+    },
+  })
+
+  const handleSave = async () => {
     impact('light')
-    const datetime = birthTimeKnown && birthTime
-      ? `${birthDate}T${birthTime}:00`
-      : `${birthDate}T12:00:00`
-    birthMutation.mutate({
-      birth_date: datetime,
-      birth_time_known: birthTimeKnown,
-      birth_city: birthCity,
-      ...(selectedCoords ?? {}),
-    })
+    if (gender && gender !== user?.gender) {
+      await genderMutation.mutateAsync(gender)
+    }
+    if (birthDate && birthCity) {
+      const datetime = birthTimeKnown && birthTime
+        ? `${birthDate}T${birthTime}:00`
+        : `${birthDate}T12:00:00`
+      birthMutation.mutate({
+        birth_date: datetime,
+        birth_time_known: birthTimeKnown,
+        birth_city: birthCity,
+        ...(selectedCoords ?? {}),
+      })
+    } else if (gender && gender !== user?.gender) {
+      // Only gender was changed — close editing
+      notification('success')
+      setEditing(false)
+    }
   }
 
   const displayCity = savedCity ?? user?.birth_city
@@ -126,6 +140,26 @@ export function Profile() {
           ) : (
             <div className="profile-edit-form">
               <div className="form-group">
+                <label className="form-label">Пол</label>
+                <div className="gender-toggle">
+                  <button
+                    type="button"
+                    className={`gender-btn${gender === 'male' ? ' active' : ''}`}
+                    onClick={() => setGender('male')}
+                  >
+                    Мужской
+                  </button>
+                  <button
+                    type="button"
+                    className={`gender-btn${gender === 'female' ? ' active' : ''}`}
+                    onClick={() => setGender('female')}
+                  >
+                    Женский
+                  </button>
+                </div>
+              </div>
+
+              <div className="form-group">
                 <label className="form-label">Дата рождения</label>
                 <input
                   type="date"
@@ -181,7 +215,7 @@ export function Profile() {
                 <motion.button
                   className="btn-primary"
                   onClick={handleSave}
-                  disabled={!birthDate || !birthCity || birthMutation.isPending}
+                  disabled={(!gender && !birthDate) || (birthDate && !birthCity) || birthMutation.isPending || genderMutation.isPending}
                   whileTap={{ scale: 0.97 }}
                 >
                   {birthMutation.isPending ? '⏳ Считаем карту...' : 'Сохранить'}
