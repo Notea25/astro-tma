@@ -259,13 +259,20 @@ body::after {
 .screen-header--with-back {
   position: relative;
   display: flex;
-  align-items: center;
-  padding: calc(var(--safe-top) + 44px) var(--content-px) 20px;
+  flex-direction: row;
+  align-items: flex-start;
+  padding: calc(var(--safe-top) + 8px) var(--content-px) 20px;
+}
+.screen-header--with-back .back-btn {
+  position: absolute;
+  top: calc(var(--safe-top) + 4px);
+  left: 8px;
+  z-index: 2;
 }
 .screen-header--with-back .screen-title {
-  position: absolute;
-  left: 0; right: 0;
+  width: 100%;
   text-align: center;
+  padding-top: 10px;
   pointer-events: none;
 }
 
