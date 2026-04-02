@@ -22,14 +22,11 @@ interface Props {
   onReset: () => void
 }
 
-// Pre-compute 78 card positions around the circle once
-const WHEEL_CARDS = Array.from({ length: TOTAL_CARDS }, (_, i) => {
-  const angle    = (i / TOTAL_CARDS) * 360
-  const rad      = (angle - 90) * (Math.PI / 180)
-  const xPct     = Math.cos(rad) * 43  // % of container half-width
-  const yPct     = Math.sin(rad) * 43
-  return { i, angle, xPct, yPct }
-})
+// Pre-compute 78 angles — 3D carousel uses rotateY + translateZ
+const WHEEL_CARDS = Array.from({ length: TOTAL_CARDS }, (_, i) => ({
+  i,
+  angle: (i / TOTAL_CARDS) * 360,
+}))
 
 export function ThreeCardFlow({ onReset }: Props) {
   const { impact } = useHaptic()
@@ -70,11 +67,11 @@ export function ThreeCardFlow({ onReset }: Props) {
   /* ── helpers ── */
   const getEjectPoint = useCallback(() => {
     const rect = wheelRef.current?.getBoundingClientRect()
-    if (!rect) return { x: window.innerWidth / 2, y: 140 }
-    const radius = rect.width * 0.43
+    if (!rect) return { x: window.innerWidth / 2, y: 160 }
+    // Front-most card in 3D carousel is visually at center of container
     return {
       x: rect.left + rect.width  / 2,
-      y: rect.top  + rect.height / 2 - radius + 8,
+      y: rect.top  + rect.height / 2,
     }
   }, [])
 
@@ -139,36 +136,34 @@ export function ThreeCardFlow({ onReset }: Props) {
               onClick={handleTap}
               whileTap={phase === 'spinning' && drawnCount < 3 ? { scale: 0.97 } : undefined}
             >
-              {/* The spinning ring */}
+              {/* 3D rotating carousel */}
               <div
                 ref={wheelRef}
                 className={`card-wheel${phase === 'spinning' ? ' is-spinning' : ''}`}
               >
-                {WHEEL_CARDS.map(({ i, angle, xPct, yPct }) => (
+                {WHEEL_CARDS.map(({ i, angle }) => (
                   <div
                     key={i}
                     className={`card-wheel__card${i < drawnCount ? ' card-wheel__card--gone' : ''}`}
-                    style={{
-                      left:      `calc(50% + ${xPct}%)`,
-                      top:       `calc(50% + ${yPct}%)`,
-                      transform: `translate(-50%, -50%) rotate(${angle + 90}deg)`,
-                    }}
-                  />
-                ))}
-
-                {/* Center pulse */}
-                {phase === 'spinning' && drawnCount < 3 && (
-                  <div className="card-wheel__center">
-                    <motion.div
-                      className="wheel-pulse"
-                      animate={{ scale: [1, 1.15, 1], opacity: [0.6, 1, 0.6] }}
-                      transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
-                    >
-                      {drawnCount === 0 ? 'Коснитесь' : drawnCount === 1 ? 'Ещё 2' : 'Ещё 1'}
-                    </motion.div>
+                    style={{ transform: `rotateY(${angle}deg) translateZ(var(--wheel-radius))` }}
+                  >
+                    <div className="card-back-skin" />
                   </div>
-                )}
+                ))}
               </div>
+
+              {/* Hint overlaid on center (not inside 3D space) */}
+              {phase === 'spinning' && drawnCount < 3 && (
+                <div className="wheel-hint-overlay">
+                  <motion.div
+                    className="wheel-pulse"
+                    animate={{ scale: [1, 1.12, 1], opacity: [0.6, 1, 0.6] }}
+                    transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+                  >
+                    {drawnCount === 0 ? 'Коснитесь' : drawnCount === 1 ? 'Ещё 2' : 'Ещё 1'}
+                  </motion.div>
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}
