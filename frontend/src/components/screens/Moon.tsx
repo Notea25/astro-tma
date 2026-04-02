@@ -9,6 +9,7 @@ export function Moon() {
   const now = new Date()
   const [year] = useState(now.getFullYear())
   const [month] = useState(now.getMonth() + 1)
+  const [selectedDay, setSelectedDay] = useState(now.getDate())
 
   const { data: moonPhase } = useQuery({
     queryKey: ['moon-phase'],
@@ -23,6 +24,10 @@ export function Moon() {
   })
   const calendar = calendarResp?.days
 
+  const todayNum = now.getDate()
+  const selectedData = calendar?.find(d => d.day === selectedDay)
+  const isToday = selectedDay === todayNum
+
   const DAY_NAMES = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс']
 
   return (
@@ -35,26 +40,36 @@ export function Moon() {
         {/* Big moon */}
         <div className="moon-hero">
           <motion.div
+            key={selectedData?.emoji}
             className="moon-hero__emoji"
             animate={{ y: [0, -10, 0] }}
             transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
           >
-            {moonPhase?.emoji ?? '🌙'}
+            {selectedData?.emoji ?? moonPhase?.emoji ?? '🌙'}
           </motion.div>
         </div>
 
-        {/* Current phase info */}
-        {moonPhase && (
+        {/* Phase info for selected day */}
+        {(selectedData || moonPhase) && (
           <motion.div
+            key={selectedDay}
             className="moon-phase-card"
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
           >
-            <div className="moon-phase-card__name">{moonPhase.phase_name_ru}</div>
-            <div className="moon-phase-card__illum">
-              Освещённость: {Math.round(moonPhase.illumination * 100)}%
+            {!isToday && (
+              <div className="moon-phase-card__date">{selectedDay} {['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'][month - 1]}</div>
+            )}
+            <div className="moon-phase-card__name">
+              {selectedData?.phase_name_ru ?? moonPhase?.phase_name_ru}
             </div>
-            <p className="moon-phase-card__desc">{moonPhase.description_ru}</p>
+            <div className="moon-phase-card__illum">
+              Освещённость: {Math.round((selectedData?.illumination ?? moonPhase?.illumination ?? 0) * 100)}%
+            </div>
+            {isToday && moonPhase?.description_ru && (
+              <p className="moon-phase-card__desc">{moonPhase.description_ru}</p>
+            )}
           </motion.div>
         )}
 
@@ -77,12 +92,13 @@ export function Moon() {
                 return empties
               })()}
               {calendar.map((day) => {
-                const isToday = day.day === now.getDate() && month === now.getMonth() + 1
+                const isTodayCell = day.day === todayNum
+                const isSelected = day.day === selectedDay
                 return (
                   <motion.div
                     key={day.day}
-                    className={`moon-calendar__cell ${isToday ? 'today' : ''}`}
-                    onClick={() => impact('light')}
+                    className={`moon-calendar__cell${isTodayCell ? ' today' : ''}${isSelected && !isTodayCell ? ' selected' : ''}`}
+                    onClick={() => { impact('light'); setSelectedDay(day.day) }}
                     whileTap={{ scale: 0.88 }}
                     title={day.phase_name_ru}
                   >
