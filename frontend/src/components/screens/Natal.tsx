@@ -5,6 +5,42 @@ import { useAppStore } from '@/stores/app'
 import { natalApi } from '@/services/api'
 import { ZODIAC_SIGNS } from '@/types'
 
+// Render LLM reading: split by **Section** markers into visual blocks
+function ReadingBlocks({ text }: { text: string }) {
+  // Remove leading # header line if present
+  const cleaned = text.replace(/^#[^\n]*\n?/, '').trim()
+
+  // Split into segments: ["intro text", "SectionTitle", "body", "SectionTitle", "body", ...]
+  const parts = cleaned.split(/\*\*([^*]+)\*\*/)
+
+  const blocks: { title?: string; body: string }[] = []
+  let i = 0
+
+  // If text starts before first **, treat as intro
+  if (parts[0].trim()) {
+    blocks.push({ body: parts[0].trim() })
+  }
+  i = 1
+
+  while (i < parts.length) {
+    const title = parts[i]?.trim()
+    const body = parts[i + 1]?.trim() ?? ''
+    if (title) blocks.push({ title, body })
+    i += 2
+  }
+
+  return (
+    <div className="natal-reading-blocks">
+      {blocks.map((block, idx) => (
+        <div key={idx} className={block.title ? 'natal-reading-section' : 'natal-reading-intro'}>
+          {block.title && <div className="natal-reading-section__title">{block.title}</div>}
+          {block.body && <p className="natal-reading-section__body">{block.body}</p>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // Backend returns English sign names — translate to Russian
 const SIGN_EN_TO_RU: Record<string, string> = {
   Aries: 'Овен', Taurus: 'Телец', Gemini: 'Близнецы', Cancer: 'Рак',
@@ -162,7 +198,7 @@ export function Natal() {
                 {full?.reading && (
                   <div className="natal-reading">
                     <div className="natal-card__tag" style={{ marginTop: '1.25rem' }}>✦ Персональная интерпретация</div>
-                    <p className="natal-reading__text">{full.reading}</p>
+                    <ReadingBlocks text={full.reading} />
                   </div>
                 )}
 
