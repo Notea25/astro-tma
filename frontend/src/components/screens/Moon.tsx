@@ -63,9 +63,7 @@ export function Moon() {
         {/* Phase info for selected day */}
         {(selectedData || moonPhase) && (
           <div className="moon-phase-card">
-            {!isToday && (
-              <div className="moon-phase-card__date">{selectedDay} {['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'][month - 1]}</div>
-            )}
+            <div className="moon-phase-card__date">{selectedDay} {['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'][month - 1]}{isToday ? ' · сегодня' : ''}</div>
             <div className="moon-phase-card__name">
               {selectedData?.phase_name_ru ?? moonPhase?.phase_name_ru}
             </div>
