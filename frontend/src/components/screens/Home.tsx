@@ -166,30 +166,67 @@ export function Home() {
           transition={{ delay: 0.14 }}
         >
           <div className="card-tag">✦ Карта таро на сегодня</div>
-          {!cardRevealed ? (
-            <motion.button
-              className="tarot-day-card__reveal"
-              onClick={() => { impact('medium'); setCardRevealed(true) }}
-              whileTap={{ scale: 0.96 }}
+          <div className="tarot-flip" style={{ perspective: '1000px' }}>
+            <motion.div
+              className="tarot-flip__inner"
+              animate={{ rotateY: cardRevealed ? 180 : 0 }}
+              transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
+              style={{ transformStyle: 'preserve-3d', position: 'relative' }}
             >
-              <div className="tarot-day-card__back">
-                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" opacity="0.4">
-                  <rect x="4" y="2" width="24" height="28" rx="3"/>
-                  <path d="M16 8 L16 24 M8 16 L24 16"/>
-                  <circle cx="16" cy="16" r="5"/>
-                </svg>
+              {/* Back face */}
+              <div
+                className="tarot-flip__face tarot-flip__face--back"
+                style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
+                onClick={() => { impact('medium'); setCardRevealed(true) }}
+              >
+                <div className="tarot-flip__back-ornament">
+                  <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="0.8" opacity="0.5">
+                    <rect x="4" y="4" width="40" height="40" rx="4" strokeDasharray="3 3"/>
+                    <circle cx="24" cy="24" r="12"/>
+                    <circle cx="24" cy="24" r="6"/>
+                    <path d="M24 4 L24 12 M24 36 L24 44 M4 24 L12 24 M36 24 L44 24"/>
+                    <path d="M24 18 L26.4 22.7 L31.4 23.5 L27.7 27.1 L28.6 32.1 L24 29.6 L19.4 32.1 L20.3 27.1 L16.6 23.5 L21.6 22.7 Z" strokeWidth="0.6"/>
+                  </svg>
+                </div>
+                <span className="tarot-flip__hint">Нажмите, чтобы открыть</span>
+                <span className="tarot-flip__free">Бесплатно</span>
               </div>
-              <span className="tarot-day-card__hint">Нажмите, чтобы открыть</span>
-              <span className="tarot-day-card__free">Бесплатно</span>
-            </motion.button>
-          ) : cardLoading ? (
-            <LoadingSpinner message="Карты открываются..." />
-          ) : dailyCard?.cards?.[0] ? (
-            <div className="tarot-day-card__result">
-              <div className="tarot-day-card__name">{dailyCard.cards[0].name_ru}</div>
-              <p className="tarot-day-card__text">{dailyCard.cards[0].keywords_ru?.join(' · ')}</p>
-            </div>
-          ) : null}
+
+              {/* Front face */}
+              <div
+                className="tarot-flip__face tarot-flip__face--front"
+                style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+              >
+                {cardLoading ? (
+                  <div className="tarot-flip__loading">
+                    <LoadingSpinner message="Карты открываются..." />
+                  </div>
+                ) : dailyCard?.cards?.[0] ? (() => {
+                  const card = dailyCard.cards[0]
+                  return (
+                    <>
+                      <div className="tarot-flip__img-wrap">
+                        {card.image_url ? (
+                          <img src={card.image_url} alt={card.name_ru} className="tarot-flip__img" />
+                        ) : (
+                          <div className="tarot-flip__img-fallback">{card.emoji}</div>
+                        )}
+                        <span className={`tarot-flip__orientation ${card.reversed ? 'tarot-flip__orientation--rev' : ''}`}>
+                          {card.reversed ? '↓ Перевёрнутое' : '↑ Прямое'}
+                        </span>
+                      </div>
+                      <div className="tarot-flip__info">
+                        <div className="tarot-flip__arcana">{card.arcana === 'major' ? 'Старший аркан' : 'Младший аркан'}</div>
+                        <div className="tarot-flip__name">{card.name_ru}</div>
+                        <p className="tarot-flip__keywords">{card.keywords_ru?.slice(0, 3).join(' · ')}</p>
+                        <p className="tarot-flip__meaning">{card.meaning_ru}</p>
+                      </div>
+                    </>
+                  )
+                })() : null}
+              </div>
+            </motion.div>
+          </div>
         </motion.div>
       </div>
     </div>
