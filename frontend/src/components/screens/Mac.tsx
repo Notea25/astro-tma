@@ -40,7 +40,10 @@ export function Mac() {
   if (!reading) {
     return (
       <div className="screen mac-screen">
-        <div className="screen-header">
+        <div className="screen-header screen-header--with-back">
+          <button className="back-btn" onClick={handleBack} aria-label="Назад">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M13 4l-6 6 6 6"/></svg>
+          </button>
           <h2 className="screen-title">Зеркало Души</h2>
         </div>
         <div className="screen-content">
@@ -105,7 +108,10 @@ export function Mac() {
   const { card } = reading
   return (
     <div className="screen mac-screen">
-      <div className="screen-header">
+      <div className="screen-header screen-header--with-back">
+        <button className="back-btn" onClick={handleBack} aria-label="Назад">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M13 4l-6 6 6 6"/></svg>
+        </button>
         <h2 className="screen-title">Ваша карта</h2>
       </div>
 
