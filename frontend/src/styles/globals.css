@@ -1399,10 +1399,37 @@ body::after {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  background: linear-gradient(145deg, rgba(15,10,30,0.9) 0%, rgba(30,18,56,0.9) 100%);
-  border: 1px solid rgba(201,168,76,0.2);
+  background-color: #0a0718;
+  overflow: hidden;
+  border: 1px solid rgba(201,168,76,0.3);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+}
+.tarot-flip__face--back::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url('/tarot-back.jpg') center / cover no-repeat;
+  transform: rotate(90deg) scale(2.2);
+}
+.tarot-flip__face--back::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 2, 18, 0.28);
+}
+.tarot-flip__back-ornament { display: none; }
+.tarot-flip__hint {
+  position: relative; z-index: 1;
+  font-size: var(--fs-body);
+  color: rgba(255,255,255,0.85);
+  text-shadow: 0 1px 8px rgba(0,0,0,0.8);
+}
+.tarot-flip__free {
+  position: relative; z-index: 1;
+  font-size: var(--fs-xs); color: var(--gold);
+  letter-spacing: 0.1em; text-transform: uppercase;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.8);
 }
 .tarot-flip__face--front {
   transform: rotateY(180deg);
