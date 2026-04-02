@@ -885,6 +885,7 @@ body::after {
   padding: clamp(16px, 5vw, 22px);
   margin-bottom: 16px; text-align: center;
 }
+.moon-phase-card__date { font-size: var(--fs-xs); color: var(--gold-dim); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
 .moon-phase-card__name { font-family: 'Inter', -apple-system, sans-serif; font-size: var(--fs-h2); color: var(--lavender); margin-bottom: 6px; }
 .moon-phase-card__illum { font-size: var(--fs-small); color: var(--text-dim); margin-bottom: 12px; }
 .moon-phase-card__desc { font-size: var(--fs-body); color: var(--text-soft); line-height: 1.65; }
@@ -902,6 +903,7 @@ body::after {
 }
 .moon-calendar__cell:active { background: rgba(255,255,255,0.05); }
 .moon-calendar__cell.today { background: var(--gold-glow); border: 0.5px solid var(--gold-border); }
+.moon-calendar__cell.selected { background: rgba(160,130,220,0.15); border: 0.5px solid rgba(160,130,220,0.4); }
 .moon-calendar__cell--empty { visibility: hidden; }
 .moon-calendar__phase { font-size: clamp(14px, 4vw, 18px); }
 .moon-calendar__num { font-size: var(--fs-xs); color: var(--text-muted); }
