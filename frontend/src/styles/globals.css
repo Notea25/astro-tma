@@ -243,6 +243,30 @@ body::after {
   padding: calc(var(--safe-top) + 44px) var(--content-px) 20px;
 }
 
+.screen-header--with-back {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: calc(var(--safe-top) + 44px) var(--content-px) 20px;
+}
+.screen-header--with-back .screen-title { text-align: left; flex: 1; }
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.06);
+  border: 0.5px solid rgba(255,255,255,0.1);
+  color: var(--text-dim);
+  flex-shrink: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.back-btn:active { background: rgba(255,255,255,0.1); }
+
 .screen-title {
   font-family: 'Inter', -apple-system, sans-serif;
   font-size: var(--fs-h1);
@@ -254,6 +278,24 @@ body::after {
 }
 
 .screen-subtitle { display: none; }
+
+/* ── Glass variants ────────────────────────────────────────────────────────── */
+.glass-gold {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+  border: 0.5px solid rgba(201,168,76,0.18);
+  border-radius: var(--card-radius);
+  padding: clamp(14px, 4vw, 20px);
+  margin-bottom: 12px;
+}
+.glass-purp {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  border: 0.5px solid rgba(160,125,232,0.15);
+  border-radius: var(--card-radius);
+  padding: clamp(14px, 4vw, 20px);
+  margin-bottom: 12px;
+}
 
 .screen-greeting {
   font-family: 'Inter', -apple-system, sans-serif;
@@ -1124,3 +1166,102 @@ body::after {
   color: var(--gold-light);
   font-weight: 500;
 }
+
+/* ── Discover Screen ───────────────────────────────────────────────────────── */
+.discover-section { margin-bottom: 24px; }
+.discover-section__title {
+  font-size: var(--fs-xs);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+  padding-left: 2px;
+}
+.discover-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.discover-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: clamp(14px, 4vw, 18px);
+  background: rgba(15,13,32,0.5);
+  border: 0.5px solid rgba(255,255,255,0.07);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  text-align: left;
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+}
+.discover-card:active { background: rgba(255,255,255,0.05); }
+.discover-card--locked { opacity: 0.5; cursor: default; }
+.discover-card__icon { color: var(--card-accent, var(--gold)); }
+.discover-card__label { font-size: var(--fs-body); font-weight: 500; color: var(--text); }
+.discover-card__desc { font-size: var(--fs-xs); color: var(--text-dim); }
+.discover-card__lock {
+  position: absolute;
+  top: 10px; right: 12px;
+  font-size: 8px;
+  color: var(--gold-dim);
+  letter-spacing: 0.1em;
+}
+
+/* ── Home screen tweaks ────────────────────────────────────────────────────── */
+.home-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: calc(var(--safe-top) + 44px) var(--content-px) 12px;
+}
+.moon-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+.moon-card__illum { font-size: var(--fs-xs); color: var(--text-dim); margin-top: 2px; }
+.moon-card__arrow { color: var(--text-dim); margin-left: auto; flex-shrink: 0; }
+
+/* ── Tarot day card ────────────────────────────────────────────────────────── */
+.tarot-day-card {
+  background: var(--glass);
+  border: 0.5px solid var(--glass-border);
+  border-radius: var(--card-radius);
+  padding: clamp(14px, 4vw, 20px);
+  margin-bottom: 12px;
+}
+.tarot-day-card__reveal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 20px 0 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.tarot-day-card__back {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  background: rgba(201,168,76,0.08);
+  border: 1px dashed rgba(201,168,76,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gold);
+}
+.tarot-day-card__hint { font-size: var(--fs-small); color: var(--text-dim); }
+.tarot-day-card__free {
+  font-size: var(--fs-xs);
+  color: var(--gold-dim);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.tarot-day-card__result { padding: 8px 0; }
+.tarot-day-card__name { font-size: var(--fs-body); font-weight: 600; color: var(--gold-light); margin-bottom: 6px; }
+.tarot-day-card__text { font-size: var(--fs-small); color: var(--text-dim); line-height: 1.5; }

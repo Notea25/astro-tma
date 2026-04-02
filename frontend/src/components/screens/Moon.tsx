@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { horoscopeApi } from '@/services/api'
 import { useHaptic } from '@/hooks/useTelegram'
+import { useAppStore } from '@/stores/app'
 
 const PHASE_ENERGY: Record<string, string> = {
   'Новолуние': 'Время намерений и нового начала. Сажайте семена желаний — Луна поддержит любой старт.',
@@ -17,6 +18,7 @@ const PHASE_ENERGY: Record<string, string> = {
 
 export function Moon() {
   const { impact } = useHaptic()
+  const { setScreen } = useAppStore()
   const now = new Date()
   const [year] = useState(now.getFullYear())
   const [month] = useState(now.getMonth() + 1)
@@ -43,7 +45,10 @@ export function Moon() {
 
   return (
     <div className="screen moon-screen">
-      <div className="screen-header">
+      <div className="screen-header screen-header--with-back">
+        <button className="back-btn" onClick={() => setScreen('discover')}>
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M13 4l-6 6 6 6"/></svg>
+        </button>
         <h2 className="screen-title">Лунный календарь</h2>
       </div>
 

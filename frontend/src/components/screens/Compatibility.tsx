@@ -21,7 +21,7 @@ function ScoreCircle({ value, label, color }: { value: number; label: string; co
 }
 
 export function Compatibility() {
-  const { user } = useAppStore()
+  const { user, setScreen } = useAppStore()
   const { impact } = useHaptic()
 
   const userSign = user?.sun_sign as ZodiacSign | undefined
@@ -48,7 +48,10 @@ export function Compatibility() {
 
   return (
     <div className="screen compat-screen">
-      <div className="screen-header">
+      <div className="screen-header screen-header--with-back">
+        <button className="back-btn" onClick={() => setScreen('discover')}>
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M13 4l-6 6 6 6"/></svg>
+        </button>
         <h2 className="screen-title">Совместимость</h2>
       </div>
 

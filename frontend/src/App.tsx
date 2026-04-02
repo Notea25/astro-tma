@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Onboarding }    from '@/components/screens/Onboarding'
 import { Home }          from '@/components/screens/Home'
+import { Discover }      from '@/components/screens/Discover'
 import { Tarot }         from '@/components/screens/Tarot'
 import { Compatibility } from '@/components/screens/Compatibility'
 import { Moon }          from '@/components/screens/Moon'
@@ -112,6 +113,7 @@ export default function App() {
         >
           {screen === 'onboarding'    && <Onboarding />}
           {screen === 'home'          && <Home />}
+          {screen === 'discover'      && <Discover />}
           {screen === 'tarot'         && <Tarot />}
           {screen === 'compatibility' && <Compatibility />}
           {screen === 'moon'          && <Moon />}

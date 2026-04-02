@@ -4,8 +4,7 @@ import { useState } from 'react'
 import { EnergyBars } from '@/components/ui/EnergyBars'
 import { PremiumGate } from '@/components/ui/PremiumGate'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
-import { IconSparkle, IconCards, IconHeart, IconChart, IconCalendar, ZODIAC_ICONS } from '@/components/ui/Icons'
-import { horoscopeApi } from '@/services/api'
+import { horoscopeApi, tarotApi } from '@/services/api'
 import { useAppStore } from '@/stores/app'
 import { useHaptic } from '@/hooks/useTelegram'
 import { ZODIAC_SIGNS } from '@/types'
@@ -15,38 +14,37 @@ type Period = 'today' | 'tomorrow' | 'week' | 'month'
 const PERIOD_LABELS: Record<Period, string> = {
   today: 'Сегодня', tomorrow: 'Завтра', week: 'Неделя', month: 'Месяц',
 }
-
-const PERIOD_PRODUCTS: Record<Exclude<Period, 'today'>, { id: string; stars: number }> = {
+const PERIOD_PRODUCTS: Record<Exclude<Period,'today'>, { id: string; stars: number }> = {
   tomorrow: { id: 'horoscope_tomorrow', stars: 25 },
   week:     { id: 'horoscope_week',     stars: 50 },
   month:    { id: 'horoscope_month',    stars: 75 },
 }
 
-const NEWS_ITEMS = [
-  { emoji: '♄', title: 'Сатурн в Тельце: что ждёт каждый знак', time: '2 часа назад' },
-  { emoji: '☿', title: 'Ретроградный Меркурий завершился: время действовать', time: 'вчера' },
-  { emoji: '🌕', title: 'Полнолуние в Весах: кризис или возможность?', time: '3 дня назад' },
-]
-
 export function Home() {
   const { user, setScreen } = useAppStore()
   const { impact } = useHaptic()
   const [period, setPeriod] = useState<Period>('today')
+  const [cardRevealed, setCardRevealed] = useState(false)
 
   const signInfo = ZODIAC_SIGNS.find(s => s.value === user?.sun_sign)
 
   const { data: horoscope, isLoading } = useQuery({
     queryKey: ['horoscope', period, user?.id],
-    queryFn: () => period === 'today'
-      ? horoscopeApi.getToday()
-      : horoscopeApi.getPeriod(period),
-    staleTime: 1000 * 60 * 30, // 30 min
+    queryFn: () => period === 'today' ? horoscopeApi.getToday() : horoscopeApi.getPeriod(period),
+    staleTime: 1000 * 60 * 30,
   })
 
   const { data: moon } = useQuery({
     queryKey: ['moon'],
     queryFn: horoscopeApi.getMoon,
-    staleTime: 1000 * 60 * 60, // 1h
+    staleTime: 1000 * 60 * 60,
+  })
+
+  const { data: dailyCard, isLoading: cardLoading } = useQuery({
+    queryKey: ['tarot-daily'],
+    queryFn: () => tarotApi.draw('single'),
+    enabled: cardRevealed,
+    staleTime: 1000 * 60 * 60 * 12,
   })
 
   const greeting = (() => {
@@ -61,7 +59,7 @@ export function Home() {
   return (
     <div className="screen home-screen">
       {/* Header */}
-      <div className="screen-header">
+      <div className="screen-header home-header">
         <div>
           <h1 className="screen-greeting">
             {greeting}{user?.name ? `, ${user.name}` : ''}
@@ -98,18 +96,13 @@ export function Home() {
         {period === 'today' ? (
           <motion.div
             key="today"
-            className="horoscope-card"
+            className="horoscope-card glass-gold"
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <div className="card-tag"><IconSparkle size={10} /> Персональный гороскоп</div>
+            <div className="card-tag">✦ Гороскоп на сегодня</div>
             <div className="card-sign-row">
-              <div className="sign-badge">
-                {user?.sun_sign && ZODIAC_ICONS[user.sun_sign]
-                  ? (() => { const Z = ZODIAC_ICONS[user.sun_sign!]; return <Z size={26} /> })()
-                  : <IconSparkle size={20} />
-                }
-              </div>
+              <div className="sign-badge">{signInfo?.emoji ?? '✦'}</div>
               <div>
                 <div className="sign-name">{signInfo?.label ?? 'Ваш знак'}</div>
                 <div className="sign-dates">{signInfo?.dates}</div>
@@ -133,15 +126,12 @@ export function Home() {
           >
             <motion.div
               key={period}
-              className="horoscope-card"
+              className="horoscope-card glass-gold"
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <div className="card-tag"><IconSparkle size={10} /> {PERIOD_LABELS[period]}</div>
-              {isLoading
-                ? <LoadingSpinner />
-                : <p className="horoscope-text">{horoscope?.text_ru}</p>
-              }
+              <div className="card-tag">✦ {PERIOD_LABELS[period]}</div>
+              {isLoading ? <LoadingSpinner /> : <p className="horoscope-text">{horoscope?.text_ru}</p>}
             </motion.div>
           </PremiumGate>
         )}
@@ -149,51 +139,57 @@ export function Home() {
         {/* Moon card */}
         {moon && (
           <motion.div
-            className="moon-card"
+            className="moon-card glass-purp"
             onClick={() => { impact('light'); setScreen('moon') }}
             whileTap={{ scale: 0.98 }}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08 }}
           >
             <span className="moon-card__emoji">{moon.emoji}</span>
             <div>
               <div className="moon-card__title">{moon.phase_name_ru}</div>
-              <p className="moon-card__desc">{moon.description_ru}</p>
+              <div className="moon-card__illum">Освещённость {Math.round(moon.illumination * 100)}%</div>
             </div>
+            <svg className="moon-card__arrow" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 3l5 5-5 5"/>
+            </svg>
           </motion.div>
         )}
 
-        {/* Quick actions */}
-        <h3 className="section-title">Исследуйте</h3>
-        <div className="quick-grid">
-          {([
-            { Icon: IconCards,    label: 'Таро',            sub: 'Расклад на день',  screen: 'tarot' },
-            { Icon: IconHeart,    label: 'Совместимость',   sub: 'Проверьте союз',   screen: 'compatibility' },
-            { Icon: IconChart,    label: 'Натальная карта', sub: 'Ваш портрет',      screen: 'natal' },
-            { Icon: IconCalendar, label: 'Лунный календарь', sub: 'Фазы луны',       screen: 'moon' },
-          ] as const).map((item) => (
-            <motion.div
-              key={item.label}
-              className="quick-card"
-              onClick={() => { impact('light'); setScreen(item.screen as any) }}
-              whileTap={{ scale: 0.94 }}
+        {/* Tarot card of the day */}
+        <motion.div
+          className="tarot-day-card"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.14 }}
+        >
+          <div className="card-tag">✦ Карта таро на сегодня</div>
+          {!cardRevealed ? (
+            <motion.button
+              className="tarot-day-card__reveal"
+              onClick={() => { impact('medium'); setCardRevealed(true) }}
+              whileTap={{ scale: 0.96 }}
             >
-              <span className="quick-card__icon"><item.Icon size={26} /></span>
-              <span className="quick-card__label">{item.label}</span>
-              <span className="quick-card__sub">{item.sub}</span>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* News */}
-        <h3 className="section-title">Астро-новости</h3>
-        {NEWS_ITEMS.map((n, i) => (
-          <div key={i} className="news-item">
-            <span className="news-emoji">{n.emoji}</span>
-            <div>
-              <div className="news-title">{n.title}</div>
-              <div className="news-time">{n.time}</div>
+              <div className="tarot-day-card__back">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" opacity="0.4">
+                  <rect x="4" y="2" width="24" height="28" rx="3"/>
+                  <path d="M16 8 L16 24 M8 16 L24 16"/>
+                  <circle cx="16" cy="16" r="5"/>
+                </svg>
+              </div>
+              <span className="tarot-day-card__hint">Нажмите, чтобы открыть</span>
+              <span className="tarot-day-card__free">Бесплатно</span>
+            </motion.button>
+          ) : cardLoading ? (
+            <LoadingSpinner message="Карты открываются..." />
+          ) : dailyCard?.cards?.[0] ? (
+            <div className="tarot-day-card__result">
+              <div className="tarot-day-card__name">{dailyCard.cards[0].name_ru}</div>
+              <p className="tarot-day-card__text">{dailyCard.cards[0].keywords_ru?.join(' · ')}</p>
             </div>
-          </div>
-        ))}
+          ) : null}
+        </motion.div>
       </div>
     </div>
   )
