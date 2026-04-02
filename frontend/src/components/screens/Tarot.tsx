@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PremiumGate } from '@/components/ui/PremiumGate'
@@ -90,10 +90,13 @@ export function Tarot() {
   const [selectedSpread, setSelectedSpread] = useState<SpreadType | null>(null)
   const [reading, setReading] = useState<TarotSpreadResponse | null>(null)
 
-  useTelegramBackButton(
-    () => { reading ? setReading(null) : selectedSpread ? setSelectedSpread(null) : setScreen('home') },
-    true
-  )
+  const handleBack = useCallback(() => {
+    if (reading) setReading(null)
+    else if (selectedSpread) setSelectedSpread(null)
+    else setScreen('discover')
+  }, [reading, selectedSpread, setScreen])
+
+  useTelegramBackButton(handleBack, true)
 
   const drawMutation = useMutation({
     mutationFn: tarotApi.draw,
