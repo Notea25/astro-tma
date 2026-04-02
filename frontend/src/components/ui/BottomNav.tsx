@@ -92,6 +92,8 @@ export function BottomNav() {
             key={item.id}
             className={`nav-item ${active ? 'active' : ''}`}
             onClick={() => handleNav(item.id)}
+            aria-label={item.label}
+            aria-current={active ? 'page' : undefined}
           >
             {active && (
               <motion.div

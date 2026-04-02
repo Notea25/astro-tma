@@ -49,7 +49,7 @@ export function Compatibility() {
   return (
     <div className="screen compat-screen">
       <div className="screen-header screen-header--with-back">
-        <button className="back-btn" onClick={() => setScreen('discover')}>
+        <button className="back-btn" onClick={() => setScreen('discover')} aria-label="Назад">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M13 4l-6 6 6 6"/></svg>
         </button>
         <h2 className="screen-title">Совместимость</h2>

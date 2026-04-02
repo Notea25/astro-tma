@@ -52,15 +52,15 @@
   --card-radius:    clamp(16px, 4vw, 22px);
   --btn-radius:     14px;
 
-  /* Typography scale */
+  /* Typography scale — min 16px body per accessibility guidelines */
   --fs-hero:        clamp(36px, 9vw, 48px);
-  --fs-h1:          clamp(24px, 6vw, 30px);
+  --fs-h1:          clamp(22px, 6vw, 30px);
   --fs-h2:          clamp(18px, 5vw, 22px);
-  --fs-h3:          clamp(15px, 4vw, 18px);
-  --fs-body:        clamp(13px, 3.5vw, 15px);
-  --fs-small:       clamp(11px, 3vw, 13px);
-  --fs-xs:          clamp(9px, 2.5vw, 11px);
-  --fs-nav:         clamp(9px, 2.5vw, 10px);
+  --fs-h3:          clamp(16px, 4vw, 18px);
+  --fs-body:        clamp(16px, 4vw, 17px);
+  --fs-small:       clamp(14px, 3.5vw, 15px);
+  --fs-xs:          clamp(12px, 3vw, 13px);
+  --fs-nav:         clamp(11px, 2.8vw, 12px);
 }
 
 /* ── Reset ─────────────────────────────────────────────────────────────────── */
@@ -255,9 +255,9 @@ body::after {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   background: rgba(255,255,255,0.06);
   border: 0.5px solid rgba(255,255,255,0.1);
   color: var(--text-dim);
@@ -265,7 +265,8 @@ body::after {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-.back-btn:active { background: rgba(255,255,255,0.1); }
+.back-btn:active { background: rgba(255,255,255,0.12); }
+.back-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
 .screen-title {
   font-family: 'Inter', -apple-system, sans-serif;
@@ -1301,3 +1302,25 @@ body::after {
 .tarot-day-card__result { padding: 8px 0; }
 .tarot-day-card__name { font-size: var(--fs-body); font-weight: 600; color: var(--gold-light); margin-bottom: 6px; }
 .tarot-day-card__text { font-size: var(--fs-small); color: var(--text-dim); line-height: 1.5; }
+
+/* ── Accessibility & Motion ────────────────────────────────────────────────── */
+
+/* Focus styles for keyboard navigation */
+.nav-item:focus-visible,
+.practice-card:focus-visible,
+.btn-primary:focus-visible,
+.btn-ghost:focus-visible,
+.period-tab:focus-visible,
+.horoscope-card:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
