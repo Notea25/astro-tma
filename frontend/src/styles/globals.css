@@ -1168,13 +1168,13 @@ body::after {
 }
 
 /* ── Discover Screen ───────────────────────────────────────────────────────── */
-.discover-section { margin-bottom: 24px; }
+.discover-section { margin-bottom: 28px; }
 .discover-section__title {
   font-size: var(--fs-xs);
-  letter-spacing: 0.18em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--text-dim);
-  margin-bottom: 10px;
+  color: var(--gold-dim);
+  margin-bottom: 12px;
   padding-left: 2px;
 }
 .discover-grid {
@@ -1182,32 +1182,68 @@ body::after {
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
-.discover-card {
+
+/* Practice cards */
+.practice-card {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
-  padding: clamp(14px, 4vw, 18px);
-  background: rgba(15,13,32,0.5);
-  border: 0.5px solid rgba(255,255,255,0.07);
-  border-radius: 14px;
+  gap: 10px;
+  padding: clamp(16px, 4.5vw, 20px);
+  border: 0.5px solid rgba(255,255,255,0.08);
+  border-radius: 18px;
   cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
   text-align: left;
   position: relative;
+  width: 100%;
   -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.2s;
+  overflow: hidden;
 }
-.discover-card:active { background: rgba(255,255,255,0.05); }
-.discover-card--locked { opacity: 0.5; cursor: default; }
-.discover-card__icon { color: var(--card-accent, var(--gold)); }
-.discover-card__label { font-size: var(--fs-body); font-weight: 500; color: var(--text); }
-.discover-card__desc { font-size: var(--fs-xs); color: var(--text-dim); }
-.discover-card__lock {
+.practice-card::before {
+  content: '';
   position: absolute;
-  top: 10px; right: 12px;
-  font-size: 8px;
-  color: var(--gold-dim);
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(255,255,255,0);
+  transition: background 0.15s;
+}
+.practice-card:active::before { background: rgba(255,255,255,0.04); }
+.practice-card--locked { cursor: default; }
+.practice-card--locked .practice-card__label { opacity: 0.55; }
+.practice-card--locked .practice-card__desc { opacity: 0.4; }
+.practice-card--locked .practice-card__icon { opacity: 0.45; }
+
+.practice-card__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.practice-card__label {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.2;
+}
+.practice-card__desc {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+.practice-card__badge {
+  font-size: 9px;
   letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  background: rgba(255,255,255,0.06);
+  border-radius: 6px;
+  padding: 3px 7px;
+  margin-top: 2px;
 }
 
 /* ── Home screen tweaks ────────────────────────────────────────────────────── */
