@@ -48,14 +48,7 @@ function TarotCardFlip({ card, index }: { card: TarotCardDetail; index: number }
           <p className="tarot-card__tap-hint">Нажмите</p>
         </div>
         <div className="tarot-card-flip__back">
-          {card.image_url
-            ? <img
-                src={card.image_url}
-                alt={card.name_ru}
-                className={`tarot-card__img ${card.reversed ? 'tarot-card__img--reversed' : ''}`}
-              />
-            : <span className="tarot-card__emoji">{card.emoji}</span>
-          }
+          <span className="tarot-card__emoji">{card.emoji}</span>
           <p className="tarot-card__name">
             {card.name_ru}
             {card.reversed && <span className="tarot-card__rev"> ↓</span>}
@@ -116,7 +109,8 @@ export function Tarot() {
     return (
       <div className="screen tarot-screen">
         <div className="screen-header">
-          <h2 className="screen-title">Таро</h2>
+          <h2 className="screen-title">🃏 Таро</h2>
+          <p className="screen-subtitle">Выберите расклад</p>
         </div>
         <div className="screen-content">
           {SPREADS.map((spread) => (
@@ -153,7 +147,10 @@ export function Tarot() {
   return (
     <div className="screen tarot-screen">
       <div className="screen-header">
-        <h2 className="screen-title">{spreadInfo.name}</h2>
+        <h2 className="screen-title">🃏 {spreadInfo.name}</h2>
+        <p className="screen-subtitle">
+          {reading ? 'Нажмите на карту, чтобы открыть' : 'Сосредоточьтесь на вопросе'}
+        </p>
       </div>
 
       <div className="screen-content">

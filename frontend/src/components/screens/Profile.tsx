@@ -72,7 +72,6 @@ export function Profile() {
     <div className="screen profile-screen">
       <div className="screen-header">
         <h2 className="screen-title">Профиль</h2>
-        <p className="screen-subtitle">Личный кабинет</p>
       </div>
 
       <div className="screen-content">

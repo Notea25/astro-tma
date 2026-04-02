@@ -240,10 +240,7 @@ body::after {
 
 /* ── Screen Headers ────────────────────────────────────────────────────────── */
 .screen-header {
-  padding: calc(var(--safe-top) + 44px) var(--content-px) 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  padding: calc(var(--safe-top) + 44px) var(--content-px) 20px;
 }
 
 .screen-title {
@@ -255,12 +252,7 @@ body::after {
   line-height: 1.2;
 }
 
-.screen-subtitle {
-  font-size: var(--fs-small);
-  color: var(--text-dim);
-  margin-top: 4px;
-  letter-spacing: 0.02em;
-}
+.screen-subtitle { display: none; }
 
 .screen-greeting {
   font-family: 'Inter', -apple-system, sans-serif;

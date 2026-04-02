@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ssh -o StrictHostKeyChecking=no root@194.99.21.53 \"cd /opt/astro-tma && git pull && docker compose restart backend && sleep 5 && docker compose ps backend && curl -s http://localhost:8000/health\")",
+      "Read(//c/Users/Anton/.ssh/**)",
+      "Bash(sshpass -p 'HbqSgXEkc834Wy' ssh -o StrictHostKeyChecking=no root@194.99.21.53 \"cd /opt/astro-tma && git pull && docker compose restart backend\")",
+      "Bash(ssh -V)",
+      "Bash(python3 -c \"import paramiko; print\\('ok'\\)\")",
+      "Bash(pip install:*)",
+      "Bash(python3 -m pip show paramiko)",
+      "Bash(python -)",
+      "Bash(python -c ':*)",
+      "Bash(python)",
+      "Bash(cmd.exe /c \"cd /d C:\\\\\\\\Projects\\\\\\\\astro-tma && python deploy.py > deploy_out.txt 2>&1 & type deploy_out.txt\")",
+      "Bash(python deploy.py)",
+      "Bash(npx vercel:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git push:*)"
+    ]
+  }
+}

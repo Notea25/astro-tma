@@ -16,19 +16,23 @@ export function Moon() {
     staleTime: 1000 * 60 * 60,
   })
 
-  const { data: calendarResp } = useQuery({
+  const { data: calendar } = useQuery({
     queryKey: ['moon-calendar', year, month],
     queryFn: () => horoscopeApi.getMoonCalendar(year, month),
     staleTime: 1000 * 60 * 60 * 24,
   })
-  const calendar = calendarResp?.days
 
+  const MONTH_NAMES = [
+    'Январь','Февраль','Март','Апрель','Май','Июнь',
+    'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь',
+  ]
   const DAY_NAMES = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс']
 
   return (
     <div className="screen moon-screen">
       <div className="screen-header">
-        <h2 className="screen-title">Лунный календарь</h2>
+        <h2 className="screen-title">🌙 Лунный календарь</h2>
+        <p className="screen-subtitle">{MONTH_NAMES[month - 1]} {year}</p>
       </div>
 
       <div className="screen-content">

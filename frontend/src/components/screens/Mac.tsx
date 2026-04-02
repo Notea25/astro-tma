@@ -8,21 +8,6 @@ import { useHaptic } from '@/hooks/useTelegram'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
 import type { MacReadingResponse } from '@/types'
 
-const CATEGORY_LABELS: Record<string, string> = {
-  emotions: 'Эмоции',
-  relationships: 'Отношения',
-  self: 'Самопознание',
-  shadow: 'Тень',
-  resources: 'Ресурсы',
-}
-
-const CATEGORY_COLORS: Record<string, string> = {
-  emotions: '#e88a9a',
-  relationships: '#a08ce8',
-  self: '#7ec8e3',
-  shadow: '#9b8bba',
-  resources: '#8bc89b',
-}
 
 export function Mac() {
   const { setScreen } = useAppStore()
@@ -56,7 +41,6 @@ export function Mac() {
       <div className="screen mac-screen">
         <div className="screen-header">
           <h2 className="screen-title">Зеркало Души</h2>
-          <p className="screen-subtitle">Метафорические карты для самопознания</p>
         </div>
         <div className="screen-content">
           {drawMutation.isPending && <LoadingSpinner message="Выбираем вашу карту..." />}
@@ -105,15 +89,10 @@ export function Mac() {
 
   // Card result screen
   const { card } = reading
-  const catColor = CATEGORY_COLORS[card.category] || '#a08ce8'
-
   return (
     <div className="screen mac-screen">
       <div className="screen-header">
         <h2 className="screen-title">Ваша карта</h2>
-        <p className="screen-subtitle" style={{ color: catColor }}>
-          {CATEGORY_LABELS[card.category] || card.category}
-        </p>
       </div>
 
       <div className="screen-content">
