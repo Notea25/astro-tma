@@ -23,6 +23,9 @@ class SpreadPosition:
 
 
 SPREADS: dict[str, list[SpreadPosition]] = {
+    "single": [
+        SpreadPosition(0, "Карта дня", "Послание дня — энергия, которую стоит принять"),
+    ],
     "three_card": [
         SpreadPosition(0, "Прошлое",    "То, что привело вас к нынешней ситуации"),
         SpreadPosition(1, "Настоящее",  "Текущее положение дел и актуальные энергии"),
@@ -57,7 +60,7 @@ SPREADS: dict[str, list[SpreadPosition]] = {
 }
 
 PREMIUM_SPREADS = {"celtic_cross", "week", "relationship"}
-FREE_SPREADS = {"three_card"}
+FREE_SPREADS = {"three_card", "single"}
 
 
 @dataclass

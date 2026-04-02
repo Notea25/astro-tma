@@ -6,13 +6,14 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { UserProfile, ZodiacSign } from '@/types'
+import type { UserProfile } from '@/types'
 
 export type Screen = 'onboarding' | 'home' | 'discover' | 'tarot' | 'compatibility' | 'moon' | 'natal' | 'mac' | 'profile'
 
 interface AppState {
   screen: Screen
-  setScreen: (s: Screen) => void
+  navDirection: 'forward' | 'back'
+  setScreen: (s: Screen, direction?: 'forward' | 'back') => void
 
   user: UserProfile | null
   setUser: (u: UserProfile) => void
@@ -20,17 +21,14 @@ interface AppState {
 
   onboardingComplete: boolean
   setOnboardingComplete: (v: boolean) => void
-
-  compatSignA: ZodiacSign | null
-  compatSignB: ZodiacSign | null
-  setCompatSign: (slot: 'a' | 'b', sign: ZodiacSign) => void
 }
 
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
       screen: 'onboarding',
-      setScreen: (screen) => set({ screen }),
+      navDirection: 'forward',
+      setScreen: (screen, direction = 'forward') => set({ screen, navDirection: direction }),
 
       user: null,
       setUser: (user) => set({ user }),
@@ -38,18 +36,11 @@ export const useAppStore = create<AppState>()(
 
       onboardingComplete: false,
       setOnboardingComplete: (v) => set({ onboardingComplete: v }),
-
-      compatSignA: null,
-      compatSignB: null,
-      setCompatSign: (slot, sign) =>
-        set(slot === 'a' ? { compatSignA: sign } : { compatSignB: sign }),
     }),
     {
       name: 'astro-app-v1',
       partialize: (state) => ({
         onboardingComplete: state.onboardingComplete,
-        compatSignA: state.compatSignA,
-        compatSignB: state.compatSignB,
       }),
     }
   )

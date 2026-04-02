@@ -55,7 +55,7 @@ function SplashScreen() {
 }
 
 export default function App() {
-  const { screen, setScreen, onboardingComplete, setOnboardingComplete, setUser } = useAppStore()
+  const { screen, navDirection, setScreen, onboardingComplete, setOnboardingComplete, setUser } = useAppStore()
   const [ready, setReady] = useState(false)
   const [synced, setSynced] = useState(false)
   useTelegramReady()
@@ -108,9 +108,9 @@ export default function App() {
           <motion.div
             key={screen}
             className="screen-container"
-            initial={{ opacity: 0, x: 20 }}
+            initial={{ opacity: 0, x: navDirection === 'back' ? -20 : 20 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
+            exit={{ opacity: 0, x: navDirection === 'back' ? 20 : -20 }}
             transition={{ duration: 0.22, ease: 'easeInOut' }}
           >
             {screen === 'onboarding'    && <Onboarding />}

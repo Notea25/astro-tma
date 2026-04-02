@@ -16,7 +16,7 @@ export function Mac() {
   const [revealed, setRevealed] = useState(false)
 
   const handleBack = useCallback(() => {
-    if (reading) { setReading(null); setRevealed(false) } else { setScreen('discover') }
+    if (reading) { setReading(null); setRevealed(false) } else { setScreen('discover', 'back') }
   }, [reading, setScreen])
 
   useTelegramBackButton(handleBack, true)

@@ -489,7 +489,7 @@ body::after {
   -webkit-tap-highlight-color: transparent;
 }
 .period-tab.active { background: var(--gold-glow); border-color: var(--gold-border); color: var(--gold); }
-.period-tab__lock { font-size: var(--fs-xs); color: var(--gold-dim); }
+.period-tab__lock { display: inline-block; vertical-align: middle; margin-left: 3px; color: var(--gold-dim); opacity: 0.7; }
 
 /* ── News Items ────────────────────────────────────────────────────────────── */
 .news-item { display: flex; gap: clamp(10px, 3vw, 14px); padding: 14px 0; border-bottom: 0.5px solid rgba(255,255,255,0.04); cursor: pointer; }
@@ -741,6 +741,8 @@ body::after {
   font-size: var(--fs-body); color: var(--text-dim);
   text-align: center; margin-bottom: 36px; line-height: 1.65;
 }
+
+.onboarding__error { font-size: var(--fs-sm); color: #e07070; text-align: center; margin-top: 12px; }
 
 .step-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }
 .step-dots { display: flex; gap: 8px; }

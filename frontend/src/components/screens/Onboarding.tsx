@@ -83,11 +83,14 @@ export function Onboarding() {
   const handleGenderSelect = async (g: 'male' | 'female') => {
     impact('medium')
     setGender(g)
-    // Ensure user exists, then set gender
-    const user = await upsertMutation.mutateAsync()
-    setUser(user)
-    await genderMutation.mutateAsync(g)
-    setStep('birth_date')
+    try {
+      const user = await upsertMutation.mutateAsync()
+      setUser(user)
+      await genderMutation.mutateAsync(g)
+      setStep('birth_date')
+    } catch {
+      // error shown via mutation.isError below
+    }
   }
 
   const birthDate = birthYear && birthMonth && birthDay
@@ -111,24 +114,28 @@ export function Onboarding() {
 
   const handleFinish = async () => {
     impact('medium')
-    const user = await upsertMutation.mutateAsync()
-    setUser(user)
+    try {
+      const user = await upsertMutation.mutateAsync()
+      setUser(user)
 
-    if (birthDate && birthCity) {
-      const timeStr = birthTimeKnown && birthHour && birthMinute
-        ? `${birthHour.padStart(2, '0')}:${birthMinute.padStart(2, '0')}`
-        : '12:00'
-      const datetime = `${birthDate}T${timeStr}:00`
+      if (birthDate && birthCity) {
+        const timeStr = birthTimeKnown && birthHour && birthMinute
+          ? `${birthHour.padStart(2, '0')}:${birthMinute.padStart(2, '0')}`
+          : '12:00'
+        const datetime = `${birthDate}T${timeStr}:00`
 
-      await birthMutation.mutateAsync({
-        birth_date: datetime,
-        birth_time_known: birthTimeKnown,
-        birth_city: birthCity,
-        ...(cityCoords ?? {}),
-      })
-    } else {
-      setOnboardingComplete(true)
-      setScreen('home')
+        await birthMutation.mutateAsync({
+          birth_date: datetime,
+          birth_time_known: birthTimeKnown,
+          birth_city: birthCity,
+          ...(cityCoords ?? {}),
+        })
+      } else {
+        setOnboardingComplete(true)
+        setScreen('home')
+      }
+    } catch {
+      // error shown via mutation.isError below
     }
   }
 
@@ -203,6 +210,9 @@ export function Onboarding() {
               <span className="gender-card__label">Женщина</span>
             </motion.button>
           </div>
+          {(genderMutation.isError || upsertMutation.isError) && (
+            <p className="onboarding__error">Не удалось подключиться. Проверьте соединение и попробуйте снова.</p>
+          )}
         </motion.div>
       )}
 
@@ -278,6 +288,7 @@ export function Onboarding() {
                 <input
                   type="text"
                   inputMode="numeric"
+                  pattern="[0-9]*"
                   className="form-input date-input"
                   placeholder="ЧЧ"
                   maxLength={2}
@@ -292,6 +303,7 @@ export function Onboarding() {
                 <input
                   type="text"
                   inputMode="numeric"
+                  pattern="[0-9]*"
                   className="form-input date-input"
                   placeholder="ММ"
                   maxLength={2}
@@ -375,6 +387,9 @@ export function Onboarding() {
               : 'Выберите ваш солнечный знак'}
           </p>
           <ZodiacPicker value={selectedSign} onChange={setSelectedSign} />
+          {(birthMutation.isError || upsertMutation.isError) && (
+            <p className="onboarding__error">Ошибка соединения. Попробуйте ещё раз.</p>
+          )}
           <motion.button
             className="btn-primary"
             onClick={handleFinish}
