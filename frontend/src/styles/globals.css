@@ -1534,6 +1534,343 @@ body::after {
   overflow: hidden;
 }
 
+/* ── Three Card Flow ─────────────────────────────────────────────────────── */
+
+/* Card back skin — tarot-back.jpg rotated 90° to portrait */
+.card-back-skin {
+  width: 100%; height: 100%;
+  border-radius: inherit;
+  overflow: hidden;
+  position: relative;
+}
+.card-back-skin::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url('/tarot-back.jpg') center/cover no-repeat;
+  transform: rotate(90deg) scale(2.2);
+  transform-origin: center center;
+  border-radius: inherit;
+}
+
+.three-flow {
+  position: relative;
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Idle ── */
+.three-flow__idle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+  padding: 32px 0 24px;
+}
+.three-flow__static-deck {
+  position: relative;
+  width: 90px;
+  height: 130px;
+}
+.deck-card-static {
+  position: absolute;
+  inset: 0;
+  width: 90px;
+  height: 130px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(201,168,76,0.2);
+}
+
+/* ── Active (shuffling / drawing / collapsing) ── */
+.three-flow__active {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  padding-top: 8px;
+}
+
+/* Deck */
+.three-flow__deck {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  cursor: default;
+  -webkit-tap-highlight-color: transparent;
+}
+.three-flow__deck.is-ready { cursor: pointer; }
+
+.deck-stack {
+  position: relative;
+  width: 90px;
+  height: 130px;
+}
+.deck-stack__card {
+  position: absolute;
+  inset: 0;
+  width: 90px;
+  height: 130px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(201,168,76,0.2);
+}
+.deck-ready-ring {
+  position: absolute;
+  inset: -10px;
+  border-radius: 16px;
+  border: 1.5px solid rgba(201,168,76,0.55);
+  pointer-events: none;
+}
+.three-flow__deck-hint {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  text-align: center;
+  min-height: 18px;
+  letter-spacing: 0.02em;
+}
+
+/* Slots row */
+.three-flow__slots {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  width: 100%;
+}
+.three-flow__slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.three-flow__slot-box {
+  width: 80px;
+  height: 116px;
+  border-radius: 10px;
+}
+.three-flow__slot-empty {
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  border: 1px dashed rgba(201,168,76,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.slot-number {
+  font-size: 22px;
+  color: rgba(201,168,76,0.2);
+  font-family: 'Playfair Display', serif;
+}
+.three-flow__slot-card {
+  width: 80px;
+  height: 116px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(201,168,76,0.25);
+}
+.three-flow__slot-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+/* ── Reading Phase ── */
+.three-flow__reading {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.reading-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+.reading-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.reading-slot__card {
+  width: 80px;
+  height: 116px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(201,168,76,0.2);
+  position: relative;
+}
+.reading-slot.is-shown .reading-slot__card {
+  border-color: rgba(201,168,76,0.45);
+}
+.reading-slot__front {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.reading-slot__img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+.reading-slot__emoji {
+  font-size: 36px;
+}
+.reading-slot__label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.three-flow__hint {
+  text-align: center;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  letter-spacing: 0.03em;
+}
+
+/* Meanings */
+.reading-meanings {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.meaning-block {
+  background: rgba(201,168,76,0.04);
+  border: 1px solid rgba(201,168,76,0.12);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.meaning-block__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.meaning-block__pos {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--gold-dim);
+}
+.meaning-block__orient {
+  font-size: 13px;
+  color: var(--gold-dim);
+}
+.meaning-block__orient.rev { color: rgba(180,120,180,0.8); }
+.meaning-block__name {
+  font-family: 'Playfair Display', serif;
+  font-size: 15px;
+  color: var(--gold-light);
+  flex: 1;
+}
+.meaning-block__keys {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  letter-spacing: 0.02em;
+}
+.meaning-block__text {
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+  line-height: 1.65;
+}
+
+/* ── Reveal Overlay ── */
+.reveal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(10, 8, 20, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.reveal-card {
+  background: rgba(18, 14, 32, 0.95);
+  border: 1px solid rgba(201,168,76,0.28);
+  border-radius: 20px;
+  padding: 20px;
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.reveal-card__img-wrap {
+  width: 120px;
+  height: 174px;
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 0 auto;
+  border: 1px solid rgba(201,168,76,0.3);
+}
+.reveal-card__img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+.reveal-card__emoji-fallback {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 56px;
+  background: rgba(201,168,76,0.06);
+}
+.reveal-card__info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+.reveal-card__arcana {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--gold-dim);
+}
+.reveal-card__name {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(18px, 5vw, 22px);
+  color: var(--gold-light);
+  line-height: 1.2;
+}
+.reveal-card__orient {
+  font-size: 12px;
+  color: var(--gold-dim);
+  letter-spacing: 0.05em;
+}
+.reveal-card__orient.rev { color: rgba(180,120,180,0.8); }
+.reveal-card__keys {
+  font-size: 13px;
+  color: var(--text-muted);
+  letter-spacing: 0.03em;
+}
+.reveal-card__close {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--gold-dim);
+  padding: 10px 24px;
+  min-height: 44px;
+  border: 1px solid rgba(201,168,76,0.25);
+  border-radius: 22px;
+  cursor: pointer;
+}
+
 /* ── Accessibility & Motion ────────────────────────────────────────────────── */
 
 /* Focus styles for keyboard navigation */

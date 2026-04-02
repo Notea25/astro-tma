@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PremiumGate } from '@/components/ui/PremiumGate'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { ThreeCardFlow } from './ThreeCardFlow'
 import { tarotApi } from '@/services/api'
 import { useAppStore } from '@/stores/app'
 import { useHaptic } from '@/hooks/useTelegram'
@@ -153,8 +154,24 @@ export function Tarot() {
     )
   }
 
-  // Reading view
+  // Reading view — three_card uses dedicated animated flow
   const spreadInfo = SPREADS.find(s => s.id === selectedSpread)!
+
+  if (selectedSpread === 'three_card') {
+    return (
+      <div className="screen tarot-screen">
+        <div className="screen-header screen-header--with-back">
+          <button className="back-btn" onClick={handleBack} aria-label="Назад">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M13 4l-6 6 6 6"/></svg>
+          </button>
+          <h2 className="screen-title">{spreadInfo.name}</h2>
+        </div>
+        <div className="screen-content">
+          <ThreeCardFlow onReset={() => setSelectedSpread(null)} />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="screen tarot-screen">
