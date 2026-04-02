@@ -108,7 +108,7 @@ class Interpretation(Base):
     __table_args__ = (UniqueConstraint("planet", "sign", "house", "aspect"),)
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     planet: Mapped[str] = mapped_column(String(32))
-    sign: Mapped[str] = mapped_column(String(32))
+    sign: Mapped[str | None] = mapped_column(String(32), nullable=True)
     house: Mapped[int | None] = mapped_column(Integer)
     aspect: Mapped[str | None] = mapped_column(String(32))
     text_ru: Mapped[str] = mapped_column(Text, nullable=False)
