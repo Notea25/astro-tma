@@ -30,7 +30,7 @@ export function Compatibility() {
   const [showPickerFor, setShowPickerFor] = useState<'a' | 'b' | null>(null)
   const [submitted, setSubmitted] = useState(false)
 
-  const { data: result, isLoading } = useQuery({
+  const { data: result, isLoading, isError } = useQuery({
     queryKey: ['compatibility', signA, signB],
     queryFn: () => compatibilityApi.get(signA!, signB!),
     enabled: submitted && !!signA && !!signB,
@@ -96,6 +96,18 @@ export function Compatibility() {
         <AnimatePresence>
           {isLoading && <LoadingSpinner message="Вычисляем совместимость..." />}
 
+          {isError && (
+            <div className="error-state">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" opacity="0.5">
+                <circle cx="16" cy="16" r="13"/>
+                <line x1="16" y1="10" x2="16" y2="17"/>
+                <circle cx="16" cy="21" r="1" fill="currentColor" stroke="none"/>
+              </svg>
+              <p>Не удалось загрузить данные. Попробуйте ещё раз.</p>
+              <button className="btn-ghost" onClick={() => setSubmitted(false)}>Повторить</button>
+            </div>
+          )}
+
           {result && !isLoading && (
             <motion.div
               className="compat-result"
@@ -113,7 +125,8 @@ export function Compatibility() {
                   {result.overall}%
                 </motion.div>
                 <div className={`compat-overall__tier tier-${result.tier}`}>
-                  {result.tier === 'high' ? '✨ Высокая' : result.tier === 'medium' ? '🌟 Средняя' : '⚡ Низкая'} совместимость
+                  <span className="tier-dot" />
+                  {result.tier === 'high' ? 'Высокая' : result.tier === 'medium' ? 'Средняя' : 'Низкая'} совместимость
                 </div>
               </div>
 
@@ -131,7 +144,10 @@ export function Compatibility() {
               {/* Strengths & Challenges */}
               {result.strengths_ru.length > 0 && (
                 <div className="compat-list compat-list--strengths">
-                  <div className="compat-list__title">💚 Сильные стороны</div>
+                  <div className="compat-list__title">
+                    <span className="compat-list__dot compat-list__dot--green" />
+                    Сильные стороны
+                  </div>
                   {result.strengths_ru.map((s, i) => (
                     <div key={i} className="compat-list__item">• {s}</div>
                   ))}
@@ -139,7 +155,10 @@ export function Compatibility() {
               )}
               {result.challenges_ru.length > 0 && (
                 <div className="compat-list compat-list--challenges">
-                  <div className="compat-list__title">⚡ Вызовы</div>
+                  <div className="compat-list__title">
+                    <span className="compat-list__dot compat-list__dot--amber" />
+                    Вызовы
+                  </div>
                   {result.challenges_ru.map((c, i) => (
                     <div key={i} className="compat-list__item">• {c}</div>
                   ))}

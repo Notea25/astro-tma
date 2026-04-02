@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useAppStore } from '@/stores/app'
 import { useHaptic } from '@/hooks/useTelegram'
@@ -155,10 +156,17 @@ const SECTIONS: { title: string; cards: PracticeCard[] }[] = [
 export function Discover() {
   const { setScreen } = useAppStore()
   const { impact } = useHaptic()
+  const [shaking, setShaking] = useState<string | null>(null)
 
   const navigate = (screen: string) => {
     impact('light')
     setScreen(screen as any)
+  }
+
+  const handleLockedTap = (label: string) => {
+    impact('light')
+    setShaking(label)
+    setTimeout(() => setShaking(null), 500)
   }
 
   return (
@@ -177,11 +185,17 @@ export function Discover() {
                   key={card.label}
                   className={`practice-card${card.locked ? ' practice-card--locked' : ''}`}
                   style={{ background: card.gradient }}
-                  onClick={() => card.screen && !card.locked ? navigate(card.screen) : impact('light')}
+                  onClick={() => card.screen && !card.locked ? navigate(card.screen) : handleLockedTap(card.label)}
                   whileTap={!card.locked ? { scale: 0.95 } : undefined}
                   initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: (si * 2 + ci) * 0.04 }}
+                  animate={shaking === card.label
+                    ? { x: [0, -6, 6, -5, 5, -3, 3, 0], opacity: 1, y: 0 }
+                    : { x: 0, opacity: 1, y: 0 }
+                  }
+                  transition={shaking === card.label
+                    ? { duration: 0.4, ease: 'easeInOut' }
+                    : { opacity: { duration: 0.3, delay: (si * 2 + ci) * 0.05 }, y: { duration: 0.3, delay: (si * 2 + ci) * 0.05 } }
+                  }
                 >
                   <div className="practice-card__icon" style={{ color: card.iconColor }}>
                     {card.icon}
@@ -189,7 +203,13 @@ export function Discover() {
                   <div className="practice-card__label">{card.label}</div>
                   <div className="practice-card__desc">{card.desc}</div>
                   {card.locked && (
-                    <div className="practice-card__badge">скоро</div>
+                    <div className="practice-card__badge">
+                      <svg width="9" height="11" viewBox="0 0 9 11" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="1" y="4.5" width="7" height="6" rx="1.5"/>
+                        <path d="M2.5 4.5V3a2 2 0 0 1 4 0v1.5"/>
+                      </svg>
+                      Скоро
+                    </div>
                   )}
                 </motion.button>
               ))}

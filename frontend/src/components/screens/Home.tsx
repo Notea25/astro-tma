@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { EnergyBars } from '@/components/ui/EnergyBars'
 import { PremiumGate } from '@/components/ui/PremiumGate'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { HoroscopeSkeleton, MoonCardSkeleton } from '@/components/ui/Skeleton'
 import { horoscopeApi, tarotApi } from '@/services/api'
 import { useAppStore } from '@/stores/app'
 import { useHaptic } from '@/hooks/useTelegram'
@@ -34,7 +35,7 @@ export function Home() {
     staleTime: 1000 * 60 * 30,
   })
 
-  const { data: moon } = useQuery({
+  const { data: moon, isLoading: moonLoading } = useQuery({
     queryKey: ['moon'],
     queryFn: horoscopeApi.getMoon,
     staleTime: 1000 * 60 * 60,
@@ -93,7 +94,9 @@ export function Home() {
 
       <div className="screen-content">
         {/* Horoscope card */}
-        {period === 'today' ? (
+        {isLoading ? (
+          <HoroscopeSkeleton />
+        ) : period === 'today' ? (
           <motion.div
             key="today"
             className="horoscope-card glass-gold"
@@ -108,14 +111,8 @@ export function Home() {
                 <div className="sign-dates">{signInfo?.dates}</div>
               </div>
             </div>
-            {isLoading ? (
-              <LoadingSpinner message="Читаем звёзды..." />
-            ) : (
-              <>
-                <p className="horoscope-text">{horoscope?.text_ru}</p>
-                {horoscope?.energy && <EnergyBars scores={horoscope.energy} />}
-              </>
-            )}
+            <p className="horoscope-text">{horoscope?.text_ru}</p>
+            {horoscope?.energy && <EnergyBars scores={horoscope.energy} />}
           </motion.div>
         ) : (
           <PremiumGate
@@ -131,12 +128,13 @@ export function Home() {
               animate={{ opacity: 1, y: 0 }}
             >
               <div className="card-tag">✦ {PERIOD_LABELS[period]}</div>
-              {isLoading ? <LoadingSpinner /> : <p className="horoscope-text">{horoscope?.text_ru}</p>}
+              <p className="horoscope-text">{horoscope?.text_ru}</p>
             </motion.div>
           </PremiumGate>
         )}
 
         {/* Moon card */}
+        {moonLoading && <MoonCardSkeleton />}
         {moon && (
           <motion.div
             className="moon-card glass-purp"
