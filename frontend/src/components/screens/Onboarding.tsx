@@ -143,8 +143,9 @@ export function Onboarding() {
         >
           <motion.div
             className="onboarding__moon"
-            animate={{ y: [0, -12, 0] }}
-            transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.7, ease: 'easeOut' }}
           />
           <h1 className="onboarding__title">Astro</h1>
           <p className="onboarding__subtitle">Астрология & Гороскоп</p>
@@ -169,7 +170,7 @@ export function Onboarding() {
           animate={{ opacity: 1, x: 0 }}
         >
           <div className="step-header">
-            <button className="btn-back" onClick={() => setStep('welcome')}>&#8592;</button>
+            <button className="btn-back" onClick={() => setStep('welcome')}><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M13 4l-6 6 6 6"/></svg></button>
             <div className="step-dots">
               <span className="dot active" /><span className="dot" /><span className="dot" /><span className="dot" />
             </div>
@@ -213,7 +214,7 @@ export function Onboarding() {
           animate={{ opacity: 1, x: 0 }}
         >
           <div className="step-header">
-            <button className="btn-back" onClick={() => setStep('gender')}>&#8592;</button>
+            <button className="btn-back" onClick={() => setStep('gender')}><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M13 4l-6 6 6 6"/></svg></button>
             <div className="step-dots">
               <span className="dot done" /><span className="dot active" /><span className="dot" /><span className="dot" />
             </div>
@@ -319,7 +320,7 @@ export function Onboarding() {
           animate={{ opacity: 1, x: 0 }}
         >
           <div className="step-header">
-            <button className="btn-back" onClick={() => setStep('birth_date')}>&#8592;</button>
+            <button className="btn-back" onClick={() => setStep('birth_date')}><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M13 4l-6 6 6 6"/></svg></button>
             <div className="step-dots">
               <span className="dot done" /><span className="dot done" /><span className="dot active" /><span className="dot" />
             </div>
@@ -362,7 +363,7 @@ export function Onboarding() {
           animate={{ opacity: 1, x: 0 }}
         >
           <div className="step-header">
-            <button className="btn-back" onClick={() => setStep('birth_city')}>&#8592;</button>
+            <button className="btn-back" onClick={() => setStep('birth_city')}><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M13 4l-6 6 6 6"/></svg></button>
             <div className="step-dots">
               <span className="dot done" /><span className="dot done" /><span className="dot done" /><span className="dot active" />
             </div>

@@ -1,19 +1,20 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Onboarding }    from '@/components/screens/Onboarding'
-import { Home }          from '@/components/screens/Home'
-import { Discover }      from '@/components/screens/Discover'
-import { Tarot }         from '@/components/screens/Tarot'
-import { Compatibility } from '@/components/screens/Compatibility'
-import { Moon }          from '@/components/screens/Moon'
-import { Natal }         from '@/components/screens/Natal'
-import { Mac }           from '@/components/screens/Mac'
-import { Profile }       from '@/components/screens/Profile'
 import { BottomNav }     from '@/components/ui/BottomNav'
 import { usersApi }      from '@/services/api'
 import { useAppStore }   from '@/stores/app'
 import { useTelegramReady } from '@/hooks/useTelegram'
+
+const Onboarding    = lazy(() => import('@/components/screens/Onboarding').then(m => ({ default: m.Onboarding })))
+const Home          = lazy(() => import('@/components/screens/Home').then(m => ({ default: m.Home })))
+const Discover      = lazy(() => import('@/components/screens/Discover').then(m => ({ default: m.Discover })))
+const Tarot         = lazy(() => import('@/components/screens/Tarot').then(m => ({ default: m.Tarot })))
+const Compatibility = lazy(() => import('@/components/screens/Compatibility').then(m => ({ default: m.Compatibility })))
+const Moon          = lazy(() => import('@/components/screens/Moon').then(m => ({ default: m.Moon })))
+const Natal         = lazy(() => import('@/components/screens/Natal').then(m => ({ default: m.Natal })))
+const Mac           = lazy(() => import('@/components/screens/Mac').then(m => ({ default: m.Mac })))
+const Profile       = lazy(() => import('@/components/screens/Profile').then(m => ({ default: m.Profile })))
 
 function SplashScreen() {
   return (
@@ -43,8 +44,8 @@ function SplashScreen() {
         <motion.div
           className="splash-dots"
           initial={{ opacity: 0 }}
-          animate={{ opacity: [0.3, 1, 0.3] }}
-          transition={{ delay: 0.8, duration: 1.2, repeat: Infinity }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8, duration: 0.5 }}
         >
           <span /><span /><span />
         </motion.div>
@@ -85,7 +86,7 @@ export default function App() {
     if (ready && synced && onboardingComplete && screen === 'onboarding') {
       setScreen('home')
     }
-  }, [ready, synced])
+  }, [ready, synced, onboardingComplete, screen, setScreen])
 
   const showSplash = !ready || (!synced && onboardingComplete)
   const showNav = !showSplash && screen !== 'onboarding'
@@ -102,26 +103,28 @@ export default function App() {
 
   return (
     <div className="app">
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={screen}
-          className="screen-container"
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.22, ease: 'easeInOut' }}
-        >
-          {screen === 'onboarding'    && <Onboarding />}
-          {screen === 'home'          && <Home />}
-          {screen === 'discover'      && <Discover />}
-          {screen === 'tarot'         && <Tarot />}
-          {screen === 'compatibility' && <Compatibility />}
-          {screen === 'moon'          && <Moon />}
-          {screen === 'natal'         && <Natal />}
-          {screen === 'mac'           && <Mac />}
-          {screen === 'profile'       && <Profile />}
-        </motion.div>
-      </AnimatePresence>
+      <Suspense fallback={null}>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={screen}
+            className="screen-container"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.22, ease: 'easeInOut' }}
+          >
+            {screen === 'onboarding'    && <Onboarding />}
+            {screen === 'home'          && <Home />}
+            {screen === 'discover'      && <Discover />}
+            {screen === 'tarot'         && <Tarot />}
+            {screen === 'compatibility' && <Compatibility />}
+            {screen === 'moon'          && <Moon />}
+            {screen === 'natal'         && <Natal />}
+            {screen === 'mac'           && <Mac />}
+            {screen === 'profile'       && <Profile />}
+          </motion.div>
+        </AnimatePresence>
+      </Suspense>
 
       {showNav && <BottomNav />}
     </div>

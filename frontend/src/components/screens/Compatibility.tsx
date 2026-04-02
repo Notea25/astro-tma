@@ -34,7 +34,7 @@ export function Compatibility() {
     queryKey: ['compatibility', signA, signB],
     queryFn: () => compatibilityApi.get(signA!, signB!),
     enabled: submitted && !!signA && !!signB,
-    staleTime: Infinity,
+    staleTime: 1000 * 60 * 30,
   })
 
   const handleCheck = () => {

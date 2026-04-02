@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
@@ -15,10 +15,11 @@ export function Mac() {
   const [reading, setReading] = useState<MacReadingResponse | null>(null)
   const [revealed, setRevealed] = useState(false)
 
-  useTelegramBackButton(
-    () => { reading ? (setReading(null), setRevealed(false)) : setScreen('home') },
-    true
-  )
+  const handleBack = useCallback(() => {
+    if (reading) { setReading(null); setRevealed(false) } else { setScreen('discover') }
+  }, [reading, setScreen])
+
+  useTelegramBackButton(handleBack, true)
 
   const drawMutation = useMutation({
     mutationFn: macApi.draw,

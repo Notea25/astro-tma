@@ -74,7 +74,6 @@ export const natalApi = {
 export const tarotApi = {
   draw: (spread_type: string) =>
     request<import('@/types').TarotSpreadResponse>('POST', '/tarot/draw', { spread_type }),
-  getHistory: () => request<unknown[]>('GET', '/tarot/history'),
 }
 
 // ── Compatibility ──────────────────────────────────────────────────────────────
@@ -86,7 +85,6 @@ export const compatibilityApi = {
 // ── Payments ───────────────────────────────────────────────────────────────────
 export const macApi = {
   draw: () => request<import('@/types').MacReadingResponse>('POST', '/mac/draw'),
-  history: () => request<import('@/types').MacCardResponse[]>('GET', '/mac/history'),
 }
 
 export const paymentsApi = {
