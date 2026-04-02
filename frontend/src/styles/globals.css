@@ -1553,126 +1553,163 @@ body::after {
   border-radius: inherit;
 }
 
+/* ─ Root container ─ */
 .three-flow {
   position: relative;
-  min-height: 400px;
-  display: flex;
-  flex-direction: column;
-}
-
-/* ── Idle ── */
-.three-flow__idle {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 32px;
-  padding: 32px 0 24px;
-}
-.three-flow__static-deck {
-  position: relative;
-  width: 90px;
-  height: 130px;
-}
-.deck-card-static {
-  position: absolute;
-  inset: 0;
-  width: 90px;
-  height: 130px;
-  border-radius: 10px;
-  overflow: hidden;
-  border: 1px solid rgba(201,168,76,0.2);
+  gap: 0;
 }
 
-/* ── Active (shuffling / drawing / collapsing) ── */
-.three-flow__active {
+/* ─ Wheel section ─ */
+.wheel-section {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 28px;
-  padding-top: 8px;
-}
-
-/* Deck */
-.three-flow__deck {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  cursor: default;
-  -webkit-tap-highlight-color: transparent;
-}
-.three-flow__deck.is-ready { cursor: pointer; }
-
-.deck-stack {
-  position: relative;
-  width: 90px;
-  height: 130px;
-}
-.deck-stack__card {
-  position: absolute;
-  inset: 0;
-  width: 90px;
-  height: 130px;
-  border-radius: 10px;
-  overflow: hidden;
-  border: 1px solid rgba(201,168,76,0.2);
-}
-.deck-ready-ring {
-  position: absolute;
-  inset: -10px;
-  border-radius: 16px;
-  border: 1.5px solid rgba(201,168,76,0.55);
-  pointer-events: none;
-}
-.three-flow__deck-hint {
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
-  text-align: center;
-  min-height: 18px;
-  letter-spacing: 0.02em;
-}
-
-/* Slots row */
-.three-flow__slots {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
   width: 100%;
 }
-.three-flow__slot {
+
+.card-wheel-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.card-wheel-wrap.is-tappable { cursor: pointer; }
+
+/* The rotating ring */
+.card-wheel {
+  position: relative;
+  width: min(82vw, 320px);
+  height: min(82vw, 320px);
+}
+@keyframes wheel-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.card-wheel.is-spinning {
+  animation: wheel-spin 22s linear infinite;
+}
+
+/* Individual card in the wheel */
+.card-wheel__card {
+  position: absolute;
+  width:  26px;
+  height: 38px;
+  border-radius: 4px;
+  background:
+    linear-gradient(135deg, rgba(201,168,76,0.18) 0%, transparent 60%, rgba(201,168,76,0.10) 100%),
+    linear-gradient(#120a24, #1c1035);
+  border: 1px solid rgba(201,168,76,0.38);
+  transition: opacity 0.25s ease;
+}
+.card-wheel__card--gone {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* Center tap hint */
+.card-wheel__center {
+  position: absolute;
+  inset: 25%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.wheel-pulse {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(13px, 3.5vw, 16px);
+  color: var(--gold-dim);
+  letter-spacing: 0.04em;
+  text-align: center;
+  padding: 10px;
+}
+
+/* ─ Slots row (shown in all phases) ─ */
+.wheel-slots {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  padding: 14px 0 10px;
+  transition: padding 0.4s ease;
+}
+.wheel-slots--reading {
+  padding-top: 24px;
+}
+
+.wheel-slot {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
 }
-.three-flow__slot-box {
+
+.wheel-slot__box {
   width: 80px;
   height: 116px;
   border-radius: 10px;
+  transition: width 0.4s ease, height 0.4s ease;
 }
-.three-flow__slot-empty {
-  width: 100%;
-  height: 100%;
+.wheel-slot__box.is-reading {
+  width: 88px;
+  height: 128px;
+}
+
+.wheel-slot__empty {
+  width: 100%; height: 100%;
   border-radius: 10px;
-  border: 1px dashed rgba(201,168,76,0.25);
+  border: 1.5px dashed rgba(201,168,76,0.2);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .slot-number {
   font-size: 22px;
-  color: rgba(201,168,76,0.2);
+  color: rgba(201,168,76,0.18);
   font-family: 'Playfair Display', serif;
 }
-.three-flow__slot-card {
-  width: 80px;
-  height: 116px;
+
+.wheel-slot__card {
+  width: 100%; height: 100%;
   border-radius: 10px;
   overflow: hidden;
-  border: 1px solid rgba(201,168,76,0.25);
+  border: 1px solid rgba(201,168,76,0.28);
+  position: relative;
+  cursor: default;
 }
-.three-flow__slot-label {
+.slot-card__img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.slot-card__emoji {
+  width: 100%; height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  background: rgba(201,168,76,0.04);
+}
+/* Pulsing ring hint on unrevealed cards */
+.slot-card__tap-ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: 13px;
+  border: 1.5px solid rgba(201,168,76,0.45);
+  animation: tap-ring-pulse 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes tap-ring-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50%       { opacity: 0.9; transform: scale(1.04); }
+}
+
+.wheel-slot__label {
   font-size: 10px;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -1680,58 +1717,12 @@ body::after {
   text-align: center;
 }
 
-/* ── Reading Phase ── */
-.three-flow__reading {
+/* ─ Reading content ─ */
+.reading-content {
+  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-}
-
-.reading-row {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-}
-.reading-slot {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-.reading-slot__card {
-  width: 80px;
-  height: 116px;
-  border-radius: 10px;
-  overflow: hidden;
-  border: 1px solid rgba(201,168,76,0.2);
-  position: relative;
-}
-.reading-slot.is-shown .reading-slot__card {
-  border-color: rgba(201,168,76,0.45);
-}
-.reading-slot__front {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.reading-slot__img {
-  width: 100%; height: 100%;
-  object-fit: cover;
-}
-.reading-slot__emoji {
-  font-size: 36px;
-}
-.reading-slot__label {
-  font-size: 10px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  gap: 16px;
 }
 
 .three-flow__hint {
@@ -1739,6 +1730,7 @@ body::after {
   font-size: var(--fs-xs);
   color: var(--text-muted);
   letter-spacing: 0.03em;
+  margin-top: 4px;
 }
 
 /* Meanings */
@@ -1788,46 +1780,52 @@ body::after {
   line-height: 1.65;
 }
 
-/* ── Reveal Overlay ── */
+/* ── Reveal Overlay — near-full-screen card ── */
 .reveal-overlay {
   position: fixed;
   inset: 0;
   z-index: 50;
-  background: rgba(10, 8, 20, 0.88);
+  background: rgba(8, 5, 18, 0.92);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px 20px;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  padding: 16px 16px 24px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 .reveal-card {
-  background: rgba(18, 14, 32, 0.95);
-  border: 1px solid rgba(201,168,76,0.28);
-  border-radius: 20px;
-  padding: 20px;
+  background: rgba(14, 10, 26, 0.98);
+  border: 1px solid rgba(201,168,76,0.3);
+  border-radius: 22px;
+  padding: 20px 18px 24px;
   width: 100%;
-  max-width: 320px;
+  max-width: 340px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
+  overscroll-behavior: contain;
 }
 .reveal-card__img-wrap {
-  width: 120px;
-  height: 174px;
-  border-radius: 12px;
+  /* Large image — nearly full width of card */
+  width: min(72vw, 240px);
+  height: min(104vw, 346px);
+  border-radius: 14px;
   overflow: hidden;
   margin: 0 auto;
-  border: 1px solid rgba(201,168,76,0.3);
+  border: 1px solid rgba(201,168,76,0.35);
+  flex-shrink: 0;
 }
 .reveal-card__img {
   width: 100%; height: 100%;
   object-fit: cover;
+  display: block;
 }
 .reveal-card__emoji-fallback {
   width: 100%; height: 100%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 56px;
+  font-size: 72px;
   background: rgba(201,168,76,0.06);
 }
 .reveal-card__info {
@@ -1840,12 +1838,12 @@ body::after {
 .reveal-card__arcana {
   font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   color: var(--gold-dim);
 }
 .reveal-card__name {
   font-family: 'Playfair Display', serif;
-  font-size: clamp(18px, 5vw, 22px);
+  font-size: clamp(20px, 5.5vw, 24px);
   color: var(--gold-light);
   line-height: 1.2;
 }
@@ -1856,20 +1854,23 @@ body::after {
 }
 .reveal-card__orient.rev { color: rgba(180,120,180,0.8); }
 .reveal-card__keys {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-muted);
   letter-spacing: 0.03em;
 }
 .reveal-card__close {
-  margin-top: 8px;
-  font-size: 13px;
+  margin-top: 4px;
+  font-size: 14px;
   color: var(--gold-dim);
-  padding: 10px 24px;
+  padding: 12px 28px;
   min-height: 44px;
-  border: 1px solid rgba(201,168,76,0.25);
+  border: 1px solid rgba(201,168,76,0.28);
   border-radius: 22px;
   cursor: pointer;
+  background: rgba(201,168,76,0.05);
+  transition: background 0.2s ease;
 }
+.reveal-card__close:active { background: rgba(201,168,76,0.12); }
 
 /* ── Accessibility & Motion ────────────────────────────────────────────────── */
 
