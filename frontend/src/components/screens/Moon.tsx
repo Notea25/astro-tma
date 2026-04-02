@@ -72,8 +72,10 @@ export function Moon() {
             <div className="moon-phase-card__illum">
               Освещённость: {Math.round((selectedData?.illumination ?? moonPhase?.illumination ?? 0) * 100)}%
             </div>
-            {isToday && moonPhase?.description_ru && (
-              <p className="moon-phase-card__desc">{moonPhase.description_ru}</p>
+            {PHASE_ENERGY[selectedData?.phase_name_ru ?? moonPhase?.phase_name_ru ?? ''] && (
+              <p className="moon-phase-card__desc">
+                {PHASE_ENERGY[selectedData?.phase_name_ru ?? moonPhase?.phase_name_ru ?? '']}
+              </p>
             )}
           </div>
         )}
@@ -116,18 +118,6 @@ export function Moon() {
           </div>
         )}
 
-        {/* Energy tip */}
-        <div className="moon-tip">
-          <span className="moon-tip__icon">⚡</span>
-          <div>
-            <div className="moon-tip__title">Энергия дня</div>
-            <p className="moon-tip__text">
-              {PHASE_ENERGY[selectedData?.phase_name_ru ?? '']
-                ?? moonPhase?.description_ru
-                ?? 'Прислушайтесь к лунным ритмам. Синхронизируйтесь с природными циклами.'}
-            </p>
-          </div>
-        </div>
       </div>
     </div>
   )
