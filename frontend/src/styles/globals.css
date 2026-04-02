@@ -275,15 +275,17 @@ body::after {
   justify-content: center;
   width: 44px;
   height: 44px;
-  border-radius: 12px;
-  background: rgba(255,255,255,0.06);
-  border: 0.5px solid rgba(255,255,255,0.1);
-  color: var(--text-dim);
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: var(--gold-dim);
   flex-shrink: 0;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s;
 }
-.back-btn:active { background: rgba(255,255,255,0.12); }
+.back-btn svg { width: 24px; height: 24px; }
+.back-btn:active { color: var(--gold); }
 .back-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
 .screen-title {
