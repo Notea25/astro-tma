@@ -250,6 +250,7 @@ body::after {
   color: #fff;
   letter-spacing: -0.01em;
   line-height: 1.2;
+  text-align: center;
 }
 
 .screen-subtitle { display: none; }
@@ -925,12 +926,61 @@ body::after {
   border-radius: var(--card-radius);
   padding: clamp(18px, 5vw, 24px); margin-bottom: 16px;
 }
-.natal-card__tag { font-size: var(--fs-xs); letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold-dim); margin-bottom: 16px; }
-.natal-sign-row { display: flex; align-items: center; gap: clamp(10px, 3vw, 14px); margin-bottom: 14px; }
+.natal-card__tag { font-size: var(--fs-xs); letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold-dim); margin-bottom: 20px; }
+.natal-sign-row { display: flex; align-items: center; gap: clamp(10px, 3vw, 14px); margin-bottom: 20px; }
 .natal-sign-emoji { font-size: clamp(32px, 9vw, 42px); }
-.natal-sign-name { font-family: 'Inter', -apple-system, sans-serif; font-size: var(--fs-h2); }
+.natal-sign-name { font-family: 'Inter', -apple-system, sans-serif; font-size: var(--fs-h2); font-weight: 600; }
 .natal-sign-dates { font-size: var(--fs-small); color: var(--text-dim); margin-top: 2px; }
 .natal-card__text { font-size: var(--fs-body); color: var(--text-dim); line-height: 1.65; }
+
+/* Lunar/Ascendant chips */
+.natal-chips {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.natal-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 0.5px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.natal-chip__symbol {
+  font-size: 18px;
+  color: var(--gold);
+  width: 22px;
+  text-align: center;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+.natal-chip__label { font-size: var(--fs-xs); color: var(--text-dim); margin-bottom: 2px; }
+.natal-chip__value { font-size: var(--fs-small); color: var(--text); font-weight: 500; }
+
+/* Location block */
+.natal-location {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 0.5px solid rgba(255,255,255,0.07);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-top: 4px;
+}
+.natal-location__symbol {
+  font-size: 14px;
+  color: var(--gold-dim);
+  width: 22px;
+  text-align: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.natal-location__city { font-size: var(--fs-small); color: var(--text); font-weight: 500; }
+.natal-location__coords { font-size: var(--fs-xs); color: var(--text-dim); margin-top: 3px; letter-spacing: 0.02em; }
 
 .planet-table { display: flex; flex-direction: column; gap: 14px; }
 .planet-row { display: flex; gap: clamp(10px, 3vw, 14px); align-items: flex-start; }
