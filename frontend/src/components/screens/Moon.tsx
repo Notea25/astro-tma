@@ -62,13 +62,7 @@ export function Moon() {
 
         {/* Phase info for selected day */}
         {(selectedData || moonPhase) && (
-          <motion.div
-            key={selectedDay}
-            className="moon-phase-card"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2 }}
-          >
+          <div className="moon-phase-card">
             {!isToday && (
               <div className="moon-phase-card__date">{selectedDay} {['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'][month - 1]}</div>
             )}
@@ -81,7 +75,7 @@ export function Moon() {
             {isToday && moonPhase?.description_ru && (
               <p className="moon-phase-card__desc">{moonPhase.description_ru}</p>
             )}
-          </motion.div>
+          </div>
         )}
 
         {/* Monthly calendar grid */}
@@ -123,13 +117,7 @@ export function Moon() {
         )}
 
         {/* Energy tip */}
-        <motion.div
-          key={selectedDay}
-          className="moon-tip"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.25 }}
-        >
+        <div className="moon-tip">
           <span className="moon-tip__icon">⚡</span>
           <div>
             <div className="moon-tip__title">Энергия дня</div>
@@ -139,7 +127,7 @@ export function Moon() {
                 ?? 'Прислушайтесь к лунным ритмам. Синхронизируйтесь с природными циклами.'}
             </p>
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   )
