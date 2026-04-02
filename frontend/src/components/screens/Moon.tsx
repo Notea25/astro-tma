@@ -4,6 +4,17 @@ import { motion } from 'framer-motion'
 import { horoscopeApi } from '@/services/api'
 import { useHaptic } from '@/hooks/useTelegram'
 
+const PHASE_ENERGY: Record<string, string> = {
+  'Новолуние': 'Время намерений и нового начала. Сажайте семена желаний — Луна поддержит любой старт.',
+  'Растущий серп': 'Энергия нарастает. Действуйте, стройте планы, двигайтесь вперёд.',
+  'Первая четверть': 'Момент решений. Преодолевайте препятствия — сила на вашей стороне.',
+  'Растущая Луна': 'Прилив сил. Занимайтесь творчеством, общением, новыми проектами.',
+  'Полнолуние': 'Пик энергии. Завершайте начатое, практикуйте благодарность, отпускайте лишнее.',
+  'Убывающая Луна': 'Время осмысления. Делитесь знаниями и опытом. Отдавайте то, что накопили, — это освобождает пространство для нового.',
+  'Последняя четверть': 'Очищение и отпускание. Избавляйтесь от ненужного — физического и эмоционального.',
+  'Убывающий серп': 'Отдых и восстановление. Прислушайтесь к себе, замедлитесь перед новым циклом.',
+}
+
 export function Moon() {
   const { impact } = useHaptic()
   const now = new Date()
@@ -112,15 +123,23 @@ export function Moon() {
         )}
 
         {/* Energy tip */}
-        <div className="moon-tip">
+        <motion.div
+          key={selectedDay}
+          className="moon-tip"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.25 }}
+        >
           <span className="moon-tip__icon">⚡</span>
           <div>
             <div className="moon-tip__title">Энергия дня</div>
             <p className="moon-tip__text">
-              {moonPhase?.description_ru ?? 'Прислушайтесь к лунным ритмам. Синхронизируйтесь с природными циклами.'}
+              {PHASE_ENERGY[selectedData?.phase_name_ru ?? '']
+                ?? moonPhase?.description_ru
+                ?? 'Прислушайтесь к лунным ритмам. Синхронизируйтесь с природными циклами.'}
             </p>
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   )
