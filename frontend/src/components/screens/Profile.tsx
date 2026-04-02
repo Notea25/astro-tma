@@ -88,7 +88,7 @@ export function Profile() {
             <div className="profile-name">{user?.name ?? 'Пользователь'}</div>
             <div className="profile-meta">
               {user?.gender && (
-                <span>{user.gender === 'male' ? 'М' : 'Ж'}</span>
+                <span>{user.gender === 'male' ? 'Мужской' : 'Женский'}</span>
               )}
               {userSign && <span>{userSign.label}</span>}
             </div>
@@ -109,11 +109,23 @@ export function Profile() {
               {displayCity ? (
                 <div className="profile-birth-info">
                   <div className="natal-summary-row">
-                    <span className="natal-summary-label">📍 Город:</span>
+                    <span className="natal-summary-label">
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M7 1C4.79 1 3 2.79 3 5c0 3.25 4 8 4 8s4-4.75 4-8c0-2.21-1.79-4-4-4z"/>
+                        <circle cx="7" cy="5" r="1.2"/>
+                      </svg>
+                      Город
+                    </span>
                     <span className="natal-summary-value">{displayCity}</span>
                   </div>
                   <div className="natal-summary-row">
-                    <span className="natal-summary-label">⏰ Время:</span>
+                    <span className="natal-summary-label">
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="7" cy="7" r="5.5"/>
+                        <polyline points="7,4 7,7 9,8"/>
+                      </svg>
+                      Время
+                    </span>
                     <span className="natal-summary-value">
                       {user?.birth_time_known ? 'Точное' : 'Неизвестно (полдень)'}
                     </span>
@@ -170,14 +182,17 @@ export function Profile() {
               </div>
 
               <div className="form-group">
-                <label className="form-label checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={birthTimeKnown}
-                    onChange={(e) => setBirthTimeKnown(e.target.checked)}
-                  />
-                  Знаю точное время рождения
-                </label>
+                <button
+                  type="button"
+                  className="toggle-row"
+                  onClick={() => setBirthTimeKnown(v => !v)}
+                  aria-pressed={birthTimeKnown}
+                >
+                  <span className="toggle-row__label">Знаю точное время рождения</span>
+                  <span className={`toggle-switch${birthTimeKnown ? ' toggle-switch--on' : ''}`}>
+                    <span className="toggle-switch__thumb" />
+                  </span>
+                </button>
               </div>
 
               {birthTimeKnown && (
@@ -217,7 +232,7 @@ export function Profile() {
                   disabled={(!gender && !birthDate) || (birthDate && !birthCity) || birthMutation.isPending || genderMutation.isPending}
                   whileTap={{ scale: 0.97 }}
                 >
-                  {birthMutation.isPending ? '⏳ Считаем карту...' : 'Сохранить'}
+                  {birthMutation.isPending ? 'Считаем карту...' : 'Сохранить'}
                 </motion.button>
                 <button
                   className="btn-ghost"

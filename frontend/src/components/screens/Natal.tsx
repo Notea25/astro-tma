@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { PremiumGate } from '@/components/ui/PremiumGate'
+import { NatalBasicSkeleton } from '@/components/ui/Skeleton'
 import { useAppStore } from '@/stores/app'
 import { natalApi } from '@/services/api'
 import { ZODIAC_SIGNS } from '@/types'
@@ -60,7 +61,7 @@ const PLANET_ROWS = [
 ]
 
 export function Natal() {
-  const { user } = useAppStore()
+  const { user, setScreen } = useAppStore()
   const hasBirthData = !!user?.birth_city
 
   const { data: summary, isLoading: summaryLoading } = useQuery({
@@ -89,72 +90,82 @@ export function Natal() {
       <div className="screen-content">
         {!hasBirthData ? (
           <motion.div
-            className="natal-setup-prompt"
+            className="empty-state"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <div className="natal-setup-prompt__icon">🌌</div>
-            <h3>Добавьте данные рождения</h3>
-            <p>Для расчёта натальной карты нужны дата, время и город рождения</p>
-            <button className="btn-primary">Указать данные</button>
+            <svg className="empty-state__illustration" width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="40" cy="40" r="38" stroke="currentColor" strokeWidth="1" strokeDasharray="4 3" opacity="0.2"/>
+              <circle cx="40" cy="40" r="26" stroke="currentColor" strokeWidth="1" opacity="0.3"/>
+              <circle cx="40" cy="40" r="14" stroke="currentColor" strokeWidth="1.2" opacity="0.5"/>
+              <circle cx="40" cy="40" r="3" fill="currentColor" opacity="0.6"/>
+              <line x1="40" y1="2" x2="40" y2="14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.5"/>
+              <line x1="40" y1="66" x2="40" y2="78" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.5"/>
+              <line x1="2" y1="40" x2="14" y2="40" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.5"/>
+              <line x1="66" y1="40" x2="78" y2="40" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.5"/>
+              <circle cx="60" cy="20" r="4" stroke="currentColor" strokeWidth="1" opacity="0.4"/>
+              <circle cx="20" cy="60" r="3" stroke="currentColor" strokeWidth="1" opacity="0.3"/>
+              <circle cx="20" cy="20" r="2" fill="currentColor" opacity="0.3"/>
+            </svg>
+            <h3 className="empty-state__title">Добавьте данные рождения</h3>
+            <p className="empty-state__desc">Для расчёта натальной карты нужны<br/>дата, время и город рождения</p>
+            <button className="btn-primary" onClick={() => setScreen('profile')}>Указать данные</button>
           </motion.div>
         ) : (
           <>
             {/* Basic (free) — sun/moon/ascendant */}
-            <motion.div
-              className="natal-card natal-card--basic"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <div className="natal-card__tag">✦ Базовый портрет</div>
-              {summaryLoading ? (
-                <div className="natal-loading">Вычисление...</div>
-              ) : (
-                <>
-                  <div className="natal-sign-row">
-                    <span className="natal-sign-emoji">{userSign?.emoji ?? '☉'}</span>
-                    <div>
-                      <div className="natal-sign-name">{userSign?.label ?? toRu(sunSign)}</div>
-                      <div className="natal-sign-dates">{userSign?.dates}</div>
-                    </div>
+            {summaryLoading ? (
+              <NatalBasicSkeleton />
+            ) : (
+              <motion.div
+                className="natal-card natal-card--basic"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <div className="natal-card__tag">✦ Базовый портрет</div>
+                <div className="natal-sign-row">
+                  <span className="natal-sign-emoji">{userSign?.emoji ?? '☉'}</span>
+                  <div>
+                    <div className="natal-sign-name">{userSign?.label ?? toRu(sunSign)}</div>
+                    <div className="natal-sign-dates">{userSign?.dates}</div>
                   </div>
-                  <div className="natal-chips">
-                    {summary?.moon_sign && (
-                      <div className="natal-chip">
-                        <span className="natal-chip__symbol">☽</span>
-                        <div>
-                          <div className="natal-chip__label">Луна</div>
-                          <div className="natal-chip__value">{toRu(summary.moon_sign)}</div>
-                        </div>
-                      </div>
-                    )}
-                    {summary?.ascendant_sign && (
-                      <div className="natal-chip">
-                        <span className="natal-chip__symbol">AC</span>
-                        <div>
-                          <div className="natal-chip__label">Асцендент</div>
-                          <div className="natal-chip__value">{toRu(summary.ascendant_sign)}</div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  {summary?.birth_city && (
-                    <div className="natal-location">
-                      <span className="natal-location__symbol">◎</span>
+                </div>
+                <div className="natal-chips">
+                  {summary?.moon_sign && (
+                    <div className="natal-chip">
+                      <span className="natal-chip__symbol">☽</span>
                       <div>
-                        <div className="natal-location__city">{summary.birth_city}</div>
-                        {summary?.birth_lat != null && summary?.birth_lng != null && (
-                          <div className="natal-location__coords">
-                            {summary.birth_lat.toFixed(2)}° {summary.birth_lat >= 0 ? 'с.ш.' : 'ю.ш.'}
-                            {'  '}{summary.birth_lng.toFixed(2)}° {summary.birth_lng >= 0 ? 'в.д.' : 'з.д.'}
-                          </div>
-                        )}
+                        <div className="natal-chip__label">Луна</div>
+                        <div className="natal-chip__value">{toRu(summary.moon_sign)}</div>
                       </div>
                     </div>
                   )}
-                </>
-              )}
-            </motion.div>
+                  {summary?.ascendant_sign && (
+                    <div className="natal-chip">
+                      <span className="natal-chip__symbol">AC</span>
+                      <div>
+                        <div className="natal-chip__label">Асцендент</div>
+                        <div className="natal-chip__value">{toRu(summary.ascendant_sign)}</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {summary?.birth_city && (
+                  <div className="natal-location">
+                    <span className="natal-location__symbol">◎</span>
+                    <div>
+                      <div className="natal-location__city">{summary.birth_city}</div>
+                      {summary?.birth_lat != null && summary?.birth_lng != null && (
+                        <div className="natal-location__coords">
+                          {summary.birth_lat.toFixed(2)}° {summary.birth_lat >= 0 ? 'с.ш.' : 'ю.ш.'}
+                          {'  '}{summary.birth_lng.toFixed(2)}° {summary.birth_lng >= 0 ? 'в.д.' : 'з.д.'}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            )}
 
             {/* Full natal — premium */}
             <PremiumGate

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
+import { MoonPhaseSkeleton, MoonCalendarSkeleton } from '@/components/ui/Skeleton'
 import { horoscopeApi } from '@/services/api'
 import { useHaptic } from '@/hooks/useTelegram'
 import { useAppStore } from '@/stores/app'
@@ -24,13 +25,13 @@ export function Moon() {
   const [month] = useState(now.getMonth() + 1)
   const [selectedDay, setSelectedDay] = useState(now.getDate())
 
-  const { data: moonPhase } = useQuery({
+  const { data: moonPhase, isLoading: moonLoading } = useQuery({
     queryKey: ['moon-phase'],
     queryFn: horoscopeApi.getMoon,
     staleTime: 1000 * 60 * 60,
   })
 
-  const { data: calendarResp } = useQuery({
+  const { data: calendarResp, isLoading: calendarLoading } = useQuery({
     queryKey: ['moon-calendar', year, month],
     queryFn: () => horoscopeApi.getMoonCalendar(year, month),
     staleTime: 1000 * 60 * 60 * 24,
@@ -56,16 +57,18 @@ export function Moon() {
         {/* Big moon */}
         <div className="moon-hero">
           <motion.div
-            key={selectedData?.emoji}
+            key={selectedData?.emoji ?? moonPhase?.emoji}
             className="moon-hero__emoji"
-            animate={{ y: [0, -10, 0] }}
-            transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+            initial={{ opacity: 0, scale: 0.85 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
           >
             {selectedData?.emoji ?? moonPhase?.emoji ?? '🌙'}
           </motion.div>
         </div>
 
         {/* Phase info for selected day */}
+        {moonLoading && !selectedData && <MoonPhaseSkeleton />}
         {(selectedData || moonPhase) && (
           <div className="moon-phase-card">
             <div className="moon-phase-card__date">{selectedDay} {['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'][month - 1]}{isToday ? ' · сегодня' : ''}</div>
@@ -84,6 +87,7 @@ export function Moon() {
         )}
 
         {/* Monthly calendar grid */}
+        {calendarLoading && <MoonCalendarSkeleton />}
         {calendar && (
           <div className="moon-calendar">
             <div className="moon-calendar__days-header">
