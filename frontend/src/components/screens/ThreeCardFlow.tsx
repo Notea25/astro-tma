@@ -27,29 +27,10 @@ const WHEEL_POS = Array.from({ length: WHEEL_COUNT }, (_, i) => {
   return { i, x: Math.cos(rad) * WHEEL_R, y: Math.sin(rad) * WHEEL_R }
 })
 
-// ── Mandala SVG (small — on wheel cards) ──────────────────────────────────
-function Mandala({ size = 16 }: { size?: number }) {
-  return (
-    <svg viewBox="0 0 30 30" width={size} height={size} fill="none"
-      stroke="rgba(201,168,76,0.22)" strokeWidth="0.4">
-      <circle cx="15" cy="15" r="13"/>
-      <circle cx="15" cy="15" r="9"/>
-      <circle cx="15" cy="15" r="5"/>
-      <circle cx="15" cy="15" r="1.5" fill="rgba(201,168,76,0.15)" stroke="none"/>
-      <line x1="15" y1="2"  x2="15" y2="7"/>
-      <line x1="15" y1="23" x2="15" y2="28"/>
-      <line x1="2"  y1="15" x2="7"  y2="15"/>
-      <line x1="23" y1="15" x2="28" y2="15"/>
-    </svg>
-  )
-}
-
 // ── Card back face ─────────────────────────────────────────────────────────
 function CardBack({ large = false }) {
   return (
-    <div className={`tarot-card-back ${large ? 'tarot-card-back--large' : ''}`}>
-      <Mandala size={large ? 40 : 16} />
-    </div>
+    <div className={`tarot-card-back ${large ? 'tarot-card-back--large' : ''}`} />
   )
 }
 
