@@ -33,7 +33,7 @@ const LAYOUTS: Record<string, { slots: SlotDef[]; w: number; h: number }> = {
     // Vertical gaps=96 (84+12). Horizontal gaps=68 (56+12).
     slots: [
       { slot: 1,  x: 100, y: 192, label: 'Ситуация' },
-      { slot: 2,  x: 86,  y: 234, label: 'Препятствие', rotate: 90 },
+      { slot: 2,  x: 86,  y: 220, label: 'Препятствие', rotate: 90 },
       { slot: 3,  x: 100, y: 300, label: 'Корни' },
       { slot: 4,  x: 100, y: 84,  label: 'Прошлое влияние' },
       { slot: 5,  x: 20,  y: 192, label: 'Прошлое' },
