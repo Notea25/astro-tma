@@ -1420,7 +1420,6 @@ body::after {
   position: absolute;
   inset: 0;
   background: url('/tarot-back.jpg') center / cover no-repeat;
-  transform: rotate(90deg) scale(2.2);
 }
 .tarot-flip__face--back::after {
   content: '';
@@ -1537,21 +1536,12 @@ body::after {
 
 /* ── Three Card Flow ─────────────────────────────────────────────────────── */
 
-/* Card back skin — tarot-back.jpg rotated 90° to portrait */
+/* Card back skin — tarot-back.jpg */
 .card-back-skin {
   width: 100%; height: 100%;
   border-radius: inherit;
   overflow: hidden;
-  position: relative;
-}
-.card-back-skin::before {
-  content: '';
-  position: absolute;
-  inset: 0;
   background: url('/tarot-back.jpg') center/cover no-repeat;
-  transform: rotate(90deg) scale(2.2);
-  transform-origin: center center;
-  border-radius: inherit;
 }
 
 /* ── Wheel scene wrapper ── */
@@ -1586,16 +1576,12 @@ body::after {
 /* ── Tarot card back face (used on wheel cards and fly card) ── */
 .tarot-card-back {
   width: 100%; height: 100%;
-  background: #0d0b1a;
+  background: url('/tarot-back.jpg') center/cover no-repeat;
   border: 0.5px solid rgba(201,168,76,0.28);
   border-radius: inherit;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 .tarot-card-back--large {
   border: 1px solid rgba(201,168,76,0.4);
-  background: radial-gradient(ellipse at 50% 30%, #1a1330 0%, #0d0b1a 100%);
 }
 
 /* ── Tarot card front face ── */
