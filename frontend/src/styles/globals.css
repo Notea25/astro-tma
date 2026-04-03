@@ -1842,11 +1842,12 @@ body::after {
 
 .reading-positions-title {
   font-family: 'Playfair Display', serif;
-  font-size: var(--fs-h3);
+  font-size: clamp(14px, 4vw, 17px);
   color: var(--gold-light);
   text-align: center;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.06em;
   padding-top: 12px;
+  white-space: nowrap;
 }
 
 .wheel-slot {
