@@ -208,7 +208,7 @@ export function Home() {
                     <>
                       <div className="tarot-flip__img-wrap">
                         {card.image_url ? (
-                          <img src={card.image_url} alt={card.name_ru} className="tarot-flip__img" />
+                          <img src={card.image_url} alt={card.name_ru} className="tarot-flip__img" loading="lazy" />
                         ) : (
                           <div className="tarot-flip__img-fallback">{card.emoji}</div>
                         )}

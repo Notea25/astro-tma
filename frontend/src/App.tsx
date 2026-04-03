@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, MotionConfig } from 'framer-motion'
 import { BottomNav }     from '@/components/ui/BottomNav'
 import { usersApi }      from '@/services/api'
 import { useAppStore }   from '@/stores/app'
@@ -102,6 +102,7 @@ export default function App() {
   }
 
   return (
+    <MotionConfig reducedMotion="user">
     <div className="app">
       <Suspense fallback={null}>
         <AnimatePresence mode="wait">
@@ -128,5 +129,6 @@ export default function App() {
 
       {showNav && <BottomNav />}
     </div>
+    </MotionConfig>
   )
 }

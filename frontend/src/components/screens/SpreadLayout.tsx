@@ -136,6 +136,7 @@ export function SpreadLayout({ spreadType, cards }: Props) {
                       src={card.image_url}
                       alt={card.name_ru}
                       className={`spread-slot__img${card.reversed ? ' spread-slot__img--reversed' : ''}`}
+                      loading="lazy"
                     />
                   ) : (
                     <span className="spread-slot__emoji">{card.emoji}</span>

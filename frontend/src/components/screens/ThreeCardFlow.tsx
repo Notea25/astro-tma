@@ -375,7 +375,7 @@ export function ThreeCardFlow({ onReset }: Props) {
               width: 220, height: 220,
               borderRadius: '50%',
               background: 'radial-gradient(circle, rgba(201,168,76,0.10) 0%, rgba(201,168,76,0.02) 40%, transparent 70%)',
-              zIndex: 10,
+              zIndex: 10, // overlay
               pointerEvents: 'none',
             }}
             initial={{ opacity: 0 }}
@@ -395,7 +395,7 @@ export function ThreeCardFlow({ onReset }: Props) {
             style={{
               position: 'fixed', left: 0, top: 0,
               width: FLY_W, height: FLY_H,
-              zIndex: 11, pointerEvents: 'none',
+              zIndex: 20, pointerEvents: 'none',
             }}
             initial={flyInitial}
             animate={{ x: cardPos.x, y: cardPos.y, scale: 1 }}
@@ -432,7 +432,7 @@ export function ThreeCardFlow({ onReset }: Props) {
             position: 'fixed',
             left: cardPos.x, top: cardPos.y,
             width: FLY_W, height: FLY_H,
-            zIndex: 11,
+            zIndex: 20, // flying card
           }}
         >
           <CardFront card={currentCard} />
@@ -448,7 +448,7 @@ export function ThreeCardFlow({ onReset }: Props) {
             style={{
               position: 'fixed', left: 0, top: 0,
               width: FLY_W, height: FLY_H,
-              zIndex: 11, pointerEvents: 'none',
+              zIndex: 20, pointerEvents: 'none',
             }}
             initial={{ x: cardPos.x, y: cardPos.y, scale: 1 }}
             animate={{ x: flyTo.x, y: flyTo.y, scale: SLOT_W / FLY_W }}

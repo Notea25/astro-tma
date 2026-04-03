@@ -158,8 +158,9 @@ export function Tarot() {
               className="btn-primary btn-draw"
               onClick={handleDraw}
               whileTap={{ scale: 0.96 }}
+              disabled={drawMutation.isPending}
             >
-              Тянуть карты
+              {drawMutation.isPending ? 'Тасуем...' : 'Тянуть карты'}
             </motion.button>
           </motion.div>
         )}
