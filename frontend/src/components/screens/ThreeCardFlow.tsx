@@ -264,21 +264,6 @@ export function ThreeCardFlow({ onReset }: Props) {
         )}
       </AnimatePresence>
 
-      {/* ══ Position header (reading phase) ══ */}
-      <AnimatePresence>
-        {phase === 'reading' && (
-          <motion.h3
-            key="pos-header"
-            className="reading-positions-title"
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-          >
-            {POSITIONS.join(' · ')}
-          </motion.h3>
-        )}
-      </AnimatePresence>
-
       {/* ══ SLOTS (all phases) ══ */}
       <div className={`wheel-slots${phase === 'reading' ? ' wheel-slots--reading' : ''}`}>
         {POSITIONS.map((pos, i) => {
@@ -310,7 +295,7 @@ export function ThreeCardFlow({ onReset }: Props) {
                   </div>
                 )}
               </div>
-              <span className="wheel-slot__label">{pos}</span>
+              {phase !== 'reading' && <span className="wheel-slot__label">{pos}</span>}
             </div>
           )
         })}
