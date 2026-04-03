@@ -52,7 +52,13 @@ function CardBack({ large = false }) {
 // ── Card front face (parchment or image) ───────────────────────────────────
 function CardFront({ card }: { card: TarotCardDetail }) {
   if (card.image_url) {
-    return <img src={card.image_url} alt={card.name_ru} className="tarot-card-front__img" />
+    return (
+      <img
+        src={card.image_url}
+        alt={card.name_ru}
+        className={`tarot-card-front__img${card.reversed ? ' tarot-card-front__img--reversed' : ''}`}
+      />
+    )
   }
   return (
     <div className="tarot-card-front__parchment">
@@ -258,12 +264,26 @@ export function ThreeCardFlow({ onReset }: Props) {
         )}
       </AnimatePresence>
 
+      {/* ══ Position header (reading phase) ══ */}
+      <AnimatePresence>
+        {phase === 'reading' && (
+          <motion.h3
+            key="pos-header"
+            className="reading-positions-title"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            {POSITIONS.join(' · ')}
+          </motion.h3>
+        )}
+      </AnimatePresence>
+
       {/* ══ SLOTS (all phases) ══ */}
       <div className={`wheel-slots${phase === 'reading' ? ' wheel-slots--reading' : ''}`}>
         {POSITIONS.map((pos, i) => {
           const hasLanded = landedSlots.includes(i)
           const card      = apiCards[i]
-          const isShown   = shownCards.includes(i)
           return (
             <div key={i} className="wheel-slot">
               <div ref={slotRefs[i]} className={`wheel-slot__box${phase === 'reading' ? ' is-reading' : ''}`}>
@@ -277,13 +297,12 @@ export function ThreeCardFlow({ onReset }: Props) {
                     style={{ cursor: phase === 'reading' ? 'pointer' : 'default' }}
                     whileTap={phase === 'reading' ? { scale: 0.93 } : undefined}
                   >
-                    {phase === 'reading' && isShown && card
+                    {phase === 'reading' && card
                       ? card.image_url
-                        ? <img src={card.image_url} alt={card.name_ru} className="slot-card__img" />
+                        ? <img src={card.image_url} alt={card.name_ru} className={`slot-card__img${card.reversed ? ' slot-card__img--reversed' : ''}`} />
                         : <div className="slot-card__emoji">{card.emoji}</div>
                       : <div className="card-back-skin" />
                     }
-                    {phase === 'reading' && !isShown && <div className="slot-card__tap-ring" />}
                   </motion.div>
                 ) : (
                   <div className="wheel-slot__empty">
