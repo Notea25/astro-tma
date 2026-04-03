@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
 
-_IMAGE_BASE = "https://raw.githubusercontent.com/ekelen/tarot-api/master/static/cards/"
+_IMAGE_BASE = "https://ip-194-99-21-53-142250.vps.hosted-by-mvps.net/static/tarot/"
 
 
 class TarotCardDetail(BaseModel):

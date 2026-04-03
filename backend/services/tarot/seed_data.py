@@ -881,12 +881,13 @@ _SUIT_DATA = {
 }
 
 
-def _image_key(arcana: str, number: int, suit: str = "") -> str:
-    """Return the Rider-Waite image filename for ekelen/tarot-api CDN."""
+def _image_key(arcana: str, number: int, suit: str = "", name_en: str = "") -> str:
+    """Return image filename for custom tarot card images."""
     if arcana == "major":
-        return f"ar{number:02d}.jpg"
-    prefix = _SUIT_PREFIX.get(suit, "wa")
-    return f"{prefix}{number:02d}.jpg"
+        return f"{number:02d}_{name_en.replace(' ', '_')}.webp"
+    suit_offset = {"wands": 22, "cups": 36, "swords": 50, "pentacles": 64}
+    idx = suit_offset.get(suit, 22) + (number - 1)
+    return f"{idx:02d}_{name_en.replace(' ', '_')}.webp"
 
 
 def get_all_cards_seed() -> list[dict]:
@@ -895,7 +896,7 @@ def get_all_cards_seed() -> list[dict]:
 
     # ── 22 Major Arcana ──────────────────────────────────────────────────────
     for card in MAJOR_ARCANA:
-        cards.append({**card, "image_key": _image_key("major", card["number"])})
+        cards.append({**card, "image_key": _image_key("major", card["number"], name_en=card["name_en"])})
 
     # ── 56 Minor Arcana (4 suits x 14 cards) ────────────────────────────────
     for suit_en, (suit_ru, element, emoji, suit_cards) in _SUIT_DATA.items():
@@ -906,7 +907,7 @@ def get_all_cards_seed() -> list[dict]:
                 "name_ru": card["name_ru"],
                 "emoji": emoji,
                 "element": element,
-                "image_key": _image_key("minor", card["number"], suit_en),
+                "image_key": _image_key("minor", card["number"], suit_en, card["name_en"]),
                 "upright_ru": card["upright_ru"],
                 "reversed_ru": card["reversed_ru"],
                 "keywords_ru": card["keywords_ru"],
