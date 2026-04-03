@@ -271,6 +271,7 @@ export function ThreeCardFlow({ onReset }: Props) {
           const card      = apiCards[i]
           return (
             <div key={i} className="wheel-slot">
+              {phase === 'reading' && <span className="wheel-slot__label wheel-slot__label--top">{pos}</span>}
               <div ref={slotRefs[i]} className={`wheel-slot__box${phase === 'reading' ? ' is-reading' : ''}`}>
                 {hasLanded ? (
                   <motion.div
