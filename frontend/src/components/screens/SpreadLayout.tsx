@@ -28,21 +28,20 @@ const LAYOUTS: Record<string, { slots: SlotDef[]; w: number; h: number }> = {
   },
   celtic_cross: {
     w: 340,
-    h: 460,
-    // Card=56x84. Gap=12. Cross center at (92,176). Column at x=268.
-    // Center card 1: x=92, y=176
-    // Card 2 cross: horizontal 84x56, centered on card 1
+    h: 500,
+    // Card=56x84. Cross center at x=100. Column at x=272.
+    // Vertical gaps=96 (84+12). Horizontal gaps=68 (56+12).
     slots: [
-      { slot: 1,  x: 92,  y: 176, label: 'Ситуация' },
-      { slot: 2,  x: 78,  y: 190, label: 'Препятствие', rotate: 90 },
-      { slot: 3,  x: 92,  y: 272, label: 'Корни' },
-      { slot: 4,  x: 92,  y: 80,  label: 'Прошлое влияние' },
-      { slot: 5,  x: 16,  y: 176, label: 'Прошлое' },
-      { slot: 6,  x: 168, y: 176, label: 'Будущее' },
-      { slot: 7,  x: 268, y: 356, label: 'Вы' },
-      { slot: 8,  x: 268, y: 268, label: 'Окружение' },
-      { slot: 9,  x: 268, y: 176, label: 'Надежды' },
-      { slot: 10, x: 268, y: 80,  label: 'Итог' },
+      { slot: 1,  x: 100, y: 192, label: 'Ситуация' },
+      { slot: 2,  x: 86,  y: 206, label: 'Препятствие', rotate: 90 },
+      { slot: 3,  x: 100, y: 300, label: 'Корни' },
+      { slot: 4,  x: 100, y: 84,  label: 'Прошлое влияние' },
+      { slot: 5,  x: 20,  y: 192, label: 'Прошлое' },
+      { slot: 6,  x: 180, y: 192, label: 'Будущее' },
+      { slot: 7,  x: 272, y: 396, label: 'Вы' },
+      { slot: 8,  x: 272, y: 300, label: 'Окружение' },
+      { slot: 9,  x: 272, y: 192, label: 'Надежды' },
+      { slot: 10, x: 272, y: 84,  label: 'Итог' },
     ],
   },
   week: {
