@@ -65,7 +65,7 @@
 
 /* ── Reset ─────────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { height: 100%; -webkit-text-size-adjust: 100%; }
+html { height: 100%; -webkit-text-size-adjust: 100%; touch-action: pan-x pan-y; }
 body, #root { height: 100%; }
 
 body {
