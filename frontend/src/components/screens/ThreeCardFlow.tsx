@@ -297,11 +297,11 @@ export function ThreeCardFlow({ onReset }: Props) {
                     style={{ cursor: phase === 'reading' ? 'pointer' : 'default' }}
                     whileTap={phase === 'reading' ? { scale: 0.93 } : undefined}
                   >
-                    {phase === 'reading' && card
-                      ? card.image_url
-                        ? <img src={card.image_url} alt={card.name_ru} className={`slot-card__img${card.reversed ? ' slot-card__img--reversed' : ''}`} />
-                        : <div className="slot-card__emoji">{card.emoji}</div>
-                      : <div className="card-back-skin" />
+                    {card && card.image_url
+                      ? <img src={card.image_url} alt={card.name_ru} className={`slot-card__img${card.reversed ? ' slot-card__img--reversed' : ''}`} />
+                      : card
+                        ? <div className="slot-card__emoji">{card.emoji}</div>
+                        : <div className="card-back-skin" />
                     }
                   </motion.div>
                 ) : (
