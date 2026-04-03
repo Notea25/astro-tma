@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { tarotApi } from '@/services/api'
 import { useHaptic } from '@/hooks/useTelegram'
+import { MeaningText } from '@/components/ui/MeaningText'
 import type { TarotCardDetail } from '@/types'
 
 const POSITIONS   = ['Прошлое', 'Настоящее', 'Будущее']
@@ -328,7 +329,7 @@ export function ThreeCardFlow({ onReset }: Props) {
                         <span className="meaning-block__name">{card.name_ru}</span>
                       </div>
                       <p className="meaning-block__keys">{card.keywords_ru?.slice(0, 3).join(' · ')}</p>
-                      <p className="meaning-block__text">{card.meaning_ru}</p>
+                      <MeaningText text={card.meaning_ru} />
                     </motion.div>
                   )
                 })}

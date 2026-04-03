@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PremiumGate } from '@/components/ui/PremiumGate'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { MeaningText } from '@/components/ui/MeaningText'
 import { ThreeCardFlow } from './ThreeCardFlow'
 import { tarotApi } from '@/services/api'
 import { useAppStore } from '@/stores/app'
@@ -72,7 +73,7 @@ function TarotCardFlip({ card, index }: { card: TarotCardDetail; index: number }
             animate={{ opacity: 1, height: 'auto' }}
             transition={{ duration: 0.4 }}
           >
-            <p className="tarot-card__meaning-text">{card.meaning_ru}</p>
+            <MeaningText text={card.meaning_ru} />
             <div className="tarot-card__keywords">
               {card.keywords_ru.slice(0, 3).map((kw) => (
                 <span key={kw} className="keyword-chip">{kw}</span>
