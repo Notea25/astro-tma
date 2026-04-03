@@ -52,6 +52,21 @@
   --card-radius:    clamp(16px, 4vw, 22px);
   --btn-radius:     14px;
 
+  /* Spacing scale (UI/UX Pro Max) */
+  --space-xs:       4px;
+  --space-sm:       8px;
+  --space-md:       16px;
+  --space-lg:       24px;
+  --space-xl:       32px;
+  --space-2xl:      48px;
+  --space-3xl:      64px;
+
+  /* Shadow depths (UI/UX Pro Max) */
+  --shadow-sm:      0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md:      0 4px 8px rgba(0,0,0,0.5);
+  --shadow-lg:      0 10px 20px rgba(0,0,0,0.5);
+  --shadow-xl:      0 20px 30px rgba(0,0,0,0.6);
+
   /* Typography scale — min 16px body per accessibility guidelines */
   --fs-hero:        clamp(36px, 9vw, 48px);
   --fs-h1:          clamp(22px, 6vw, 30px);
@@ -2309,9 +2324,18 @@ body::after {
 .nav-item:focus-visible,
 .practice-card:focus-visible,
 .btn-primary:focus-visible,
+.btn-secondary:focus-visible,
 .btn-ghost:focus-visible,
+.btn-stars:focus-visible,
 .period-tab:focus-visible,
-.horoscope-card:focus-visible {
+.horoscope-card:focus-visible,
+.moon-card:focus-visible,
+.quick-card:focus-visible,
+.wheel-card:focus-visible,
+.wheel-slot__card:focus-visible,
+.spread-slot:focus-visible,
+.toggle-row:focus-visible,
+.header-avatar:focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 2px;
 }

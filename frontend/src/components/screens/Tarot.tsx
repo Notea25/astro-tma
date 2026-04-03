@@ -150,7 +150,7 @@ export function Tarot() {
             <div className="deck-preview">
               {[2, 1, 0].map((i) => (
                 <div key={i} className="deck-card" style={{ transform: `rotate(${(i - 1) * 6}deg) translateY(${i * -4}px)` }}>
-                  ✦
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" opacity="0.5"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/></svg>
                 </div>
               ))}
             </div>
