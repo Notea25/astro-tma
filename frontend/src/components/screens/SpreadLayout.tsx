@@ -31,7 +31,7 @@ const LAYOUTS: Record<string, { slots: SlotDef[]; w: number; h: number }> = {
     h: 400,
     slots: [
       { slot: 1,  x: 68,  y: 144, label: 'Ситуация' },
-      { slot: 2,  x: 68,  y: 144, label: 'Препятствие', rotate: 90 },
+      { slot: 2,  x: 52,  y: 160, label: 'Препятствие', rotate: 90 },
       { slot: 3,  x: 68,  y: 264, label: 'Корни' },
       { slot: 4,  x: 68,  y: 24,  label: 'Прошлое' },
       { slot: 5,  x: 0,   y: 144, label: 'Прошлое' },
@@ -113,22 +113,22 @@ export function SpreadLayout({ spreadType, cards }: Props) {
               style={{
                 left: slot.x,
                 top: slot.y,
-                width: CARD_W,
-                height: CARD_H,
-                ...(isCross ? { transform: `rotate(${slot.rotate}deg)`, zIndex: 2 } : {}),
+                width: isCross ? CARD_H : CARD_W,
+                height: isCross ? CARD_W : CARD_H,
+                zIndex: isCross ? 2 : undefined,
               }}
               initial={{ opacity: 0, scale: 0.5 }}
-              animate={{ opacity: isCross && !isFlipped ? 0.88 : 1, scale: 1 }}
+              animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: idx * 0.12, duration: 0.3 }}
               onClick={() => handleFlip(idx)}
             >
-              <div className={`spread-slot__flipper${isFlipped ? ' is-flipped' : ''}`}>
+              <div className={`spread-slot__flipper${isFlipped ? ' is-flipped' : ''}${isCross ? ' spread-slot__flipper--cross' : ''}`}>
                 {/* Back (face-down) */}
-                <div className="spread-slot__back">
+                <div className={`spread-slot__back${isCross ? ' spread-slot__back--cross' : ''}`}>
                   <span className="spread-slot__number">{slot.slot}</span>
                 </div>
                 {/* Front (face-up) */}
-                <div className="spread-slot__front">
+                <div className={`spread-slot__front${isCross ? ' spread-slot__front--cross' : ''}`}>
                   {card.image_url ? (
                     <img
                       src={card.image_url}
