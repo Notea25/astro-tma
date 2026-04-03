@@ -1553,6 +1553,84 @@ body::after {
   border-radius: inherit;
 }
 
+/* ── Wheel scene wrapper ── */
+.wheel-scene {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding: 8px 0 0;
+}
+.wheel-scene__header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+.wheel-scene__title {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(18px, 5vw, 22px);
+  color: var(--gold-light);
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+.wheel-scene__subtitle {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-align: center;
+}
+
+/* ── Tarot card back face (used on wheel cards and fly card) ── */
+.tarot-card-back {
+  width: 100%; height: 100%;
+  background: #0d0b1a;
+  border: 0.5px solid rgba(201,168,76,0.28);
+  border-radius: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tarot-card-back--large {
+  border: 1px solid rgba(201,168,76,0.4);
+  background: radial-gradient(ellipse at 50% 30%, #1a1330 0%, #0d0b1a 100%);
+}
+
+/* ── Tarot card front face ── */
+.tarot-card-front__img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.tarot-card-front__parchment {
+  width: 100%; height: 100%;
+  background: linear-gradient(160deg, #ece0cc 0%, #d6c5a8 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 10px;
+  box-sizing: border-box;
+}
+.tarot-card-front__number {
+  font-size: 9px;
+  color: rgba(80,60,30,0.55);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.tarot-card-front__symbol {
+  font-size: 56px;
+  line-height: 1;
+}
+.tarot-card-front__name {
+  font-family: 'Playfair Display', serif;
+  font-size: 13px;
+  color: rgba(80,60,30,0.85);
+  text-align: center;
+  line-height: 1.3;
+}
+
 /* ─ Root container ─ */
 .three-flow {
   position: relative;
@@ -1661,7 +1739,7 @@ body::after {
   position: fixed;
   inset: 0;
   background: rgba(2, 2, 8, 0.88);
-  z-index: 100;
+  z-index: 10;
   pointer-events: none;
 }
 
@@ -1708,7 +1786,7 @@ body::after {
   align-items: center;
   gap: 12px;
   padding: 0 24px;
-  z-index: 115;
+  z-index: 12;
 }
 .reveal-info__text {
   display: flex;
@@ -1733,6 +1811,24 @@ body::after {
 .reveal-info__continue {
   min-width: 160px;
   margin-top: 4px;
+}
+.reveal-info__continue-btn {
+  min-width: 160px;
+  margin-top: 4px;
+  padding: 14px 28px;
+  background: rgba(201,168,76,0.12);
+  border: 1px solid rgba(201,168,76,0.4);
+  border-radius: 24px;
+  color: var(--gold-light);
+  font-family: 'Playfair Display', serif;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  min-height: 44px;
+}
+.reveal-info__continue-btn:active {
+  background: rgba(201,168,76,0.22);
 }
 
 /* ─ Slots row (shown in all phases) ─ */
