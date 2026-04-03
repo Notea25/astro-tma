@@ -387,10 +387,10 @@ export function ThreeCardFlow({ onReset }: Props) {
         {phase === 'fly-in' && flyInitial && (
           <motion.div
             key="fly-in-card"
+            className="tarot-card-frame"
             style={{
               position: 'fixed', left: 0, top: 0,
               width: FLY_W, height: FLY_H,
-              borderRadius: 12,
               zIndex: 11, pointerEvents: 'none',
             }}
             initial={flyInitial}
@@ -423,13 +423,12 @@ export function ThreeCardFlow({ onReset }: Props) {
       {/* ══ REVEALED CARD (static, z-index 11) ══ */}
       {phase === 'revealed' && currentCard && (
         <div
+          className="tarot-card-frame"
           style={{
             position: 'fixed',
             left: cardPos.x, top: cardPos.y,
             width: FLY_W, height: FLY_H,
-            borderRadius: 12, overflow: 'hidden',
             zIndex: 11,
-            border: '1px solid rgba(201,168,76,0.3)',
           }}
         >
           <CardFront card={currentCard} />
@@ -441,12 +440,11 @@ export function ThreeCardFlow({ onReset }: Props) {
         {phase === 'fly-out' && flyTo && currentCard && (
           <motion.div
             key="fly-out-card"
+            className="tarot-card-frame"
             style={{
               position: 'fixed', left: 0, top: 0,
               width: FLY_W, height: FLY_H,
-              borderRadius: 12, overflow: 'hidden',
               zIndex: 11, pointerEvents: 'none',
-              border: '1px solid rgba(201,168,76,0.3)',
             }}
             initial={{ x: cardPos.x, y: cardPos.y, scale: 1 }}
             animate={{ x: flyTo.x, y: flyTo.y, scale: SLOT_W / FLY_W }}
