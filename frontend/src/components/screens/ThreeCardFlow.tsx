@@ -21,10 +21,25 @@ type Phase = 'spinning' | 'fly-in' | 'revealed' | 'fly-out' | 'reading'
 interface Props { onReset: () => void }
 
 // ── Pre-compute wheel positions ────────────────────────────────────────────
+// Seeded random for consistent "messy" layout across renders
+function seededRand(seed: number) {
+  const x = Math.sin(seed * 9301 + 49297) * 49297
+  return x - Math.floor(x)
+}
+
 const WHEEL_POS = Array.from({ length: WHEEL_COUNT }, (_, i) => {
   const angleDeg = (360 / WHEEL_COUNT) * i
   const rad      = angleDeg * (Math.PI / 180)
-  return { i, x: Math.cos(rad) * WHEEL_R, y: Math.sin(rad) * WHEEL_R, angleDeg }
+  // Random offsets for organic "hand-spread" look
+  const rOff     = (seededRand(i * 3 + 1) - 0.5) * 14      // ±7px radial jitter
+  const aOff     = (seededRand(i * 3 + 2) - 0.5) * 12      // ±6° rotation jitter
+  const r        = WHEEL_R + rOff
+  return {
+    i,
+    x: Math.cos(rad) * r,
+    y: Math.sin(rad) * r,
+    angleDeg: angleDeg + aOff,
+  }
 })
 
 // ── Card back face ─────────────────────────────────────────────────────────

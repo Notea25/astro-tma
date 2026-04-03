@@ -1656,7 +1656,7 @@ body::after {
   inset: 0;
 }
 .wheel-ring.is-spinning {
-  animation: wheel-ring-spin 26s linear infinite;
+  animation: wheel-ring-spin 52s linear infinite;
 }
 
 /* Each card — positioned absolutely, rotated tangentially */
