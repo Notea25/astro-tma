@@ -905,25 +905,25 @@ body::after {
   background-size: cover;
   background-position: center;
   transform: rotate(90deg);
-  width: 64px;
-  height: 96px;
+  width: 56px;
+  height: 84px;
   position: absolute;
   top: 50%;
   left: 50%;
-  margin-top: -48px;
-  margin-left: -32px;
-  border-radius: 8px;
+  margin-top: -42px;
+  margin-left: -28px;
+  border-radius: 7px;
 }
 .spread-slot__front--cross {
   transform: rotateY(180deg) rotate(90deg);
-  width: 64px;
-  height: 96px;
+  width: 56px;
+  height: 84px;
   position: absolute;
   top: 50%;
   left: 50%;
-  margin-top: -48px;
-  margin-left: -32px;
-  border-radius: 8px;
+  margin-top: -42px;
+  margin-left: -28px;
+  border-radius: 7px;
 }
 .spread-slot--selected {
   filter: drop-shadow(0 0 8px rgba(212,178,84,0.4));
