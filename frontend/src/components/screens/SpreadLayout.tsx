@@ -16,30 +16,33 @@ interface SlotDef {
 
 const LAYOUTS: Record<string, { slots: SlotDef[]; w: number; h: number }> = {
   relationship: {
-    w: 260,
-    h: 430,
+    w: 240,
+    h: 390,
     slots: [
-      { slot: 1, x: 30,  y: 0,   label: 'Вы' },
-      { slot: 2, x: 166, y: 0,   label: 'Партнёр' },
-      { slot: 3, x: 98,  y: 110, label: 'Связь' },
-      { slot: 4, x: 98,  y: 220, label: 'Вызов' },
-      { slot: 5, x: 98,  y: 330, label: 'Потенциал' },
+      { slot: 1, x: 20,  y: 0,   label: 'Вы' },
+      { slot: 2, x: 164, y: 0,   label: 'Партнёр' },
+      { slot: 3, x: 92,  y: 100, label: 'Связь' },
+      { slot: 4, x: 92,  y: 196, label: 'Вызов' },
+      { slot: 5, x: 92,  y: 292, label: 'Потенциал' },
     ],
   },
   celtic_cross: {
-    w: 310,
-    h: 400,
+    w: 340,
+    h: 460,
+    // Card=56x84. Gap=12. Cross center at (92,176). Column at x=268.
+    // Center card 1: x=92, y=176
+    // Card 2 cross: horizontal 84x56, centered on card 1
     slots: [
-      { slot: 1,  x: 68,  y: 144, label: 'Ситуация' },
-      { slot: 2,  x: 52,  y: 160, label: 'Препятствие', rotate: 90 },
-      { slot: 3,  x: 68,  y: 264, label: 'Корни' },
-      { slot: 4,  x: 68,  y: 24,  label: 'Прошлое' },
-      { slot: 5,  x: 0,   y: 144, label: 'Прошлое' },
-      { slot: 6,  x: 136, y: 144, label: 'Будущее' },
-      { slot: 7,  x: 236, y: 300, label: 'Вы' },
-      { slot: 8,  x: 236, y: 208, label: 'Окружение' },
-      { slot: 9,  x: 236, y: 116, label: 'Надежды' },
-      { slot: 10, x: 236, y: 24,  label: 'Итог' },
+      { slot: 1,  x: 92,  y: 176, label: 'Ситуация' },
+      { slot: 2,  x: 78,  y: 190, label: 'Препятствие', rotate: 90 },
+      { slot: 3,  x: 92,  y: 272, label: 'Корни' },
+      { slot: 4,  x: 92,  y: 80,  label: 'Прошлое влияние' },
+      { slot: 5,  x: 16,  y: 176, label: 'Прошлое' },
+      { slot: 6,  x: 168, y: 176, label: 'Будущее' },
+      { slot: 7,  x: 268, y: 356, label: 'Вы' },
+      { slot: 8,  x: 268, y: 268, label: 'Окружение' },
+      { slot: 9,  x: 268, y: 176, label: 'Надежды' },
+      { slot: 10, x: 268, y: 80,  label: 'Итог' },
     ],
   },
   week: {
@@ -57,8 +60,8 @@ const LAYOUTS: Record<string, { slots: SlotDef[]; w: number; h: number }> = {
   },
 }
 
-const CARD_W = 64
-const CARD_H = 96
+const CARD_W = 56
+const CARD_H = 84
 
 /* ── Component ───────────────────────────────────────────────────────────── */
 
