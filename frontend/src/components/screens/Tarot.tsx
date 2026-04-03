@@ -1,15 +1,15 @@
 import { useState, useCallback } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { PremiumGate } from '@/components/ui/PremiumGate'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
-import { MeaningText } from '@/components/ui/MeaningText'
 import { ThreeCardFlow } from './ThreeCardFlow'
+import { SpreadLayout } from './SpreadLayout'
 import { tarotApi } from '@/services/api'
 import { useAppStore } from '@/stores/app'
 import { useHaptic } from '@/hooks/useTelegram'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
-import type { TarotSpreadResponse, TarotCardDetail } from '@/types'
+import type { TarotSpreadResponse } from '@/types'
 
 type SpreadType = 'three_card' | 'celtic_cross' | 'week' | 'relationship'
 
@@ -28,63 +28,6 @@ const SPREADS: SpreadOption[] = [
   { id: 'week',          name: 'Карта на каждый день',           cardCount: 7,  premium: true,  productId: 'tarot_week',   stars: 40 },
   { id: 'relationship',  name: 'Расклад на отношения',           cardCount: 5,  premium: true,  productId: 'tarot_celtic', stars: 30 },
 ]
-
-function TarotCardFlip({ card, index }: { card: TarotCardDetail; index: number }) {
-  const [flipped, setFlipped] = useState(false)
-  const { impact } = useHaptic()
-
-  return (
-    <motion.div
-      className="tarot-card-wrap"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1 }}
-    >
-      <p className="tarot-card__position">{card.position_name_ru}</p>
-      <div
-        className={`tarot-card-flip ${flipped ? 'is-flipped' : ''} ${card.reversed ? 'reversed' : ''}`}
-        onClick={() => { if (!flipped) { impact('medium'); setFlipped(true) } }}
-      >
-        <div className="tarot-card-flip__front">
-          <div className="tarot-card__back-pattern">✦</div>
-          <p className="tarot-card__tap-hint">Нажмите</p>
-        </div>
-        <div className="tarot-card-flip__back">
-          {card.image_url
-            ? <img
-                src={card.image_url}
-                alt={card.name_ru}
-                className={`tarot-card__img ${card.reversed ? 'tarot-card__img--reversed' : ''}`}
-              />
-            : <span className="tarot-card__emoji">{card.emoji}</span>
-          }
-          <p className="tarot-card__name">
-            {card.name_ru}
-            {card.reversed && <span className="tarot-card__rev"> ↓</span>}
-          </p>
-        </div>
-      </div>
-
-      <AnimatePresence>
-        {flipped && (
-          <motion.div
-            className="tarot-card__meaning"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            transition={{ duration: 0.4 }}
-          >
-            <MeaningText text={card.meaning_ru} />
-            <div className="tarot-card__keywords">
-              {card.keywords_ru.slice(0, 3).map((kw) => (
-                <span key={kw} className="keyword-chip">{kw}</span>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  )
-}
 
 export function Tarot() {
   const { user, setScreen } = useAppStore()
@@ -223,11 +166,7 @@ export function Tarot() {
 
         {reading && (
           <>
-            <div className="tarot-cards-grid">
-              {reading.cards.map((card, i) => (
-                <TarotCardFlip key={card.id} card={card} index={i} />
-              ))}
-            </div>
+            <SpreadLayout spreadType={selectedSpread} cards={reading.cards} />
             <motion.button
               className="btn-secondary btn-with-icon"
               onClick={() => { setReading(null); drawMutation.reset() }}
