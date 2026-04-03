@@ -900,31 +900,7 @@ body::after {
 .spread-slot--cross {
   z-index: 2;
 }
-/* Cross card (card 2): content rotated 90° inside horizontal container */
-.spread-slot__back--cross {
-  background-size: cover;
-  background-position: center;
-  transform: rotate(90deg);
-  width: 56px;
-  height: 84px;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  margin-top: -42px;
-  margin-left: -28px;
-  border-radius: 7px;
-}
-.spread-slot__front--cross {
-  transform: rotateY(180deg) rotate(90deg);
-  width: 56px;
-  height: 84px;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  margin-top: -42px;
-  margin-left: -28px;
-  border-radius: 7px;
-}
+/* Cross card (card 2): whole slot rotated 90° via inline transform */
 .spread-slot--selected {
   filter: drop-shadow(0 0 8px rgba(212,178,84,0.4));
 }
