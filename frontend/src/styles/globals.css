@@ -1650,10 +1650,6 @@ body::after {
 @keyframes wheel-ring-spin {
   to { transform: rotate(-360deg); }
 }
-@keyframes wheel-card-counter {
-  from { transform: translate(-50%, -50%) rotate(0deg); }
-  to   { transform: translate(-50%, -50%) rotate(360deg); }
-}
 
 .wheel-ring {
   position: absolute;
@@ -1663,22 +1659,15 @@ body::after {
   animation: wheel-ring-spin 26s linear infinite;
 }
 
-/* Positioned anchor for each card (moves with ring rotation) */
-.wheel-card-slot {
-  position: absolute;
-}
-
-/* The card itself — counter-rotates to stay upright */
+/* Each card — positioned absolutely, rotated tangentially */
 .wheel-card {
-  width:  52px;
-  height: 78px;
+  position: absolute;
+  width:  48px;
+  height: 72px;
   border-radius: 6px;
   overflow: hidden;
-  transform: translate(-50%, -50%);  /* center on slot position */
   transition: opacity 0.3s ease;
-}
-.wheel-card.is-spinning {
-  animation: wheel-card-counter 26s linear infinite;
+  cursor: pointer;
 }
 .wheel-card.is-hidden {
   opacity: 0;

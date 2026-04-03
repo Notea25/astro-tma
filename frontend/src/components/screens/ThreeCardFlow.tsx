@@ -7,8 +7,8 @@ import { MeaningText } from '@/components/ui/MeaningText'
 import type { TarotCardDetail } from '@/types'
 
 const POSITIONS   = ['Прошлое', 'Настоящее', 'Будущее']
-const WHEEL_COUNT = 18
-const WHEEL_R     = 130   // orbit radius px
+const WHEEL_COUNT = 22
+const WHEEL_R     = 105   // orbit radius px — tighter for overlap
 const FLY_W       = 180   // revealed card width
 const FLY_H       = 270   // revealed card height
 const SLOT_W      = 80
@@ -24,7 +24,7 @@ interface Props { onReset: () => void }
 const WHEEL_POS = Array.from({ length: WHEEL_COUNT }, (_, i) => {
   const angleDeg = (360 / WHEEL_COUNT) * i
   const rad      = angleDeg * (Math.PI / 180)
-  return { i, x: Math.cos(rad) * WHEEL_R, y: Math.sin(rad) * WHEEL_R }
+  return { i, x: Math.cos(rad) * WHEEL_R, y: Math.sin(rad) * WHEEL_R, angleDeg }
 })
 
 // ── Card back face ─────────────────────────────────────────────────────────
@@ -206,18 +206,18 @@ export function ThreeCardFlow({ onReset }: Props) {
             <div className="wheel-outer">
               {/* Rotating ring */}
               <div className={`wheel-ring${isWheelSpinning ? ' is-spinning' : ''}`}>
-                {WHEEL_POS.map(({ i, x, y }) => (
+                {WHEEL_POS.map(({ i, x, y, angleDeg }) => (
                   <div
                     key={i}
-                    className="wheel-card-slot"
-                    style={{ left: `calc(50% + ${x}px)`, top: `calc(50% + ${y}px)` }}
+                    className={`wheel-card${!cardsVisible ? ' is-hidden' : ''}`}
+                    style={{
+                      left: `calc(50% + ${x}px)`,
+                      top: `calc(50% + ${y}px)`,
+                      transform: `translate(-50%, -50%) rotate(${angleDeg + 90}deg)`,
+                    }}
+                    onClick={handleCardClick}
                   >
-                    <div
-                      className={`wheel-card${isWheelSpinning ? ' is-spinning' : ''}${!cardsVisible ? ' is-hidden' : ''}`}
-                      onClick={handleCardClick}
-                    >
-                      <CardBack />
-                    </div>
+                    <CardBack />
                   </div>
                 ))}
               </div>
