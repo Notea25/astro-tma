@@ -5,6 +5,7 @@ import { EnergyBars } from '@/components/ui/EnergyBars'
 import { PremiumGate } from '@/components/ui/PremiumGate'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { HoroscopeSkeleton, MoonCardSkeleton } from '@/components/ui/Skeleton'
+import { MeaningText } from '@/components/ui/MeaningText'
 import { horoscopeApi, tarotApi } from '@/services/api'
 import { useAppStore } from '@/stores/app'
 import { useHaptic } from '@/hooks/useTelegram'
@@ -219,7 +220,7 @@ export function Home() {
                         <div className="tarot-flip__arcana">{card.arcana === 'major' ? 'Старший аркан' : 'Младший аркан'}</div>
                         <div className="tarot-flip__name">{card.name_ru}</div>
                         <p className="tarot-flip__keywords">{card.keywords_ru?.slice(0, 3).join(' · ')}</p>
-                        <p className="tarot-flip__meaning">{card.meaning_ru}</p>
+                        <MeaningText text={card.meaning_ru} compact />
                       </div>
                     </>
                   )
