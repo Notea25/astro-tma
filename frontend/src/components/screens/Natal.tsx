@@ -114,25 +114,40 @@ function NatalWheel({ sunSign, planets, houses }: {
   return (
     <div className="natal-wheel-wrap">
       <svg viewBox="0 0 240 240" width="220" height="220" className="natal-wheel">
-        {/* Background circles */}
-        <circle cx={CX} cy={CY} r={R_OUTER} fill="none" stroke="rgba(212,178,84,0.15)" strokeWidth="0.5"/>
-        <circle cx={CX} cy={CY} r={R_SIGNS} fill="none" stroke="rgba(212,178,84,0.12)" strokeWidth="0.5"/>
-        <circle cx={CX} cy={CY} r={R_HOUSES} fill="none" stroke="rgba(212,178,84,0.08)" strokeWidth="0.5"/>
-        <circle cx={CX} cy={CY} r={R_INNER} fill="none" stroke="rgba(212,178,84,0.06)" strokeWidth="0.5"/>
+        {/* Radial gradient background */}
+        <defs>
+          <radialGradient id="wheelBg" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="rgba(14,11,32,0.9)"/>
+            <stop offset="60%" stopColor="rgba(10,8,22,0.95)"/>
+            <stop offset="100%" stopColor="rgba(6,5,14,1)"/>
+          </radialGradient>
+          <radialGradient id="wheelGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="rgba(212,178,84,0.06)"/>
+            <stop offset="100%" stopColor="rgba(212,178,84,0)"/>
+          </radialGradient>
+        </defs>
+        <circle cx={CX} cy={CY} r={R_OUTER + 2} fill="url(#wheelBg)"/>
+        <circle cx={CX} cy={CY} r={R_INNER} fill="url(#wheelGlow)"/>
+
+        {/* Ring circles */}
+        <circle cx={CX} cy={CY} r={R_OUTER} fill="none" stroke="rgba(212,178,84,0.22)" strokeWidth="0.7"/>
+        <circle cx={CX} cy={CY} r={R_SIGNS} fill="none" stroke="rgba(212,178,84,0.18)" strokeWidth="0.5"/>
+        <circle cx={CX} cy={CY} r={R_HOUSES} fill="none" stroke="rgba(212,178,84,0.12)" strokeWidth="0.5"/>
+        <circle cx={CX} cy={CY} r={R_INNER} fill="none" stroke="rgba(212,178,84,0.10)" strokeWidth="0.5"/>
 
         {/* 12 zodiac sign divisions (every 30°) */}
         {Array.from({length: 12}, (_, i) => {
           const deg = i * 30
           const p1 = degToXY(deg, R_SIGNS)
           const p2 = degToXY(deg, R_OUTER)
-          return <line key={`s${i}`} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke="rgba(212,178,84,0.1)" strokeWidth="0.5"/>
+          return <line key={`s${i}`} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke="rgba(212,178,84,0.15)" strokeWidth="0.5"/>
         })}
 
         {/* Zodiac symbols in outer ring */}
         {ZODIAC_SYMBOLS.map((sym, i) => {
           const deg = i * 30 + 15
           const p = degToXY(deg, (R_SIGNS + R_OUTER) / 2)
-          return <text key={`z${i}`} x={p.x} y={p.y} textAnchor="middle" dominantBaseline="central" fontSize="9" fill="rgba(212,178,84,0.4)">{sym}</text>
+          return <text key={`z${i}`} x={p.x} y={p.y} textAnchor="middle" dominantBaseline="central" fontSize="9" fill="rgba(212,178,84,0.55)">{sym}</text>
         })}
 
         {/* House cusp lines */}
@@ -154,7 +169,7 @@ function NatalWheel({ sunSign, planets, houses }: {
           let midDeg = (h.degree + nextDeg) / 2
           if (nextDeg < h.degree) midDeg = (h.degree + nextDeg + 360) / 2
           const p = degToXY(midDeg, (R_INNER + R_HOUSES) / 2)
-          return <text key={`hn${h.number}`} x={p.x} y={p.y} textAnchor="middle" dominantBaseline="central" fontSize="7" fill="rgba(212,178,84,0.2)">{h.number}</text>
+          return <text key={`hn${h.number}`} x={p.x} y={p.y} textAnchor="middle" dominantBaseline="central" fontSize="7" fill="rgba(212,178,84,0.3)">{h.number}</text>
         })}
 
         {/* Planet dots + symbols */}
@@ -164,8 +179,11 @@ function NatalWheel({ sunSign, planets, houses }: {
           const sym = PLANET_SYMBOLS[name] ?? '•'
           return (
             <g key={name}>
-              <circle cx={p.x} cy={p.y} r="3.5" fill={color} opacity="0.8"/>
-              <text x={p.x} y={p.y - 7} textAnchor="middle" dominantBaseline="central" fontSize="7" fill={color} opacity="0.9">{sym}{data.retrograde ? 'ℛ' : ''}</text>
+              {/* Glow behind planet */}
+              <circle cx={p.x} cy={p.y} r="8" fill={color} opacity="0.08"/>
+              <circle cx={p.x} cy={p.y} r="4" fill={color} opacity="0.9"/>
+              <circle cx={p.x} cy={p.y} r="2" fill="#fff" opacity="0.3"/>
+              <text x={p.x} y={p.y - 8} textAnchor="middle" dominantBaseline="central" fontSize="7.5" fill={color} fontWeight="500">{sym}{data.retrograde ? 'ℛ' : ''}</text>
             </g>
           )
         })}
@@ -177,7 +195,7 @@ function NatalWheel({ sunSign, planets, houses }: {
         })()}
 
         {/* Center sun symbol */}
-        <text x={CX} y={CY} textAnchor="middle" dominantBaseline="central" fontSize="20" fill="rgba(212,178,84,0.5)">
+        <text x={CX} y={CY} textAnchor="middle" dominantBaseline="central" fontSize="22" fill="rgba(212,178,84,0.65)">
           {ZODIAC_SYMBOLS[ZODIAC_NAMES_EN.indexOf(sunSign ?? '')] ?? '☉'}
         </text>
       </svg>
