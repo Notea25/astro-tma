@@ -892,6 +892,70 @@ body::after {
   font-size: var(--fs-body); line-height: 1.65;
   color: var(--text-soft); font-style: normal;
 }
+/* ── Spread Info Page ──────────────────────────────────────────────────── */
+.spread-info {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.spread-info__intro {
+  font-size: var(--fs-body);
+  color: var(--text-soft);
+  line-height: 1.7;
+}
+.spread-info__intro strong {
+  color: var(--gold-light);
+}
+.spread-info__section {
+  background: var(--surface);
+  border: 0.5px solid var(--glass-border);
+  border-radius: var(--card-radius);
+  padding: clamp(14px, 4vw, 20px);
+}
+.spread-info__section-title {
+  font-family: 'Playfair Display', serif;
+  font-size: var(--fs-h3);
+  color: var(--gold-light);
+  margin-bottom: 14px;
+  letter-spacing: 0.02em;
+}
+.spread-info__positions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.spread-info__pos {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.spread-info__num {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--gold-glow);
+  border: 1px solid var(--gold-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Playfair Display', serif;
+  font-size: 13px;
+  color: var(--gold);
+  margin-top: 2px;
+}
+.spread-info__pos strong {
+  font-size: var(--fs-body);
+  color: var(--text);
+  display: block;
+  margin-bottom: 2px;
+}
+.spread-info__pos p {
+  font-size: var(--fs-small);
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
 /* ── Spread Layout ─────────────────────────────────────────────────────── */
 .spread-layout {
   display: flex;
