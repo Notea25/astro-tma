@@ -457,6 +457,18 @@ body::after {
 .energy-fill { height: 100%; background: linear-gradient(90deg, rgba(139,106,208,0.85), var(--gold)); border-radius: 2px; transition: width 0.6s ease; }
 .energy-val { font-size: var(--fs-small); color: var(--gold-dim); width: 30px; text-align: right; flex-shrink: 0; }
 
+/* Power emoji of the day */
+.power-emoji-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 0.5px solid rgba(212,178,84,0.1);
+}
+.power-emoji-row__icon { font-size: 18px; }
+.power-emoji-row__text { font-size: var(--fs-xs); color: var(--gold-dim); letter-spacing: 0.04em; }
+
 /* ── Moon Card ─────────────────────────────────────────────────────────────── */
 .moon-card {
   background: var(--glass);
@@ -1269,6 +1281,56 @@ body::after {
   border-radius: var(--card-radius);
   padding: clamp(18px, 5vw, 24px); margin-bottom: 16px;
 }
+/* ── Natal Wheel ── */
+.natal-wheel-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 16px;
+}
+.natal-wheel {
+  filter: drop-shadow(0 0 20px rgba(212,178,84,0.08));
+}
+
+/* ── Elements distribution ── */
+.natal-elements {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.natal-element-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 4px;
+  background: var(--glass);
+  border: 0.5px solid var(--glass-border);
+  border-radius: 12px;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+.natal-element-card__emoji { font-size: 16px; }
+.natal-element-card__label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
+.natal-element-card__count { font-family: 'Playfair Display', serif; font-size: 14px; color: var(--gold-light); }
+
+/* ── Personality traits ── */
+.natal-traits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.natal-trait-pill {
+  padding: 5px 12px;
+  border-radius: 16px;
+  font-size: var(--fs-xs);
+  color: var(--gold-dim);
+  background: var(--gold-glow);
+  border: 0.5px solid var(--gold-border);
+  letter-spacing: 0.02em;
+}
+
 .natal-card__tag { font-size: var(--fs-xs); letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold-dim); margin-bottom: 20px; }
 .natal-sign-row { display: flex; align-items: center; gap: clamp(10px, 3vw, 14px); margin-bottom: 20px; }
 .natal-sign-emoji { font-size: clamp(32px, 9vw, 42px); }
@@ -1459,6 +1521,14 @@ body::after {
 .profile-meta span {
   background: rgba(255,255,255,0.06);
   border-radius: 6px; padding: 2px 8px;
+}
+.profile-signs-triple {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: var(--fs-xs);
+  color: var(--gold-dim);
+  letter-spacing: 0.03em;
 }
 .profile-birth-info { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
 .natal-summary-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { usersApi } from '@/services/api'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { usersApi, natalApi } from '@/services/api'
 import { useAppStore } from '@/stores/app'
 import { useHaptic } from '@/hooks/useTelegram'
 import { ZODIAC_SIGNS } from '@/types'
@@ -22,6 +22,19 @@ export function Profile() {
   const [gender, setGender] = useState(user?.gender ?? '')
 
   const userSign = ZODIAC_SIGNS.find(s => s.value === user?.sun_sign)
+
+  const { data: natalSummary } = useQuery({
+    queryKey: ['natal-summary'],
+    queryFn: natalApi.getSummary,
+    enabled: !!user?.birth_city,
+    staleTime: 1000 * 60 * 10,
+  })
+
+  const SIGN_RU: Record<string, string> = {
+    Aries: 'Овен', Taurus: 'Телец', Gemini: 'Близнецы', Cancer: 'Рак',
+    Leo: 'Лев', Virgo: 'Дева', Libra: 'Весы', Scorpio: 'Скорпион',
+    Sagittarius: 'Стрелец', Capricorn: 'Козерог', Aquarius: 'Водолей', Pisces: 'Рыбы',
+  }
 
   const birthMutation = useMutation({
     mutationFn: usersApi.setupBirth,
@@ -92,6 +105,16 @@ export function Profile() {
               )}
               {userSign && <span>{userSign.label}</span>}
             </div>
+            {natalSummary?.moon_sign && (
+              <div className="profile-signs-triple">
+                <span>☉ {(natalSummary.sun_sign && SIGN_RU[natalSummary.sun_sign]) ?? userSign?.label}</span>
+                <span>·</span>
+                <span>☽ {SIGN_RU[natalSummary.moon_sign]}</span>
+                {natalSummary.ascendant_sign && (
+                  <><span>·</span><span>↑ {SIGN_RU[natalSummary.ascendant_sign]}</span></>
+                )}
+              </div>
+            )}
           </div>
         </motion.div>
 
