@@ -54,11 +54,53 @@ const toRu = (s: string | null | undefined) => (s ? (SIGN_EN_TO_RU[s] ?? s) : '�
 const ZODIAC_SYMBOLS = ['♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓']
 const ZODIAC_NAMES_EN = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces']
 
-const ELEMENTS: Record<string, { label: string; emoji: string; signs: string[] }> = {
-  fire:  { label: 'Огонь', emoji: '🔥', signs: ['Aries','Leo','Sagittarius'] },
-  earth: { label: 'Земля', emoji: '🌍', signs: ['Taurus','Virgo','Capricorn'] },
-  air:   { label: 'Воздух', emoji: '💨', signs: ['Gemini','Libra','Aquarius'] },
-  water: { label: 'Вода', emoji: '💧', signs: ['Cancer','Scorpio','Pisces'] },
+// SVG icons for elements (celestial style)
+function IconFire() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2c0 4-4 6-4 10a4 4 0 0 0 8 0c0-4-4-6-4-10z"/>
+      <path d="M12 18a2 2 0 0 0 2-2c0-2-2-3-2-5-0 2-2 3-2 5a2 2 0 0 0 2 2z" opacity="0.5"/>
+    </svg>
+  )
+}
+function IconEarth() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9"/>
+      <path d="M3 12h18M12 3a15 15 0 0 1 4 9 15 15 0 0 1-4 9 15 15 0 0 1-4-9 15 15 0 0 1 4-9z" opacity="0.7"/>
+    </svg>
+  )
+}
+function IconAir() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9.59 4.59A2 2 0 1 1 11 8H2"/>
+      <path d="M12.59 19.41A2 2 0 1 0 14 16H2"/>
+      <path d="M17.73 7.73A2.5 2.5 0 1 1 19.5 12H2" opacity="0.7"/>
+    </svg>
+  )
+}
+function IconWater() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2c0 0-6 7-6 11a6 6 0 0 0 12 0c0-4-6-11-6-11z"/>
+      <path d="M8 16a4 4 0 0 0 4 4" opacity="0.5"/>
+    </svg>
+  )
+}
+
+const ELEMENT_ICONS: Record<string, () => JSX.Element> = {
+  fire: IconFire, earth: IconEarth, air: IconAir, water: IconWater,
+}
+const ELEMENT_COLORS: Record<string, string> = {
+  fire: '#ff6b6b', earth: '#3dd68c', air: '#b08ef0', water: '#8bb8f0',
+}
+
+const ELEMENTS: Record<string, { label: string; signs: string[] }> = {
+  fire:  { label: 'Огонь', signs: ['Aries','Leo','Sagittarius'] },
+  earth: { label: 'Земля', signs: ['Taurus','Virgo','Capricorn'] },
+  air:   { label: 'Воздух', signs: ['Gemini','Libra','Aquarius'] },
+  water: { label: 'Вода', signs: ['Cancer','Scorpio','Pisces'] },
 }
 
 const SIGN_TRAITS: Record<string, string[]> = {
@@ -283,9 +325,11 @@ export function Natal() {
                   <div className="natal-elements">
                     {Object.entries(ELEMENTS).map(([key, el]) => {
                       const count = planets.filter(p => el.signs.includes(p)).length
+                      const Icon = ELEMENT_ICONS[key]
+                      const color = ELEMENT_COLORS[key]
                       return (
-                        <div key={key} className="natal-element-card">
-                          <span className="natal-element-card__emoji">{el.emoji}</span>
+                        <div key={key} className="natal-element-card" style={{ color }}>
+                          <span className="natal-element-card__icon"><Icon /></span>
                           <span className="natal-element-card__label">{el.label}</span>
                           <span className="natal-element-card__count">{count}/{planets.length}</span>
                         </div>
@@ -311,7 +355,7 @@ export function Natal() {
               >
                 <div className="natal-card__tag">✦ Базовый портрет</div>
                 <div className="natal-sign-row">
-                  <span className="natal-sign-emoji">{userSign?.emoji ?? '☉'}</span>
+                  <span className="natal-sign-badge">{userSign?.emoji ?? '☉'}</span>
                   <div>
                     <div className="natal-sign-name">{userSign?.label ?? toRu(sunSign)}</div>
                     <div className="natal-sign-dates">{userSign?.dates}</div>

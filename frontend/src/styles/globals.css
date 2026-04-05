@@ -1314,7 +1314,7 @@ body::after {
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 }
-.natal-element-card__emoji { font-size: 16px; }
+.natal-element-card__icon { display: flex; align-items: center; justify-content: center; opacity: 0.85; }
 .natal-element-card__label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
 .natal-element-card__count { font-family: 'Playfair Display', serif; font-size: 14px; color: var(--gold-light); }
 
@@ -1337,7 +1337,19 @@ body::after {
 
 .natal-card__tag { font-size: var(--fs-xs); letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold-dim); margin-bottom: 20px; }
 .natal-sign-row { display: flex; align-items: center; gap: clamp(10px, 3vw, 14px); margin-bottom: 20px; }
-.natal-sign-emoji { font-size: clamp(32px, 9vw, 42px); }
+.natal-sign-badge {
+  font-size: clamp(28px, 8vw, 36px);
+  width: clamp(48px, 13vw, 58px);
+  height: clamp(48px, 13vw, 58px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--gold-glow);
+  border: 1px solid var(--gold-border);
+  color: var(--gold-light);
+  flex-shrink: 0;
+}
 .natal-sign-name { font-family: 'Inter', -apple-system, sans-serif; font-size: var(--fs-h2); font-weight: 600; }
 .natal-sign-dates { font-size: var(--fs-small); color: var(--text-dim); margin-top: 2px; }
 .natal-card__text { font-size: var(--fs-body); color: var(--text-dim); line-height: 1.65; }
