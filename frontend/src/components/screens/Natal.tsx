@@ -76,43 +76,109 @@ const SIGN_TRAITS: Record<string, string[]> = {
   Pisces: ['Интуитивный','Мечтательный','Сострадательный','Творческий','Эмпатичный','Мистический'],
 }
 
-// ── SVG Natal Wheel ────────────────────────────────────────────────────────
-function NatalWheel({ sunSign, moonSign, ascSign }: { sunSign?: string; moonSign?: string; ascSign?: string }) {
-  const signIdx = (s?: string) => ZODIAC_NAMES_EN.indexOf(s ?? '')
+// ── Planet symbols ──────────────────────────────────────────────────────────
+const PLANET_SYMBOLS: Record<string, string> = {
+  sun: '☉', moon: '☽', mercury: '☿', venus: '♀', mars: '♂',
+  jupiter: '♃', saturn: '♄', uranus: '♅', neptune: '♆', pluto: '♇',
+}
+const PLANET_COLORS: Record<string, string> = {
+  sun: '#f0d48a', moon: '#d0c4f5', mercury: '#9d97b4', venus: '#b08ef0',
+  mars: '#ff6b6b', jupiter: '#f0d48a', saturn: '#6e6890', uranus: '#3dd68c',
+  neptune: '#8b6ad0', pluto: '#9d97b4',
+}
 
-  const planetDot = (sign?: string, r: number = 55, color: string = '#f0d48a') => {
-    const idx = signIdx(sign)
-    if (idx < 0) return null
-    const angle = (idx * 30 + 15) * Math.PI / 180 - Math.PI / 2
-    return <circle cx={100 + Math.cos(angle) * r} cy={100 + Math.sin(angle) * r} r="4" fill={color} opacity="0.9" />
+interface PlanetData { degree: number; sign: string; retrograde: boolean }
+interface HouseData { number: number; degree: number }
+
+// ── SVG Natal Wheel — real chart ───────────────────────────────────────────
+function NatalWheel({ sunSign, planets, houses }: {
+  sunSign?: string
+  planets?: Record<string, PlanetData>
+  houses?: HouseData[]
+}) {
+  const CX = 120, CY = 120
+  const R_OUTER = 112, R_SIGNS = 96, R_HOUSES = 78, R_INNER = 56, R_PLANETS = 67
+
+  // Convert degree (0=Aries 0°) to angle on SVG (0° = right, CCW)
+  // Astro charts: Ascendant (house 1 cusp) at left (9 o'clock), signs go CCW
+  const ascDeg = houses?.[0]?.degree ?? 0
+  const degToAngle = (deg: number) => {
+    const adjusted = ascDeg - deg // flip so Asc is at left
+    return (adjusted * Math.PI) / 180
   }
+  const degToXY = (deg: number, r: number) => ({
+    x: CX + Math.cos(degToAngle(deg)) * r,
+    y: CY - Math.sin(degToAngle(deg)) * r,
+  })
 
   return (
     <div className="natal-wheel-wrap">
-      <svg viewBox="0 0 200 200" width="170" height="170" className="natal-wheel">
-        {/* Circles */}
-        <circle cx="100" cy="100" r="92" fill="none" stroke="rgba(212,178,84,0.12)" strokeWidth="0.5"/>
-        <circle cx="100" cy="100" r="70" fill="none" stroke="rgba(212,178,84,0.08)" strokeWidth="0.5"/>
-        <circle cx="100" cy="100" r="42" fill="none" stroke="rgba(212,178,84,0.06)" strokeWidth="0.5"/>
-        {/* 12 segment lines */}
+      <svg viewBox="0 0 240 240" width="220" height="220" className="natal-wheel">
+        {/* Background circles */}
+        <circle cx={CX} cy={CY} r={R_OUTER} fill="none" stroke="rgba(212,178,84,0.15)" strokeWidth="0.5"/>
+        <circle cx={CX} cy={CY} r={R_SIGNS} fill="none" stroke="rgba(212,178,84,0.12)" strokeWidth="0.5"/>
+        <circle cx={CX} cy={CY} r={R_HOUSES} fill="none" stroke="rgba(212,178,84,0.08)" strokeWidth="0.5"/>
+        <circle cx={CX} cy={CY} r={R_INNER} fill="none" stroke="rgba(212,178,84,0.06)" strokeWidth="0.5"/>
+
+        {/* 12 zodiac sign divisions (every 30°) */}
         {Array.from({length: 12}, (_, i) => {
-          const a = (i * 30) * Math.PI / 180 - Math.PI / 2
-          return <line key={i} x1={100 + Math.cos(a)*42} y1={100 + Math.sin(a)*42} x2={100 + Math.cos(a)*92} y2={100 + Math.sin(a)*92} stroke="rgba(212,178,84,0.06)" strokeWidth="0.5"/>
+          const deg = i * 30
+          const p1 = degToXY(deg, R_SIGNS)
+          const p2 = degToXY(deg, R_OUTER)
+          return <line key={`s${i}`} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke="rgba(212,178,84,0.1)" strokeWidth="0.5"/>
         })}
-        {/* Zodiac symbols on outer ring */}
+
+        {/* Zodiac symbols in outer ring */}
         {ZODIAC_SYMBOLS.map((sym, i) => {
-          const a = (i * 30 + 15) * Math.PI / 180 - Math.PI / 2
-          const x = 100 + Math.cos(a) * 81
-          const y = 100 + Math.sin(a) * 81
-          return <text key={i} x={x} y={y} textAnchor="middle" dominantBaseline="central" fontSize="8" fill="rgba(212,178,84,0.35)">{sym}</text>
+          const deg = i * 30 + 15
+          const p = degToXY(deg, (R_SIGNS + R_OUTER) / 2)
+          return <text key={`z${i}`} x={p.x} y={p.y} textAnchor="middle" dominantBaseline="central" fontSize="9" fill="rgba(212,178,84,0.4)">{sym}</text>
         })}
-        {/* Planet dots */}
-        {planetDot(sunSign, 55, '#f0d48a')}
-        {planetDot(moonSign, 55, '#d0c4f5')}
-        {planetDot(ascSign, 55, '#b08ef0')}
+
+        {/* House cusp lines */}
+        {houses?.map((h) => {
+          const p1 = degToXY(h.degree, R_INNER)
+          const p2 = degToXY(h.degree, R_SIGNS)
+          const isAxis = h.number === 1 || h.number === 4 || h.number === 7 || h.number === 10
+          return (
+            <line key={`h${h.number}`} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
+              stroke={isAxis ? 'rgba(212,178,84,0.25)' : 'rgba(212,178,84,0.08)'}
+              strokeWidth={isAxis ? '1' : '0.5'}
+            />
+          )
+        })}
+
+        {/* House numbers */}
+        {houses?.map((h, i) => {
+          const nextDeg = houses[(i + 1) % 12]?.degree ?? h.degree + 30
+          let midDeg = (h.degree + nextDeg) / 2
+          if (nextDeg < h.degree) midDeg = (h.degree + nextDeg + 360) / 2
+          const p = degToXY(midDeg, (R_INNER + R_HOUSES) / 2)
+          return <text key={`hn${h.number}`} x={p.x} y={p.y} textAnchor="middle" dominantBaseline="central" fontSize="7" fill="rgba(212,178,84,0.2)">{h.number}</text>
+        })}
+
+        {/* Planet dots + symbols */}
+        {planets && Object.entries(planets).map(([name, data]) => {
+          const p = degToXY(data.degree, R_PLANETS)
+          const color = PLANET_COLORS[name] ?? '#f0d48a'
+          const sym = PLANET_SYMBOLS[name] ?? '•'
+          return (
+            <g key={name}>
+              <circle cx={p.x} cy={p.y} r="3.5" fill={color} opacity="0.8"/>
+              <text x={p.x} y={p.y - 7} textAnchor="middle" dominantBaseline="central" fontSize="7" fill={color} opacity="0.9">{sym}{data.retrograde ? 'ℛ' : ''}</text>
+            </g>
+          )
+        })}
+
+        {/* AC / MC labels */}
+        {houses && houses.length > 0 && (() => {
+          const ac = degToXY(houses[0].degree, R_OUTER + 8)
+          return <text x={ac.x} y={ac.y} textAnchor="middle" dominantBaseline="central" fontSize="7" fill="rgba(212,178,84,0.5)" fontWeight="600">AC</text>
+        })()}
+
         {/* Center sun symbol */}
-        <text x="100" y="100" textAnchor="middle" dominantBaseline="central" fontSize="22" fill="rgba(212,178,84,0.6)">
-          {ZODIAC_SYMBOLS[signIdx(sunSign)] ?? '☉'}
+        <text x={CX} y={CY} textAnchor="middle" dominantBaseline="central" fontSize="20" fill="rgba(212,178,84,0.5)">
+          {ZODIAC_SYMBOLS[ZODIAC_NAMES_EN.indexOf(sunSign ?? '')] ?? '☉'}
         </text>
       </svg>
     </div>
@@ -189,7 +255,7 @@ export function Natal() {
               <>
               {/* ── SVG Wheel ── */}
               <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}>
-                <NatalWheel sunSign={summary?.sun_sign ?? undefined} moonSign={summary?.moon_sign ?? undefined} ascSign={summary?.ascendant_sign ?? undefined} />
+                <NatalWheel sunSign={summary?.sun_sign ?? undefined} planets={summary?.planets} houses={summary?.houses} />
               </motion.div>
 
               {/* ── Elements distribution ── */}

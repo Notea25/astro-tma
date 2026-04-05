@@ -82,6 +82,17 @@ export interface CompatibilityResponse {
   is_deep_analysis: boolean
 }
 
+export interface NatalPlanetData {
+  degree: number
+  sign: string
+  retrograde: boolean
+}
+
+export interface NatalHouseData {
+  number: number
+  degree: number
+}
+
 export interface NatalSummaryResponse {
   has_chart: boolean
   sun_sign: string | null
@@ -91,6 +102,8 @@ export interface NatalSummaryResponse {
   birth_time_known: boolean
   birth_lat: number | null
   birth_lng: number | null
+  planets?: Record<string, NatalPlanetData>
+  houses?: NatalHouseData[]
 }
 
 export interface PlanetData {

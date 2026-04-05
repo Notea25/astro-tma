@@ -37,6 +37,25 @@ async def get_natal_summary(
         }
 
     chart = user.natal_chart
+
+    # Planet positions for SVG wheel (degrees 0-360, not interpretation)
+    planets_for_wheel = {}
+    raw_planets = chart.chart_data.get("planets", {})
+    for name, data in raw_planets.items():
+        planets_for_wheel[name] = {
+            "degree": data.get("degree", 0),
+            "sign": data.get("sign", ""),
+            "retrograde": data.get("retrograde", False),
+        }
+
+    # House cusps for wheel
+    houses_for_wheel = []
+    for h in chart.chart_data.get("houses", []):
+        houses_for_wheel.append({
+            "number": h.get("number", 0),
+            "degree": h.get("degree", 0),
+        })
+
     return {
         "has_chart": True,
         "sun_sign":         chart.sun_sign,
@@ -46,6 +65,8 @@ async def get_natal_summary(
         "birth_time_known": user.birth_time_known,
         "birth_lat":        user.birth_lat,
         "birth_lng":        user.birth_lng,
+        "planets":          planets_for_wheel,
+        "houses":           houses_for_wheel,
     }
 
 

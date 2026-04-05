@@ -1285,10 +1285,13 @@ body::after {
 .natal-wheel-wrap {
   display: flex;
   justify-content: center;
-  padding: 8px 0 16px;
+  padding: 4px 0 20px;
 }
 .natal-wheel {
-  filter: drop-shadow(0 0 20px rgba(212,178,84,0.08));
+  filter: drop-shadow(0 0 24px rgba(212,178,84,0.1));
+  max-width: 260px;
+  width: 100%;
+  height: auto;
 }
 
 /* ── Elements distribution ── */
