@@ -457,6 +457,66 @@ export function Natal() {
                     ))}
                   </div>
                 )}
+
+                {/* Aspects table */}
+                {full?.aspects && full.aspects.length > 0 && (
+                  <div className="natal-aspects">
+                    <div className="natal-card__tag" style={{ marginTop: '1.25rem' }}>✦ Аспекты</div>
+                    {['conjunction', 'trine', 'sextile', 'square', 'opposition', 'quincunx'].map(type => {
+                      const group = full.aspects.filter((a: any) => a.aspect === type)
+                      if (group.length === 0) return null
+                      const symbols: Record<string, string> = {
+                        conjunction: '☌', trine: '△', sextile: '⚹',
+                        square: '□', opposition: '☍', quincunx: '⚻',
+                      }
+                      const names: Record<string, string> = {
+                        conjunction: 'Соединение', trine: 'Трин', sextile: 'Секстиль',
+                        square: 'Квадрат', opposition: 'Оппозиция', quincunx: 'Квинконс',
+                      }
+                      return (
+                        <div key={type} className="natal-aspect-group">
+                          <div className="natal-aspect-group__title">
+                            <span className="natal-aspect-group__symbol">{symbols[type]}</span>
+                            {names[type]}
+                          </div>
+                          {group.map((a: any, i: number) => (
+                            <div key={i} className="natal-aspect-row">
+                              <span>{PLANET_SYMBOLS[a.p1] ?? a.p1}</span>
+                              <span className="natal-aspect-row__sym">{symbols[type]}</span>
+                              <span>{PLANET_SYMBOLS[a.p2] ?? a.p2}</span>
+                              <span className="natal-aspect-row__orb">{a.orb.toFixed(1)}°</span>
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* House cusps table */}
+                {full?.houses && full.houses.length > 0 && (
+                  <div className="natal-houses-table">
+                    <div className="natal-card__tag" style={{ marginTop: '1.25rem' }}>✦ Куспиды домов</div>
+                    <div className="natal-houses-grid">
+                      {full.houses.map((h: any) => {
+                        const signRu = SIGN_EN_TO_RU[h.sign?.charAt(0).toUpperCase() + h.sign?.slice(1)] ?? h.sign_ru ?? h.sign
+                        const deg = h.degree ?? 0
+                        const signDeg = deg % 30
+                        const d = Math.floor(signDeg)
+                        const m = Math.floor((signDeg - d) * 60)
+                        const axisLabel: Record<number, string> = { 1: 'AC', 4: 'IC', 7: 'DC', 10: 'MC' }
+                        return (
+                          <div key={h.number} className={`natal-house-row${axisLabel[h.number] ? ' natal-house-row--axis' : ''}`}>
+                            <span className="natal-house-row__num">{h.number}</span>
+                            <span className="natal-house-row__sign">{signRu}</span>
+                            <span className="natal-house-row__deg">{d}°{m.toString().padStart(2,'0')}'</span>
+                            {axisLabel[h.number] && <span className="natal-house-row__axis">{axisLabel[h.number]}</span>}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
               </motion.div>
             </PremiumGate>
           </>
