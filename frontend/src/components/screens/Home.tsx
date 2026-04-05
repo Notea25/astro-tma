@@ -11,6 +11,28 @@ import { useAppStore } from '@/stores/app'
 import { useHaptic } from '@/hooks/useTelegram'
 import { ZODIAC_SIGNS } from '@/types'
 
+const POWER_EMOJIS: Record<string, string[]> = {
+  aries: ['🔥','⚡','🗡️','🏆','🚀','💥'],
+  taurus: ['🌿','💎','🍯','🏔️','🌸','💰'],
+  gemini: ['🦋','💬','📚','🎭','✨','🌀'],
+  cancer: ['🌙','🏠','💧','🐚','🌊','💫'],
+  leo: ['☀️','👑','🦁','🔥','💛','⭐'],
+  virgo: ['🌾','💚','📋','🌿','🔬','✅'],
+  libra: ['⚖️','🌹','💎','🎨','💕','🕊️'],
+  scorpio: ['🦂','🔮','🌑','💀','🖤','🌌'],
+  sagittarius: ['🏹','🌍','🔥','🗺️','🐎','🎯'],
+  capricorn: ['🏔️','⛰️','🧱','💼','🪨','🏗️'],
+  aquarius: ['💡','🌐','⚡','🔭','🛸','🌈'],
+  pisces: ['🐟','🌊','💜','🔮','🎵','🌙'],
+}
+
+function getPowerEmoji(sign?: string): string {
+  if (!sign) return '✨'
+  const emojis = POWER_EMOJIS[sign.toLowerCase()] ?? ['✨']
+  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000)
+  return emojis[dayOfYear % emojis.length]
+}
+
 type Period = 'today' | 'tomorrow' | 'week' | 'month'
 
 const PERIOD_LABELS: Record<Period, string> = {
@@ -117,6 +139,10 @@ export function Home() {
             </div>
             <p className="horoscope-text">{horoscope?.text_ru}</p>
             {horoscope?.energy && <EnergyBars scores={horoscope.energy} />}
+            <div className="power-emoji-row">
+              <span className="power-emoji-row__icon">{getPowerEmoji(user?.sun_sign ?? undefined)}</span>
+              <span className="power-emoji-row__text">Ваша энергия дня</span>
+            </div>
           </motion.div>
         ) : (
           <PremiumGate
