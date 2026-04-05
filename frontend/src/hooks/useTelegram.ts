@@ -81,5 +81,15 @@ export function useTelegramReady() {
   useEffect(() => {
     WebApp.ready()
     WebApp.expand()
+
+    // Fullscreen mode (Bot API 8.0+)
+    try {
+      (WebApp as any).requestFullscreen?.()
+    } catch { /* not supported in older clients */ }
+
+    // Prevent swipe-down to close
+    try {
+      (WebApp as any).disableVerticalSwipes?.()
+    } catch { /* not supported */ }
   }, [])
 }
