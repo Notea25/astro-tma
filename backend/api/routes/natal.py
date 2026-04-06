@@ -1,6 +1,7 @@
 """Natal chart endpoints — full chart retrieval and SVG generation."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.middleware.telegram_auth import get_tg_user
@@ -146,3 +147,59 @@ async def get_natal_full(
 
     await cache_set(cache_key, result, settings.CACHE_TTL_NATAL)
     return result
+
+
+@router.get("/pdf")
+async def get_natal_pdf(
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Generate and return natal chart PDF report."""
+    from services.natal_pdf import generate_natal_pdf
+
+    user = await user_repo.get_by_id(db, tg_user["id"])
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+
+    is_prem = await user_repo.is_premium(db, user.id)
+    has_purchase = await user_repo.has_purchased(db, user.id, "natal_full")
+    if not (is_prem or has_purchase):
+        raise HTTPException(status.HTTP_402_PAYMENT_REQUIRED, "Premium required")
+
+    if not user.natal_chart:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "No birth data")
+
+    chart = user.natal_chart
+    planets = chart.chart_data.get("planets", {})
+    houses = chart.chart_data.get("houses", [])
+    aspects_raw = chart.chart_data.get("aspects", [])
+    aspects = [
+        {"p1": a.get("p1",""), "p2": a.get("p2",""), "aspect": a.get("aspect",""), "orb": a.get("orb",0)}
+        for a in aspects_raw
+    ]
+
+    # Get cached reading if available
+    cache_key = key_natal(user.id)
+    cached = await cache_get(cache_key)
+    reading = cached.get("reading") if cached else None
+
+    pdf_bytes = generate_natal_pdf(
+        user_name=user.name or "User",
+        birth_date=str(user.birth_date) if user.birth_date else "",
+        birth_time=str(user.birth_time)[:5] if user.birth_time else None,
+        birth_city=user.birth_city or "",
+        sun_sign=chart.sun_sign or "",
+        moon_sign=chart.moon_sign or "",
+        asc_sign=chart.ascendant_sign,
+        planets=planets,
+        houses=houses,
+        aspects=aspects,
+        reading=reading,
+    )
+
+    filename = f"natal_{user.name or 'chart'}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

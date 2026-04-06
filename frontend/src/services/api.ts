@@ -68,6 +68,19 @@ export const horoscopeApi = {
 export const natalApi = {
   getSummary: () => request<import('@/types').NatalSummaryResponse>('GET', '/natal/summary'),
   getFull: () => request<import('@/types').NatalFullResponse>('GET', '/natal/full'),
+  downloadPdf: async () => {
+    const res = await fetch(`${BASE_URL}/natal/pdf`, {
+      headers: { 'X-Init-Data': WebApp.initData },
+    })
+    if (!res.ok) throw new ApiError(res.status, 'PDF generation failed')
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'natal-chart.pdf'
+    a.click()
+    URL.revokeObjectURL(url)
+  },
 }
 
 // ── Tarot ──────────────────────────────────────────────────────────────────────
