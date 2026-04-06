@@ -75,11 +75,17 @@ export const natalApi = {
     if (!res.ok) throw new ApiError(res.status, 'PDF generation failed')
     const blob = await res.blob()
     const url = URL.createObjectURL(blob)
+    // Try standard download
     const a = document.createElement('a')
     a.href = url
     a.download = 'natal-chart.pdf'
+    document.body.appendChild(a)
     a.click()
-    URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+    // Fallback: open in new tab (for Telegram WebView)
+    setTimeout(() => {
+      window.open(url, '_blank')
+    }, 500)
   },
 }
 

@@ -184,9 +184,9 @@ async def get_natal_pdf(
     reading = cached.get("reading") if cached else None
 
     pdf_bytes = generate_natal_pdf(
-        user_name=user.name or "User",
+        user_name=user.tg_first_name or "User",
         birth_date=str(user.birth_date) if user.birth_date else "",
-        birth_time=str(user.birth_time)[:5] if user.birth_time else None,
+        birth_time=str(user.birth_time)[:5] if getattr(user, 'birth_time', None) else None,
         birth_city=user.birth_city or "",
         sun_sign=chart.sun_sign or "",
         moon_sign=chart.moon_sign or "",
@@ -197,7 +197,7 @@ async def get_natal_pdf(
         reading=reading,
     )
 
-    filename = f"natal_{user.name or 'chart'}.pdf"
+    filename = f"natal_{user.tg_first_name or 'chart'}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
