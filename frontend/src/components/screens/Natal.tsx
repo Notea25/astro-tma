@@ -517,6 +517,20 @@ export function Natal() {
                     </div>
                   </div>
                 )}
+                {/* Download PDF button */}
+                {full && (
+                  <motion.button
+                    className="btn-secondary btn-with-icon"
+                    style={{ marginTop: 20 }}
+                    onClick={() => natalApi.downloadPdf()}
+                    whileTap={{ scale: 0.96 }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M7.5 1.5v9M3.5 7.5l4 4 4-4M2 13h11"/>
+                    </svg>
+                    Скачать полный отчёт (PDF)
+                  </motion.button>
+                )}
               </motion.div>
             </PremiumGate>
           </>
