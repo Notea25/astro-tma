@@ -11,8 +11,8 @@ services:
 
   postgres:
     ports:
-      - "5432:5432"   # expose locally for DB GUI tools
+      - "5433:5432"   # expose locally for DB GUI tools (5433 to avoid conflicts)
 
   redis:
     ports:
-      - "6379:6379"
+      - "6380:6379"

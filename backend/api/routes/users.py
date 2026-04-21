@@ -5,7 +5,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.middleware.telegram_auth import get_tg_user
-from api.schemas.user import SetGenderRequest, SetupBirthDataRequest, SetupBirthDataResponse, UserProfile
+from api.schemas.user import (
+    SetGenderRequest, SetPushRequest, SetupBirthDataRequest,
+    SetupBirthDataResponse, UserProfile,
+)
 from core.cache import cache_delete, key_natal, key_user_premium
 from core.logging import get_logger
 from core.settings import settings
@@ -76,6 +79,34 @@ async def set_gender(
 
     gender_enum = Gender(body.gender)
     user.gender = gender_enum
+    await db.commit()
+
+    is_prem = await user_repo.is_premium(db, user.id)
+    return UserProfile(
+        id=user.id,
+        name=user.tg_first_name,
+        gender=user.gender.value if user.gender else None,
+        sun_sign=user.sun_sign.value if user.sun_sign else None,
+        birth_city=user.birth_city,
+        birth_time_known=user.birth_time_known,
+        push_enabled=user.push_enabled,
+        is_premium=is_prem,
+        created_at=user.created_at,
+    )
+
+
+@router.patch("/me/push", response_model=UserProfile)
+async def set_push_enabled(
+    body: SetPushRequest,
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Toggle push notifications for the current user."""
+    user = await user_repo.get_by_id(db, tg_user["id"])
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+
+    user.push_enabled = body.enabled
     await db.commit()
 
     is_prem = await user_repo.is_premium(db, user.id)

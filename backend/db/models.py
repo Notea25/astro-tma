@@ -46,6 +46,24 @@ class HoroscopePeriod(str, enum.Enum):
     TODAY = "today"; TOMORROW = "tomorrow"
     WEEK = "week"; MONTH = "month"; YEAR = "year"
 
+class SynastryRequestStatus(str, enum.Enum):
+    PENDING = "pending"; COMPLETED = "completed"; EXPIRED = "expired"
+
+class NotificationType(str, enum.Enum):
+    DAILY_HOROSCOPE = "daily_horoscope"
+    TRANSIT_ALERT = "transit_alert"
+    NEWS = "news"
+
+class NotificationStatus(str, enum.Enum):
+    SENT = "sent"; FAILED = "failed"; SKIPPED = "skipped"
+
+class GlossaryCategory(str, enum.Enum):
+    PLANET = "planet"; SIGN = "sign"; HOUSE = "house"
+    ASPECT = "aspect"; CONCEPT = "concept"
+
+class NewsCategory(str, enum.Enum):
+    ASPECT = "aspect"; INGRESS = "ingress"; MOON = "moon"; EVENT = "event"
+
 
 # ── Mixin ─────────────────────────────────────────────────────────────────────
 class TimestampMixin:
@@ -201,6 +219,64 @@ class Purchase(TimestampMixin, Base):
     tg_payment_charge_id: Mapped[str | None] = mapped_column(String(256), unique=True)
     payload: Mapped[str] = mapped_column(String(512))
     user: Mapped["User"] = relationship(back_populates="purchases")
+
+
+# ── Synastry ──────────────────────────────────────────────────────────────────
+class SynastryRequest(TimestampMixin, Base):
+    """Invite-based synastry flow: initiator buys, partner accepts via deep-link token."""
+    __tablename__ = "synastry_requests"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    initiator_user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    partner_user_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    token: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
+    status: Mapped[SynastryRequestStatus] = mapped_column(
+        Enum(SynastryRequestStatus, values_callable=lambda e: [x.value for x in e]),
+        default=SynastryRequestStatus.PENDING, nullable=False)
+    result_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+# ── Notifications ─────────────────────────────────────────────────────────────
+class NotificationLog(TimestampMixin, Base):
+    __tablename__ = "notification_logs"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    type: Mapped[NotificationType] = mapped_column(
+        Enum(NotificationType, values_callable=lambda e: [x.value for x in e]), nullable=False)
+    status: Mapped[NotificationStatus] = mapped_column(
+        Enum(NotificationStatus, values_callable=lambda e: [x.value for x in e]), nullable=False)
+    tg_message_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+# ── Glossary ──────────────────────────────────────────────────────────────────
+class GlossaryTerm(TimestampMixin, Base):
+    __tablename__ = "glossary_terms"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    slug: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    title_ru: Mapped[str] = mapped_column(String(128), nullable=False)
+    category: Mapped[GlossaryCategory] = mapped_column(
+        Enum(GlossaryCategory, values_callable=lambda e: [x.value for x in e]), nullable=False)
+    short_ru: Mapped[str] = mapped_column(String(200), nullable=False)
+    full_ru: Mapped[str] = mapped_column(Text, nullable=False)
+    related_slugs: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+
+
+# ── Astro News ────────────────────────────────────────────────────────────────
+class AstroNews(TimestampMixin, Base):
+    __tablename__ = "astro_news"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    title_ru: Mapped[str] = mapped_column(String(200), nullable=False)
+    body_md: Mapped[str] = mapped_column(Text, nullable=False)
+    category: Mapped[NewsCategory] = mapped_column(
+        Enum(NewsCategory, values_callable=lambda e: [x.value for x in e]), nullable=False)
+    priority: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
+    source_data: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    published: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
 
 # ── MAC (Metaphorical Associative Cards) ─────────────────────────────────────
