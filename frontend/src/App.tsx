@@ -5,6 +5,7 @@ import { BottomNav } from "@/components/ui/BottomNav";
 import { usersApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
 import { useStartParam, useTelegramReady } from "@/hooks/useTelegram";
+import { LoadingScreenFull } from "@/components/screens/LoadingScreen";
 
 const Onboarding = lazy(() =>
   import("@/components/screens/Onboarding").then((m) => ({
@@ -78,39 +79,12 @@ const NewsDetail = lazy(() =>
 function SplashScreen() {
   return (
     <motion.div
-      className="splash-screen"
+      style={{ position: "fixed", inset: 0, zIndex: 999 }}
       initial={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.5 }}
+      transition={{ duration: 0.6, ease: "easeInOut" }}
     >
-      <img src="/splash-bg.jpg" alt="" className="splash-bg" />
-      <motion.div
-        className="splash-content"
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
-      >
-        <h1 className="splash-title">ASTRO</h1>
-        <div className="splash-divider" />
-        <motion.p
-          className="splash-subtitle"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.6 }}
-        >
-          Ваш персональный астролог
-        </motion.p>
-        <motion.div
-          className="splash-dots"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8, duration: 0.5 }}
-        >
-          <span />
-          <span />
-          <span />
-        </motion.div>
-      </motion.div>
+      <LoadingScreenFull />
     </motion.div>
   );
 }
