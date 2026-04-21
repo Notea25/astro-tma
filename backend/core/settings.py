@@ -17,8 +17,12 @@ class Settings(BaseSettings):
 
     # Telegram
     TELEGRAM_BOT_TOKEN: str
+    TELEGRAM_BOT_USERNAME: str = ""
     TELEGRAM_WEBHOOK_SECRET: str
     TELEGRAM_WEBHOOK_URL: str
+
+    # Push scheduling
+    PUSH_DAILY_HOUR: int = 9
 
     # Database
     DATABASE_URL: PostgresDsn

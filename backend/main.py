@@ -17,7 +17,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
-from api.routes import compatibility, horoscope, mac, natal, payments, tarot, users
+from api.routes import compatibility, glossary, horoscope, mac, natal, news, payments, synastry, tarot, transits, users
 from core.cache import close_redis, init_redis
 from core.logging import get_logger, setup_logging
 from core.settings import settings
@@ -43,6 +43,25 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         minute=5,
         id="daily_horoscopes",
     )
+
+    if settings.FEATURE_PUSH_NOTIFICATIONS:
+        from services.notifications.scheduler import send_daily_pushes
+        scheduler.add_job(
+            send_daily_pushes,
+            trigger="cron",
+            minute=0,  # every hour on the hour
+            id="daily_pushes",
+        )
+
+    from services.news.scheduler import generate_daily_news
+    scheduler.add_job(
+        generate_daily_news,
+        trigger="cron",
+        hour=6,
+        minute=0,
+        id="daily_news",
+    )
+
     scheduler.start()
     log.info("scheduler.started")
 
@@ -128,6 +147,10 @@ app.include_router(compatibility.router, prefix="/api")
 app.include_router(natal.router,         prefix="/api")
 app.include_router(payments.router,      prefix="/api")
 app.include_router(mac.router,           prefix="/api")
+app.include_router(transits.router,      prefix="/api")
+app.include_router(synastry.router,      prefix="/api")
+app.include_router(glossary.router,      prefix="/api")
+app.include_router(news.router,          prefix="/api")
 
 
 # ── Admin ─────────────────────────────────────────────────────────────────────

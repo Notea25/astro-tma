@@ -10,7 +10,7 @@ from kerykeion import AstrologicalSubjectFactory
 from kerykeion import SynastryAspects
 
 from core.logging import get_logger
-from services.astro.natal import NatalChartData, _PLANET_ATTRS
+from services.astro.natal import _PLANET_ATTRS
 
 log = get_logger(__name__)
 
@@ -55,18 +55,27 @@ def get_current_sky(dt: datetime | None = None) -> dict[str, Any]:
     }
 
 
-def calculate_transits(natal: NatalChartData, dt: datetime | None = None) -> list[dict[str, Any]]:
+def calculate_transits(
+    birth_dt: datetime,
+    lat: float,
+    lng: float,
+    tz_str: str,
+    dt: datetime | None = None,
+    birth_time_known: bool = True,
+) -> list[dict[str, Any]]:
     """
     Find significant transit aspects to natal chart.
     Returns list sorted by significance (highest-weight first).
     """
     dt = dt or datetime.now(timezone.utc)
+    hour = birth_dt.hour if birth_time_known else 12
+    minute = birth_dt.minute if birth_time_known else 0
 
     natal_subject = AstrologicalSubjectFactory.from_birth_data(
         name="_natal",
-        year=2000, month=1, day=1,  # placeholder — we override planets below
-        hour=12, minute=0,
-        lat=0.0, lng=0.0, tz_str="UTC",
+        year=birth_dt.year, month=birth_dt.month, day=birth_dt.day,
+        hour=hour, minute=minute,
+        lat=lat, lng=lng, tz_str=tz_str,
         online=False,
     )
     transit_subject = AstrologicalSubjectFactory.from_birth_data(

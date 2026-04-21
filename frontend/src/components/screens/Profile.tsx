@@ -1,85 +1,111 @@
-import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { usersApi, natalApi } from '@/services/api'
-import { useAppStore } from '@/stores/app'
-import { useHaptic } from '@/hooks/useTelegram'
-import { ZODIAC_SIGNS } from '@/types'
-import { CityAutocomplete, type CityOption } from '@/components/ui/CityAutocomplete'
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { usersApi, natalApi } from "@/services/api";
+import { useAppStore } from "@/stores/app";
+import { useHaptic } from "@/hooks/useTelegram";
+import { ZODIAC_SIGNS } from "@/types";
+import {
+  CityAutocomplete,
+  type CityOption,
+} from "@/components/ui/CityAutocomplete";
 
 export function Profile() {
-  const { user, setUser } = useAppStore()
-  const { impact, notification } = useHaptic()
-  const queryClient = useQueryClient()
+  const { user, setUser } = useAppStore();
+  const { impact, notification } = useHaptic();
+  const queryClient = useQueryClient();
 
-  const [editing, setEditing] = useState(false)
-  const [birthDate, setBirthDate] = useState('')
-  const [birthTime, setBirthTime] = useState('')
-  const [birthTimeKnown, setBirthTimeKnown] = useState(user?.birth_time_known ?? false)
-  const [birthCity, setBirthCity] = useState(user?.birth_city ?? '')
-  const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(null)
-  const [savedCity, setSavedCity] = useState<string | null>(null)
-  const [gender, setGender] = useState(user?.gender ?? '')
+  const [editing, setEditing] = useState(false);
+  const [birthDate, setBirthDate] = useState("");
+  const [birthTime, setBirthTime] = useState("");
+  const [birthTimeKnown, setBirthTimeKnown] = useState(
+    user?.birth_time_known ?? false,
+  );
+  const [birthCity, setBirthCity] = useState(user?.birth_city ?? "");
+  const [selectedCoords, setSelectedCoords] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+  const [savedCity, setSavedCity] = useState<string | null>(null);
+  const [gender, setGender] = useState(user?.gender ?? "");
 
-  const userSign = ZODIAC_SIGNS.find(s => s.value === user?.sun_sign)
+  const userSign = ZODIAC_SIGNS.find((s) => s.value === user?.sun_sign);
 
   const { data: natalSummary } = useQuery({
-    queryKey: ['natal-summary'],
+    queryKey: ["natal-summary"],
     queryFn: natalApi.getSummary,
     enabled: !!user?.birth_city,
     staleTime: 1000 * 60 * 10,
-  })
+  });
 
   const SIGN_RU: Record<string, string> = {
-    Aries: 'Овен', Taurus: 'Телец', Gemini: 'Близнецы', Cancer: 'Рак',
-    Leo: 'Лев', Virgo: 'Дева', Libra: 'Весы', Scorpio: 'Скорпион',
-    Sagittarius: 'Стрелец', Capricorn: 'Козерог', Aquarius: 'Водолей', Pisces: 'Рыбы',
-  }
+    Aries: "Овен",
+    Taurus: "Телец",
+    Gemini: "Близнецы",
+    Cancer: "Рак",
+    Leo: "Лев",
+    Virgo: "Дева",
+    Libra: "Весы",
+    Scorpio: "Скорпион",
+    Sagittarius: "Стрелец",
+    Capricorn: "Козерог",
+    Aquarius: "Водолей",
+    Pisces: "Рыбы",
+  };
 
   const birthMutation = useMutation({
     mutationFn: usersApi.setupBirth,
     onSuccess: async (resp: any) => {
-      notification('success')
-      impact('medium')
-      setSavedCity(resp.city_resolved ?? birthCity)
-      setEditing(false)
-      const updated = await usersApi.upsertMe()
-      setUser(updated)
-      queryClient.invalidateQueries({ queryKey: ['natal-summary'] })
-      queryClient.invalidateQueries({ queryKey: ['natal-full'] })
+      notification("success");
+      impact("medium");
+      setSavedCity(resp.city_resolved ?? birthCity);
+      setEditing(false);
+      const updated = await usersApi.upsertMe();
+      setUser(updated);
+      queryClient.invalidateQueries({ queryKey: ["natal-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["natal-full"] });
     },
-  })
+  });
 
   const genderMutation = useMutation({
     mutationFn: (g: string) => usersApi.setGender(g),
     onSuccess: async (updated: any) => {
-      setUser(updated)
+      setUser(updated);
     },
-  })
+  });
+
+  const pushMutation = useMutation({
+    mutationFn: (enabled: boolean) => usersApi.setPushEnabled(enabled),
+    onSuccess: (updated: any) => {
+      setUser(updated);
+      impact("light");
+    },
+  });
 
   const handleSave = async () => {
-    impact('light')
+    impact("light");
     if (gender && gender !== user?.gender) {
-      await genderMutation.mutateAsync(gender)
+      await genderMutation.mutateAsync(gender);
     }
     if (birthDate && birthCity) {
-      const datetime = birthTimeKnown && birthTime
-        ? `${birthDate}T${birthTime}:00`
-        : `${birthDate}T12:00:00`
+      const datetime =
+        birthTimeKnown && birthTime
+          ? `${birthDate}T${birthTime}:00`
+          : `${birthDate}T12:00:00`;
       birthMutation.mutate({
         birth_date: datetime,
         birth_time_known: birthTimeKnown,
         birth_city: birthCity,
         ...(selectedCoords ?? {}),
-      })
+      });
     } else if (gender && gender !== user?.gender) {
       // Only gender was changed — close editing
-      notification('success')
-      setEditing(false)
+      notification("success");
+      setEditing(false);
     }
-  }
+  };
 
-  const displayCity = savedCity ?? user?.birth_city
+  const displayCity = savedCity ?? user?.birth_city;
 
   return (
     <div className="screen profile-screen">
@@ -95,23 +121,30 @@ export function Profile() {
           animate={{ opacity: 1, y: 0 }}
         >
           <div className="profile-avatar">
-            {user?.name?.charAt(0)?.toUpperCase() ?? '?'}
+            {user?.name?.charAt(0)?.toUpperCase() ?? "?"}
           </div>
           <div className="profile-info">
-            <div className="profile-name">{user?.name ?? 'Пользователь'}</div>
+            <div className="profile-name">{user?.name ?? "Пользователь"}</div>
             <div className="profile-meta">
               {user?.gender && (
-                <span>{user.gender === 'male' ? 'Мужской' : 'Женский'}</span>
+                <span>{user.gender === "male" ? "Мужской" : "Женский"}</span>
               )}
               {userSign && <span>{userSign.label}</span>}
             </div>
             {natalSummary?.moon_sign && (
               <div className="profile-signs-triple">
-                <span>☉ {(natalSummary.sun_sign && SIGN_RU[natalSummary.sun_sign]) ?? userSign?.label}</span>
+                <span>
+                  ☉{" "}
+                  {(natalSummary.sun_sign && SIGN_RU[natalSummary.sun_sign]) ??
+                    userSign?.label}
+                </span>
                 <span>·</span>
                 <span>☽ {SIGN_RU[natalSummary.moon_sign]}</span>
                 {natalSummary.ascendant_sign && (
-                  <><span>·</span><span>↑ {SIGN_RU[natalSummary.ascendant_sign]}</span></>
+                  <>
+                    <span>·</span>
+                    <span>↑ {SIGN_RU[natalSummary.ascendant_sign]}</span>
+                  </>
                 )}
               </div>
             )}
@@ -133,9 +166,18 @@ export function Profile() {
                 <div className="profile-birth-info">
                   <div className="natal-summary-row">
                     <span className="natal-summary-label">
-                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M7 1C4.79 1 3 2.79 3 5c0 3.25 4 8 4 8s4-4.75 4-8c0-2.21-1.79-4-4-4z"/>
-                        <circle cx="7" cy="5" r="1.2"/>
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 14 14"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M7 1C4.79 1 3 2.79 3 5c0 3.25 4 8 4 8s4-4.75 4-8c0-2.21-1.79-4-4-4z" />
+                        <circle cx="7" cy="5" r="1.2" />
                       </svg>
                       Город
                     </span>
@@ -143,32 +185,44 @@ export function Profile() {
                   </div>
                   <div className="natal-summary-row">
                     <span className="natal-summary-label">
-                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="7" cy="7" r="5.5"/>
-                        <polyline points="7,4 7,7 9,8"/>
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 14 14"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <circle cx="7" cy="7" r="5.5" />
+                        <polyline points="7,4 7,7 9,8" />
                       </svg>
                       Время
                     </span>
                     <span className="natal-summary-value">
-                      {user?.birth_time_known ? 'Точное' : 'Неизвестно (полдень)'}
+                      {user?.birth_time_known
+                        ? "Точное"
+                        : "Неизвестно (полдень)"}
                     </span>
                   </div>
                 </div>
               ) : (
                 <p className="profile-birth-empty">
-                  Данные рождения не указаны. Добавьте их для расчёта натальной карты.
+                  Данные рождения не указаны. Добавьте их для расчёта натальной
+                  карты.
                 </p>
               )}
               <button
                 className="btn-primary"
-                style={{ marginTop: '0.75rem' }}
+                style={{ marginTop: "0.75rem" }}
                 onClick={() => {
-                  impact('light')
-                  setBirthCity(displayCity ?? '')
-                  setEditing(true)
+                  impact("light");
+                  setBirthCity(displayCity ?? "");
+                  setEditing(true);
                 }}
               >
-                {displayCity ? 'Изменить' : 'Добавить данные'}
+                {displayCity ? "Изменить" : "Добавить данные"}
               </button>
             </>
           ) : (
@@ -178,15 +232,15 @@ export function Profile() {
                 <div className="gender-toggle">
                   <button
                     type="button"
-                    className={`gender-btn${gender === 'male' ? ' active' : ''}`}
-                    onClick={() => setGender('male')}
+                    className={`gender-btn${gender === "male" ? " active" : ""}`}
+                    onClick={() => setGender("male")}
                   >
                     Мужской
                   </button>
                   <button
                     type="button"
-                    className={`gender-btn${gender === 'female' ? ' active' : ''}`}
-                    onClick={() => setGender('female')}
+                    className={`gender-btn${gender === "female" ? " active" : ""}`}
+                    onClick={() => setGender("female")}
                   >
                     Женский
                   </button>
@@ -200,7 +254,7 @@ export function Profile() {
                   className="form-input"
                   value={birthDate}
                   onChange={(e) => setBirthDate(e.target.value)}
-                  max={new Date().toISOString().split('T')[0]}
+                  max={new Date().toISOString().split("T")[0]}
                 />
               </div>
 
@@ -208,11 +262,15 @@ export function Profile() {
                 <button
                   type="button"
                   className="toggle-row"
-                  onClick={() => setBirthTimeKnown(v => !v)}
+                  onClick={() => setBirthTimeKnown((v) => !v)}
                   aria-pressed={birthTimeKnown}
                 >
-                  <span className="toggle-row__label">Знаю точное время рождения</span>
-                  <span className={`toggle-switch${birthTimeKnown ? ' toggle-switch--on' : ''}`}>
+                  <span className="toggle-row__label">
+                    Знаю точное время рождения
+                  </span>
+                  <span
+                    className={`toggle-switch${birthTimeKnown ? " toggle-switch--on" : ""}`}
+                  >
                     <span className="toggle-switch__thumb" />
                   </span>
                 </button>
@@ -234,16 +292,21 @@ export function Profile() {
                 <label className="form-label">Город рождения</label>
                 <CityAutocomplete
                   value={birthCity}
-                  onChange={(v) => { setBirthCity(v); setSelectedCoords(null) }}
+                  onChange={(v) => {
+                    setBirthCity(v);
+                    setSelectedCoords(null);
+                  }}
                   onSelect={(opt: CityOption) => {
-                    setBirthCity(opt.displayName)
-                    setSelectedCoords({ lat: opt.lat, lng: opt.lng })
+                    setBirthCity(opt.displayName);
+                    setSelectedCoords({ lat: opt.lat, lng: opt.lng });
                   }}
                 />
                 {selectedCoords && (
                   <div className="city-autocomplete__confirmed">
-                    ✓ {selectedCoords.lat.toFixed(4)}° {selectedCoords.lat >= 0 ? 'с.ш.' : 'ю.ш.'}
-                    &nbsp;&nbsp;{selectedCoords.lng.toFixed(4)}° {selectedCoords.lng >= 0 ? 'в.д.' : 'з.д.'}
+                    ✓ {selectedCoords.lat.toFixed(4)}°{" "}
+                    {selectedCoords.lat >= 0 ? "с.ш." : "ю.ш."}
+                    &nbsp;&nbsp;{selectedCoords.lng.toFixed(4)}°{" "}
+                    {selectedCoords.lng >= 0 ? "в.д." : "з.д."}
                   </div>
                 )}
               </div>
@@ -252,14 +315,22 @@ export function Profile() {
                 <motion.button
                   className="btn-primary"
                   onClick={handleSave}
-                  disabled={(!gender && !birthDate) || (birthDate && !birthCity) || birthMutation.isPending || genderMutation.isPending}
+                  disabled={
+                    (!gender && !birthDate) ||
+                    (birthDate && !birthCity) ||
+                    birthMutation.isPending ||
+                    genderMutation.isPending
+                  }
                   whileTap={{ scale: 0.97 }}
                 >
-                  {birthMutation.isPending ? 'Считаем карту...' : 'Сохранить'}
+                  {birthMutation.isPending ? "Считаем карту..." : "Сохранить"}
                 </motion.button>
                 <button
                   className="btn-ghost"
-                  onClick={() => { impact('light'); setEditing(false) }}
+                  onClick={() => {
+                    impact("light");
+                    setEditing(false);
+                  }}
                   disabled={birthMutation.isPending}
                 >
                   Отмена
@@ -274,7 +345,36 @@ export function Profile() {
             </div>
           )}
         </motion.div>
+
+        <motion.div
+          className="natal-card"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.12 }}
+        >
+          <div className="natal-card__tag">✦ Уведомления</div>
+          <div className="push-toggle-row">
+            <div>
+              <div className="push-toggle-title">Утренний гороскоп</div>
+              <div className="push-toggle-desc">
+                Сообщение от бота каждое утро ~9:00 по вашему времени
+              </div>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={user?.push_enabled ?? false}
+              className={`push-switch${user?.push_enabled ? " push-switch--on" : ""}`}
+              onClick={() =>
+                pushMutation.mutate(!(user?.push_enabled ?? false))
+              }
+              disabled={pushMutation.isPending}
+            >
+              <span className="push-switch__dot" />
+            </button>
+          </div>
+        </motion.div>
       </div>
     </div>
-  )
+  );
 }

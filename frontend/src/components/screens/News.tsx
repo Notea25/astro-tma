@@ -1,0 +1,101 @@
+import { useQuery } from "@tanstack/react-query";
+import { motion } from "framer-motion";
+import { useAppStore } from "@/stores/app";
+import { newsApi } from "@/services/api";
+
+const CATEGORY_EMOJI: Record<string, string> = {
+  aspect: "✦",
+  ingress: "→",
+  moon: "☽",
+  event: "☉",
+};
+
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  const months = [
+    "янв",
+    "фев",
+    "мар",
+    "апр",
+    "май",
+    "июн",
+    "июл",
+    "авг",
+    "сен",
+    "окт",
+    "ноя",
+    "дек",
+  ];
+  return `${d.getDate()} ${months[d.getMonth()]}`;
+}
+
+export function News() {
+  const { setScreen, setNewsId } = useAppStore();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["news"],
+    queryFn: () => newsApi.list({ limit: 30 }),
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const openItem = (id: number) => {
+    setNewsId(id);
+    setScreen("news_detail");
+  };
+
+  return (
+    <div className="screen">
+      <div className="screen-header screen-header--with-back">
+        <button
+          className="back-btn"
+          onClick={() => setScreen("discover", "back")}
+          aria-label="Назад"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M13 4l-6 6 6 6" />
+          </svg>
+        </button>
+        <h2 className="screen-title">Астро-новости</h2>
+      </div>
+
+      <div className="screen-content">
+        {isLoading && (
+          <p style={{ color: "var(--text-secondary)", textAlign: "center" }}>
+            Загрузка...
+          </p>
+        )}
+        {data && data.length === 0 && (
+          <p style={{ color: "var(--text-secondary)", textAlign: "center" }}>
+            Новостей пока нет. Загляните позже.
+          </p>
+        )}
+        {data &&
+          data.map((item, idx) => (
+            <motion.button
+              key={item.id}
+              className="news-card"
+              onClick={() => openItem(item.id)}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.03, duration: 0.25 }}
+            >
+              <div className="news-card__date">
+                {CATEGORY_EMOJI[item.category] ?? "✦"} {formatDate(item.date)}
+              </div>
+              <div className="news-card__title">{item.title_ru}</div>
+              <div className="news-card__body">{item.preview}</div>
+            </motion.button>
+          ))}
+      </div>
+    </div>
+  );
+}
