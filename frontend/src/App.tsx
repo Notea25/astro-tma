@@ -121,7 +121,7 @@ export default function App() {
 
   useEffect(() => {
     syncUser.mutate();
-    const timer = setTimeout(() => setReady(true), 2500);
+    const timer = setTimeout(() => setReady(true), 3500);
     return () => clearTimeout(timer);
   }, []);
 
