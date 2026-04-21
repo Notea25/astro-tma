@@ -39,35 +39,47 @@ async def get_natal_summary(
 
     chart = user.natal_chart
 
-    # Planet positions for SVG wheel (degrees 0-360, not interpretation)
+    # Full planet positions for wheel
     planets_for_wheel = {}
     raw_planets = chart.chart_data.get("planets", {})
     for name, data in raw_planets.items():
         planets_for_wheel[name] = {
-            "degree": data.get("degree", 0),
-            "sign": data.get("sign", ""),
-            "retrograde": data.get("retrograde", False),
+            "degree":      data.get("degree", 0),       # absolute 0–360
+            "sign_degree": data.get("sign_degree", 0),  # within-sign 0–30
+            "sign":        data.get("sign", ""),
+            "house":       data.get("house", 1),
+            "retrograde":  data.get("retrograde", False),
         }
 
-    # House cusps for wheel
+    # House cusps with sign
     houses_for_wheel = []
     for h in chart.chart_data.get("houses", []):
         houses_for_wheel.append({
             "number": h.get("number", 0),
             "degree": h.get("degree", 0),
+            "sign":   h.get("sign", ""),
         })
 
+    # Birth date / time
+    birth_date_str = user.birth_date.strftime("%Y-%m-%d") if user.birth_date else None
+    birth_time_str = user.birth_date.strftime("%H:%M") if (user.birth_date and user.birth_time_known) else "12:00"
+
     return {
-        "has_chart": True,
+        "has_chart":        True,
         "sun_sign":         chart.sun_sign,
         "moon_sign":        chart.moon_sign,
         "ascendant_sign":   chart.ascendant_sign,
+        "mc_sign":          chart.chart_data.get("mc_sign"),
         "birth_city":       user.birth_city,
         "birth_time_known": user.birth_time_known,
         "birth_lat":        user.birth_lat,
         "birth_lng":        user.birth_lng,
+        "birth_tz":         user.birth_tz,
+        "birth_date":       birth_date_str,
+        "birth_time":       birth_time_str,
         "planets":          planets_for_wheel,
         "houses":           houses_for_wheel,
+        "aspects":          chart.chart_data.get("aspects", []),
     }
 
 
