@@ -21,7 +21,7 @@ from db.database import get_db
 from db.models import DailyHoroscope, HoroscopePeriod, NatalChart, ZodiacSign
 from services.astro.moon import get_moon_phase, get_monthly_calendar
 from services.astro.natal import NatalChartData, chart_to_json
-from services.astro.transits import build_energy_scores, calculate_transits
+from services.astro.transits import build_energy_scores
 from services.users import repository as user_repo
 
 router = APIRouter(prefix="/horoscope", tags=["horoscope"])

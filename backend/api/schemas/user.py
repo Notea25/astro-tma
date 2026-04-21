@@ -18,6 +18,10 @@ class SetGenderRequest(BaseModel):
     gender: str  # "male" | "female"
 
 
+class SetPushRequest(BaseModel):
+    enabled: bool
+
+
 class SetupBirthDataRequest(BaseModel):
     birth_date: datetime
     birth_time_known: bool = False
