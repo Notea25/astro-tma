@@ -141,7 +141,7 @@ export default function App() {
     }
   }, [startParam, ready, synced, inviteHandled, setScreen]);
 
-  const showSplash = !ready || (!synced && onboardingComplete);
+  const showSplash = !ready || !synced;
   const showNav = !showSplash && screen !== "onboarding";
 
   if (showSplash) {
