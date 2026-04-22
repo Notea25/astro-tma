@@ -14,10 +14,24 @@ interface SlotDef {
   rotate?: number
 }
 
-const LAYOUTS: Record<string, { slots: SlotDef[]; w: number; h: number }> = {
+interface LayoutDef {
+  slots: SlotDef[]
+  w: number
+  h: number
+  cardW: number
+  cardH: number
+  showLabels?: boolean
+}
+
+const DEFAULT_CARD_W = 68
+const DEFAULT_CARD_H = 102
+
+const LAYOUTS: Record<string, LayoutDef> = {
   relationship: {
     w: 280,
     h: 460,
+    cardW: DEFAULT_CARD_W,
+    cardH: DEFAULT_CARD_H,
     slots: [
       { slot: 1, x: 16,  y: 0,   label: 'Вы' },
       { slot: 2, x: 196, y: 0,   label: 'Партнёр' },
@@ -27,26 +41,29 @@ const LAYOUTS: Record<string, { slots: SlotDef[]; w: number; h: number }> = {
     ],
   },
   celtic_cross: {
-    w: 355,
-    h: 460,
-    // Card=68x102. Cross center row y=118. Column at x=280.
-    // Card 2: rotated 90°, overlaps bottom 30px of card 1
+    w: 720,
+    h: 720,
+    cardW: 88,
+    cardH: 150,
+    showLabels: true,
     slots: [
-      { slot: 1,  x: 98,  y: 118, label: 'Ситуация' },
-      { slot: 2,  x: 98,  y: 186, label: 'Препятствие', rotate: 90 },
-      { slot: 3,  x: 98,  y: 248, label: 'Подсознание' },
-      { slot: 4,  x: 16,  y: 118, label: 'Прошлое' },
-      { slot: 5,  x: 98,  y: 4,   label: 'Цели' },
-      { slot: 6,  x: 180, y: 118, label: 'Будущее' },
-      { slot: 7,  x: 280, y: 348, label: 'Отношение' },
-      { slot: 8,  x: 280, y: 240, label: 'Окружение' },
-      { slot: 9,  x: 280, y: 118, label: 'Надежды' },
-      { slot: 10, x: 280, y: 4,   label: 'Итог' },
+      { slot: 1,  x: 200, y: 280, label: 'Суть' },
+      { slot: 2,  x: 200, y: 280, label: 'Препятствие', rotate: 90 },
+      { slot: 3,  x: 200, y: 100, label: 'Идеал' },
+      { slot: 4,  x: 200, y: 460, label: 'Основа' },
+      { slot: 5,  x: 40,  y: 280, label: 'Прошлое' },
+      { slot: 6,  x: 360, y: 280, label: 'Будущее' },
+      { slot: 7,  x: 560, y: 560, label: 'Вы сами' },
+      { slot: 8,  x: 560, y: 380, label: 'Окружение' },
+      { slot: 9,  x: 560, y: 200, label: 'Надежды' },
+      { slot: 10, x: 560, y: 20,  label: 'Исход' },
     ],
   },
   week: {
     w: 340,
     h: 240,
+    cardW: DEFAULT_CARD_W,
+    cardH: DEFAULT_CARD_H,
     slots: [
       { slot: 1, x: 0,   y: 0,   label: 'Пн' },
       { slot: 2, x: 82,  y: 0,   label: 'Вт' },
@@ -58,9 +75,6 @@ const LAYOUTS: Record<string, { slots: SlotDef[]; w: number; h: number }> = {
     ],
   },
 }
-
-const CARD_W = 68
-const CARD_H = 102
 
 /* ── Component ───────────────────────────────────────────────────────────── */
 
@@ -94,58 +108,71 @@ export function SpreadLayout({ spreadType, cards }: Props) {
   const selectedCard = selected !== null ? cards[selected] : null
   const selectedSlot = selected !== null ? layout.slots[selected] : null
 
+  const { cardW, cardH } = layout
+
   return (
     <div className="spread-layout">
       {/* ── Card map ── */}
-      <div
-        className="spread-container"
-        style={{ width: layout.w, height: layout.h }}
-      >
-        {layout.slots.map((slot, idx) => {
-          const card = cards[idx]
-          if (!card) return null
-          const isFlipped = flipped.has(idx)
-          const isSelected = selected === idx
-          const isCross = !!slot.rotate
+      <div className="spread-area">
+        <div
+          className="spread-container"
+          style={{ width: layout.w, height: layout.h }}
+        >
+          {layout.slots.map((slot, idx) => {
+            const card = cards[idx]
+            if (!card) return null
+            const isFlipped = flipped.has(idx)
+            const isSelected = selected === idx
+            const isCross = !!slot.rotate
 
-          return (
-            <motion.div
-              key={slot.slot}
-              className={`spread-slot${isCross ? ' spread-slot--cross' : ''}${isSelected ? ' spread-slot--selected' : ''}`}
-              style={{
-                left: slot.x,
-                top: slot.y,
-                width: CARD_W,
-                height: CARD_H,
-                ...(isCross ? { transform: 'rotate(90deg)', zIndex: 2 } : {}),
-              }}
-              initial={{ opacity: 0, scale: 0.5 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: idx * 0.12, duration: 0.3 }}
-              onClick={() => handleFlip(idx)}
-            >
-              <div className={`spread-slot__flipper${isFlipped ? ' is-flipped' : ''}`}>
-                {/* Back (face-down) */}
-                <div className="spread-slot__back">
-                  <span className="spread-slot__number">{slot.slot}</span>
+            return (
+              <motion.div
+                key={slot.slot}
+                className={`spread-slot${isCross ? ' spread-slot--cross' : ''}${isSelected ? ' spread-slot--selected' : ''}`}
+                style={{
+                  left: slot.x,
+                  top: slot.y,
+                  width: cardW,
+                  height: cardH,
+                }}
+                initial={{ opacity: 0, scale: 0.5 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: idx * 0.12, duration: 0.3 }}
+                onClick={() => handleFlip(idx)}
+              >
+                <div
+                  className="spread-slot__rotor"
+                  style={isCross ? { transform: `rotate(${slot.rotate}deg)` } : undefined}
+                >
+                  <div className={`spread-slot__flipper${isFlipped ? ' is-flipped' : ''}`}>
+                    {/* Back (face-down) */}
+                    <div className="spread-slot__back">
+                      <span className="spread-slot__number">{slot.slot}</span>
+                    </div>
+                    {/* Front (face-up) */}
+                    <div className="spread-slot__front">
+                      {card.image_url ? (
+                        <img
+                          src={card.image_url}
+                          alt={card.name_ru}
+                          className={`spread-slot__img${card.reversed ? ' spread-slot__img--reversed' : ''}`}
+                          loading="lazy"
+                        />
+                      ) : (
+                        <span className="spread-slot__emoji">{card.emoji}</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                {/* Front (face-up) */}
-                <div className="spread-slot__front">
-                  {card.image_url ? (
-                    <img
-                      src={card.image_url}
-                      alt={card.name_ru}
-                      className={`spread-slot__img${card.reversed ? ' spread-slot__img--reversed' : ''}`}
-                      loading="lazy"
-                    />
-                  ) : (
-                    <span className="spread-slot__emoji">{card.emoji}</span>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          )
-        })}
+                {layout.showLabels && (
+                  <span className={`spread-slot__label${isCross ? ' spread-slot__label--right' : ''}`}>
+                    {slot.label}
+                  </span>
+                )}
+              </motion.div>
+            )
+          })}
+        </div>
       </div>
 
       {/* ── Selected card detail ── */}
