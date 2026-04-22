@@ -1,0 +1,31 @@
+.cardPerspective {
+  perspective: 700px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cardInner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.75s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.cardInner.revealed {
+  transform: rotateY(180deg);
+}
+
+.cardBackFace,
+.cardFrontFace {
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  overflow: hidden;
+}
+
+.cardFrontFace {
+  transform: rotateY(180deg);
+}

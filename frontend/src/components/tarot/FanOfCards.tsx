@@ -4,9 +4,14 @@ import styles from './FanOfCards.module.css'
 const CARD_W = 88
 const CARD_H = 150
 
+export interface FanCard {
+  id: number
+  gone?: boolean
+}
+
 interface Props {
-  cards: { id: number }[]
-  onPick: (id: number) => void
+  cards: FanCard[]
+  onPick: (id: number, rect: DOMRect, angleDeg: number) => void
   renderCard: () => React.ReactNode
 }
 
@@ -22,12 +27,15 @@ export function FanOfCards({ cards, onPick, renderCard }: Props) {
   }, [])
 
   const spreadDeg = Math.min(120, Math.max(55, viewW * 0.082 + 18))
-  const N = cards.length
+
+  // Active (non-gone) cards — they form the visible arc
+  const active = cards.filter(c => !c.gone)
+  const N = active.length
   if (N === 0) return null
 
   return (
     <div className={styles.fanContainer}>
-      {cards.map((card, i) => {
+      {active.map((card, i) => {
         const t = N === 1 ? 0.5 : i / (N - 1)
         const angleDeg = spreadDeg * (t - 0.5)
         const delay = i * 0.038
@@ -42,7 +50,10 @@ export function FanOfCards({ cards, onPick, renderCard }: Props) {
                 zIndex: i + 1,
               } as React.CSSProperties
             }
-            onClick={() => onPick(card.id)}
+            onClick={(e) => {
+              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+              onPick(card.id, rect, angleDeg)
+            }}
           >
             <div
               className={styles.fanCardInner}

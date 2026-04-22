@@ -6,7 +6,7 @@ import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { HeaderAvatarButton } from "@/components/ui/HeaderAvatarButton";
 import { ThreeCardFlow } from "./ThreeCardFlow";
 import { SpreadLayout } from "./SpreadLayout";
-import { FanOfCards } from "@/components/tarot/FanOfCards";
+import { CelticCrossFlow } from "@/components/tarot/CelticCrossFlow";
 import { tarotApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
@@ -65,14 +65,10 @@ export function Tarot() {
   const [selectedSpread, setSelectedSpread] = useState<SpreadType | null>(null);
   const [reading, setReading] = useState<TarotSpreadResponse | null>(null);
   const [showInfo, setShowInfo] = useState(true);
-  const [fanCards, setFanCards] = useState<{ id: number }[]>([]);
-  const [placedCount, setPlacedCount] = useState(0);
 
   const handleBack = useCallback(() => {
     if (reading) {
       setReading(null);
-      setPlacedCount(0);
-      setFanCards([]);
     } else if (!showInfo && selectedSpread) {
       setShowInfo(true);
     } else if (selectedSpread) {
@@ -88,11 +84,6 @@ export function Tarot() {
     onSuccess: (data) => {
       impact("success" as any);
       setReading(data);
-      if (data.cards.length) {
-        // Fan always shows 15 face-down cards — doesn't shrink on pick
-        setFanCards(Array.from({ length: 15 }, (_, i) => ({ id: i })));
-        setPlacedCount(0);
-      }
     },
   });
 
@@ -108,17 +99,18 @@ export function Tarot() {
   };
 
   const handleGoToSpread = () => {
-    // For celtic_cross: draw immediately and enter interactive pick-from-fan flow
     setShowInfo(false);
     if (selectedSpread === "celtic_cross") {
+      // Fire draw immediately so CelticCrossFlow has cards when user taps the deck
       impact("medium");
       drawMutation.mutate(selectedSpread);
     }
   };
 
-  const handlePickFromFan = (_id: number) => {
-    impact("light");
-    setPlacedCount((n) => n + 1);
+  const handleNewCelticReading = () => {
+    // Restart: re-fire draw so a fresh set of cards is ready for the new idle phase
+    if (selectedSpread !== "celtic_cross") return;
+    drawMutation.mutate(selectedSpread);
   };
 
   // Spread selection view
@@ -441,61 +433,10 @@ export function Tarot() {
           )}
 
         {reading && selectedSpread === "celtic_cross" && (
-          <div
-            style={{
-              paddingBottom:
-                placedCount < reading.cards.length ? 300 : 0,
-              transition: "padding-bottom 0.4s ease",
-            }}
-          >
-            <p className="fan-prompt">
-              {placedCount < reading.cards.length
-                ? `Выберите карту · ${placedCount} из ${reading.cards.length}`
-                : "Переверните карты, чтобы раскрыть значение"}
-            </p>
-            <SpreadLayout
-              spreadType={selectedSpread}
-              cards={reading.cards}
-              placedCount={placedCount}
-            />
-            {placedCount < reading.cards.length && (
-              <FanOfCards
-                cards={fanCards}
-                onPick={handlePickFromFan}
-                renderCard={() => <div className="tarot-card-back" />}
-              />
-            )}
-            {placedCount >= reading.cards.length && (
-              <motion.button
-                className="btn-secondary btn-with-icon"
-                onClick={() => {
-                  setReading(null);
-                  setPlacedCount(0);
-                  setFanCards([]);
-                  drawMutation.reset();
-                }}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
-              >
-                <svg
-                  width="15"
-                  height="15"
-                  viewBox="0 0 15 15"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M1.5 7.5A6 6 0 0 1 13 4.5M13.5 7.5A6 6 0 0 1 2 10.5" />
-                  <polyline points="11,2 13,4.5 10.5,6.5" />
-                  <polyline points="4,12.5 2,10.5 4.5,8.5" />
-                </svg>
-                Новый расклад
-              </motion.button>
-            )}
-          </div>
+          <CelticCrossFlow
+            cards={reading.cards}
+            onNewReading={handleNewCelticReading}
+          />
         )}
 
         {reading && selectedSpread !== "celtic_cross" && (
