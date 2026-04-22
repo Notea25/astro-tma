@@ -7,6 +7,7 @@ import { natalApi } from '@/services/api'
 import { ZODIAC_SIGNS } from '@/types'
 import { NatalChart } from '@/components/NatalChart'
 import { toNatalChartData } from '@/components/NatalChart/adapter'
+import { HeaderAvatarButton } from '@/components/ui/HeaderAvatarButton'
 
 // Render LLM reading: split by **Section** markers into visual blocks
 function ReadingBlocks({ text }: { text: string }) {
@@ -157,8 +158,9 @@ export function Natal() {
 
   return (
     <div className="screen natal-screen">
-      <div className="screen-header">
+      <div className="screen-header screen-header--with-avatar">
         <h2 className="screen-title">Натальная карта</h2>
+        <HeaderAvatarButton />
       </div>
 
       <div className="screen-content">
