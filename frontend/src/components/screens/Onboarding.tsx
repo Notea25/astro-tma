@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useMutation } from "@tanstack/react-query";
-import { ZodiacPicker } from "@/components/ui/ZodiacPicker";
 import {
   CityAutocomplete,
   type CityOption,
@@ -9,27 +8,8 @@ import {
 import { usersApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
-import type { ZodiacSign } from "@/types";
-import { ZODIAC_SIGNS } from "@/types";
 
-function signFromDate(date: Date): ZodiacSign {
-  const m = date.getMonth() + 1;
-  const d = date.getDate();
-  if ((m === 3 && d >= 21) || (m === 4 && d <= 19)) return "aries";
-  if ((m === 4 && d >= 20) || (m === 5 && d <= 20)) return "taurus";
-  if ((m === 5 && d >= 21) || (m === 6 && d <= 20)) return "gemini";
-  if ((m === 6 && d >= 21) || (m === 7 && d <= 22)) return "cancer";
-  if ((m === 7 && d >= 23) || (m === 8 && d <= 22)) return "leo";
-  if ((m === 8 && d >= 23) || (m === 9 && d <= 22)) return "virgo";
-  if ((m === 9 && d >= 23) || (m === 10 && d <= 22)) return "libra";
-  if ((m === 10 && d >= 23) || (m === 11 && d <= 21)) return "scorpio";
-  if ((m === 11 && d >= 22) || (m === 12 && d <= 21)) return "sagittarius";
-  if ((m === 12 && d >= 22) || (m === 1 && d <= 19)) return "capricorn";
-  if ((m === 1 && d >= 20) || (m === 2 && d <= 18)) return "aquarius";
-  return "pisces";
-}
-
-type Step = "welcome" | "gender" | "birth_date" | "birth_city" | "sign_confirm";
+type Step = "welcome" | "gender" | "birth_date" | "birth_city";
 
 function GenderIcon({
   type,
@@ -84,7 +64,6 @@ export function Onboarding() {
     lat: number;
     lng: number;
   } | null>(null);
-  const [selectedSign, setSelectedSign] = useState<ZodiacSign | null>(null);
   const [touched, setTouched] = useState<{
     date?: boolean;
     time?: boolean;
@@ -182,12 +161,6 @@ export function Onboarding() {
     setTouched((t) => ({ ...t, date: true, time: true }));
     if (dateError || timeError) return;
     impact("light");
-    const date = new Date(
-      parseInt(birthYear),
-      parseInt(birthMonth) - 1,
-      parseInt(birthDay),
-    );
-    setSelectedSign(signFromDate(date));
     setStep("birth_city");
   };
 
@@ -279,7 +252,6 @@ export function Onboarding() {
               <span className="dot active" />
               <span className="dot" />
               <span className="dot" />
-              <span className="dot" />
             </div>
           </div>
           <h2 className="step-title">Кто вы?</h2>
@@ -343,7 +315,6 @@ export function Onboarding() {
             <div className="step-dots">
               <span className="dot done" />
               <span className="dot active" />
-              <span className="dot" />
               <span className="dot" />
             </div>
           </div>
@@ -489,7 +460,6 @@ export function Onboarding() {
               <span className="dot done" />
               <span className="dot done" />
               <span className="dot active" />
-              <span className="dot" />
             </div>
           </div>
           <h2 className="step-title">Город рождения</h2>
@@ -523,58 +493,6 @@ export function Onboarding() {
               <p className="form-error">{cityError}</p>
             )}
           </div>
-          <motion.button
-            className="btn-primary"
-            onClick={() => {
-              setTouched((t) => ({ ...t, city: true }));
-              if (cityError) return;
-              impact("light");
-              setStep("sign_confirm");
-            }}
-            disabled={!!cityError}
-            whileTap={{ scale: 0.97 }}
-          >
-            Далее
-          </motion.button>
-        </motion.div>
-      )}
-
-      {/* Sign confirmation step */}
-      {step === "sign_confirm" && (
-        <motion.div
-          className="onboarding__step"
-          initial={{ opacity: 0, x: 30 }}
-          animate={{ opacity: 1, x: 0 }}
-        >
-          <div className="step-header">
-            <button className="btn-back" onClick={() => setStep("birth_city")}>
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 20 20"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M13 4l-6 6 6 6" />
-              </svg>
-            </button>
-            <div className="step-dots">
-              <span className="dot done" />
-              <span className="dot done" />
-              <span className="dot done" />
-              <span className="dot active" />
-            </div>
-          </div>
-          <h2 className="step-title">Подтвердите знак</h2>
-          <p className="step-desc">
-            {selectedSign
-              ? `Ваш знак: ${ZODIAC_SIGNS.find((s) => s.value === selectedSign)?.label}`
-              : "Выберите ваш солнечный знак"}
-          </p>
-          <ZodiacPicker value={selectedSign} onChange={setSelectedSign} />
           {(birthMutation.isError || upsertMutation.isError) && (
             <p className="onboarding__error">
               Ошибка соединения. Попробуйте ещё раз.
@@ -582,11 +500,13 @@ export function Onboarding() {
           )}
           <motion.button
             className="btn-primary"
-            onClick={handleFinish}
+            onClick={() => {
+              setTouched((t) => ({ ...t, city: true }));
+              if (cityError) return;
+              handleFinish();
+            }}
             disabled={
-              !selectedSign ||
-              birthMutation.isPending ||
-              upsertMutation.isPending
+              !!cityError || birthMutation.isPending || upsertMutation.isPending
             }
             whileTap={{ scale: 0.97 }}
           >
