@@ -83,14 +83,24 @@ export interface CompatibilityResponse {
 }
 
 export interface NatalPlanetData {
-  degree: number;
+  degree: number;       // absolute 0–360
+  sign_degree: number;  // within-sign 0–30
   sign: string;
+  house: number;
   retrograde: boolean;
 }
 
 export interface NatalHouseData {
   number: number;
   degree: number;
+  sign: string;
+}
+
+export interface NatalAspectData {
+  p1: string;
+  p2: string;
+  aspect: string;
+  orb: number;
 }
 
 export interface NatalSummaryResponse {
@@ -98,12 +108,17 @@ export interface NatalSummaryResponse {
   sun_sign: string | null;
   moon_sign: string | null;
   ascendant_sign: string | null;
+  mc_sign: string | null;
   birth_city: string | null;
   birth_time_known: boolean;
   birth_lat: number | null;
   birth_lng: number | null;
+  birth_tz: string | null;
+  birth_date: string | null;
+  birth_time: string | null;
   planets?: Record<string, NatalPlanetData>;
   houses?: NatalHouseData[];
+  aspects?: NatalAspectData[];
 }
 
 export interface PlanetData {
