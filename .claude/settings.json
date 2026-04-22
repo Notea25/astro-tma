@@ -10,7 +10,9 @@
       "mcp__obsidian__list_files",
       "mcp__obsidian__search",
       "mcp__obsidian__read_file",
-      "mcp__obsidian__write_file"
+      "mcp__obsidian__write_file",
+      "Bash(gh auth *)",
+      "Bash(git commit -m ' *)"
     ],
     "deny": [
       "Read(.env)",
