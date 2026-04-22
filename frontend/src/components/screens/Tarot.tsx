@@ -89,9 +89,8 @@ export function Tarot() {
       impact("success" as any);
       setReading(data);
       if (data.cards.length) {
-        // Seed fan with ~15 face-down cards (synthetic ids)
-        const fanSize = Math.min(21, Math.max(9, Math.floor(window.innerWidth / 58)));
-        setFanCards(Array.from({ length: fanSize }, (_, i) => ({ id: i })));
+        // Fan always shows 15 face-down cards — doesn't shrink on pick
+        setFanCards(Array.from({ length: 15 }, (_, i) => ({ id: i })));
         setPlacedCount(0);
       }
     },
@@ -117,9 +116,8 @@ export function Tarot() {
     }
   };
 
-  const handlePickFromFan = (id: number) => {
+  const handlePickFromFan = (_id: number) => {
     impact("light");
-    setFanCards((prev) => prev.filter((c) => c.id !== id));
     setPlacedCount((n) => n + 1);
   };
 
@@ -446,7 +444,7 @@ export function Tarot() {
           <div
             style={{
               paddingBottom:
-                placedCount < reading.cards.length ? 160 : 0,
+                placedCount < reading.cards.length ? 300 : 0,
               transition: "padding-bottom 0.4s ease",
             }}
           >
