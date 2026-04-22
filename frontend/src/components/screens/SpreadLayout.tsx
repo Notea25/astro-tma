@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useHaptic } from '@/hooks/useTelegram'
 import { MeaningText } from '@/components/ui/MeaningText'
@@ -87,9 +87,27 @@ export function SpreadLayout({ spreadType, cards }: Props) {
   const { impact } = useHaptic()
   const [flipped, setFlipped] = useState<Set<number>>(new Set())
   const [selected, setSelected] = useState<number | null>(null)
+  const [scale, setScale] = useState(1)
   const detailRef = useRef<HTMLDivElement>(null)
+  const areaRef = useRef<HTMLDivElement>(null)
 
   const layout = LAYOUTS[spreadType]
+
+  useEffect(() => {
+    if (!layout) return
+    const el = areaRef.current
+    if (!el) return
+    const update = () => {
+      const avail = el.clientWidth
+      if (!avail) return
+      setScale(Math.min(1, avail / layout.w))
+    }
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [layout])
+
   if (!layout) return null
 
   const handleFlip = (idx: number) => {
@@ -113,10 +131,18 @@ export function SpreadLayout({ spreadType, cards }: Props) {
   return (
     <div className="spread-layout">
       {/* ── Card map ── */}
-      <div className="spread-area">
+      <div className="spread-area" ref={areaRef}>
+        <div
+          className="spread-fit"
+          style={{ width: layout.w * scale, height: layout.h * scale }}
+        >
         <div
           className="spread-container"
-          style={{ width: layout.w, height: layout.h }}
+          style={{
+            width: layout.w,
+            height: layout.h,
+            transform: `scale(${scale})`,
+          }}
         >
           {layout.slots.map((slot, idx) => {
             const card = cards[idx]
@@ -172,6 +198,7 @@ export function SpreadLayout({ spreadType, cards }: Props) {
               </motion.div>
             )
           })}
+        </div>
         </div>
       </div>
 
