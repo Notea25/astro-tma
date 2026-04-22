@@ -454,7 +454,9 @@ body::after {
 }
 
 /* Decorative gold divider under centered titles */
-.screen-header:not(.screen-header--with-back):not(.home-header)::after {
+.screen-header:not(.screen-header--with-back):not(.home-header):not(
+    .screen-header--with-avatar
+  )::after {
   content: "";
   display: block;
   width: 40px;
@@ -622,6 +624,36 @@ body::after {
 .header-avatar:active {
   border-color: var(--gold);
   transform: scale(0.9);
+}
+.header-avatar--photo {
+  padding: 0;
+  overflow: hidden;
+}
+.header-avatar--photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
+.screen-header--with-avatar {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: calc(var(--safe-top) + 44px) var(--content-px) 20px;
+  gap: 12px;
+}
+.screen-header--with-avatar .screen-title {
+  flex: 1;
+  text-align: center;
+  padding-right: 38px;
+}
+.screen-header--with-back-avatar .header-avatar {
+  position: absolute;
+  top: calc(var(--safe-top) + 4px);
+  right: 8px;
+  z-index: 2;
 }
 
 /* ── Glass Cards ───────────────────────────────────────────────────────────── */
@@ -1294,6 +1326,13 @@ body::after {
   color: #e07070;
   text-align: center;
   margin-top: 12px;
+}
+
+.form-error {
+  font-size: var(--fs-small);
+  color: #e07070;
+  margin-top: 6px;
+  line-height: 1.4;
 }
 
 .step-header {

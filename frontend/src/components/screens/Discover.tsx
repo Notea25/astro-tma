@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
+import { HeaderAvatarButton } from "@/components/ui/HeaderAvatarButton";
 
 interface PracticeCard {
   label: string;
@@ -257,8 +258,9 @@ export function Discover() {
 
   return (
     <div className="screen discover-screen">
-      <div className="screen-header">
+      <div className="screen-header screen-header--with-avatar">
         <h2 className="screen-title">Практики</h2>
+        <HeaderAvatarButton />
       </div>
 
       <div className="screen-content">
