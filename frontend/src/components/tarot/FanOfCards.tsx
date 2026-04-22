@@ -26,7 +26,7 @@ export function FanOfCards({ cards, onPick, renderCard }: Props) {
     return () => window.removeEventListener('resize', h)
   }, [])
 
-  const spreadDeg = Math.min(120, Math.max(55, viewW * 0.082 + 18))
+  const spreadDeg = Math.min(200, Math.max(110, viewW * 0.164 + 36))
 
   // Active (non-gone) cards — they form the visible arc
   const active = cards.filter(c => !c.gone)

@@ -107,6 +107,16 @@
   margin-top: 0;
   transform: translateY(-50%);
 }
+/* Used for Препятствие — centered inside the slot, hidden once placed */
+.slotLabelInside {
+  top: 50%;
+  left: 50%;
+  margin-top: 0;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  color: rgba(201, 168, 76, 0.85);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
 
 /* ── Deck (idle / shuffle phases) ──────────────────────────────────────── */
 .deckWrap {

@@ -310,11 +310,13 @@ export function CelticCrossFlow({ cards, onNewReading }: Props) {
                       </div>
                     )}
                   </div>
-                  <span
-                    className={`${styles.slotLabel} ${isCross ? styles.slotLabelRight : ''}`}
-                  >
-                    {slot.label}
-                  </span>
+                  {(!isCross || !isPlaced) && (
+                    <span
+                      className={`${styles.slotLabel} ${isCross ? styles.slotLabelInside : ''}`}
+                    >
+                      {slot.label}
+                    </span>
+                  )}
                 </div>
               )
             })}
