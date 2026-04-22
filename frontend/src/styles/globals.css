@@ -1684,14 +1684,20 @@ body::after {
   padding-bottom: 24px;
 }
 .spread-area {
-  overflow: auto;
-  max-width: 100%;
-  margin: 0 auto;
-  -webkit-overflow-scrolling: touch;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  overflow: visible;
 }
-.spread-container {
+.spread-fit {
   position: relative;
   margin: 0 auto;
+}
+.spread-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
 }
 
 /* Card slot — absolute positioned flip card */
@@ -1720,11 +1726,11 @@ body::after {
 .spread-slot__label {
   position: absolute;
   top: 100%;
-  margin-top: 5px;
+  margin-top: 8px;
   left: 50%;
   transform: translateX(-50%);
   font-family: "Cinzel", "Playfair Display", serif;
-  font-size: 7px;
+  font-size: 14px;
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: rgba(201, 168, 76, 0.75);
@@ -1733,7 +1739,7 @@ body::after {
 }
 .spread-slot__label--right {
   top: 50%;
-  left: calc(100% + 10px);
+  left: calc(100% + 14px);
   margin-top: 0;
   transform: translateY(-50%);
 }
