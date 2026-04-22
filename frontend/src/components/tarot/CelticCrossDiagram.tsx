@@ -62,14 +62,19 @@ export function CelticCrossDiagram() {
                   top: s.y,
                   width: CARD_W,
                   height: CARD_H,
+                  transform: isCross ? `rotate(${s.rotate}deg)` : undefined,
+                  transformOrigin: 'center',
                 }}
               >
-                <div
-                  className={styles.rotor}
-                  style={isCross ? { transform: `rotate(${s.rotate}deg)` } : undefined}
+                <span
+                  style={
+                    isCross
+                      ? { transform: `rotate(${-s.rotate!}deg)`, display: 'inline-block' }
+                      : undefined
+                  }
                 >
                   {s.n}
-                </div>
+                </span>
               </div>
             )
           })}
