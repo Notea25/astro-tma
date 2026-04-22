@@ -1714,6 +1714,24 @@ body::after {
 .spread-slot--selected {
   filter: drop-shadow(0 0 8px rgba(212, 178, 84, 0.4));
 }
+.spread-slot--empty {
+  cursor: default;
+}
+.fan-prompt {
+  text-align: center;
+  font-family: "Cormorant Garamond", "Playfair Display", serif;
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  color: rgba(212, 178, 84, 0.85);
+  margin: 0 0 6px;
+}
+.spread-slot__placeholder {
+  position: absolute;
+  inset: 0;
+  border: 1px dashed rgba(201, 168, 76, 0.25);
+  border-radius: 8px;
+  background: rgba(201, 168, 76, 0.03);
+}
 
 /* Rotor wraps flipper; optional inline rotate keeps label outside of rotation */
 .spread-slot__rotor {

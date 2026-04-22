@@ -81,9 +81,11 @@ const LAYOUTS: Record<string, LayoutDef> = {
 interface Props {
   spreadType: string
   cards: TarotCardDetail[]
+  /** Number of slots already picked; undefined means all placed. Unplaced slots render as empty boxes. */
+  placedCount?: number
 }
 
-export function SpreadLayout({ spreadType, cards }: Props) {
+export function SpreadLayout({ spreadType, cards, placedCount }: Props) {
   const { impact } = useHaptic()
   const [flipped, setFlipped] = useState<Set<number>>(new Set())
   const [selected, setSelected] = useState<number | null>(null)
@@ -146,10 +148,40 @@ export function SpreadLayout({ spreadType, cards }: Props) {
         >
           {layout.slots.map((slot, idx) => {
             const card = cards[idx]
-            if (!card) return null
+            const isPlaced = placedCount === undefined ? !!card : idx < placedCount
             const isFlipped = flipped.has(idx)
             const isSelected = selected === idx
             const isCross = !!slot.rotate
+            const label = layout.showLabels ? (
+              <span className={`spread-slot__label${isCross ? ' spread-slot__label--right' : ''}`}>
+                {slot.label}
+              </span>
+            ) : null
+
+            if (!isPlaced) {
+              return (
+                <div
+                  key={slot.slot}
+                  className={`spread-slot spread-slot--empty${isCross ? ' spread-slot--cross' : ''}`}
+                  style={{
+                    left: slot.x,
+                    top: slot.y,
+                    width: cardW,
+                    height: cardH,
+                  }}
+                >
+                  <div
+                    className="spread-slot__rotor"
+                    style={isCross ? { transform: `rotate(${slot.rotate}deg)` } : undefined}
+                  >
+                    <div className="spread-slot__placeholder" />
+                  </div>
+                  {label}
+                </div>
+              )
+            }
+
+            if (!card) return null
 
             return (
               <motion.div
@@ -163,7 +195,7 @@ export function SpreadLayout({ spreadType, cards }: Props) {
                 }}
                 initial={{ opacity: 0, scale: 0.5 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: idx * 0.12, duration: 0.3 }}
+                transition={{ duration: 0.3 }}
                 onClick={() => handleFlip(idx)}
               >
                 <div
@@ -190,11 +222,7 @@ export function SpreadLayout({ spreadType, cards }: Props) {
                     </div>
                   </div>
                 </div>
-                {layout.showLabels && (
-                  <span className={`spread-slot__label${isCross ? ' spread-slot__label--right' : ''}`}>
-                    {slot.label}
-                  </span>
-                )}
+                {label}
               </motion.div>
             )
           })}
