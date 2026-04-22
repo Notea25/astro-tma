@@ -1683,6 +1683,12 @@ body::after {
   gap: 20px;
   padding-bottom: 24px;
 }
+.spread-area {
+  overflow: auto;
+  max-width: 100%;
+  margin: 0 auto;
+  -webkit-overflow-scrolling: touch;
+}
 .spread-container {
   position: relative;
   margin: 0 auto;
@@ -1699,9 +1705,37 @@ body::after {
 .spread-slot--cross {
   z-index: 2;
 }
-/* Cross card (card 2): whole slot rotated 90° via inline transform */
 .spread-slot--selected {
   filter: drop-shadow(0 0 8px rgba(212, 178, 84, 0.4));
+}
+
+/* Rotor wraps flipper; optional inline rotate keeps label outside of rotation */
+.spread-slot__rotor {
+  width: 100%;
+  height: 100%;
+  transform-origin: center;
+}
+
+/* Position-label under card (or right for rotated) */
+.spread-slot__label {
+  position: absolute;
+  top: 100%;
+  margin-top: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: "Cinzel", "Playfair Display", serif;
+  font-size: 7px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(201, 168, 76, 0.75);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.spread-slot__label--right {
+  top: 50%;
+  left: calc(100% + 10px);
+  margin-top: 0;
+  transform: translateY(-50%);
 }
 
 /* Flip mechanic */
