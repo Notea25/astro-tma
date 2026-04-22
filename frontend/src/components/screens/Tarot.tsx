@@ -7,6 +7,7 @@ import { HeaderAvatarButton } from "@/components/ui/HeaderAvatarButton";
 import { ThreeCardFlow } from "./ThreeCardFlow";
 import { SpreadLayout } from "./SpreadLayout";
 import { CelticCrossFlow } from "@/components/tarot/CelticCrossFlow";
+import { CelticCrossDiagram } from "@/components/tarot/CelticCrossDiagram";
 import { tarotApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
@@ -236,6 +237,8 @@ export function Tarot() {
                 реальность, а <strong>Посох</strong> (позиции 7–10) раскрывает
                 путь к разрешению.
               </p>
+
+              <CelticCrossDiagram />
 
               <div className="spread-info__section">
                 <h4 className="spread-info__section-title">
