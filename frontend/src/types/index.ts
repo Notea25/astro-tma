@@ -67,6 +67,18 @@ export interface TarotSpreadResponse {
   is_premium: boolean;
 }
 
+export interface TarotPositionNarrative {
+  n: number;
+  narrative: string;
+}
+
+export interface TarotInterpretationResponse {
+  reading_id: number;
+  spread_type: string;
+  positions: TarotPositionNarrative[];
+  summary: string;
+}
+
 export interface CompatibilityResponse {
   sign_a: string;
   sign_b: string;

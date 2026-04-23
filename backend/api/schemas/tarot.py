@@ -27,3 +27,15 @@ class TarotSpreadResponse(BaseModel):
 
 class DrawSpreadRequest(BaseModel):
     spread_type: str     # "three_card" | "celtic_cross" | "week" | "relationship"
+
+
+class TarotPositionNarrative(BaseModel):
+    n: int
+    narrative: str
+
+
+class TarotInterpretationResponse(BaseModel):
+    reading_id: int
+    spread_type: str
+    positions: list[TarotPositionNarrative]
+    summary: str
