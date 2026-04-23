@@ -73,7 +73,7 @@
 .block {
   display: flex;
   gap: 16px;
-  align-items: flex-start;
+  align-items: center;
   padding: 14px;
   background: rgba(14, 11, 32, 0.55);
   border: 1px solid rgba(201, 168, 76, 0.18);
