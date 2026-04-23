@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { FanOfCards, type FanCard } from './FanOfCards'
 import { FlipCard } from './FlipCard'
 import { CelticCrossReading } from './CelticCrossReading'
+import { MacCardBack } from '@/components/mac/MacCardBack'
 import { useHaptic } from '@/hooks/useTelegram'
 import type { TarotCardDetail } from '@/types'
 import styles from './CelticCrossFlow.module.css'
@@ -271,7 +272,7 @@ export function CelticCrossFlow({ readingId, cards, onNewReading }: Props) {
                           revealed={isRevealed}
                           width={CARD_W}
                           height={CARD_H}
-                          back={<div className="tarot-card-back" />}
+                          back={<MacCardBack />}
                           front={
                             card?.image_url ? (
                               <img
@@ -340,14 +341,14 @@ export function CelticCrossFlow({ readingId, cards, onNewReading }: Props) {
                   opacity: 0.55 + i * 0.12,
                 }}
               >
-                <div className="tarot-card-back" />
+                <MacCardBack />
               </div>
             ))}
             <div
               className={styles.deckLayer}
               style={{ left: 7, top: 7, zIndex: 10 }}
             >
-              <div className="tarot-card-back" />
+              <MacCardBack />
             </div>
           </div>
           {phase === 'idle' && (
@@ -361,7 +362,7 @@ export function CelticCrossFlow({ readingId, cards, onNewReading }: Props) {
         <FanOfCards
           cards={fanCards}
           onPick={handleFanPick}
-          renderCard={() => <div className="tarot-card-back" />}
+          renderCard={() => <MacCardBack />}
         />
       )}
 
@@ -383,7 +384,7 @@ export function CelticCrossFlow({ readingId, cards, onNewReading }: Props) {
           }
           onAnimationEnd={handleFlyEnd}
         >
-          <div className="tarot-card-back" />
+          <MacCardBack />
         </div>
       )}
 
