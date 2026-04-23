@@ -5,7 +5,7 @@ const CARD_W = 88
 const CARD_H = 150
 const LAYOUT_W = 720
 const LAYOUT_H = 720
-const MAX_W = 340
+const MAX_W = 260
 
 const SLOTS: { n: number; x: number; y: number; rotate?: number }[] = [
   { n: 1,  x: 200, y: 280 },
