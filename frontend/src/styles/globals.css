@@ -469,7 +469,7 @@ body::after {
   display: flex;
   flex-direction: row;
   align-items: flex-start;
-  padding: calc(var(--safe-top) + 8px) var(--content-px) 20px;
+  padding: calc(var(--safe-top) + 8px) var(--content-px) 12px;
 }
 .screen-header--with-back .back-btn {
   position: absolute;
@@ -480,7 +480,7 @@ body::after {
 .screen-header--with-back .screen-title {
   width: 100%;
   text-align: center;
-  padding-top: 10px;
+  padding-top: 4px;
   pointer-events: none;
 }
 .tarot-screen .screen-title {
