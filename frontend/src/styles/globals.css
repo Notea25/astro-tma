@@ -1456,6 +1456,8 @@ body::after {
 /* ── Tarot ──────────────────────────────────────────────────────────────────── */
 .tarot-screen .screen-content {
   padding-bottom: 32px;
+  display: flex;
+  flex-direction: column;
 }
 .spread-option {
   background: var(--glass);
@@ -1623,7 +1625,7 @@ body::after {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  min-height: 100%;
+  flex: 1;
 }
 .spread-info__top {
   flex: 1;
