@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { FanOfCards, type FanCard } from './FanOfCards'
 import { FlipCard } from './FlipCard'
-import { MeaningText } from '@/components/ui/MeaningText'
+import { CelticCrossReading } from './CelticCrossReading'
 import { useHaptic } from '@/hooks/useTelegram'
 import type { TarotCardDetail } from '@/types'
 import styles from './CelticCrossFlow.module.css'
@@ -42,11 +42,12 @@ interface PlacedState {
 }
 
 interface Props {
+  readingId: number
   cards: TarotCardDetail[]
   onNewReading: () => void
 }
 
-export function CelticCrossFlow({ cards, onNewReading }: Props) {
+export function CelticCrossFlow({ readingId, cards, onNewReading }: Props) {
   const { impact } = useHaptic()
   const [phase, setPhase] = useState<Phase>('idle')
   const [fanCards, setFanCards] = useState<FanCard[]>([])
@@ -204,9 +205,6 @@ export function CelticCrossFlow({ cards, onNewReading }: Props) {
           : phase === 'reading' && !isAllRevealed
             ? 'Нажмите в любом месте, чтобы открыть карту'
             : ''
-
-  const selectedCard = selected !== null ? cards[selected] : null
-  const selectedSlot = selected !== null ? SLOTS[selected] : null
 
   const containerPadded = phase === 'idle' || phase === 'shuffle' || phase === 'fan'
 
@@ -401,37 +399,10 @@ export function CelticCrossFlow({ cards, onNewReading }: Props) {
         </div>
       )}
 
-      {/* ── Detail panel (complete phase only) ── */}
-      <div ref={detailRef}>
-        <AnimatePresence mode="wait">
-          {phase === 'complete' && selectedCard && selectedSlot && (
-            <motion.div
-              key={selected}
-              className="spread-detail"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="spread-detail__header">
-                <span className="spread-detail__pos">
-                  {selectedSlot.slot}. {selectedSlot.label}
-                </span>
-                <span
-                  className={`spread-detail__orient${selectedCard.reversed ? ' rev' : ''}`}
-                >
-                  {selectedCard.reversed ? '↓ Перевёрнутая' : '↑ Прямая'}
-                </span>
-              </div>
-              <h3 className="spread-detail__name">{selectedCard.name_ru}</h3>
-              <p className="spread-detail__keys">
-                {selectedCard.keywords_ru?.slice(0, 3).join(' · ')}
-              </p>
-              <MeaningText text={selectedCard.meaning_ru} />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+      {/* ── LLM narrative reading (complete phase) ── */}
+      {phase === 'complete' && (
+        <CelticCrossReading readingId={readingId} cards={cards} />
+      )}
 
       {/* ── Restart button (complete phase) ── */}
       {phase === 'complete' && (

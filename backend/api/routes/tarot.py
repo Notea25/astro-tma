@@ -5,13 +5,23 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.middleware.telegram_auth import get_tg_user
-from api.schemas.tarot import DrawSpreadRequest, TarotCardDetail, TarotSpreadResponse, _IMAGE_BASE
+from api.schemas.tarot import (
+    DrawSpreadRequest,
+    TarotCardDetail,
+    TarotInterpretationResponse,
+    TarotPositionNarrative,
+    TarotSpreadResponse,
+    _IMAGE_BASE,
+)
+from core.cache import cache_get, cache_set, key_tarot_interpret
 from core.logging import get_logger
+from core.settings import settings
 from db.database import get_db
-from db.models import TarotCard, TarotPositionMeaning, TarotReading
+from db.models import TarotCard, TarotReading, TarotPositionMeaning
 from services.tarot.engine import (
     FREE_SPREADS, PREMIUM_SPREADS, draw_spread, to_reading_json,
 )
+from services.tarot.interpreter import generate_celtic_cross_interpretation
 from services.users import repository as user_repo
 
 router = APIRouter(prefix="/tarot", tags=["tarot"])
@@ -118,3 +128,81 @@ async def get_reading_history(
         .limit(10)
     )
     return [r.to_dict() for r in result.scalars()]
+
+
+@router.post("/interpret/{reading_id}", response_model=TarotInterpretationResponse)
+async def interpret_reading(
+    reading_id: int,
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Generate (or return cached) LLM narrative interpretation for a celtic_cross reading.
+    Each subsequent card is read in the context of previously drawn ones.
+    """
+    # Load reading and verify ownership
+    reading = await db.get(TarotReading, reading_id)
+    if not reading or reading.user_id != tg_user["id"]:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Reading not found")
+
+    if reading.spread_type != "celtic_cross":
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Interpretation is available only for celtic_cross",
+        )
+
+    # Cache by reading_id — interpretation is deterministic for a given reading
+    cache_key = key_tarot_interpret(reading.id)
+    cached = await cache_get(cache_key)
+    if cached:
+        return TarotInterpretationResponse(**cached)
+
+    if not settings.ANTHROPIC_API_KEY:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Interpretation service is not configured",
+        )
+
+    # Resolve cards_json -> card details needed for the prompt
+    cards_json = reading.cards_json or []
+    drawn_ids = [c["card_id"] for c in cards_json]
+    if len(drawn_ids) != 10:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Reading has unexpected card count")
+
+    cards_result = await db.execute(select(TarotCard).where(TarotCard.id.in_(drawn_ids)))
+    cards_map: dict[int, TarotCard] = {c.id: c for c in cards_result.scalars()}
+
+    prompt_cards: list[dict] = []
+    for drawn in sorted(cards_json, key=lambda x: x["position"]):
+        card = cards_map.get(drawn["card_id"])
+        if not card:
+            continue
+        prompt_cards.append(
+            {
+                "name_ru": card.name_ru,
+                "reversed": bool(drawn.get("reversed")),
+                "keywords_ru": card.keywords_ru or [],
+            }
+        )
+
+    try:
+        parsed = await generate_celtic_cross_interpretation(
+            cards=prompt_cards,
+            api_key=settings.ANTHROPIC_API_KEY,
+        )
+    except Exception as e:  # noqa: BLE001
+        log.error("tarot.interpret.failed", reading_id=reading.id, error=str(e))
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            "Interpretation failed — please try again",
+        ) from e
+
+    response = TarotInterpretationResponse(
+        reading_id=reading.id,
+        spread_type=reading.spread_type,
+        positions=[TarotPositionNarrative(**p) for p in parsed["positions"]],
+        summary=parsed["summary"],
+    )
+
+    await cache_set(cache_key, response.model_dump(), settings.CACHE_TTL_TAROT_INTERPRET)
+    return response

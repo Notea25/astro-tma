@@ -462,6 +462,7 @@ export function Tarot() {
 
         {reading && selectedSpread === "celtic_cross" && (
           <CelticCrossFlow
+            readingId={reading.reading_id}
             cards={reading.cards}
             onNewReading={handleNewCelticReading}
           />

@@ -116,6 +116,11 @@ export const tarotApi = {
     request<import("@/types").TarotSpreadResponse>("POST", "/tarot/draw", {
       spread_type,
     }),
+  interpret: (reading_id: number) =>
+    request<import("@/types").TarotInterpretationResponse>(
+      "POST",
+      `/tarot/interpret/${reading_id}`,
+    ),
 };
 
 // ── Compatibility ──────────────────────────────────────────────────────────────
