@@ -1,8 +1,15 @@
-type Props = { width?: number; height?: number };
+type Props = { width?: number | string; height?: number | string };
 
-export function MacCardBack({ width = 220, height = 340 }: Props) {
+export function MacCardBack({ width = '100%', height = '100%' }: Props) {
   return (
-    <svg viewBox="0 0 220 340" width={width} height={height} xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+    <svg
+      viewBox="0 0 220 340"
+      width={width}
+      height={height}
+      preserveAspectRatio="xMidYMid slice"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ display: 'block' }}
+    >
       <defs>
         <radialGradient id="mbg" cx="50%" cy="42%" r="72%">
           <stop offset="0%" stopColor="#261250" />
