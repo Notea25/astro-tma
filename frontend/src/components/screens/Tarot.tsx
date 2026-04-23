@@ -231,6 +231,7 @@ export function Tarot() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
+              <div className="spread-info__top">
               <p className="spread-info__intro">
                 Понимание каждой позиции — ключ к точной интерпретации. Расклад
                 делится на две части:
@@ -376,6 +377,7 @@ export function Tarot() {
               </button>
                 </>
               )}
+              </div>
 
               <motion.button
                 className="btn-primary"
