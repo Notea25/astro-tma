@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { tarotApi } from '@/services/api'
 import { useHaptic } from '@/hooks/useTelegram'
 import { MeaningText } from '@/components/ui/MeaningText'
-import { MacCardBack } from '@/components/mac/MacCardBack'
+import { TarotCardBack } from '@/components/tarot/TarotCardBack'
 import type { TarotCardDetail } from '@/types'
 
 const POSITIONS   = ['Прошлое', 'Настоящее', 'Будущее']
@@ -50,7 +50,7 @@ function CardBack({ large = false }: { large?: boolean }) {
       className={`tarot-card-back ${large ? 'tarot-card-back--large' : ''}`}
       style={{ width: '100%', height: '100%' }}
     >
-      <MacCardBack />
+      <TarotCardBack />
     </div>
   )
 }
