@@ -398,7 +398,7 @@ export function MacCardsPage({ onBack }: { onBack: () => void }) {
             {[3, 2, 1, 0].map((idx) => (
               <div key={idx} className={styles.deckCardLayer} style={{
                 zIndex: 4 - idx,
-                left: idx * 2.5,
+                left: idx * 2.5 - 5,
                 top: idx * 2.5,
                 width: 160,
                 height: 246,
@@ -407,7 +407,7 @@ export function MacCardsPage({ onBack }: { onBack: () => void }) {
                 <MacCardBack width={160} height={246} />
               </div>
             ))}
-            <div className={styles.deckCardLayer} style={{ zIndex: 10, left: 10, top: 10, width: 160, height: 246 }}>
+            <div className={styles.deckCardLayer} style={{ zIndex: 10, left: 5, top: 10, width: 160, height: 246 }}>
               <MacCardBack width={160} height={246} />
             </div>
           </div>
