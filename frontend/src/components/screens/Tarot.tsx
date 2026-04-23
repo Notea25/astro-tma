@@ -66,6 +66,7 @@ export function Tarot() {
   const [selectedSpread, setSelectedSpread] = useState<SpreadType | null>(null);
   const [reading, setReading] = useState<TarotSpreadResponse | null>(null);
   const [showInfo, setShowInfo] = useState(true);
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
 
   const handleBack = useCallback(() => {
     if (reading) {
@@ -240,6 +241,18 @@ export function Tarot() {
 
               <CelticCrossDiagram />
 
+              {!detailsExpanded && (
+                <button
+                  className="btn-ghost"
+                  onClick={() => setDetailsExpanded(true)}
+                  style={{ marginTop: 4 }}
+                >
+                  Читать подробнее ↓
+                </button>
+              )}
+
+              {detailsExpanded && (
+                <>
               <div className="spread-info__section">
                 <h4 className="spread-info__section-title">
                   Крест — Ваша Текущая Ситуация
@@ -353,6 +366,16 @@ export function Tarot() {
                   </div>
                 </div>
               </div>
+
+              <button
+                className="btn-ghost"
+                onClick={() => setDetailsExpanded(false)}
+                style={{ marginTop: 4 }}
+              >
+                Скрыть подробности ↑
+              </button>
+                </>
+              )}
 
               <motion.button
                 className="btn-primary"
