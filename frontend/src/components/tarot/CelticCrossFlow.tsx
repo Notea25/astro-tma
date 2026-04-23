@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { FanOfCards, type FanCard } from './FanOfCards'
 import { FlipCard } from './FlipCard'
 import { CelticCrossReading } from './CelticCrossReading'
-import { MacCardBack } from '@/components/mac/MacCardBack'
+import { TarotCardBack } from './TarotCardBack'
 import { useHaptic } from '@/hooks/useTelegram'
 import type { TarotCardDetail } from '@/types'
 import styles from './CelticCrossFlow.module.css'
@@ -272,7 +272,7 @@ export function CelticCrossFlow({ readingId, cards, onNewReading }: Props) {
                           revealed={isRevealed}
                           width={CARD_W}
                           height={CARD_H}
-                          back={<MacCardBack />}
+                          back={<TarotCardBack />}
                           front={
                             card?.image_url ? (
                               <img
@@ -341,14 +341,14 @@ export function CelticCrossFlow({ readingId, cards, onNewReading }: Props) {
                   opacity: 0.55 + i * 0.12,
                 }}
               >
-                <MacCardBack />
+                <TarotCardBack />
               </div>
             ))}
             <div
               className={styles.deckLayer}
               style={{ left: 7, top: 7, zIndex: 10 }}
             >
-              <MacCardBack />
+              <TarotCardBack />
             </div>
           </div>
           {phase === 'idle' && (
@@ -362,7 +362,7 @@ export function CelticCrossFlow({ readingId, cards, onNewReading }: Props) {
         <FanOfCards
           cards={fanCards}
           onPick={handleFanPick}
-          renderCard={() => <MacCardBack />}
+          renderCard={() => <TarotCardBack />}
         />
       )}
 
@@ -384,7 +384,7 @@ export function CelticCrossFlow({ readingId, cards, onNewReading }: Props) {
           }
           onAnimationEnd={handleFlyEnd}
         >
-          <MacCardBack />
+          <TarotCardBack />
         </div>
       )}
 
