@@ -295,9 +295,24 @@ class MacCard(Base):
 
 
 class MacReading(TimestampMixin, Base):
-    """User MAC reading history."""
+    """Legacy MAC reading history (pre-48-card deck). Kept for historical records."""
     __tablename__ = "mac_readings"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"))
     card_id: Mapped[int] = mapped_column(Integer, ForeignKey("mac_cards.id"))
     card: Mapped["MacCard"] = relationship()
+
+
+class MacPick(Base):
+    """Pick from the client-side 48-card deck (components/mac/macData.ts)."""
+    __tablename__ = "mac_picks"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE")
+    )
+    card_number: Mapped[int] = mapped_column(Integer)
+    card_name: Mapped[str] = mapped_column(String(100))
+    category: Mapped[str] = mapped_column(String(32))
+    created_at: Mapped["datetime"] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )

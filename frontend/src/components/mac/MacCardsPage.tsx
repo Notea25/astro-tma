@@ -4,6 +4,7 @@ import { MacCardBack } from './MacCardBack';
 import { MAC_DECK, CATEGORY_INFO, CARD_W, CARD_H } from './macData';
 import type { MacCard, MacCategory } from './macData';
 import { useHaptic, useTelegramBackButton } from '@/hooks/useTelegram';
+import { macApi } from '@/services/api';
 
 type Phase = 'idle' | 'shuffle' | 'fan' | 'drawn' | 'revealed';
 
@@ -199,10 +200,18 @@ export function MacCardsPage({ onBack }: { onBack: () => void }) {
   // ── reveal (flip) ────────────────────────────────────────────────────────
 
   const handleReveal = useCallback(() => {
-    if (phase !== 'drawn') return;
+    if (phase !== 'drawn' || !card) return;
     impact('success' as any);
     setPhase('revealed');
-  }, [phase, impact]);
+    // Fire-and-forget: log the pick to DB. Silent on failure — purely history tracking.
+    macApi
+      .pick({
+        card_number: card.number,
+        card_name: card.name,
+        category: card.category,
+      })
+      .catch(() => {});
+  }, [phase, impact, card]);
 
   // ── draw another → back to idle, keep card for exclusion ─────────────────
 
