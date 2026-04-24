@@ -4,27 +4,53 @@ import { useQuery } from '@tanstack/react-query'
 import { tarotApi } from '@/services/api'
 import { useHaptic } from '@/hooks/useTelegram'
 import type { TarotCardDetail } from '@/types'
-import styles from './CelticCrossReading.module.css'
+import styles from './SpreadReading.module.css'
 
-const POSITION_NAMES: Record<number, string> = {
-  1: 'Суть',
-  2: 'Препятствие',
-  3: 'Идеал',
-  4: 'Основа',
-  5: 'Прошлое',
-  6: 'Будущее',
-  7: 'Вы сами',
-  8: 'Окружение',
-  9: 'Надежды и страхи',
-  10: 'Исход',
+type SpreadType = 'three_card' | 'celtic_cross' | 'week' | 'relationship'
+
+const POSITION_NAMES: Record<SpreadType, Record<number, string>> = {
+  three_card: {
+    1: 'Прошлое',
+    2: 'Настоящее',
+    3: 'Будущее',
+  },
+  celtic_cross: {
+    1: 'Суть',
+    2: 'Препятствие',
+    3: 'Идеал',
+    4: 'Основа',
+    5: 'Прошлое',
+    6: 'Будущее',
+    7: 'Вы сами',
+    8: 'Окружение',
+    9: 'Надежды и страхи',
+    10: 'Исход',
+  },
+  week: {
+    1: 'Понедельник',
+    2: 'Вторник',
+    3: 'Среда',
+    4: 'Четверг',
+    5: 'Пятница',
+    6: 'Суббота',
+    7: 'Воскресенье',
+  },
+  relationship: {
+    1: 'Вы',
+    2: 'Партнёр',
+    3: 'Связь',
+    4: 'Вызов',
+    5: 'Потенциал',
+  },
 }
 
 interface Props {
+  spreadType: SpreadType
   readingId: number
   cards: TarotCardDetail[]
 }
 
-export function CelticCrossReading({ readingId, cards }: Props) {
+export function SpreadReading({ spreadType, readingId, cards }: Props) {
   const { impact } = useHaptic()
   const [zoomedIdx, setZoomedIdx] = useState<number | null>(null)
 
@@ -36,7 +62,6 @@ export function CelticCrossReading({ readingId, cards }: Props) {
     retry: 1,
   })
 
-  // Close lightbox on Escape
   useEffect(() => {
     if (zoomedIdx === null) return
     const h = (e: KeyboardEvent) => {
@@ -49,9 +74,7 @@ export function CelticCrossReading({ readingId, cards }: Props) {
   if (isPending) {
     return (
       <div className={styles.readingWrap}>
-        <div className={styles.loader}>
-          Астролог читает ваш расклад…
-        </div>
+        <div className={styles.loader}>Астролог читает ваш расклад…</div>
       </div>
     )
   }
@@ -75,6 +98,7 @@ export function CelticCrossReading({ readingId, cards }: Props) {
   }
 
   const zoomedCard = zoomedIdx !== null ? cards[zoomedIdx] : null
+  const names = POSITION_NAMES[spreadType]
 
   return (
     <div className={styles.readingWrap}>
@@ -97,10 +121,8 @@ export function CelticCrossReading({ readingId, cards }: Props) {
               )}
             </div>
             <div className={styles.blockBody}>
-              <span className={styles.posLabel}>
-                Позиция {pos.n}
-              </span>
-              <h4 className={styles.posTitle}>{POSITION_NAMES[pos.n]}</h4>
+              <span className={styles.posLabel}>Позиция {pos.n}</span>
+              <h4 className={styles.posTitle}>{names[pos.n] ?? `#${pos.n}`}</h4>
               <div className={styles.cardName}>
                 {card.name_ru}
                 {card.reversed && (
@@ -120,13 +142,9 @@ export function CelticCrossReading({ readingId, cards }: Props) {
         </div>
       )}
 
-      {/* Lightbox */}
       {zoomedCard &&
         createPortal(
-          <div
-            className={styles.lightbox}
-            onClick={() => setZoomedIdx(null)}
-          >
+          <div className={styles.lightbox} onClick={() => setZoomedIdx(null)}>
             <div
               className={`${styles.lightboxCard} ${zoomedCard.reversed ? styles.reversed : ''}`}
             >

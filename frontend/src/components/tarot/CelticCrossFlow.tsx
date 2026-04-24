@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { FanOfCards, type FanCard } from './FanOfCards'
 import { FlipCard } from './FlipCard'
-import { CelticCrossReading } from './CelticCrossReading'
+import { SpreadReading } from './SpreadReading'
 import { TarotCardBack } from './TarotCardBack'
 import { useHaptic } from '@/hooks/useTelegram'
 import type { TarotCardDetail } from '@/types'
@@ -402,7 +402,11 @@ export function CelticCrossFlow({ readingId, cards, onNewReading }: Props) {
 
       {/* ── LLM narrative reading (complete phase) ── */}
       {phase === 'complete' && (
-        <CelticCrossReading readingId={readingId} cards={cards} />
+        <SpreadReading
+          spreadType="celtic_cross"
+          readingId={readingId}
+          cards={cards}
+        />
       )}
 
       {/* ── Restart button (complete phase) ── */}

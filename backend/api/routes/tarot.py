@@ -21,7 +21,11 @@ from db.models import TarotCard, TarotReading, TarotPositionMeaning
 from services.tarot.engine import (
     FREE_SPREADS, PREMIUM_SPREADS, draw_spread, to_reading_json,
 )
-from services.tarot.interpreter import generate_celtic_cross_interpretation
+from services.tarot.interpreter import (
+    expected_card_count,
+    generate_spread_interpretation,
+    is_supported_spread,
+)
 from services.users import repository as user_repo
 
 router = APIRouter(prefix="/tarot", tags=["tarot"])
@@ -137,18 +141,19 @@ async def interpret_reading(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Generate (or return cached) LLM narrative interpretation for a celtic_cross reading.
-    Each subsequent card is read in the context of previously drawn ones.
+    Generate (or return cached) LLM narrative interpretation for a reading.
+    Supports three_card, celtic_cross, week, relationship. Each subsequent
+    card is read in the context of previously drawn ones.
     """
     # Load reading and verify ownership
     reading = await db.get(TarotReading, reading_id)
     if not reading or reading.user_id != tg_user["id"]:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Reading not found")
 
-    if reading.spread_type != "celtic_cross":
+    if not is_supported_spread(reading.spread_type):
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
-            "Interpretation is available only for celtic_cross",
+            f"Interpretation not supported for {reading.spread_type}",
         )
 
     # Cache by reading_id — interpretation is deterministic for a given reading
@@ -165,9 +170,13 @@ async def interpret_reading(
 
     # Resolve cards_json -> card details needed for the prompt
     cards_json = reading.cards_json or []
+    expected_n = expected_card_count(reading.spread_type)
     drawn_ids = [c["card_id"] for c in cards_json]
-    if len(drawn_ids) != 10:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Reading has unexpected card count")
+    if len(drawn_ids) != expected_n:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Reading has unexpected card count (got {len(drawn_ids)}, expected {expected_n})",
+        )
 
     cards_result = await db.execute(select(TarotCard).where(TarotCard.id.in_(drawn_ids)))
     cards_map: dict[int, TarotCard] = {c.id: c for c in cards_result.scalars()}
@@ -186,12 +195,18 @@ async def interpret_reading(
         )
 
     try:
-        parsed = await generate_celtic_cross_interpretation(
+        parsed = await generate_spread_interpretation(
+            spread_type=reading.spread_type,
             cards=prompt_cards,
             api_key=settings.ANTHROPIC_API_KEY,
         )
     except Exception as e:  # noqa: BLE001
-        log.error("tarot.interpret.failed", reading_id=reading.id, error=str(e))
+        log.error(
+            "tarot.interpret.failed",
+            reading_id=reading.id,
+            spread=reading.spread_type,
+            error=str(e),
+        )
         raise HTTPException(
             status.HTTP_502_BAD_GATEWAY,
             "Interpretation failed — please try again",

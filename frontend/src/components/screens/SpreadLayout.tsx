@@ -83,9 +83,11 @@ interface Props {
   cards: TarotCardDetail[]
   /** Number of slots already picked; undefined means all placed. Unplaced slots render as empty boxes. */
   placedCount?: number
+  /** Called once when the user has flipped every card. */
+  onAllFlipped?: () => void
 }
 
-export function SpreadLayout({ spreadType, cards, placedCount }: Props) {
+export function SpreadLayout({ spreadType, cards, placedCount, onAllFlipped }: Props) {
   const { impact } = useHaptic()
   const [flipped, setFlipped] = useState<Set<number>>(new Set())
   const [selected, setSelected] = useState<number | null>(null)
@@ -94,6 +96,12 @@ export function SpreadLayout({ spreadType, cards, placedCount }: Props) {
   const areaRef = useRef<HTMLDivElement>(null)
 
   const layout = LAYOUTS[spreadType]
+
+  useEffect(() => {
+    if (onAllFlipped && cards.length > 0 && flipped.size === cards.length) {
+      onAllFlipped()
+    }
+  }, [flipped, cards.length, onAllFlipped])
 
   useEffect(() => {
     if (!layout) return
