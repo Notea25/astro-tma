@@ -79,6 +79,14 @@ export interface TarotInterpretationResponse {
   summary: string;
 }
 
+export interface TarotHistoryItem {
+  reading_id: number;
+  spread_type: string;
+  card_count: number;
+  card_previews: string[];
+  created_at: string;
+}
+
 export interface CompatibilityResponse {
   sign_a: string;
   sign_b: string;

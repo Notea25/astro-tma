@@ -121,6 +121,13 @@ export const tarotApi = {
       "POST",
       `/tarot/interpret/${reading_id}`,
     ),
+  history: () =>
+    request<import("@/types").TarotHistoryItem[]>("GET", "/tarot/history"),
+  getReading: (reading_id: number) =>
+    request<import("@/types").TarotSpreadResponse>(
+      "GET",
+      `/tarot/readings/${reading_id}`,
+    ),
 };
 
 // ── Compatibility ──────────────────────────────────────────────────────────────
