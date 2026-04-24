@@ -8,6 +8,7 @@ import { ThreeCardFlow } from "./ThreeCardFlow";
 import { SpreadLayout } from "./SpreadLayout";
 import { CelticCrossFlow } from "@/components/tarot/CelticCrossFlow";
 import { SpreadInfoPage } from "@/components/tarot/SpreadInfoPage";
+import { SpreadReading } from "@/components/tarot/SpreadReading";
 import { tarotApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
@@ -66,6 +67,7 @@ export function Tarot() {
   const [selectedSpread, setSelectedSpread] = useState<SpreadType | null>(null);
   const [reading, setReading] = useState<TarotSpreadResponse | null>(null);
   const [showInfo, setShowInfo] = useState(true);
+  const [allFlipped, setAllFlipped] = useState(false);
 
   const handleBack = useCallback(() => {
     if (reading) {
@@ -85,6 +87,7 @@ export function Tarot() {
     onSuccess: (data) => {
       impact("success" as any);
       setReading(data);
+      setAllFlipped(false);
     },
   });
 
@@ -327,11 +330,25 @@ export function Tarot() {
 
         {reading && selectedSpread !== "celtic_cross" && (
           <>
-            <SpreadLayout spreadType={selectedSpread} cards={reading.cards} />
+            <SpreadLayout
+              spreadType={selectedSpread}
+              cards={reading.cards}
+              onAllFlipped={() => setAllFlipped(true)}
+            />
+            {allFlipped &&
+              (selectedSpread === "week" ||
+                selectedSpread === "relationship") && (
+                <SpreadReading
+                  spreadType={selectedSpread}
+                  readingId={reading.reading_id}
+                  cards={reading.cards}
+                />
+              )}
             <motion.button
               className="btn-secondary btn-with-icon"
               onClick={() => {
                 setReading(null);
+                setAllFlipped(false);
                 drawMutation.reset();
               }}
               initial={{ opacity: 0 }}

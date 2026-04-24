@@ -5,6 +5,7 @@ import { tarotApi } from '@/services/api'
 import { useHaptic } from '@/hooks/useTelegram'
 import { MeaningText } from '@/components/ui/MeaningText'
 import { TarotCardBack } from '@/components/tarot/TarotCardBack'
+import { SpreadReading } from '@/components/tarot/SpreadReading'
 import type { TarotCardDetail } from '@/types'
 
 const POSITIONS   = ['Прошлое', 'Настоящее', 'Будущее']
@@ -341,6 +342,13 @@ export function ThreeCardFlow({ onReset }: Props) {
                 })}
               </AnimatePresence>
             </div>
+            {shownCards.length === 3 && drawMutation.data && (
+              <SpreadReading
+                spreadType="three_card"
+                readingId={drawMutation.data.reading_id}
+                cards={apiCards}
+              />
+            )}
             {shownCards.length === 3 && (
               <motion.button className="btn-secondary btn-with-icon" onClick={handleReset} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
                 <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
