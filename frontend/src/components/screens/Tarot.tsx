@@ -9,6 +9,7 @@ import { SpreadLayout } from "./SpreadLayout";
 import { CelticCrossFlow } from "@/components/tarot/CelticCrossFlow";
 import { SpreadInfoPage } from "@/components/tarot/SpreadInfoPage";
 import { SpreadReading } from "@/components/tarot/SpreadReading";
+import { TarotHistory } from "@/components/tarot/TarotHistory";
 import { tarotApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
@@ -68,6 +69,7 @@ export function Tarot() {
   const [reading, setReading] = useState<TarotSpreadResponse | null>(null);
   const [showInfo, setShowInfo] = useState(true);
   const [allFlipped, setAllFlipped] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   const handleBack = useCallback(() => {
     if (reading) {
@@ -77,8 +79,10 @@ export function Tarot() {
     } else if (selectedSpread) {
       setSelectedSpread(null);
       setShowInfo(true);
+    } else if (showHistory) {
+      setShowHistory(false);
     } else setScreen("discover", "back");
-  }, [reading, selectedSpread, showInfo, setScreen]);
+  }, [reading, selectedSpread, showInfo, showHistory, setScreen]);
 
   useTelegramBackButton(handleBack, true);
 
@@ -116,6 +120,38 @@ export function Tarot() {
     if (selectedSpread !== "celtic_cross") return;
     drawMutation.mutate(selectedSpread);
   };
+
+  // History view
+  if (!selectedSpread && showHistory) {
+    return (
+      <div className="screen tarot-screen">
+        <div className="screen-header screen-header--with-back">
+          <button
+            className="back-btn"
+            onClick={() => setShowHistory(false)}
+            aria-label="Назад"
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M13 4l-6 6 6 6" />
+            </svg>
+          </button>
+          <h2 className="screen-title">История раскладов</h2>
+        </div>
+        <div className="screen-content">
+          <TarotHistory />
+        </div>
+      </div>
+    );
+  }
 
   // Spread selection view
   if (!selectedSpread) {
@@ -167,6 +203,23 @@ export function Tarot() {
               </motion.div>
             </PremiumGate>
           ))}
+
+          <motion.div
+            className="spread-option"
+            onClick={() => {
+              impact("light");
+              setShowHistory(true);
+            }}
+            whileTap={{ scale: 0.97 }}
+            style={{ marginTop: 8, opacity: 0.9 }}
+          >
+            <div className="spread-option__info">
+              <div className="spread-option__name">📜 История раскладов</div>
+              <div className="spread-option__count">
+                Ваши прошлые расклады
+              </div>
+            </div>
+          </motion.div>
         </div>
       </div>
     );

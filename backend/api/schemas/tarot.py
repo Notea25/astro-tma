@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel
 
 
@@ -39,3 +41,11 @@ class TarotInterpretationResponse(BaseModel):
     spread_type: str
     positions: list[TarotPositionNarrative]
     summary: str
+
+
+class TarotHistoryItem(BaseModel):
+    reading_id: int
+    spread_type: str
+    card_count: int
+    card_previews: list[str]  # first up to 3 card names for preview
+    created_at: datetime

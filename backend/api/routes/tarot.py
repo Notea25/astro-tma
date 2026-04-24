@@ -8,6 +8,7 @@ from api.middleware.telegram_auth import get_tg_user
 from api.schemas.tarot import (
     DrawSpreadRequest,
     TarotCardDetail,
+    TarotHistoryItem,
     TarotInterpretationResponse,
     TarotPositionNarrative,
     TarotSpreadResponse,
@@ -119,19 +120,110 @@ async def draw_tarot(
     )
 
 
-@router.get("/history", response_model=list[dict])
+@router.get("/history", response_model=list[TarotHistoryItem])
 async def get_reading_history(
     tg_user: dict = Depends(get_tg_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Last 10 readings for this user."""
+    """Last 30 readings for this user with card name previews."""
     result = await db.execute(
         select(TarotReading)
         .where(TarotReading.user_id == tg_user["id"])
         .order_by(TarotReading.created_at.desc())
-        .limit(10)
+        .limit(30)
     )
-    return [r.to_dict() for r in result.scalars()]
+    readings = list(result.scalars())
+    if not readings:
+        return []
+
+    # Gather all card ids referenced, then resolve names in one query
+    all_ids: set[int] = set()
+    for r in readings:
+        for c in (r.cards_json or []):
+            all_ids.add(c["card_id"])
+
+    names_result = await db.execute(
+        select(TarotCard.id, TarotCard.name_ru).where(TarotCard.id.in_(all_ids))
+    )
+    names = {row[0]: row[1] for row in names_result.all()}
+
+    items: list[TarotHistoryItem] = []
+    for r in readings:
+        cards_json = r.cards_json or []
+        sorted_cards = sorted(cards_json, key=lambda x: x.get("position", 0))
+        previews = [names.get(c["card_id"], "?") for c in sorted_cards[:3]]
+        items.append(
+            TarotHistoryItem(
+                reading_id=r.id,
+                spread_type=r.spread_type,
+                card_count=len(cards_json),
+                card_previews=previews,
+                created_at=r.created_at,
+            )
+        )
+    return items
+
+
+@router.get("/readings/{reading_id}", response_model=TarotSpreadResponse)
+async def get_reading_by_id(
+    reading_id: int,
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Re-open a past reading with full card details."""
+    reading = await db.get(TarotReading, reading_id)
+    if not reading or reading.user_id != tg_user["id"]:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Reading not found")
+
+    cards_json = reading.cards_json or []
+    drawn_ids = [c["card_id"] for c in cards_json]
+
+    cards_result = await db.execute(
+        select(TarotCard).where(TarotCard.id.in_(drawn_ids))
+    )
+    cards_map: dict[int, TarotCard] = {c.id: c for c in cards_result.scalars()}
+
+    pos_result = await db.execute(
+        select(TarotPositionMeaning).where(
+            TarotPositionMeaning.spread_type == reading.spread_type,
+            TarotPositionMeaning.card_id.in_(drawn_ids),
+        )
+    )
+    pos_meanings: dict[tuple[int, int], str] = {}
+    pos_names: dict[tuple[int, int], str] = {}
+    for pm in pos_result.scalars():
+        pos_meanings[(pm.card_id, pm.position)] = pm.meaning_ru
+        pos_names[(pm.card_id, pm.position)] = pm.position_name_ru
+
+    card_details: list[TarotCardDetail] = []
+    for drawn in sorted(cards_json, key=lambda x: x.get("position", 0)):
+        card = cards_map.get(drawn["card_id"])
+        if not card:
+            continue
+        reversed_flag = bool(drawn.get("reversed"))
+        meaning = card.reversed_ru if reversed_flag else card.upright_ru
+        card_details.append(
+            TarotCardDetail(
+                id=card.id,
+                name_ru=card.name_ru,
+                name_en=card.name_en,
+                emoji=card.emoji,
+                arcana=card.arcana.value,
+                reversed=reversed_flag,
+                meaning_ru=meaning,
+                position_name_ru=pos_names.get((card.id, drawn["position"]), ""),
+                position_meaning_ru=pos_meanings.get((card.id, drawn["position"])),
+                keywords_ru=card.keywords_ru or [],
+                image_url=(_IMAGE_BASE + card.image_key) if card.image_key else None,
+            )
+        )
+
+    return TarotSpreadResponse(
+        reading_id=reading.id,
+        spread_type=reading.spread_type,
+        cards=card_details,
+        is_premium=reading.spread_type in PREMIUM_SPREADS,
+    )
 
 
 @router.post("/interpret/{reading_id}", response_model=TarotInterpretationResponse)
