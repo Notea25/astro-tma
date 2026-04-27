@@ -73,7 +73,7 @@ def verify_init_data(init_data: str) -> dict:
 
 
 async def get_tg_user(
-    x_init_data: str = Header(..., alias="X-Init-Data"),
+    x_init_data: str = Header("", alias="X-Init-Data"),
 ) -> dict:
     """
     FastAPI dependency: extract and verify Telegram user from request header.
@@ -83,6 +83,26 @@ async def get_tg_user(
         async def endpoint(tg_user: dict = Depends(get_tg_user)):
             user_id = tg_user["id"]
     """
+    # Dev-only auth bypass — requires AUTH_BYPASS=true AND non-production env.
+    # Lets you test the app in a regular browser without Telegram initData.
+    if settings.AUTH_BYPASS and not settings.is_production:
+        log.warning(
+            "auth.bypass_active",
+            user_id=settings.AUTH_BYPASS_USER_ID,
+            env=settings.APP_ENV,
+        )
+        return {
+            "id": settings.AUTH_BYPASS_USER_ID,
+            "first_name": settings.AUTH_BYPASS_FIRST_NAME,
+            "last_name": "",
+            "username": "dev_user",
+            "language_code": "ru",
+            "is_premium": False,
+        }
+
+    if not x_init_data:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Missing X-Init-Data header")
+
     verified = verify_init_data(x_init_data)
     user = verified["user"]
 

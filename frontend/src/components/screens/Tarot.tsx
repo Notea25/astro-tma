@@ -3,16 +3,17 @@ import { useMutation } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { PremiumGate } from "@/components/ui/PremiumGate";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import { HeaderAvatarButton } from "@/components/ui/HeaderAvatarButton";
 import { ThreeCardFlow } from "./ThreeCardFlow";
 import { SpreadLayout } from "./SpreadLayout";
+import { SpreadIntro } from "./SpreadIntro";
 import { tarotApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
 import { useTelegramBackButton } from "@/hooks/useTelegram";
 import type { TarotSpreadResponse } from "@/types";
+import type { SpreadKey } from "@/data/spread-config";
 
-type SpreadType = "three_card" | "celtic_cross" | "week" | "relationship";
+type SpreadType = SpreadKey;
 
 interface SpreadOption {
   id: SpreadType;
@@ -100,7 +101,7 @@ export function Tarot() {
   if (!selectedSpread) {
     return (
       <div className="screen tarot-screen">
-        <div className="screen-header screen-header--with-back screen-header--with-back-avatar">
+        <div className="screen-header screen-header--with-back">
           <button
             className="back-btn"
             onClick={() => setScreen("discover", "back")}
@@ -120,7 +121,6 @@ export function Tarot() {
             </svg>
           </button>
           <h2 className="screen-title">Таро</h2>
-          <HeaderAvatarButton />
         </div>
         <div className="screen-content">
           {SPREADS.map((spread) => (
@@ -172,14 +172,30 @@ export function Tarot() {
               <path d="M13 4l-6 6 6 6" />
             </svg>
           </button>
-          <h2 className="screen-title">{spreadInfo.name}</h2>
+          {/* Intro-screen shows its own large italic title; keep header minimal */}
+          {!showInfo && <h2 className="screen-title">{spreadInfo.name}</h2>}
         </div>
         <div className="screen-content">
-          <ThreeCardFlow onReset={() => setSelectedSpread(null)} />
+          {showInfo ? (
+            <SpreadIntro
+              spreadKey="three_card"
+              onStart={() => setShowInfo(false)}
+            />
+          ) : (
+            <ThreeCardFlow onReset={() => setSelectedSpread(null)} />
+          )}
         </div>
       </div>
     );
   }
+
+  const startDraw = () => {
+    setShowInfo(false);
+    handleDraw();
+  };
+
+  const showIntro =
+    showInfo && !reading && !drawMutation.isPending && !drawMutation.isError;
 
   return (
     <div className="screen tarot-screen">
@@ -202,148 +218,9 @@ export function Tarot() {
       </div>
 
       <div className="screen-content">
-        {/* ── Spread info page (before drawing) ── */}
-        {showInfo &&
-          !reading &&
-          !drawMutation.isPending &&
-          selectedSpread === "celtic_cross" && (
-            <motion.div
-              className="spread-info"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-            >
-              <p className="spread-info__intro">
-                Понимание каждой позиции — ключ к точной интерпретации. Расклад
-                делится на две части:
-                <strong> Крест</strong> (позиции 1–6) исследует вашу текущую
-                реальность, а <strong>Посох</strong> (позиции 7–10) раскрывает
-                путь к разрешению.
-              </p>
-
-              <div className="spread-info__section">
-                <h4 className="spread-info__section-title">
-                  Крест — Ваша Текущая Ситуация
-                </h4>
-                <div className="spread-info__positions">
-                  <div className="spread-info__pos">
-                    <span className="spread-info__num">1</span>
-                    <div>
-                      <strong>Настоящее</strong>
-                      <p>
-                        Ваше текущее состояние и центральный вопрос. Эта карта
-                        задаёт тон всему раскладу.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="spread-info__pos">
-                    <span className="spread-info__num">2</span>
-                    <div>
-                      <strong>Препятствие</strong>
-                      <p>
-                        Кладётся поперёк первой карты. Непосредственное
-                        препятствие или противодействующая сила.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="spread-info__pos">
-                    <span className="spread-info__num">3</span>
-                    <div>
-                      <strong>Основа</strong>
-                      <p>
-                        Подсознательный фундамент ситуации. Прошлый опыт и
-                        скрытые мотивы.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="spread-info__pos">
-                    <span className="spread-info__num">4</span>
-                    <div>
-                      <strong>Недавнее Прошлое</strong>
-                      <p>
-                        События, которые уходят, но ещё воздействуют на
-                        настоящее.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="spread-info__pos">
-                    <span className="spread-info__num">5</span>
-                    <div>
-                      <strong>Корона</strong>
-                      <p>
-                        Ваша осознанная цель или лучший известный вам результат.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="spread-info__pos">
-                    <span className="spread-info__num">6</span>
-                    <div>
-                      <strong>Ближайшее Будущее</strong>
-                      <p>
-                        Что приближается в краткосрочной перспективе — следующая
-                        фаза развития.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="spread-info__section">
-                <h4 className="spread-info__section-title">
-                  Посох — Путь Вперёд
-                </h4>
-                <div className="spread-info__positions">
-                  <div className="spread-info__pos">
-                    <span className="spread-info__num">7</span>
-                    <div>
-                      <strong>Ваш Подход</strong>
-                      <p>
-                        Как вы видите себя в этой ситуации. Ваше отношение и
-                        самовосприятие.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="spread-info__pos">
-                    <span className="spread-info__num">8</span>
-                    <div>
-                      <strong>Внешние Влияния</strong>
-                      <p>
-                        Люди и обстоятельства, влияющие на вашу ситуацию извне.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="spread-info__pos">
-                    <span className="spread-info__num">9</span>
-                    <div>
-                      <strong>Надежды и Страхи</strong>
-                      <p>
-                        То, чего вы больше всего желаете или боитесь. Эти две
-                        крайности часто связаны.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="spread-info__pos">
-                    <span className="spread-info__num">10</span>
-                    <div>
-                      <strong>Результат</strong>
-                      <p>
-                        Вероятное разрешение, если текущие энергии продолжатся
-                        без изменений.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <motion.button
-                className="btn-primary"
-                onClick={() => setShowInfo(false)}
-                whileTap={{ scale: 0.96 }}
-                style={{ marginTop: 16 }}
-              >
-                Перейти к раскладу
-              </motion.button>
-            </motion.div>
-          )}
+        {showIntro && (
+          <SpreadIntro spreadKey={selectedSpread} onStart={startDraw} />
+        )}
 
         {drawMutation.isPending && (
           <LoadingSpinner message="Тасуем колоду..." />
@@ -373,47 +250,6 @@ export function Tarot() {
           </div>
         )}
 
-        {!reading &&
-          !drawMutation.isPending &&
-          !drawMutation.isError &&
-          !(showInfo && selectedSpread === "celtic_cross") && (
-            <motion.div
-              className="draw-prompt"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-            >
-              <div className="deck-preview">
-                {[2, 1, 0].map((i) => (
-                  <div
-                    key={i}
-                    className="deck-card"
-                    style={{
-                      transform: `rotate(${(i - 1) * 6}deg) translateY(${i * -4}px)`,
-                    }}
-                  >
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                      opacity="0.5"
-                    >
-                      <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z" />
-                    </svg>
-                  </div>
-                ))}
-              </div>
-              <motion.button
-                className="btn-primary btn-draw"
-                onClick={handleDraw}
-                whileTap={{ scale: 0.96 }}
-                disabled={drawMutation.isPending}
-              >
-                {drawMutation.isPending ? "Тасуем..." : "Тянуть карты"}
-              </motion.button>
-            </motion.div>
-          )}
-
         {reading && (
           <>
             <SpreadLayout spreadType={selectedSpread} cards={reading.cards} />
@@ -421,6 +257,7 @@ export function Tarot() {
               className="btn-secondary btn-with-icon"
               onClick={() => {
                 setReading(null);
+                setShowInfo(true);
                 drawMutation.reset();
               }}
               initial={{ opacity: 0 }}
