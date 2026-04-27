@@ -67,28 +67,39 @@ export function Mac() {
             <path d="M13 4l-6 6 6 6" />
           </svg>
         </button>
-        <h2 className="screen-title">
-          {step === "revealed" ? "Ваша карта" : "Зеркало Души"}
-        </h2>
+        {step !== "intro" && (
+          <h2 className="screen-title">
+            {step === "revealed" ? "Ваша карта" : "Зеркало Души"}
+          </h2>
+        )}
       </div>
 
       <div className="screen-content">
         {step === "intro" && (
           <motion.div
-            className="spread-intro-v2"
+            className="spread-intro-v2 spread-intro-v2--showcase spread-intro-v2--mac"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
           >
+            <h1 className="spread-intro-v2__title">{MAC_INTRO.title}</h1>
+
             <div className="spread-intro-v2__preview">
               <div
                 className="spread-intro-v2__preview-stage"
-                style={{ width: 56, height: 84 }}
+                style={{ width: 82, height: 124 }}
               >
                 <div
-                  className="spread-intro-v2__mini-card card-back-pattern--mirror"
-                  style={{ left: 0, top: 0, width: 56, height: 84 }}
-                />
+                  className="spread-intro-v2__mini-card spread-intro-v2__mini-card--symbolic card-back-pattern--mirror"
+                  style={{ left: 0, top: 0, width: 82, height: 124 }}
+                >
+                  <span
+                    className="spread-intro-v2__mini-symbol"
+                    style={{ fontSize: 34 }}
+                  >
+                    ☽
+                  </span>
+                </div>
               </div>
             </div>
 

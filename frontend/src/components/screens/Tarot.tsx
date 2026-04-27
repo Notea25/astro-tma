@@ -172,7 +172,6 @@ export function Tarot() {
               <path d="M13 4l-6 6 6 6" />
             </svg>
           </button>
-          {/* Intro-screen shows its own large italic title; keep header minimal */}
           {!showInfo && <h2 className="screen-title">{spreadInfo.name}</h2>}
         </div>
         <div className="screen-content">
@@ -214,7 +213,7 @@ export function Tarot() {
             <path d="M13 4l-6 6 6 6" />
           </svg>
         </button>
-        <h2 className="screen-title">{spreadInfo.name}</h2>
+        {!showIntro && <h2 className="screen-title">{spreadInfo.name}</h2>}
       </div>
 
       <div className="screen-content">

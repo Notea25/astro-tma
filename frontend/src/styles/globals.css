@@ -1640,7 +1640,8 @@ body::after {
   padding-top: 32px;
 }
 .btn-draw {
-  width: auto;
+  width: min(100%, 440px);
+  margin-inline: auto;
   padding: 16px 48px;
 }
 
@@ -2194,6 +2195,13 @@ body::after {
 }
 
 /* ── MAC Cards (Зеркало Души) ─────────────────────────────────────────────── */
+.mac-draw-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
 .mac-intro {
   text-align: center;
   margin-bottom: 24px;
@@ -4519,21 +4527,26 @@ body::before {
 .spread-intro-v2 {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  padding: 8px var(--content-px) 24px;
+  gap: clamp(14px, 2.2dvh, 20px);
+  min-height: calc(
+    100dvh - var(--safe-top) - var(--safe-bottom) - var(--nav-height) - 54px
+  );
+  padding: clamp(4px, 1.2dvh, 8px) var(--content-px) 24px;
 }
 
 .spread-intro-v2__title {
   font-family: "Playfair Display", Georgia, serif;
   font-weight: 500;
   font-style: italic;
-  font-size: clamp(22px, 5.8vw, 30px);
+  font-size: clamp(26px, 4vw, 44px);
   line-height: 1.25;
   text-align: center;
   color: var(--gold-light);
   letter-spacing: 0.02em;
-  margin: 4px 12px 6px;
+  max-width: 1080px;
+  margin: clamp(4px, 1.2dvh, 8px) auto 0;
   text-shadow: 0 0 14px rgba(240, 212, 138, 0.18);
+  text-wrap: balance;
 }
 
 .spread-intro-v2__preview {
@@ -4546,15 +4559,26 @@ body::before {
   padding: 12px 8px;
 }
 
-/* Showcase variant (three_card) — larger cards with soft purple aura */
+/* Showcase variant — shared intro style for every spread start page. */
 .spread-intro-v2--showcase .spread-intro-v2__preview {
-  min-height: 220px;
-  padding: 18px 8px;
+  min-height: clamp(168px, 25dvh, 270px);
+  padding: clamp(12px, 1.8dvh, 18px) 8px;
 }
+
+.spread-intro-v2--celtic_cross .spread-intro-v2__preview,
+.spread-intro-v2--relationship .spread-intro-v2__preview {
+  min-height: clamp(202px, 27dvh, 292px);
+}
+
+.spread-intro-v2--three_card .spread-intro-v2__preview,
+.spread-intro-v2--mac .spread-intro-v2__preview {
+  min-height: clamp(176px, 26dvh, 286px);
+}
+
 .spread-intro-v2--showcase .spread-intro-v2__preview-stage::before {
   content: "";
   position: absolute;
-  inset: -40px -20px;
+  inset: -44px -32px;
   background: radial-gradient(
     ellipse 80% 60% at 50% 50%,
     rgba(139, 106, 208, 0.22) 0%,
@@ -4594,6 +4618,16 @@ body::before {
   font-weight: 400;
 }
 
+.spread-intro-v2--week .spread-intro-v2__mini-symbol {
+  font-family:
+    "Inter",
+    -apple-system,
+    sans-serif;
+  font-size: 11px !important;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
 .spread-intro-v2__preview-stage {
   position: relative;
   margin: 0 auto;
@@ -4627,10 +4661,11 @@ body::before {
 }
 
 .spread-intro-v2__frame {
+  width: 100%;
   background: rgba(12, 9, 32, 0.62);
   border: 1px solid var(--gold-border);
   border-radius: var(--card-radius);
-  padding: 20px;
+  padding: clamp(18px, 2.6vw, 24px);
   box-shadow: inset 0 0 0 0.5px rgba(212, 178, 84, 0.1);
 }
 
@@ -4702,7 +4737,53 @@ body::before {
 }
 
 .spread-intro-v2__start-btn {
-  margin-top: 8px;
+  margin-top: auto;
+}
+
+@media (min-width: 720px) {
+  .spread-intro-v2__frame {
+    padding-inline: clamp(24px, 3.2vw, 32px);
+  }
+
+  .spread-intro-v2--week .spread-intro-v2__positions,
+  .spread-intro-v2--relationship .spread-intro-v2__positions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 28px;
+    row-gap: 12px;
+  }
+
+  .spread-intro-v2--celtic_cross .spread-intro-v2__frame {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 30px;
+    row-gap: 14px;
+  }
+
+  .spread-intro-v2--celtic_cross .spread-intro-v2__intro-text {
+    grid-column: 1 / -1;
+    margin-bottom: 0;
+  }
+
+  .spread-intro-v2--celtic_cross .spread-intro-v2__section {
+    margin-top: 0;
+  }
+}
+
+@media (max-height: 760px) {
+  .spread-intro-v2 {
+    gap: 12px;
+    padding-bottom: 18px;
+  }
+
+  .spread-intro-v2--showcase .spread-intro-v2__preview {
+    min-height: clamp(146px, 22dvh, 202px);
+  }
+
+  .spread-intro-v2--celtic_cross .spread-intro-v2__preview,
+  .spread-intro-v2--relationship .spread-intro-v2__preview {
+    min-height: 190px;
+  }
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
