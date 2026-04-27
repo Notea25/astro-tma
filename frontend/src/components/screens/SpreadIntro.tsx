@@ -11,12 +11,11 @@ interface Props {
   onStart: () => void;
 }
 
-// Three_card has only 3 cards — we can afford a larger preview.
 const SCALE_BY_KEY: Record<SpreadKey, number> = {
   three_card: 0.9,
-  celtic_cross: 0.55,
-  week: 0.55,
-  relationship: 0.55,
+  celtic_cross: 0.44,
+  week: 0.58,
+  relationship: 0.44,
 };
 
 export function SpreadIntro({ spreadKey, onStart }: Props) {
@@ -30,12 +29,9 @@ export function SpreadIntro({ spreadKey, onStart }: Props) {
   const cardH = CARD_H * scale;
   const symbolFontSize = Math.round(cardH * 0.32);
 
-  const modClass =
-    spreadKey === "three_card" ? " spread-intro-v2--showcase" : "";
-
   return (
     <motion.div
-      className={`spread-intro-v2${modClass}`}
+      className={`spread-intro-v2 spread-intro-v2--showcase spread-intro-v2--${spreadKey}`}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}

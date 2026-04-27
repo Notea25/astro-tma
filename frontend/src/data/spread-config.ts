@@ -175,6 +175,7 @@ export const SPREAD_CONFIG: Record<SpreadKey, SpreadConfig> = {
       ],
     },
     backVariant: "geometry",
+    previewSymbols: ["☉", "✦", "☽", "◐", "◇", "☿", "♄", "♀", "△", "✧"],
   },
 
   week: {
@@ -228,19 +229,20 @@ export const SPREAD_CONFIG: Record<SpreadKey, SpreadConfig> = {
       },
     ],
     layout: {
-      w: 340,
+      w: 314,
       h: 240,
       slots: [
         { x: 0, y: 0 },
         { x: 82, y: 0 },
         { x: 164, y: 0 },
         { x: 246, y: 0 },
-        { x: 40, y: 116 },
-        { x: 136, y: 116 },
-        { x: 232, y: 116 },
+        { x: 27, y: 116 },
+        { x: 123, y: 116 },
+        { x: 219, y: 116 },
       ],
     },
     backVariant: "gold",
+    previewSymbols: ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"],
   },
 
   relationship: {
@@ -294,6 +296,7 @@ export const SPREAD_CONFIG: Record<SpreadKey, SpreadConfig> = {
       ],
     },
     backVariant: "duo",
+    previewSymbols: ["☽", "☉", "✦", "◇", "♡"],
   },
 };
 
