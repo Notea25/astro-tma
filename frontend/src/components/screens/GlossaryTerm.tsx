@@ -25,7 +25,7 @@ export function GlossaryTerm() {
   };
 
   return (
-    <div className="screen">
+    <div className="screen glossary-screen">
       <div className="screen-header screen-header--with-back">
         <button
           className="back-btn"

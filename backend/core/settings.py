@@ -63,6 +63,12 @@ class Settings(BaseSettings):
     FEATURE_PUSH_NOTIFICATIONS: bool = True
     FEATURE_SYNASTRY: bool = True
 
+    # Dev-only: skip Telegram initData verification and inject a mock user.
+    # Never honored in production.
+    AUTH_BYPASS: bool = False
+    AUTH_BYPASS_USER_ID: int = 777777777
+    AUTH_BYPASS_FIRST_NAME: str = "Dev"
+
     @field_validator("APP_SECRET_KEY")
     @classmethod
     def secret_key_length(cls, v: str) -> str:

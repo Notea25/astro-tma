@@ -169,6 +169,12 @@ export const synastryApi = {
     ),
   result: (id: number) =>
     request<import("@/types").SynastryResult>("GET", `/synastry/result/${id}`),
+  manual: (payload: import("@/types").SynastryManualInput) =>
+    request<import("@/types").SynastryResult>(
+      "POST",
+      "/synastry/manual",
+      payload,
+    ),
 };
 
 // ── Transits ───────────────────────────────────────────────────────────────────

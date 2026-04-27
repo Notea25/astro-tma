@@ -12,6 +12,8 @@ class TransitAspect(BaseModel):
     transit_planet_ru: str
     natal_planet_ru: str
     aspect_ru: str
+    transit_retrograde: bool = False
+    applying: bool | None = None  # True = сходящийся (усиливается), False = расходящийся, None = неизвестно
 
 
 class EnergyScores(BaseModel):

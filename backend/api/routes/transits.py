@@ -73,6 +73,8 @@ def _build_response(raw_transits: list[dict], sign: str) -> TransitsResponse:
             transit_planet_ru=_PLANET_RU.get(t["transit_planet"].lower(), t["transit_planet"]),
             natal_planet_ru=_PLANET_RU.get(t["natal_planet"].lower(), t["natal_planet"]),
             aspect_ru=_ASPECT_RU.get(t["aspect"], t["aspect"]),
+            transit_retrograde=t.get("transit_retrograde", False),
+            applying=t.get("applying"),
         )
         for t in raw_transits
     ]

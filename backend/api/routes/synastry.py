@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.middleware.telegram_auth import get_tg_user
 from api.schemas.synastry import (
-    SynastryAspectOut, SynastryPending, SynastryRequestOut,
+    SynastryAspectOut, SynastryManualInput, SynastryPending, SynastryRequestOut,
     SynastryResult, SynastryScores,
 )
 from core.logging import get_logger
@@ -212,6 +212,79 @@ async def accept_request(
         total_aspects=raw["total_aspects"],
         initiator_name=initiator.tg_first_name,
         partner_name=partner.tg_first_name,
+    )
+
+
+@router.post("/manual", response_model=SynastryResult)
+async def manual_synastry(
+    payload: SynastryManualInput,
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Compute synastry between current user and a manually-entered partner.
+    No invite flow — the partner isn't required to be a Telegram user.
+    Result is returned directly; not persisted to the database.
+    """
+    initiator = await _require_user_with_chart(db, tg_user["id"])
+
+    if not await user_repo.has_purchased(db, initiator.id, "synastry"):
+        raise HTTPException(status.HTTP_402_PAYMENT_REQUIRED, "Покупка Синастрии обязательна")
+
+    # Combine birth_date + birth_time into a single datetime
+    try:
+        hh, mm = payload.birth_time.split(":", 1)
+        partner_dt = datetime(
+            payload.birth_date.year,
+            payload.birth_date.month,
+            payload.birth_date.day,
+            int(hh),
+            int(mm),
+        )
+    except (ValueError, IndexError) as exc:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Некорректный формат времени рождения (ожидается HH:MM)",
+        ) from exc
+
+    # Resolve partner timezone from coords if not provided by the client.
+    partner_tz = payload.birth_tz
+    if not partner_tz:
+        from api.routes.users import _get_timezone  # late import to avoid cycles
+        partner_tz = await _get_timezone(payload.birth_lat, payload.birth_lng)
+
+    raw = calculate_synastry(
+        user_a={
+            "name": initiator.tg_first_name,
+            "birth_dt": initiator.birth_date,
+            "lat": initiator.birth_lat or 0.0,
+            "lng": initiator.birth_lng or 0.0,
+            "tz_str": initiator.birth_tz,
+            "birth_time_known": initiator.birth_time_known,
+        },
+        user_b={
+            "name": payload.partner_name,
+            "birth_dt": partner_dt,
+            "lat": payload.birth_lat,
+            "lng": payload.birth_lng,
+            "tz_str": partner_tz,
+            "birth_time_known": payload.birth_time_known,
+        },
+    )
+
+    log.info(
+        "synastry.manual_computed",
+        initiator_id=initiator.id,
+        partner_name=payload.partner_name,
+        total=raw["total_aspects"],
+    )
+
+    return SynastryResult(
+        aspects=_aspects_to_schema(raw["aspects"]),
+        scores=SynastryScores(**raw["scores"]),
+        total_aspects=raw["total_aspects"],
+        initiator_name=initiator.tg_first_name,
+        partner_name=payload.partner_name,
     )
 
 

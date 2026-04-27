@@ -17,6 +17,7 @@ const CATEGORY_ORDER = ["planet", "sign", "house", "aspect", "concept"];
 export function Glossary() {
   const { setScreen, setGlossarySlug } = useAppStore();
   const [query, setQuery] = useState("");
+  const [activeCat, setActiveCat] = useState<string>("all");
 
   const { data: terms, isLoading } = useQuery({
     queryKey: ["glossary", query],
@@ -34,13 +35,23 @@ export function Glossary() {
     return map;
   }, [terms]);
 
+  const availableCats = useMemo(() => {
+    if (!terms) return new Set<string>();
+    return new Set(terms.map((t) => t.category));
+  }, [terms]);
+
+  const visibleCats =
+    activeCat === "all"
+      ? CATEGORY_ORDER
+      : CATEGORY_ORDER.filter((c) => c === activeCat);
+
   const openTerm = (slug: string) => {
     setGlossarySlug(slug);
     setScreen("glossary_term");
   };
 
   return (
-    <div className="screen">
+    <div className="screen glossary-screen">
       <div className="screen-header screen-header--with-back">
         <button
           className="back-btn"
@@ -70,8 +81,30 @@ export function Glossary() {
           placeholder="Поиск термина..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: 12 }}
         />
+
+        {terms && terms.length > 0 && (
+          <div className="category-chips">
+            <button
+              type="button"
+              className={`category-chip${activeCat === "all" ? " is-active" : ""}`}
+              onClick={() => setActiveCat("all")}
+            >
+              Все
+            </button>
+            {CATEGORY_ORDER.filter((c) => availableCats.has(c)).map((cat) => (
+              <button
+                type="button"
+                key={cat}
+                className={`category-chip${activeCat === cat ? " is-active" : ""}`}
+                onClick={() => setActiveCat(cat)}
+              >
+                {CATEGORY_LABEL[cat] ?? cat}
+              </button>
+            ))}
+          </div>
+        )}
 
         {isLoading && (
           <p style={{ color: "var(--text-secondary)", textAlign: "center" }}>
@@ -87,7 +120,7 @@ export function Glossary() {
 
         {terms &&
           terms.length > 0 &&
-          CATEGORY_ORDER.map((cat) => {
+          visibleCats.map((cat) => {
             const items = grouped[cat];
             if (!items || items.length === 0) return null;
             return (
