@@ -3,7 +3,7 @@ User repository — all DB queries for the User domain.
 Services call this; routes call services. Routes never touch DB directly.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,8 +11,9 @@ from sqlalchemy.orm import selectinload
 
 from core.logging import get_logger
 from db.models import (
-    NatalChart, Purchase, PurchaseStatus,
-    Subscription, SubscriptionStatus, User, ZodiacSign,
+    NatalChart,
+    User,
+    ZodiacSign,
 )
 
 log = get_logger(__name__)

@@ -15,6 +15,7 @@ import re
 from typing import Any
 
 from core.logging import get_logger
+from services.llm_utils import first_text_block
 
 log = get_logger(__name__)
 
@@ -199,7 +200,7 @@ async def generate_spread_interpretation(
         messages=[{"role": "user", "content": prompt}],
     )
 
-    text = message.content[0].text
+    text = first_text_block(message.content)
     parsed = _extract_json(text)
 
     positions_raw = parsed.get("positions", [])

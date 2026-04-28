@@ -4,11 +4,10 @@ Uses Kerykeion's MoonPhaseDetailsFactory — Swiss Ephemeris precision.
 """
 
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime
 from typing import Any
 
-from kerykeion import AstrologicalSubjectFactory
-from kerykeion import MoonPhaseDetailsFactory
+from kerykeion import AstrologicalSubjectFactory, MoonPhaseDetailsFactory
 
 from core.logging import get_logger
 
@@ -149,7 +148,7 @@ class MoonPhaseInfo:
 
 def get_moon_phase(dt: datetime | None = None) -> MoonPhaseInfo:
     """Calculate current moon phase."""
-    dt = dt or datetime.now(timezone.utc)
+    dt = dt or datetime.now(UTC)
     subject = AstrologicalSubjectFactory.from_birth_data(
         name="_moon",
         year=dt.year, month=dt.month, day=dt.day,
@@ -169,7 +168,12 @@ def get_moon_phase(dt: datetime | None = None) -> MoonPhaseInfo:
         illumination = round(float(illum_str) / 100, 3)
     except (ValueError, TypeError):
         try:
-            illumination = round(moon.detailed.illumination_details.visible_fraction, 3)
+            detailed = getattr(moon, "detailed", None)
+            details = getattr(detailed, "illumination_details", None)
+            visible_fraction = getattr(details, "visible_fraction", None)
+            if visible_fraction is None:
+                raise ValueError("moon visible fraction unavailable")
+            illumination = round(float(visible_fraction), 3)
         except Exception:
             illumination = 0.5
 
@@ -196,7 +200,7 @@ def get_monthly_calendar(year: int, month: int) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
 
     for day in range(1, days_in_month + 1):
-        dt = datetime(year, month, day, 12, 0, tzinfo=timezone.utc)
+        dt = datetime(year, month, day, 12, 0, tzinfo=UTC)
         info = get_moon_phase(dt)
         result.append({
             "day": day,

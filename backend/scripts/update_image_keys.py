@@ -4,15 +4,15 @@ Update image_key for all tarot cards to match new custom image filenames.
 Run: docker compose exec backend python scripts/update_image_keys.py
 """
 import asyncio
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy import select
+
 from db.database import AsyncSessionLocal
 from db.models import TarotCard
-
 
 # Map name_en -> file index
 MAJOR_ORDER = [

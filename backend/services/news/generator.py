@@ -4,6 +4,7 @@ from typing import Any
 
 from core.logging import get_logger
 from core.settings import settings
+from services.llm_utils import first_text_block
 
 log = get_logger(__name__)
 
@@ -34,7 +35,7 @@ async def generate_body(event: dict[str, Any]) -> str:
             max_tokens=600,
             messages=[{"role": "user", "content": prompt}],
         )
-        text = message.content[0].text.strip()
+        text = first_text_block(message.content).strip()
         return text or _fallback_body(title, source)
     except Exception as e:
         log.warning("news.llm_failed", title=title, error=str(e))

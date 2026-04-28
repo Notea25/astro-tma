@@ -198,7 +198,11 @@ async def get_natal_pdf(
     pdf_bytes = generate_natal_pdf(
         user_name=user.tg_first_name or "User",
         birth_date=str(user.birth_date) if user.birth_date else "",
-        birth_time=str(user.birth_time)[:5] if getattr(user, 'birth_time', None) else None,
+        birth_time=(
+            user.birth_date.strftime("%H:%M")
+            if user.birth_date and user.birth_time_known
+            else None
+        ),
         birth_city=user.birth_city or "",
         sun_sign=chart.sun_sign or "",
         moon_sign=chart.moon_sign or "",

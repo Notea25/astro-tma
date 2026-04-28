@@ -6,6 +6,7 @@ Result is cached by the caller — this function always calls the API.
 """
 
 from core.logging import get_logger
+from services.llm_utils import first_text_block
 
 log = get_logger(__name__)
 
@@ -98,6 +99,6 @@ async def generate_natal_reading(
         messages=[{"role": "user", "content": prompt}],
     )
 
-    text = message.content[0].text
+    text = first_text_block(message.content)
     log.info("llm_interpreter.done", chars=len(text))
     return text
