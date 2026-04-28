@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { tarotApi } from "@/services/api";
 import { useHaptic } from "@/hooks/useTelegram";
 import { MeaningText } from "@/components/ui/MeaningText";
+import { TarotCardBack } from "@/components/tarot/TarotCardBack";
+import { SpreadReading } from "@/components/tarot/SpreadReading";
 import type { TarotCardDetail } from "@/types";
 
 const POSITIONS = ["Прошлое", "Настоящее", "Будущее"];
@@ -45,11 +47,14 @@ const WHEEL_POS = Array.from({ length: WHEEL_COUNT }, (_, i) => {
 });
 
 // ── Card back face ─────────────────────────────────────────────────────────
-function CardBack({ large = false }) {
+function CardBack({ large = false }: { large?: boolean }) {
   return (
     <div
       className={`tarot-card-back ${large ? "tarot-card-back--large" : ""}`}
-    />
+      style={{ width: "100%", height: "100%" }}
+    >
+      <TarotCardBack />
+    </div>
   );
 }
 
@@ -411,6 +416,13 @@ export function ThreeCardFlow({ onReset }: Props) {
                 })}
               </AnimatePresence>
             </div>
+            {shownCards.length === 3 && drawMutation.data && (
+              <SpreadReading
+                spreadType="three_card"
+                readingId={drawMutation.data.reading_id}
+                cards={apiCards}
+              />
+            )}
             {shownCards.length === 3 && (
               <motion.button
                 className="btn-secondary btn-with-icon"

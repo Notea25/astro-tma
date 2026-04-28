@@ -59,6 +59,9 @@ def key_compatibility(sign_a: str, sign_b: str) -> str:
 def key_user_premium(user_id: int) -> str:
     return f"user:premium:{user_id}"
 
+def key_tarot_interpret(reading_id: int) -> str:
+    return f"tarot:interpret:{reading_id}"
+
 
 # ── Generic helpers ───────────────────────────────────────────────────────────
 
