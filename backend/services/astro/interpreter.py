@@ -16,7 +16,7 @@ This module is the CONTENT layer — it doesn't do astronomical calculations.
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.logging import get_logger

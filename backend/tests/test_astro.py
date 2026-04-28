@@ -1,9 +1,9 @@
 """Unit tests for astro calculation services."""
-import pytest
 from datetime import datetime
-from services.astro.natal import calculate_natal, chart_to_json
+
 from services.astro.compatibility import calculate_compatibility
 from services.astro.moon import get_moon_phase
+from services.astro.natal import calculate_natal, chart_to_json
 from services.astro.transits import build_energy_scores
 
 
@@ -75,7 +75,7 @@ def test_moon_phase_returns():
 
 
 def test_tarot_engine():
-    from services.tarot.engine import draw_spread, SPREADS
+    from services.tarot.engine import draw_spread
     card_ids = list(range(1, 79))
     result = draw_spread("three_card", card_ids, seed=42)
     assert len(result.cards) == 3

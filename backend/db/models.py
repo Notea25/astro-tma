@@ -2,11 +2,23 @@
 import enum
 from datetime import datetime
 from typing import Any
+
 from sqlalchemy import (
-    BigInteger, Boolean, DateTime, Enum, Float, ForeignKey,
-    Integer, JSON, String, Text, UniqueConstraint, func,
+    JSON,
+    BigInteger,
+    Boolean,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from db.database import Base
 
 

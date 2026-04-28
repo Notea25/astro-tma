@@ -2,7 +2,6 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-
 _IMAGE_BASE = "https://ip-194-99-21-53-142250.vps.hosted-by-mvps.net/static/tarot/"
 
 

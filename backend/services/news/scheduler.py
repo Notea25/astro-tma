@@ -1,6 +1,6 @@
 """Daily news generation job — detects events in next 48h and writes them to DB."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 
@@ -15,7 +15,7 @@ log = get_logger(__name__)
 
 async def run_once(lookahead_days: int = 2) -> int:
     """Detect events, generate bodies, insert into astro_news. Returns number of new rows."""
-    start = datetime.now(timezone.utc)
+    start = datetime.now(UTC)
     events = detect_events(start, days=lookahead_days)
 
     created = 0

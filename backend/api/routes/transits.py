@@ -7,13 +7,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.middleware.telegram_auth import get_tg_user
 from api.schemas.transits import (
-    EnergyScores, SkyPosition, TransitAspect, TransitsResponse,
+    EnergyScores,
+    SkyPosition,
+    TransitAspect,
+    TransitsResponse,
 )
 from core.cache import cache_get, cache_set
 from core.logging import get_logger
 from db.database import get_db
 from services.astro.transits import (
-    build_energy_scores, calculate_transits, get_current_sky,
+    build_energy_scores,
+    calculate_transits,
+    get_current_sky,
 )
 from services.users import repository as user_repo
 

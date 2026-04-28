@@ -10,9 +10,17 @@ from starlette.requests import Request
 from core.settings import settings
 from db.database import engine
 from db.models import (
-    DailyHoroscope, Interpretation, MacCard, MacReading, NatalChart,
-    Purchase, Subscription, TarotCard,
-    TarotPositionMeaning, TarotReading, User,
+    DailyHoroscope,
+    Interpretation,
+    MacCard,
+    MacReading,
+    NatalChart,
+    Purchase,
+    Subscription,
+    TarotCard,
+    TarotPositionMeaning,
+    TarotReading,
+    User,
 )
 
 

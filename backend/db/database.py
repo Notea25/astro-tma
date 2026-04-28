@@ -1,9 +1,11 @@
 """Async SQLAlchemy engine, session factory, declarative base."""
 from collections.abc import AsyncGenerator
 from typing import Any
+
 from sqlalchemy import MetaData
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
+
 from core.settings import settings
 
 NAMING_CONVENTION = {

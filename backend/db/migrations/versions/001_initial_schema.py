@@ -4,8 +4,8 @@ Revision ID: 001_initial_schema
 Create Date: 2026-04-01
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 revision = '001_initial_schema'

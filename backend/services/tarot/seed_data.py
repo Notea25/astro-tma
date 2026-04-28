@@ -4,6 +4,8 @@ Rich descriptions parsed from tarot_meanings.md reference file.
 Run once via migration: python -m services.tarot.seed_data
 """
 
+from typing import Any, cast
+
 MAJOR_ARCANA = [
     {
         "number": 0,
@@ -896,18 +898,22 @@ def get_all_cards_seed() -> list[dict]:
 
     # ── 22 Major Arcana ──────────────────────────────────────────────────────
     for card in MAJOR_ARCANA:
-        cards.append({**card, "image_key": _image_key("major", card["number"], name_en=card["name_en"])})
+        number = int(cast(Any, card["number"]))
+        name_en = str(card["name_en"])
+        cards.append({**card, "image_key": _image_key("major", number, name_en=name_en)})
 
     # ── 56 Minor Arcana (4 suits x 14 cards) ────────────────────────────────
     for suit_en, (suit_ru, element, emoji, suit_cards) in _SUIT_DATA.items():
         for card in suit_cards:
+            number = int(cast(Any, card["number"]))
+            name_en = str(card["name_en"])
             cards.append({
-                "number": card["number"],
-                "name_en": card["name_en"],
+                "number": number,
+                "name_en": name_en,
                 "name_ru": card["name_ru"],
                 "emoji": emoji,
                 "element": element,
-                "image_key": _image_key("minor", card["number"], suit_en, card["name_en"]),
+                "image_key": _image_key("minor", number, suit_en, name_en),
                 "upright_ru": card["upright_ru"],
                 "reversed_ru": card["reversed_ru"],
                 "keywords_ru": card["keywords_ru"],

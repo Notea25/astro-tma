@@ -43,7 +43,7 @@ def verify_init_data(init_data: str) -> dict:
 
     # Check timestamp freshness
     auth_date = params.get("auth_date", "0")
-    if int(time.time()) - int(auth_date) > _MAX_AGE_SECONDS:
+    if int(time.time()) - int(auth_date) >= _MAX_AGE_SECONDS:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "initData expired")
 
     # Build data-check string: sorted key=value pairs joined by \n

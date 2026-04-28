@@ -4,15 +4,16 @@ Seed all 78 tarot cards into the database.
 Run: docker compose exec backend python scripts/seed_tarot.py
 """
 import asyncio
-import sys
 import os
+import sys
 
 # Script lives in backend/scripts/, so backend/ is one level up
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy import delete
+
 from db.database import AsyncSessionLocal
-from db.models import TarotCard, TarotArcana
+from db.models import TarotArcana, TarotCard
 from services.tarot.seed_data import get_all_cards_seed
 
 _ARCANA_MAP = {

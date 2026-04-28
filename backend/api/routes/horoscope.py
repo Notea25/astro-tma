@@ -1,27 +1,28 @@
 """Horoscope, moon phase, and natal chart endpoints."""
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.middleware.telegram_auth import get_tg_user
 from api.schemas.horoscope import (
-    EnergyScores, HoroscopeResponse, MoonCalendarDay,
-    MoonCalendarResponse, MoonPhaseResponse,
+    EnergyScores,
+    HoroscopeResponse,
+    MoonCalendarDay,
+    MoonCalendarResponse,
+    MoonPhaseResponse,
 )
 from core.cache import (
-    cache_get, cache_set,
-    key_horoscope, key_moon, key_natal,
+    cache_get,
+    cache_set,
+    key_horoscope,
+    key_moon,
 )
 from core.logging import get_logger
 from core.settings import settings
 from db.database import get_db
-from db.models import DailyHoroscope, HoroscopePeriod, NatalChart, ZodiacSign
-from services.astro.moon import get_moon_phase, get_monthly_calendar
-from services.astro.natal import NatalChartData, chart_to_json
-from services.astro.transits import build_energy_scores
+from services.astro.moon import get_monthly_calendar, get_moon_phase
 from services.users import repository as user_repo
 
 router = APIRouter(prefix="/horoscope", tags=["horoscope"])
@@ -77,7 +78,8 @@ async def get_today_horoscope(
 
     # Try LLM generation
     from services.astro.llm_horoscope import (
-        generate_daily_horoscope, generate_energy_scores_llm,
+        generate_daily_horoscope,
+        generate_energy_scores_llm,
     )
     text = await generate_daily_horoscope(sign, date.today(), "today")
     if not text:
@@ -130,7 +132,8 @@ async def get_period_horoscope(
 
     # Generate via LLM
     from services.astro.llm_horoscope import (
-        generate_daily_horoscope, generate_energy_scores_llm,
+        generate_daily_horoscope,
+        generate_energy_scores_llm,
     )
     text = await generate_daily_horoscope(sign, today, period)
     if not text:
@@ -182,7 +185,7 @@ async def get_moon_calendar(
     tg_user: dict = Depends(get_tg_user),
 ):
     """Monthly lunar calendar. Free."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     y = year or now.year
     m = month or now.month
 
@@ -205,7 +208,8 @@ async def _personalised_horoscope(
 ) -> HoroscopeResponse:
     """Build a personalised horoscope via LLM, with transit fallback."""
     from services.astro.llm_horoscope import (
-        generate_daily_horoscope, generate_energy_scores_llm,
+        generate_daily_horoscope,
+        generate_energy_scores_llm,
     )
 
     # Check cache first

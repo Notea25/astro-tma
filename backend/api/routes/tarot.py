@@ -6,21 +6,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.middleware.telegram_auth import get_tg_user
 from api.schemas.tarot import (
+    _IMAGE_BASE,
     DrawSpreadRequest,
     TarotCardDetail,
     TarotHistoryItem,
     TarotInterpretationResponse,
     TarotPositionNarrative,
     TarotSpreadResponse,
-    _IMAGE_BASE,
 )
 from core.cache import cache_get, cache_set, key_tarot_interpret
 from core.logging import get_logger
 from core.settings import settings
 from db.database import get_db
-from db.models import TarotCard, TarotReading, TarotPositionMeaning
+from db.models import TarotCard, TarotPositionMeaning, TarotReading
 from services.tarot.engine import (
-    FREE_SPREADS, PREMIUM_SPREADS, draw_spread, to_reading_json,
+    PREMIUM_SPREADS,
+    draw_spread,
+    to_reading_json,
 )
 from services.tarot.interpreter import (
     expected_card_count,

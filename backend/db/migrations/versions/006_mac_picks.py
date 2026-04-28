@@ -8,9 +8,8 @@ without relying on the legacy mac_cards table. Stores card_number (1..48) and
 category slug; content stays in the frontend deck file.
 """
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "006_mac_picks"
 down_revision = "005_unlock_features"
