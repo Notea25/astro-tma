@@ -1,59 +1,61 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
-import { useMutation } from '@tanstack/react-query'
-import { motion, AnimatePresence } from 'framer-motion'
-import { tarotApi } from '@/services/api'
-import { useHaptic } from '@/hooks/useTelegram'
-import { MeaningText } from '@/components/ui/MeaningText'
-import { TarotCardBack } from '@/components/tarot/TarotCardBack'
-import { SpreadReading } from '@/components/tarot/SpreadReading'
-import type { TarotCardDetail } from '@/types'
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
+import { tarotApi } from "@/services/api";
+import { useHaptic } from "@/hooks/useTelegram";
+import { MeaningText } from "@/components/ui/MeaningText";
+import { TarotCardBack } from "@/components/tarot/TarotCardBack";
+import { SpreadReading } from "@/components/tarot/SpreadReading";
+import type { TarotCardDetail } from "@/types";
 
-const POSITIONS   = ['Прошлое', 'Настоящее', 'Будущее']
-const WHEEL_COUNT = 22
-const WHEEL_R     = 105   // orbit radius px — tighter for overlap
-const FLY_W       = 180   // revealed card width
-const FLY_H       = 270   // revealed card height
-const SLOT_W      = 80
-const SLOT_H      = 116
-const CARD_SCALE  = 52 / FLY_W   // wheel card visual scale (~0.289)
-const EASE        = [0.22, 0.61, 0.36, 1] as const
+const POSITIONS = ["Прошлое", "Настоящее", "Будущее"];
+const WHEEL_COUNT = 22;
+const WHEEL_R = 105; // orbit radius px — tighter for overlap
+const FLY_W = 180; // revealed card width
+const FLY_H = 270; // revealed card height
+const SLOT_W = 80;
+const SLOT_H = 116;
+const CARD_SCALE = 52 / FLY_W; // wheel card visual scale (~0.289)
+const EASE = [0.22, 0.61, 0.36, 1] as const;
 
-type Phase = 'spinning' | 'fly-in' | 'revealed' | 'fly-out' | 'reading'
+type Phase = "spinning" | "fly-in" | "revealed" | "fly-out" | "reading";
 
-interface Props { onReset: () => void }
+interface Props {
+  onReset: () => void;
+}
 
 // ── Pre-compute wheel positions ────────────────────────────────────────────
 // Seeded random for consistent "messy" layout across renders
 function seededRand(seed: number) {
-  const x = Math.sin(seed * 9301 + 49297) * 49297
-  return x - Math.floor(x)
+  const x = Math.sin(seed * 9301 + 49297) * 49297;
+  return x - Math.floor(x);
 }
 
 const WHEEL_POS = Array.from({ length: WHEEL_COUNT }, (_, i) => {
-  const angleDeg = (360 / WHEEL_COUNT) * i
-  const rad      = angleDeg * (Math.PI / 180)
+  const angleDeg = (360 / WHEEL_COUNT) * i;
+  const rad = angleDeg * (Math.PI / 180);
   // Random offsets for organic "hand-spread" look
-  const rOff     = (seededRand(i * 3 + 1) - 0.5) * 14      // ±7px radial jitter
-  const aOff     = (seededRand(i * 3 + 2) - 0.5) * 12      // ±6° rotation jitter
-  const r        = WHEEL_R + rOff
+  const rOff = (seededRand(i * 3 + 1) - 0.5) * 14; // ±7px radial jitter
+  const aOff = (seededRand(i * 3 + 2) - 0.5) * 12; // ±6° rotation jitter
+  const r = WHEEL_R + rOff;
   return {
     i,
     x: Math.cos(rad) * r,
     y: Math.sin(rad) * r,
     angleDeg: angleDeg + aOff,
-  }
-})
+  };
+});
 
 // ── Card back face ─────────────────────────────────────────────────────────
 function CardBack({ large = false }: { large?: boolean }) {
   return (
     <div
-      className={`tarot-card-back ${large ? 'tarot-card-back--large' : ''}`}
-      style={{ width: '100%', height: '100%' }}
+      className={`tarot-card-back ${large ? "tarot-card-back--large" : ""}`}
+      style={{ width: "100%", height: "100%" }}
     >
       <TarotCardBack />
     </div>
-  )
+  );
 }
 
 // ── Card front face (parchment or image) ───────────────────────────────────
@@ -63,222 +65,265 @@ function CardFront({ card }: { card: TarotCardDetail }) {
       <img
         src={card.image_url}
         alt={card.name_ru}
-        className={`tarot-card-front__img${card.reversed ? ' tarot-card-front__img--reversed' : ''}`}
+        className={`tarot-card-front__img${card.reversed ? " tarot-card-front__img--reversed" : ""}`}
       />
-    )
+    );
   }
   return (
     <div className="tarot-card-front__parchment">
       <span className="tarot-card-front__number">
-        {card.arcana === 'major' ? `${card.id}` : ''}
+        {card.arcana === "major" ? `${card.id}` : ""}
       </span>
       <span className="tarot-card-front__symbol">{card.emoji}</span>
       <span className="tarot-card-front__name">{card.name_ru}</span>
     </div>
-  )
+  );
 }
 
 // ── Main component ──────────────────────────────────────────────────────────
 export function ThreeCardFlow({ onReset }: Props) {
-  const { impact } = useHaptic()
-  const [phase,        setPhase]        = useState<Phase>('spinning')
-  const [drawnCount,   setDrawnCount]   = useState(0)
-  const [landedSlots,  setLandedSlots]  = useState<number[]>([])
-  const [flyFrom,      setFlyFrom]      = useState<{ x: number; y: number } | null>(null)
-  const [flyTo,        setFlyTo]        = useState<{ x: number; y: number } | null>(null)
-  const [showOverlay,  setShowOverlay]  = useState(false)
-  const [showGlow,     setShowGlow]     = useState(false)
-  const [showText,     setShowText]     = useState(false)
-  const [showContinue, setShowContinue] = useState(false)
-  const [expandedIdx,  setExpandedIdx]  = useState<number | null>(null)
-  const [shownCards,   setShownCards]   = useState<number[]>([])
+  const { impact } = useHaptic();
+  const [phase, setPhase] = useState<Phase>("spinning");
+  const [drawnCount, setDrawnCount] = useState(0);
+  const [landedSlots, setLandedSlots] = useState<number[]>([]);
+  const [flyFrom, setFlyFrom] = useState<{ x: number; y: number } | null>(null);
+  const [flyTo, setFlyTo] = useState<{ x: number; y: number } | null>(null);
+  const [showOverlay, setShowOverlay] = useState(false);
+  const [showGlow, setShowGlow] = useState(false);
+  const [showText, setShowText] = useState(false);
+  const [showContinue, setShowContinue] = useState(false);
+  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  const [shownCards, setShownCards] = useState<number[]>([]);
 
-  const slotRef0 = useRef<HTMLDivElement>(null)
-  const slotRef1 = useRef<HTMLDivElement>(null)
-  const slotRef2 = useRef<HTMLDivElement>(null)
-  const slotRefs = useMemo(() => [slotRef0, slotRef1, slotRef2], [])
-  const timers   = useRef<ReturnType<typeof setTimeout>[]>([])
+  const slotRef0 = useRef<HTMLDivElement>(null);
+  const slotRef1 = useRef<HTMLDivElement>(null);
+  const slotRef2 = useRef<HTMLDivElement>(null);
+  const slotRefs = useMemo(() => [slotRef0, slotRef1, slotRef2], []);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  const drawMutation = useMutation({ mutationFn: () => tarotApi.draw('three_card') })
-  const apiCards = drawMutation.data?.cards ?? []
-  const apiReady = apiCards.length >= 3
+  const drawMutation = useMutation({
+    mutationFn: () => tarotApi.draw("three_card"),
+  });
+  const apiCards = drawMutation.data?.cards ?? [];
+  const apiReady = apiCards.length >= 3;
 
-  useEffect(() => { drawMutation.mutate() }, []) // eslint-disable-line
-  useEffect(() => () => { timers.current.forEach(clearTimeout) }, [])
+  useEffect(() => {
+    drawMutation.mutate();
+  }, []); // eslint-disable-line
+  useEffect(
+    () => () => {
+      timers.current.forEach(clearTimeout);
+    },
+    [],
+  );
 
   // Card center position on screen (revealed state)
-  const cardPos = useMemo(() => ({
-    x: Math.round(window.innerWidth  / 2 - FLY_W / 2),
-    y: Math.round(window.innerHeight * 0.40 - FLY_H / 2),
-  }), [])
+  // Clamp Y so the card + reveal-info block never sits under the bottom nav.
+  const cardPos = useMemo(() => {
+    const navGap = 140; // nav height + reveal info + padding
+    const preferredY = window.innerHeight * 0.34 - FLY_H / 2;
+    const maxY = window.innerHeight - FLY_H - navGap;
+    return {
+      x: Math.round(window.innerWidth / 2 - FLY_W / 2),
+      y: Math.round(Math.min(preferredY, maxY)),
+    };
+  }, []);
 
-  const currentCard = apiCards[drawnCount] ?? null
+  const currentCard = apiCards[drawnCount] ?? null;
 
   // ── Wheel click ───────────────────────────────────────────────────────────
-  const handleCardClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (phase !== 'spinning' || !apiReady || drawnCount >= 3) return
-    e.stopPropagation()
-    impact('medium')
+  const handleCardClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (phase !== "spinning" || !apiReady || drawnCount >= 3) return;
+      e.stopPropagation();
+      impact("medium");
 
-    const rect = e.currentTarget.getBoundingClientRect()
-    // Center of clicked card
-    setFlyFrom({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
-    setPhase('fly-in')
+      const rect = e.currentTarget.getBoundingClientRect();
+      // Center of clicked card
+      setFlyFrom({
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      });
+      setPhase("fly-in");
 
-    // Timing sequence (all from click)
-    const push = (fn: () => void, ms: number) => {
-      const t = setTimeout(fn, ms)
-      timers.current.push(t)
-    }
-    push(() => setShowOverlay(true), 200)
-    push(() => setShowGlow(true), 2000)
-    // 2900ms: fly ends → onFlyInComplete fires (via onAnimationComplete)
-  }, [phase, apiReady, drawnCount, impact])
+      // Timing sequence (all from click)
+      const push = (fn: () => void, ms: number) => {
+        const t = setTimeout(fn, ms);
+        timers.current.push(t);
+      };
+      push(() => setShowOverlay(true), 200);
+      push(() => setShowGlow(true), 2000);
+      // 2900ms: fly ends → onFlyInComplete fires (via onAnimationComplete)
+    },
+    [phase, apiReady, drawnCount, impact],
+  );
 
   const onFlyInComplete = useCallback(() => {
-    setPhase('revealed')
+    setPhase("revealed");
     const push = (fn: () => void, ms: number) => {
-      const t = setTimeout(fn, ms)
-      timers.current.push(t)
-    }
-    push(() => setShowText(true),     300)
-    push(() => setShowContinue(true), 700)
-  }, [])
+      const t = setTimeout(fn, ms);
+      timers.current.push(t);
+    };
+    push(() => setShowText(true), 300);
+    push(() => setShowContinue(true), 700);
+  }, []);
 
   // ── Continue button ───────────────────────────────────────────────────────
   const handleContinue = useCallback(() => {
-    impact('light')
-    const rect = slotRefs[drawnCount].current?.getBoundingClientRect()
+    impact("light");
+    const rect = slotRefs[drawnCount].current?.getBoundingClientRect();
     setFlyTo({
-      x: rect ? rect.left - (FLY_W - SLOT_W) / 2 : window.innerWidth / 2 - FLY_W / 2,
-      y: rect ? rect.top  - (FLY_H - SLOT_H) / 2 : window.innerHeight - 200,
-    })
-    setShowText(false); setShowContinue(false)
-    setShowGlow(false); setShowOverlay(false)
-    setPhase('fly-out')
-  }, [drawnCount, slotRefs, impact])
+      x: rect
+        ? rect.left - (FLY_W - SLOT_W) / 2
+        : window.innerWidth / 2 - FLY_W / 2,
+      y: rect ? rect.top - (FLY_H - SLOT_H) / 2 : window.innerHeight - 200,
+    });
+    setShowText(false);
+    setShowContinue(false);
+    setShowGlow(false);
+    setShowOverlay(false);
+    setPhase("fly-out");
+  }, [drawnCount, slotRefs, impact]);
 
   const onFlyOutComplete = useCallback(() => {
-    const next = drawnCount + 1
-    setLandedSlots(prev => [...prev, drawnCount])
-    setDrawnCount(next)
-    setFlyFrom(null); setFlyTo(null)
-    setPhase(next >= 3 ? 'reading' : 'spinning')
-  }, [drawnCount])
+    const next = drawnCount + 1;
+    setLandedSlots((prev) => [...prev, drawnCount]);
+    setDrawnCount(next);
+    setFlyFrom(null);
+    setFlyTo(null);
+    setPhase(next >= 3 ? "reading" : "spinning");
+  }, [drawnCount]);
 
   // ── Reading phase card tap ────────────────────────────────────────────────
-  const handleCardTap = useCallback((idx: number) => {
-    if (phase !== 'reading') return
-    if (expandedIdx === idx) {
-      setExpandedIdx(null)
-      setShownCards(prev => prev.includes(idx) ? prev : [...prev, idx])
-    } else {
-      impact('medium')
-      setExpandedIdx(idx)
-    }
-  }, [phase, expandedIdx, impact])
+  const handleCardTap = useCallback(
+    (idx: number) => {
+      if (phase !== "reading") return;
+      if (expandedIdx === idx) {
+        setExpandedIdx(null);
+        setShownCards((prev) => (prev.includes(idx) ? prev : [...prev, idx]));
+      } else {
+        impact("medium");
+        setExpandedIdx(idx);
+      }
+    },
+    [phase, expandedIdx, impact],
+  );
 
   const handleReset = useCallback(() => {
-    timers.current.forEach(clearTimeout); timers.current = []
-    setPhase('spinning'); setDrawnCount(0); setLandedSlots([])
-    setFlyFrom(null); setFlyTo(null)
-    setShowOverlay(false); setShowGlow(false); setShowText(false); setShowContinue(false)
-    setExpandedIdx(null); setShownCards([])
-    drawMutation.reset()
-    setTimeout(() => drawMutation.mutate(), 0)
-    onReset()
-  }, [drawMutation, onReset])
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
+    // parent unmounts this via setSelectedSpread(null);
+    // state/mutation will be re-created when the user re-enters the spread
+    onReset();
+  }, [onReset]);
 
   // Derived state for wheel appearance
-  const isWheelSpinning = phase === 'spinning' || phase === 'fly-out'
-  const cardsVisible    = isWheelSpinning
-  const isFlying        = phase === 'fly-in' || phase === 'revealed' || phase === 'fly-out'
+  const isWheelSpinning = phase === "spinning" || phase === "fly-out";
+  const cardsVisible = isWheelSpinning;
+  const isFlying =
+    phase === "fly-in" || phase === "revealed" || phase === "fly-out";
 
   // Fly-in initial position (center of clicked card, scaled down)
-  const flyInitial = flyFrom ? {
-    x:     flyFrom.x - FLY_W / 2,
-    y:     flyFrom.y - FLY_H / 2,
-    scale: CARD_SCALE,
-  } : null
+  const flyInitial = flyFrom
+    ? {
+        x: flyFrom.x - FLY_W / 2,
+        y: flyFrom.y - FLY_H / 2,
+        scale: CARD_SCALE,
+      }
+    : null;
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="three-flow">
-
       {/* ══ WHEEL SCENE ══ */}
-      <AnimatePresence>
-        {phase !== 'reading' && (
-          <motion.div
-            key="wheel-scene"
-            className="wheel-scene"
-            exit={{ opacity: 0, scale: 0.05, transition: { duration: 0.5, ease: [0.4, 0, 0.2, 1] } }}
-          >
-            {/* Title (only when spinning) */}
-            <AnimatePresence>
-              {isWheelSpinning && (
-                <motion.div
-                  key="wheel-title"
-                  className="wheel-scene__header"
-                  initial={{ opacity: 0, y: -8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.4 }}
-                >
-                  <h3 className="wheel-scene__title">Выберите карту</h3>
-                  <p className="wheel-scene__subtitle">Прислушайтесь к интуиции</p>
-                </motion.div>
-              )}
-            </AnimatePresence>
+      {/* stays mounted even at reading phase — the remaining deck is visible behind the reading */}
+      <motion.div
+        key="wheel-scene"
+        className={`wheel-scene${phase === "reading" ? " wheel-scene--mini" : ""}`}
+        animate={{
+          opacity: phase === "reading" ? 0.28 : 1,
+          scale: phase === "reading" ? 0.55 : 1,
+        }}
+        transition={{ duration: 0.45, ease: [0.22, 0.61, 0.36, 1] }}
+        style={
+          phase === "reading" ? { pointerEvents: "none" as const } : undefined
+        }
+      >
+        {/* Title (only when spinning) */}
+        <AnimatePresence>
+          {isWheelSpinning && (
+            <motion.div
+              key="wheel-title"
+              className="wheel-scene__header"
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.4 }}
+            >
+              <h3 className="wheel-scene__title">Выберите карту</h3>
+              <p className="wheel-scene__subtitle">Прислушайтесь к интуиции</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-            {/* Wheel */}
-            <div className="wheel-outer">
-              {/* Rotating ring */}
-              <div className={`wheel-ring${isWheelSpinning ? ' is-spinning' : ''}`}>
-                {WHEEL_POS.map(({ i, x, y, angleDeg }) => (
-                  <div
-                    key={i}
-                    className={`wheel-card${!cardsVisible ? ' is-hidden' : ''}`}
-                    style={{
-                      left: `calc(50% + ${x}px)`,
-                      top: `calc(50% + ${y}px)`,
-                      transform: `translate(-50%, -50%) rotate(${angleDeg + 90}deg)`,
-                    }}
-                    onClick={handleCardClick}
-                  >
-                    <CardBack />
-                  </div>
-                ))}
+        {/* Wheel */}
+        <div className="wheel-outer">
+          {/* Rotating ring */}
+          <div className={`wheel-ring${isWheelSpinning ? " is-spinning" : ""}`}>
+            {WHEEL_POS.map(({ i, x, y, angleDeg }) => (
+              <div
+                key={i}
+                className={`wheel-card${!cardsVisible ? " is-hidden" : ""}`}
+                style={{
+                  left: `calc(50% + ${x}px)`,
+                  top: `calc(50% + ${y}px)`,
+                  transform: `translate(-50%, -50%) rotate(${angleDeg + 90}deg)`,
+                }}
+                onClick={handleCardClick}
+              >
+                <CardBack />
               </div>
+            ))}
+          </div>
 
-              {/* Center hint */}
-              {isWheelSpinning && (
-                <div className="wheel-center-hint">
-                  <motion.p
-                    className="wheel-hint-pill"
-                    animate={{ opacity: apiReady ? [0.65, 1, 0.65] : [0.4, 0.7, 0.4] }}
-                    transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
-                  >
-                    {!apiReady
-                      ? 'Загрузка...'
-                      : drawnCount === 0 ? 'Нажмите на карту, когда почувствуете'
-                      : drawnCount === 1 ? 'Выберите вторую карту'
-                      : 'Выберите последнюю карту'}
-                  </motion.p>
-                </div>
-              )}
+          {/* Center hint */}
+          {isWheelSpinning && (
+            <div className="wheel-center-hint">
+              <motion.p
+                className="wheel-hint-pill"
+                animate={{
+                  opacity: apiReady ? [0.65, 1, 0.65] : [0.4, 0.7, 0.4],
+                }}
+                transition={{
+                  duration: 2.2,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              >
+                {!apiReady
+                  ? "Загрузка..."
+                  : drawnCount === 0
+                    ? "Нажмите на карту, когда почувствуете"
+                    : "·"}
+              </motion.p>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </div>
+      </motion.div>
 
       {/* ══ SLOTS (all phases) ══ */}
-      <div className={`wheel-slots${phase === 'reading' ? ' wheel-slots--reading' : ''}`}>
+      <div
+        className={`wheel-slots${phase === "reading" ? " wheel-slots--reading" : ""}`}
+      >
         {POSITIONS.map((pos, i) => {
-          const hasLanded = landedSlots.includes(i)
-          const card      = apiCards[i]
+          const hasLanded = landedSlots.includes(i);
+          const card = apiCards[i];
           return (
             <div key={i} className="wheel-slot">
-              <div ref={slotRefs[i]} className={`wheel-slot__box${phase === 'reading' ? ' is-reading' : ''}`}>
+              <div
+                ref={slotRefs[i]}
+                className={`wheel-slot__box${phase === "reading" ? " is-reading" : ""}`}
+              >
                 {hasLanded ? (
                   <motion.div
                     className="wheel-slot__card"
@@ -286,15 +331,22 @@ export function ThreeCardFlow({ onReset }: Props) {
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.2 }}
                     onClick={() => handleCardTap(i)}
-                    style={{ cursor: phase === 'reading' ? 'pointer' : 'default' }}
-                    whileTap={phase === 'reading' ? { scale: 0.93 } : undefined}
+                    style={{
+                      cursor: phase === "reading" ? "pointer" : "default",
+                    }}
+                    whileTap={phase === "reading" ? { scale: 0.93 } : undefined}
                   >
-                    {card && card.image_url
-                      ? <img src={card.image_url} alt={card.name_ru} className={`slot-card__img${card.reversed ? ' slot-card__img--reversed' : ''}`} />
-                      : card
-                        ? <div className="slot-card__emoji">{card.emoji}</div>
-                        : <div className="card-back-skin" />
-                    }
+                    {card && card.image_url ? (
+                      <img
+                        src={card.image_url}
+                        alt={card.name_ru}
+                        className={`slot-card__img${card.reversed ? " slot-card__img--reversed" : ""}`}
+                      />
+                    ) : card ? (
+                      <div className="slot-card__emoji">{card.emoji}</div>
+                    ) : (
+                      <div className="card-back-skin" />
+                    )}
                   </motion.div>
                 ) : (
                   <div className="wheel-slot__empty">
@@ -302,15 +354,17 @@ export function ThreeCardFlow({ onReset }: Props) {
                   </div>
                 )}
               </div>
-              {phase !== 'reading' && <span className="wheel-slot__label">{pos}</span>}
+              {phase !== "reading" && (
+                <span className="wheel-slot__label">{pos}</span>
+              )}
             </div>
-          )
+          );
         })}
       </div>
 
       {/* ══ READING CONTENT ══ */}
       <AnimatePresence>
-        {phase === 'reading' && (
+        {phase === "reading" && (
           <motion.div
             key="reading"
             className="reading-content"
@@ -319,26 +373,46 @@ export function ThreeCardFlow({ onReset }: Props) {
             transition={{ delay: 0.3, duration: 0.4 }}
           >
             {shownCards.length === 0 && (
-              <motion.p className="three-flow__hint" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}>
+              <motion.p
+                className="three-flow__hint"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6 }}
+              >
                 Нажмите на карту, чтобы открыть
               </motion.p>
             )}
             <div className="reading-meanings">
               <AnimatePresence>
-                {shownCards.map(idx => {
-                  const card = apiCards[idx]
-                  if (!card) return null
+                {shownCards.map((idx) => {
+                  const card = apiCards[idx];
+                  if (!card) return null;
                   return (
-                    <motion.div key={idx} className="meaning-block" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+                    <motion.div
+                      key={idx}
+                      className="meaning-block"
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                    >
                       <div className="meaning-block__header">
-                        <span className="meaning-block__pos">{POSITIONS[idx]}</span>
-                        <span className={`meaning-block__orient${card.reversed ? ' rev' : ''}`}>{card.reversed ? '↓' : '↑'}</span>
-                        <span className="meaning-block__name">{card.name_ru}</span>
+                        <span className="meaning-block__pos">
+                          {POSITIONS[idx]}
+                        </span>
+                        <span
+                          className={`meaning-block__orient${card.reversed ? " rev" : ""}`}
+                        >
+                          {card.reversed ? "↓" : "↑"}
+                        </span>
+                        <span className="meaning-block__name">
+                          {card.name_ru}
+                        </span>
                       </div>
-                      <p className="meaning-block__keys">{card.keywords_ru?.slice(0, 3).join(' · ')}</p>
+                      <p className="meaning-block__keys">
+                        {card.keywords_ru?.slice(0, 3).join(" · ")}
+                      </p>
                       <MeaningText text={card.meaning_ru} />
                     </motion.div>
-                  )
+                  );
                 })}
               </AnimatePresence>
             </div>
@@ -350,11 +424,26 @@ export function ThreeCardFlow({ onReset }: Props) {
               />
             )}
             {shownCards.length === 3 && (
-              <motion.button className="btn-secondary btn-with-icon" onClick={handleReset} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
-                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M1.5 7.5A6 6 0 0 1 13 4.5M13.5 7.5A6 6 0 0 1 2 10.5"/>
-                  <polyline points="11,2 13,4.5 10.5,6.5"/>
-                  <polyline points="4,12.5 2,10.5 4.5,8.5"/>
+              <motion.button
+                className="btn-secondary btn-with-icon"
+                onClick={handleReset}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+              >
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 15 15"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M1.5 7.5A6 6 0 0 1 13 4.5M13.5 7.5A6 6 0 0 1 2 10.5" />
+                  <polyline points="11,2 13,4.5 10.5,6.5" />
+                  <polyline points="4,12.5 2,10.5 4.5,8.5" />
                 </svg>
                 Новый расклад
               </motion.button>
@@ -370,7 +459,7 @@ export function ThreeCardFlow({ onReset }: Props) {
             key="fly-overlay"
             className="fly-overlay"
             initial={{ opacity: 0 }}
-            animate={{ opacity: phase === 'fly-out' ? 0 : 1 }}
+            animate={{ opacity: phase === "fly-out" ? 0 : 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.8 }}
           />
@@ -379,37 +468,43 @@ export function ThreeCardFlow({ onReset }: Props) {
 
       {/* ══ GOLD GLOW (z-index 10, behind card) ══ */}
       <AnimatePresence>
-        {(phase === 'fly-in' || phase === 'revealed') && showGlow && (
+        {(phase === "fly-in" || phase === "revealed") && showGlow && (
           <motion.div
             key="glow"
             style={{
-              position: 'fixed',
+              position: "fixed",
               left: cardPos.x + FLY_W / 2 - 110,
-              top:  cardPos.y + FLY_H / 2 - 110,
-              width: 220, height: 220,
-              borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(201,168,76,0.10) 0%, rgba(201,168,76,0.02) 40%, transparent 70%)',
+              top: cardPos.y + FLY_H / 2 - 110,
+              width: 220,
+              height: 220,
+              borderRadius: "50%",
+              background:
+                "radial-gradient(circle, rgba(201,168,76,0.10) 0%, rgba(201,168,76,0.02) 40%, transparent 70%)",
               zIndex: 10, // overlay
-              pointerEvents: 'none',
+              pointerEvents: "none",
             }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 1, ease: 'easeOut' }}
+            transition={{ duration: 1, ease: "easeOut" }}
           />
         )}
       </AnimatePresence>
 
       {/* ══ FLY-IN CARD (z-index 11) ══ */}
       <AnimatePresence>
-        {phase === 'fly-in' && flyInitial && (
+        {phase === "fly-in" && flyInitial && (
           <motion.div
             key="fly-in-card"
             className="tarot-card-frame"
             style={{
-              position: 'fixed', left: 0, top: 0,
-              width: FLY_W, height: FLY_H,
-              zIndex: 20, pointerEvents: 'none',
+              position: "fixed",
+              left: 0,
+              top: 0,
+              width: FLY_W,
+              height: FLY_H,
+              zIndex: 20,
+              pointerEvents: "none",
             }}
             initial={flyInitial}
             animate={{ x: cardPos.x, y: cardPos.y, scale: 1 }}
@@ -417,19 +512,49 @@ export function ThreeCardFlow({ onReset }: Props) {
             onAnimationComplete={onFlyInComplete}
           >
             {/* Perspective wrapper for 3D flip */}
-            <div style={{ perspective: '900px', width: '100%', height: '100%', overflow: 'hidden', borderRadius: 'inherit' }}>
+            <div
+              style={{
+                perspective: "900px",
+                width: "100%",
+                height: "100%",
+                overflow: "hidden",
+                borderRadius: "inherit",
+              }}
+            >
               <motion.div
-                style={{ transformStyle: 'preserve-3d', width: '100%', height: '100%', position: 'relative' }}
+                style={{
+                  transformStyle: "preserve-3d",
+                  width: "100%",
+                  height: "100%",
+                  position: "relative",
+                }}
                 initial={{ rotateY: 0 }}
                 animate={{ rotateY: 180 }}
                 transition={{ duration: 2.5, ease: EASE, delay: 0.4 }}
               >
                 {/* Back face */}
-                <div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden', borderRadius: 'inherit', overflow: 'hidden' }}>
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    backfaceVisibility: "hidden",
+                    borderRadius: "inherit",
+                    overflow: "hidden",
+                  }}
+                >
                   <CardBack large />
                 </div>
                 {/* Front face */}
-                <div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', borderRadius: 'inherit', overflow: 'hidden' }}>
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    backfaceVisibility: "hidden",
+                    transform: "rotateY(180deg)",
+                    borderRadius: "inherit",
+                    overflow: "hidden",
+                  }}
+                >
                   {currentCard && <CardFront card={currentCard} />}
                 </div>
               </motion.div>
@@ -439,13 +564,15 @@ export function ThreeCardFlow({ onReset }: Props) {
       </AnimatePresence>
 
       {/* ══ REVEALED CARD (static, z-index 11) ══ */}
-      {phase === 'revealed' && currentCard && (
+      {phase === "revealed" && currentCard && (
         <div
           className="tarot-card-frame"
           style={{
-            position: 'fixed',
-            left: cardPos.x, top: cardPos.y,
-            width: FLY_W, height: FLY_H,
+            position: "fixed",
+            left: cardPos.x,
+            top: cardPos.y,
+            width: FLY_W,
+            height: FLY_H,
             zIndex: 20, // flying card
           }}
         >
@@ -455,14 +582,18 @@ export function ThreeCardFlow({ onReset }: Props) {
 
       {/* ══ FLY-OUT CARD (z-index 11) ══ */}
       <AnimatePresence>
-        {phase === 'fly-out' && flyTo && currentCard && (
+        {phase === "fly-out" && flyTo && currentCard && (
           <motion.div
             key="fly-out-card"
             className="tarot-card-frame"
             style={{
-              position: 'fixed', left: 0, top: 0,
-              width: FLY_W, height: FLY_H,
-              zIndex: 20, pointerEvents: 'none',
+              position: "fixed",
+              left: 0,
+              top: 0,
+              width: FLY_W,
+              height: FLY_H,
+              zIndex: 20,
+              pointerEvents: "none",
             }}
             initial={{ x: cardPos.x, y: cardPos.y, scale: 1 }}
             animate={{ x: flyTo.x, y: flyTo.y, scale: SLOT_W / FLY_W }}
@@ -476,7 +607,7 @@ export function ThreeCardFlow({ onReset }: Props) {
 
       {/* ══ CARD NAME + MEANING + CONTINUE (z-index 12) ══ */}
       <AnimatePresence>
-        {phase === 'revealed' && currentCard && (
+        {phase === "revealed" && currentCard && (
           <motion.div
             key="reveal-info"
             className="reveal-info"
@@ -496,10 +627,12 @@ export function ThreeCardFlow({ onReset }: Props) {
                 >
                   <p className="reveal-info__name">
                     {currentCard.name_ru}
-                    {currentCard.reversed && <span className="reveal-info__rev"> (Перевёрнутая)</span>}
+                    {currentCard.reversed && (
+                      <span className="reveal-info__rev"> (Перевёрнутая)</span>
+                    )}
                   </p>
                   <p className="reveal-info__keys">
-                    {currentCard.keywords_ru?.slice(0, 3).join(', ')}
+                    {currentCard.keywords_ru?.slice(0, 3).join(", ")}
                   </p>
                 </motion.div>
               )}
@@ -514,7 +647,7 @@ export function ThreeCardFlow({ onReset }: Props) {
                   transition={{ duration: 0.6 }}
                   whileTap={{ scale: 0.96 }}
                 >
-                  {drawnCount === 2 ? 'Читать расклад' : 'Продолжить'}
+                  {drawnCount === 2 ? "Читать расклад" : "Продолжить"}
                 </motion.button>
               )}
             </AnimatePresence>
@@ -524,43 +657,69 @@ export function ThreeCardFlow({ onReset }: Props) {
 
       {/* ══ READING EXPANDED OVERLAY ══ */}
       <AnimatePresence>
-        {expandedIdx !== null && phase === 'reading' && (() => {
-          const card = apiCards[expandedIdx]
-          if (!card) return null
-          return (
-            <motion.div
-              key="expanded"
-              className="reveal-overlay"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              transition={{ duration: 0.22 }}
-              onClick={() => handleCardTap(expandedIdx)}
-            >
+        {expandedIdx !== null &&
+          phase === "reading" &&
+          (() => {
+            const card = apiCards[expandedIdx];
+            if (!card) return null;
+            return (
               <motion.div
-                className="reveal-card"
-                initial={{ scale: 0.45, opacity: 0, y: 40 }}
-                animate={{ scale: 1,    opacity: 1, y: 0  }}
-                exit={{    scale: 0.45, opacity: 0, y: 40 }}
-                transition={{ type: 'spring', damping: 22, stiffness: 260 }}
-                onClick={e => e.stopPropagation()}
+                key="expanded"
+                className="reveal-overlay"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.22 }}
+                onClick={() => handleCardTap(expandedIdx)}
               >
-                <div className="reveal-card__img-wrap">
-                  {card.image_url
-                    ? <img src={card.image_url} alt={card.name_ru} className="reveal-card__img" />
-                    : <div className="reveal-card__emoji-fallback">{card.emoji}</div>}
-                </div>
-                <div className="reveal-card__info">
-                  <p className="reveal-card__arcana">{card.arcana === 'major' ? 'Старший аркан' : 'Младший аркан'}</p>
-                  <h3 className="reveal-card__name">{card.name_ru}</h3>
-                  <p className={`reveal-card__orient${card.reversed ? ' rev' : ''}`}>{card.reversed ? '↓ Перевёрнутое' : '↑ Прямое'}</p>
-                  <p className="reveal-card__keys">{card.keywords_ru?.slice(0, 3).join(' · ')}</p>
-                  <button className="btn-ghost reveal-card__close" onClick={() => handleCardTap(expandedIdx)}>Вернуть карту</button>
-                </div>
+                <motion.div
+                  className="reveal-card"
+                  initial={{ scale: 0.45, opacity: 0, y: 40 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.45, opacity: 0, y: 40 }}
+                  transition={{ type: "spring", damping: 22, stiffness: 260 }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="reveal-card__img-wrap">
+                    {card.image_url ? (
+                      <img
+                        src={card.image_url}
+                        alt={card.name_ru}
+                        className="reveal-card__img"
+                      />
+                    ) : (
+                      <div className="reveal-card__emoji-fallback">
+                        {card.emoji}
+                      </div>
+                    )}
+                  </div>
+                  <div className="reveal-card__info">
+                    <p className="reveal-card__arcana">
+                      {card.arcana === "major"
+                        ? "Старший аркан"
+                        : "Младший аркан"}
+                    </p>
+                    <h3 className="reveal-card__name">{card.name_ru}</h3>
+                    <p
+                      className={`reveal-card__orient${card.reversed ? " rev" : ""}`}
+                    >
+                      {card.reversed ? "↓ Перевёрнутое" : "↑ Прямое"}
+                    </p>
+                    <p className="reveal-card__keys">
+                      {card.keywords_ru?.slice(0, 3).join(" · ")}
+                    </p>
+                    <button
+                      className="btn-ghost reveal-card__close"
+                      onClick={() => handleCardTap(expandedIdx)}
+                    >
+                      Вернуть карту
+                    </button>
+                  </div>
+                </motion.div>
               </motion.div>
-            </motion.div>
-          )
-        })()}
+            );
+          })()}
       </AnimatePresence>
-
     </div>
-  )
+  );
 }

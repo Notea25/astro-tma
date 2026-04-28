@@ -68,7 +68,7 @@ export function SynastryInvite() {
 
   if (!token) {
     return (
-      <div className="screen">
+      <div className="screen synastry-screen">
         <div className="screen-header screen-header--with-back">
           <button className="back-btn" onClick={goHome} aria-label="Назад">
             <svg
@@ -103,7 +103,7 @@ export function SynastryInvite() {
   const ownInvite = error?.status === 400;
 
   return (
-    <div className="screen">
+    <div className="screen synastry-screen">
       <div className="screen-header screen-header--with-back">
         <button className="back-btn" onClick={goHome} aria-label="Назад">
           <svg

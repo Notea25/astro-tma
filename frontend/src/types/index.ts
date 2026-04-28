@@ -36,6 +36,8 @@ export interface MoonPhaseResponse {
   description_ru: string;
   illumination: number;
   date: string;
+  favorable_actions?: string[];
+  avoid_actions?: string[];
 }
 
 export interface MoonCalendarDay {
@@ -44,6 +46,8 @@ export interface MoonCalendarDay {
   phase_name_ru: string;
   emoji: string;
   illumination: number;
+  favorable_actions?: string[];
+  avoid_actions?: string[];
 }
 
 export interface TarotCardDetail {
@@ -103,8 +107,8 @@ export interface CompatibilityResponse {
 }
 
 export interface NatalPlanetData {
-  degree: number;       // absolute 0–360
-  sign_degree: number;  // within-sign 0–30
+  degree: number; // absolute 0–360
+  sign_degree: number; // within-sign 0–30
   sign: string;
   house: number;
   retrograde: boolean;
@@ -254,6 +258,19 @@ export interface TransitAspect {
   transit_planet_ru: string;
   natal_planet_ru: string;
   aspect_ru: string;
+  transit_retrograde?: boolean;
+  applying?: boolean | null;
+}
+
+export interface SynastryManualInput {
+  partner_name: string;
+  birth_date: string; // YYYY-MM-DD
+  birth_time: string; // HH:MM
+  birth_time_known: boolean;
+  birth_city: string;
+  birth_lat: number;
+  birth_lng: number;
+  birth_tz: string;
 }
 
 export interface SkyPosition {

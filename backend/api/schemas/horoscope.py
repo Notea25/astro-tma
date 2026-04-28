@@ -26,6 +26,8 @@ class MoonPhaseResponse(BaseModel):
     description_ru: str
     illumination: float
     date: date
+    favorable_actions: list[str] = []
+    avoid_actions: list[str] = []
 
 
 class MoonCalendarDay(BaseModel):
@@ -34,6 +36,8 @@ class MoonCalendarDay(BaseModel):
     phase_name_ru: str
     emoji: str
     illumination: float
+    favorable_actions: list[str] = []
+    avoid_actions: list[str] = []
 
 
 class MoonCalendarResponse(BaseModel):

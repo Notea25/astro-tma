@@ -1,6 +1,19 @@
-from datetime import datetime
+from datetime import date, datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+class SynastryManualInput(BaseModel):
+    """Partner birth data for one-off synastry calculation (no invite flow)."""
+    partner_name: str = Field(..., min_length=1, max_length=64)
+    birth_date: date
+    birth_time: str = Field(..., pattern=r"^\d{2}:\d{2}$")  # HH:MM
+    birth_time_known: bool = True
+    birth_city: str = Field(..., min_length=1, max_length=128)
+    birth_lat: float
+    birth_lng: float
+    # Optional — backend resolves from lat/lng if missing.
+    birth_tz: str | None = None
 
 
 class SynastryAspectOut(BaseModel):
