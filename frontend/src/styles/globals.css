@@ -472,10 +472,8 @@ body::after {
 
 .screen-header--with-back {
   position: relative;
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  padding: calc(var(--safe-top) + 8px) var(--content-px) 20px;
+  min-height: calc(var(--safe-top) + 56px);
+  padding: calc(var(--safe-top) + 4px) 8px 8px 8px;
 }
 .screen-header--with-back .back-btn {
   position: absolute;
@@ -484,9 +482,17 @@ body::after {
   z-index: 2;
 }
 .screen-header--with-back .screen-title {
-  width: 100%;
-  text-align: center;
-  padding-top: 10px;
+  position: absolute;
+  top: calc(var(--safe-top) + 4px);
+  left: 0;
+  right: 0;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  line-height: 1;
   pointer-events: none;
 }
 .tarot-screen .screen-title {
@@ -1585,6 +1591,8 @@ body::after {
 /* ── Tarot ──────────────────────────────────────────────────────────────────── */
 .tarot-screen .screen-content {
   padding-bottom: 32px;
+  display: flex;
+  flex-direction: column;
 }
 .spread-option {
   background: var(--glass);
@@ -1753,12 +1761,20 @@ body::after {
 .spread-info {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
+  flex: 1;
+}
+.spread-info__top {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  gap: 12px;
 }
 .spread-info__intro {
   font-size: var(--fs-body);
   color: var(--text-soft);
-  line-height: 1.7;
+  line-height: 1.5;
 }
 .spread-info__intro strong {
   color: var(--gold-light);
@@ -1821,7 +1837,13 @@ body::after {
   padding-bottom: 24px;
   position: relative;
 }
-.spread-container {
+.spread-area {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  overflow: visible;
+}
+.spread-fit {
   position: relative;
   margin: 0 auto;
   z-index: 1;
@@ -1884,6 +1906,12 @@ body::after {
       rgba(18, 20, 38, 0.7) 100%
     );
 }
+.spread-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+}
 
 /* Card slot — absolute positioned flip card */
 .spread-slot {
@@ -1896,9 +1924,55 @@ body::after {
 .spread-slot--cross {
   z-index: 2;
 }
-/* Cross card (card 2): whole slot rotated 90° via inline transform */
 .spread-slot--selected {
   filter: drop-shadow(0 0 8px rgba(212, 178, 84, 0.4));
+}
+.spread-slot--empty {
+  cursor: default;
+}
+.fan-prompt {
+  text-align: center;
+  font-family: "Cormorant Garamond", "Playfair Display", serif;
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  color: rgba(212, 178, 84, 0.85);
+  margin: 0 0 6px;
+}
+.spread-slot__placeholder {
+  position: absolute;
+  inset: 0;
+  border: 1px dashed rgba(201, 168, 76, 0.25);
+  border-radius: 8px;
+  background: rgba(201, 168, 76, 0.03);
+}
+
+/* Rotor wraps flipper; optional inline rotate keeps label outside of rotation */
+.spread-slot__rotor {
+  width: 100%;
+  height: 100%;
+  transform-origin: center;
+}
+
+/* Position-label under card (or right for rotated) */
+.spread-slot__label {
+  position: absolute;
+  top: 100%;
+  margin-top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: "Cinzel", "Playfair Display", serif;
+  font-size: 14px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(201, 168, 76, 0.75);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.spread-slot__label--right {
+  top: 50%;
+  left: calc(100% + 14px);
+  margin-top: 0;
+  transform: translateY(-50%);
 }
 
 /* Flip mechanic */

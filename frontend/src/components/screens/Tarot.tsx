@@ -3,9 +3,13 @@ import { useMutation } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { PremiumGate } from "@/components/ui/PremiumGate";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { HeaderAvatarButton } from "@/components/ui/HeaderAvatarButton";
 import { ThreeCardFlow } from "./ThreeCardFlow";
 import { SpreadLayout } from "./SpreadLayout";
 import { SpreadIntro } from "./SpreadIntro";
+import { CelticCrossFlow } from "@/components/tarot/CelticCrossFlow";
+import { SpreadReading } from "@/components/tarot/SpreadReading";
+import { TarotHistory } from "@/components/tarot/TarotHistory";
 import { tarotApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
@@ -65,30 +69,46 @@ export function Tarot() {
   const [selectedSpread, setSelectedSpread] = useState<SpreadType | null>(null);
   const [reading, setReading] = useState<TarotSpreadResponse | null>(null);
   const [showInfo, setShowInfo] = useState(true);
-
-  const handleBack = useCallback(() => {
-    if (reading) setReading(null);
-    else if (!showInfo && selectedSpread) {
-      setShowInfo(true);
-    } else if (selectedSpread) {
-      setSelectedSpread(null);
-      setShowInfo(true);
-    } else setScreen("discover", "back");
-  }, [reading, selectedSpread, showInfo, setScreen]);
-
-  useTelegramBackButton(handleBack, true);
+  const [allFlipped, setAllFlipped] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   const drawMutation = useMutation({
     mutationFn: tarotApi.draw,
     onSuccess: (data) => {
       impact("success" as any);
       setReading(data);
+      setAllFlipped(false);
     },
   });
+
+  const handleBack = useCallback(() => {
+    if (reading) {
+      setReading(null);
+      setAllFlipped(false);
+      if (selectedSpread === "celtic_cross") {
+        setShowInfo(true);
+      }
+    } else if (!showInfo && selectedSpread) {
+      setShowInfo(true);
+    } else if (selectedSpread) {
+      setSelectedSpread(null);
+      setShowInfo(true);
+    } else if (showHistory) {
+      setShowHistory(false);
+    } else {
+      setScreen("discover", "back");
+    }
+  }, [reading, selectedSpread, showInfo, showHistory, setScreen]);
+
+  useTelegramBackButton(handleBack, true);
 
   const handleSelectSpread = (spread: SpreadOption) => {
     impact("light");
     setSelectedSpread(spread.id);
+    setReading(null);
+    setAllFlipped(false);
+    setShowInfo(true);
+    drawMutation.reset();
   };
 
   const handleDraw = () => {
@@ -97,11 +117,56 @@ export function Tarot() {
     drawMutation.mutate(selectedSpread);
   };
 
-  // Spread selection view
-  if (!selectedSpread) {
+  const handleStartSpread = () => {
+    if (!selectedSpread) return;
+
+    setShowInfo(false);
+
+    if (selectedSpread !== "three_card") {
+      handleDraw();
+    }
+  };
+
+  const handleNewCelticReading = () => {
+    if (selectedSpread !== "celtic_cross") return;
+    drawMutation.mutate(selectedSpread);
+  };
+
+  if (!selectedSpread && showHistory) {
     return (
       <div className="screen tarot-screen">
         <div className="screen-header screen-header--with-back">
+          <button
+            className="back-btn"
+            onClick={() => setShowHistory(false)}
+            aria-label="Назад"
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M13 4l-6 6 6 6" />
+            </svg>
+          </button>
+          <h2 className="screen-title">История раскладов</h2>
+        </div>
+        <div className="screen-content">
+          <TarotHistory />
+        </div>
+      </div>
+    );
+  }
+
+  if (!selectedSpread) {
+    return (
+      <div className="screen tarot-screen">
+        <div className="screen-header screen-header--with-back screen-header--with-back-avatar">
           <button
             className="back-btn"
             onClick={() => setScreen("discover", "back")}
@@ -121,6 +186,7 @@ export function Tarot() {
             </svg>
           </button>
           <h2 className="screen-title">Таро</h2>
+          <HeaderAvatarButton />
         </div>
         <div className="screen-content">
           {SPREADS.map((spread) => (
@@ -146,13 +212,60 @@ export function Tarot() {
               </motion.div>
             </PremiumGate>
           ))}
+
+          <motion.div
+            className="spread-option"
+            onClick={() => {
+              impact("light");
+              setShowHistory(true);
+            }}
+            whileTap={{ scale: 0.97 }}
+            style={{ marginTop: 8, opacity: 0.9 }}
+          >
+            <div className="spread-option__info">
+              <div className="spread-option__name">📜 История раскладов</div>
+              <div className="spread-option__count">
+                Ваши прошлые расклады
+              </div>
+            </div>
+          </motion.div>
         </div>
       </div>
     );
   }
 
-  // Reading view — three_card uses dedicated animated flow
   const spreadInfo = SPREADS.find((s) => s.id === selectedSpread)!;
+  const showIntro =
+    showInfo && !reading && !drawMutation.isPending && !drawMutation.isError;
+
+  if (showIntro) {
+    return (
+      <div className="screen tarot-screen">
+        <div className="screen-header screen-header--with-back">
+          <button className="back-btn" onClick={handleBack} aria-label="Назад">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M13 4l-6 6 6 6" />
+            </svg>
+          </button>
+        </div>
+        <div className="screen-content">
+          <SpreadIntro
+            spreadKey={selectedSpread}
+            onStart={handleStartSpread}
+          />
+        </div>
+      </div>
+    );
+  }
 
   if (selectedSpread === "three_card") {
     return (
@@ -172,29 +285,14 @@ export function Tarot() {
               <path d="M13 4l-6 6 6 6" />
             </svg>
           </button>
-          {!showInfo && <h2 className="screen-title">{spreadInfo.name}</h2>}
+          <h2 className="screen-title">{spreadInfo.name}</h2>
         </div>
         <div className="screen-content">
-          {showInfo ? (
-            <SpreadIntro
-              spreadKey="three_card"
-              onStart={() => setShowInfo(false)}
-            />
-          ) : (
-            <ThreeCardFlow onReset={() => setSelectedSpread(null)} />
-          )}
+          <ThreeCardFlow onReset={() => setSelectedSpread(null)} />
         </div>
       </div>
     );
   }
-
-  const startDraw = () => {
-    setShowInfo(false);
-    handleDraw();
-  };
-
-  const showIntro =
-    showInfo && !reading && !drawMutation.isPending && !drawMutation.isError;
 
   return (
     <div className="screen tarot-screen">
@@ -213,14 +311,10 @@ export function Tarot() {
             <path d="M13 4l-6 6 6 6" />
           </svg>
         </button>
-        {!showIntro && <h2 className="screen-title">{spreadInfo.name}</h2>}
+        <h2 className="screen-title">{spreadInfo.name}</h2>
       </div>
 
       <div className="screen-content">
-        {showIntro && (
-          <SpreadIntro spreadKey={selectedSpread} onStart={startDraw} />
-        )}
-
         {drawMutation.isPending && (
           <LoadingSpinner message="Тасуем колоду..." />
         )}
@@ -243,19 +337,88 @@ export function Tarot() {
               <circle cx="16" cy="21" r="1" fill="currentColor" stroke="none" />
             </svg>
             <p>Не удалось загрузить расклад. Попробуйте ещё раз.</p>
-            <button className="btn-ghost" onClick={() => drawMutation.reset()}>
+            <button
+              className="btn-ghost"
+              onClick={() => {
+                drawMutation.reset();
+                handleDraw();
+              }}
+            >
               Повторить
             </button>
           </div>
         )}
 
-        {reading && (
+        {!reading &&
+          !drawMutation.isPending &&
+          !drawMutation.isError &&
+          selectedSpread !== "celtic_cross" && (
+            <motion.div
+              className="draw-prompt"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              <div className="deck-preview">
+                {[2, 1, 0].map((i) => (
+                  <div
+                    key={i}
+                    className="deck-card"
+                    style={{
+                      transform: `rotate(${(i - 1) * 6}deg) translateY(${i * -4}px)`,
+                    }}
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      opacity="0.5"
+                    >
+                      <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z" />
+                    </svg>
+                  </div>
+                ))}
+              </div>
+              <motion.button
+                className="btn-primary btn-draw"
+                onClick={handleDraw}
+                whileTap={{ scale: 0.96 }}
+                disabled={drawMutation.isPending}
+              >
+                {drawMutation.isPending ? "Тасуем..." : "Тянуть карты"}
+              </motion.button>
+            </motion.div>
+          )}
+
+        {reading && selectedSpread === "celtic_cross" && (
+          <CelticCrossFlow
+            readingId={reading.reading_id}
+            cards={reading.cards}
+            onNewReading={handleNewCelticReading}
+          />
+        )}
+
+        {reading && selectedSpread !== "celtic_cross" && (
           <>
-            <SpreadLayout spreadType={selectedSpread} cards={reading.cards} />
+            <SpreadLayout
+              spreadType={selectedSpread}
+              cards={reading.cards}
+              onAllFlipped={() => setAllFlipped(true)}
+            />
+            {allFlipped &&
+              (selectedSpread === "week" ||
+                selectedSpread === "relationship") && (
+                <SpreadReading
+                  spreadType={selectedSpread}
+                  readingId={reading.reading_id}
+                  cards={reading.cards}
+                />
+              )}
             <motion.button
               className="btn-secondary btn-with-icon"
               onClick={() => {
                 setReading(null);
+                setAllFlipped(false);
                 setShowInfo(true);
                 drawMutation.reset();
               }}

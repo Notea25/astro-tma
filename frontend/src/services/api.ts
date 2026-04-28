@@ -116,6 +116,18 @@ export const tarotApi = {
     request<import("@/types").TarotSpreadResponse>("POST", "/tarot/draw", {
       spread_type,
     }),
+  interpret: (reading_id: number) =>
+    request<import("@/types").TarotInterpretationResponse>(
+      "POST",
+      `/tarot/interpret/${reading_id}`,
+    ),
+  history: () =>
+    request<import("@/types").TarotHistoryItem[]>("GET", "/tarot/history"),
+  getReading: (reading_id: number) =>
+    request<import("@/types").TarotSpreadResponse>(
+      "GET",
+      `/tarot/readings/${reading_id}`,
+    ),
 };
 
 // ── Compatibility ──────────────────────────────────────────────────────────────
@@ -192,6 +204,19 @@ export const transitsApi = {
 export const macApi = {
   draw: () =>
     request<import("@/types").MacReadingResponse>("POST", "/mac/draw"),
+  // 48-card deck flow — log a pick (card content stays client-side)
+  pick: (body: { card_number: number; card_name: string; category: string }) =>
+    request<{ pick_id: number }>("POST", "/mac/pick", body),
+  picks: () =>
+    request<
+      {
+        pick_id: number;
+        card_number: number;
+        card_name: string;
+        category: string;
+        created_at: string;
+      }[]
+    >("GET", "/mac/picks"),
 };
 
 export const paymentsApi = {
