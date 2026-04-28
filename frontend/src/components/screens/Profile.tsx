@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usersApi, natalApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
-import { useHaptic } from "@/hooks/useTelegram";
+import { useHaptic, useTelegramUser } from "@/hooks/useTelegram";
 import { ZODIAC_SIGNS } from "@/types";
 import {
   CityAutocomplete,
@@ -13,9 +13,11 @@ import {
 export function Profile() {
   const { user, setUser } = useAppStore();
   const { impact, notification } = useHaptic();
+  const tgUser = useTelegramUser();
   const queryClient = useQueryClient();
 
   const [editing, setEditing] = useState(false);
+  const [photoFailed, setPhotoFailed] = useState(false);
   const [birthDate, setBirthDate] = useState("");
   const [birthTime, setBirthTime] = useState("");
   const [birthTimeKnown, setBirthTimeKnown] = useState(
@@ -120,8 +122,18 @@ export function Profile() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <div className="profile-avatar">
-            {user?.name?.charAt(0)?.toUpperCase() ?? "?"}
+          <div
+            className={`profile-avatar${tgUser.photoUrl && !photoFailed ? " profile-avatar--photo" : ""}`}
+          >
+            {tgUser.photoUrl && !photoFailed ? (
+              <img
+                src={tgUser.photoUrl}
+                alt=""
+                onError={() => setPhotoFailed(true)}
+              />
+            ) : (
+              (user?.name?.charAt(0)?.toUpperCase() ?? "?")
+            )}
           </div>
           <div className="profile-info">
             <div className="profile-name">{user?.name ?? "Пользователь"}</div>

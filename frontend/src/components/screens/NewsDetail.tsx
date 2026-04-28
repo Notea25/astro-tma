@@ -39,7 +39,7 @@ export function NewsDetail() {
   });
 
   return (
-    <div className="screen">
+    <div className="screen news-screen">
       <div className="screen-header screen-header--with-back">
         <button
           className="back-btn"

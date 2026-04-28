@@ -6,8 +6,8 @@ import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { HeaderAvatarButton } from "@/components/ui/HeaderAvatarButton";
 import { ThreeCardFlow } from "./ThreeCardFlow";
 import { SpreadLayout } from "./SpreadLayout";
+import { SpreadIntro } from "./SpreadIntro";
 import { CelticCrossFlow } from "@/components/tarot/CelticCrossFlow";
-import { SpreadInfoPage } from "@/components/tarot/SpreadInfoPage";
 import { SpreadReading } from "@/components/tarot/SpreadReading";
 import { TarotHistory } from "@/components/tarot/TarotHistory";
 import { tarotApi } from "@/services/api";
@@ -15,8 +15,9 @@ import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
 import { useTelegramBackButton } from "@/hooks/useTelegram";
 import type { TarotSpreadResponse } from "@/types";
+import type { SpreadKey } from "@/data/spread-config";
 
-type SpreadType = "three_card" | "celtic_cross" | "week" | "relationship";
+type SpreadType = SpreadKey;
 
 interface SpreadOption {
   id: SpreadType;
@@ -71,21 +72,6 @@ export function Tarot() {
   const [allFlipped, setAllFlipped] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
-  const handleBack = useCallback(() => {
-    if (reading) {
-      setReading(null);
-    } else if (!showInfo && selectedSpread) {
-      setShowInfo(true);
-    } else if (selectedSpread) {
-      setSelectedSpread(null);
-      setShowInfo(true);
-    } else if (showHistory) {
-      setShowHistory(false);
-    } else setScreen("discover", "back");
-  }, [reading, selectedSpread, showInfo, showHistory, setScreen]);
-
-  useTelegramBackButton(handleBack, true);
-
   const drawMutation = useMutation({
     mutationFn: tarotApi.draw,
     onSuccess: (data) => {
@@ -95,9 +81,34 @@ export function Tarot() {
     },
   });
 
+  const handleBack = useCallback(() => {
+    if (reading) {
+      setReading(null);
+      setAllFlipped(false);
+      if (selectedSpread === "celtic_cross") {
+        setShowInfo(true);
+      }
+    } else if (!showInfo && selectedSpread) {
+      setShowInfo(true);
+    } else if (selectedSpread) {
+      setSelectedSpread(null);
+      setShowInfo(true);
+    } else if (showHistory) {
+      setShowHistory(false);
+    } else {
+      setScreen("discover", "back");
+    }
+  }, [reading, selectedSpread, showInfo, showHistory, setScreen]);
+
+  useTelegramBackButton(handleBack, true);
+
   const handleSelectSpread = (spread: SpreadOption) => {
     impact("light");
     setSelectedSpread(spread.id);
+    setReading(null);
+    setAllFlipped(false);
+    setShowInfo(true);
+    drawMutation.reset();
   };
 
   const handleDraw = () => {
@@ -106,22 +117,21 @@ export function Tarot() {
     drawMutation.mutate(selectedSpread);
   };
 
-  const handleGoToSpread = () => {
+  const handleStartSpread = () => {
+    if (!selectedSpread) return;
+
     setShowInfo(false);
-    if (selectedSpread === "celtic_cross") {
-      // Fire draw immediately so CelticCrossFlow has cards when user taps the deck
-      impact("medium");
-      drawMutation.mutate(selectedSpread);
+
+    if (selectedSpread !== "three_card") {
+      handleDraw();
     }
   };
 
   const handleNewCelticReading = () => {
-    // Restart: re-fire draw so a fresh set of cards is ready for the new idle phase
     if (selectedSpread !== "celtic_cross") return;
     drawMutation.mutate(selectedSpread);
   };
 
-  // History view
   if (!selectedSpread && showHistory) {
     return (
       <div className="screen tarot-screen">
@@ -153,7 +163,6 @@ export function Tarot() {
     );
   }
 
-  // Spread selection view
   if (!selectedSpread) {
     return (
       <div className="screen tarot-screen">
@@ -225,11 +234,11 @@ export function Tarot() {
     );
   }
 
-  // Reading view
   const spreadInfo = SPREADS.find((s) => s.id === selectedSpread)!;
+  const showIntro =
+    showInfo && !reading && !drawMutation.isPending && !drawMutation.isError;
 
-  // ── Info page — shown for every spread before drawing ──
-  if (showInfo && !reading && !drawMutation.isPending) {
+  if (showIntro) {
     return (
       <div className="screen tarot-screen">
         <div className="screen-header screen-header--with-back">
@@ -247,10 +256,12 @@ export function Tarot() {
               <path d="M13 4l-6 6 6 6" />
             </svg>
           </button>
-          <h2 className="screen-title">{spreadInfo.name}</h2>
         </div>
         <div className="screen-content">
-          <SpreadInfoPage spread={selectedSpread} onStart={handleGoToSpread} />
+          <SpreadIntro
+            spreadKey={selectedSpread}
+            onStart={handleStartSpread}
+          />
         </div>
       </div>
     );
@@ -326,7 +337,13 @@ export function Tarot() {
               <circle cx="16" cy="21" r="1" fill="currentColor" stroke="none" />
             </svg>
             <p>Не удалось загрузить расклад. Попробуйте ещё раз.</p>
-            <button className="btn-ghost" onClick={() => drawMutation.reset()}>
+            <button
+              className="btn-ghost"
+              onClick={() => {
+                drawMutation.reset();
+                handleDraw();
+              }}
+            >
               Повторить
             </button>
           </div>
@@ -402,6 +419,7 @@ export function Tarot() {
               onClick={() => {
                 setReading(null);
                 setAllFlipped(false);
+                setShowInfo(true);
                 drawMutation.reset();
               }}
               initial={{ opacity: 0 }}

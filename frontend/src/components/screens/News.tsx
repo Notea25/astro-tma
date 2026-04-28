@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useAppStore } from "@/stores/app";
@@ -9,6 +10,14 @@ const CATEGORY_EMOJI: Record<string, string> = {
   moon: "☽",
   event: "☉",
 };
+
+const CATEGORY_LABEL: Record<string, string> = {
+  aspect: "Аспекты",
+  ingress: "Ингрессии",
+  moon: "Луна",
+  event: "События",
+};
+const CATEGORY_ORDER = ["aspect", "ingress", "moon", "event"];
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -31,6 +40,7 @@ function formatDate(iso: string): string {
 
 export function News() {
   const { setScreen, setNewsId } = useAppStore();
+  const [filter, setFilter] = useState<string>("all");
 
   const { data, isLoading } = useQuery({
     queryKey: ["news"],
@@ -38,13 +48,24 @@ export function News() {
     staleTime: 1000 * 60 * 30,
   });
 
+  const filtered = useMemo(() => {
+    if (!data) return [];
+    if (filter === "all") return data;
+    return data.filter((n) => n.category === filter);
+  }, [data, filter]);
+
+  const availableCats = useMemo(() => {
+    if (!data) return new Set<string>();
+    return new Set(data.map((n) => n.category));
+  }, [data]);
+
   const openItem = (id: number) => {
     setNewsId(id);
     setScreen("news_detail");
   };
 
   return (
-    <div className="screen">
+    <div className="screen news-screen">
       <div className="screen-header screen-header--with-back">
         <button
           className="back-btn"
@@ -68,6 +89,35 @@ export function News() {
       </div>
 
       <div className="screen-content">
+        <div className="news-intro">
+          Астрособытия — важные транзиты, ингрессии планет, затмения,
+          полнолуния. Они влияют на коллективное поле и объясняют, почему в
+          определённые недели «весь мир штормит».
+        </div>
+
+        {data && data.length > 0 && (
+          <div className="category-chips">
+            <button
+              type="button"
+              className={`category-chip${filter === "all" ? " is-active" : ""}`}
+              onClick={() => setFilter("all")}
+            >
+              Все
+            </button>
+            {CATEGORY_ORDER.filter((c) => availableCats.has(c)).map((cat) => (
+              <button
+                type="button"
+                key={cat}
+                className={`category-chip${filter === cat ? " is-active" : ""}`}
+                onClick={() => setFilter(cat)}
+              >
+                <span>{CATEGORY_EMOJI[cat] ?? "✦"}</span>{" "}
+                {CATEGORY_LABEL[cat] ?? cat}
+              </button>
+            ))}
+          </div>
+        )}
+
         {isLoading && (
           <p style={{ color: "var(--text-secondary)", textAlign: "center" }}>
             Загрузка...
@@ -78,23 +128,27 @@ export function News() {
             Новостей пока нет. Загляните позже.
           </p>
         )}
-        {data &&
-          data.map((item, idx) => (
-            <motion.button
-              key={item.id}
-              className="news-card"
-              onClick={() => openItem(item.id)}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.03, duration: 0.25 }}
-            >
-              <div className="news-card__date">
-                {CATEGORY_EMOJI[item.category] ?? "✦"} {formatDate(item.date)}
-              </div>
-              <div className="news-card__title">{item.title_ru}</div>
-              <div className="news-card__body">{item.preview}</div>
-            </motion.button>
-          ))}
+        {filtered.length === 0 && data && data.length > 0 && (
+          <p style={{ color: "var(--text-secondary)", textAlign: "center" }}>
+            В этой категории пока пусто.
+          </p>
+        )}
+        {filtered.map((item, idx) => (
+          <motion.button
+            key={item.id}
+            className="news-card"
+            onClick={() => openItem(item.id)}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: idx * 0.03, duration: 0.25 }}
+          >
+            <div className="news-card__date">
+              {CATEGORY_EMOJI[item.category] ?? "✦"} {formatDate(item.date)}
+            </div>
+            <div className="news-card__title">{item.title_ru}</div>
+            <div className="news-card__body">{item.preview}</div>
+          </motion.button>
+        ))}
       </div>
     </div>
   );

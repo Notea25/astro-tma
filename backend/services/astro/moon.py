@@ -44,6 +44,96 @@ _PHASE_DESCRIPTIONS_RU: dict[str, str] = {
     "Waning Crescent": "Глубокий отдых и интроспекция. Замедлитесь, прислушайтесь к себе. Готовьтесь к новому циклу — скоро придёт новолуние.",
 }
 
+# Phase-based action guidance (favorable / avoid).
+# Used by MoonPhaseResponse and MoonCalendarDay to drive the UI guidance blocks.
+_PHASE_FAVORABLE_RU: dict[str, list[str]] = {
+    "New Moon": [
+        "Ставить намерения и цели",
+        "Начинать новое дело или проект",
+        "Тихие практики и медитация",
+    ],
+    "Waxing Crescent": [
+        "Составлять план на цикл",
+        "Искать ресурсы и партнёров",
+        "Учиться новому",
+    ],
+    "First Quarter": [
+        "Принимать решения",
+        "Преодолевать сопротивление",
+        "Активная работа и спорт",
+    ],
+    "Waxing Gibbous": [
+        "Творчество и самовыражение",
+        "Социальные встречи и общение",
+        "Продвижение проектов",
+    ],
+    "Full Moon": [
+        "Завершать важные дела",
+        "Благодарить и отпускать",
+        "Отмечать результаты",
+    ],
+    "Waning Gibbous": [
+        "Делиться опытом и знаниями",
+        "Убирать лишнее из жизни и дома",
+        "Завершать долги и обязательства",
+    ],
+    "Last Quarter": [
+        "Глубокая уборка и расхламление",
+        "Прощение и отпускание обид",
+        "Ревизия планов",
+    ],
+    "Waning Crescent": [
+        "Отдых и восстановление",
+        "Медитация, природа, тишина",
+        "Подведение итогов цикла",
+    ],
+}
+
+_PHASE_AVOID_RU: dict[str, list[str]] = {
+    "New Moon": [
+        "Публичные события и громкие анонсы",
+        "Важные переговоры и подписания",
+        "Тяжёлые физические нагрузки",
+    ],
+    "Waxing Crescent": [
+        "Отказ от только что начатых инициатив",
+        "Затягивать с первыми шагами",
+    ],
+    "First Quarter": [
+        "Долгие совещания без итогов",
+        "Откладывать сложные разговоры",
+    ],
+    "Waxing Gibbous": [
+        "Крупные траты на эмоциях",
+        "Начинать диеты и ограничения",
+    ],
+    "Full Moon": [
+        "Ссоры и острые конфликты",
+        "Операции и косметические процедуры",
+        "Важные решения на эмоциях",
+    ],
+    "Waning Gibbous": [
+        "Старт новых амбициозных проектов",
+        "Переедание и ночные застолья",
+    ],
+    "Last Quarter": [
+        "Новые знакомства с расчётом на долгое",
+        "Крупные покупки",
+    ],
+    "Waning Crescent": [
+        "Перегрузки и стресс",
+        "Резкие перемены и переезды",
+    ],
+}
+
+
+def _guidance_for(phase_name: str) -> tuple[list[str], list[str]]:
+    """Return (favorable_actions, avoid_actions) for a moon phase name."""
+    return (
+        list(_PHASE_FAVORABLE_RU.get(phase_name, [])),
+        list(_PHASE_AVOID_RU.get(phase_name, [])),
+    )
+
 
 @dataclass
 class MoonPhaseInfo:
@@ -53,6 +143,8 @@ class MoonPhaseInfo:
     description_ru: str
     illumination: float    # 0.0–1.0
     date: date
+    favorable_actions: list[str]
+    avoid_actions: list[str]
 
 
 def get_moon_phase(dt: datetime | None = None) -> MoonPhaseInfo:
@@ -81,6 +173,7 @@ def get_moon_phase(dt: datetime | None = None) -> MoonPhaseInfo:
         except Exception:
             illumination = 0.5
 
+    favorable, avoid = _guidance_for(phase_name)
     return MoonPhaseInfo(
         phase_name=phase_name,
         phase_name_ru=_PHASE_NAMES_RU.get(phase_name, phase_name),
@@ -88,6 +181,8 @@ def get_moon_phase(dt: datetime | None = None) -> MoonPhaseInfo:
         description_ru=_PHASE_DESCRIPTIONS_RU.get(phase_name, ""),
         illumination=round(float(illumination), 3),
         date=dt.date(),
+        favorable_actions=favorable,
+        avoid_actions=avoid,
     )
 
 
@@ -109,6 +204,8 @@ def get_monthly_calendar(year: int, month: int) -> list[dict[str, Any]]:
             "phase_name_ru": info.phase_name_ru,
             "emoji": info.emoji,
             "illumination": info.illumination,
+            "favorable_actions": info.favorable_actions,
+            "avoid_actions": info.avoid_actions,
         })
 
     log.debug("moon.calendar_built", year=year, month=month, days=len(result))

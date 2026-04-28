@@ -58,7 +58,11 @@ export function Onboarding() {
   const [birthYear, setBirthYear] = useState("");
   const [birthHour, setBirthHour] = useState("");
   const [birthMinute, setBirthMinute] = useState("");
-  const [birthTimeKnown, setBirthTimeKnown] = useState(false);
+  const [timeAccuracy, setTimeAccuracy] = useState<
+    "exact" | "approximate" | "unknown" | null
+  >(null);
+  const birthTimeKnown =
+    timeAccuracy === "exact" || timeAccuracy === "approximate";
   const [birthCity, setBirthCity] = useState("");
   const [cityCoords, setCityCoords] = useState<{
     lat: number;
@@ -138,6 +142,7 @@ export function Onboarding() {
   };
 
   const validateBirthTime = (): string | null => {
+    if (timeAccuracy === null) return "Выберите вариант";
     if (!birthTimeKnown) return null;
     if (!birthHour || !birthMinute) return "Заполните время полностью";
     const h = parseInt(birthHour);
@@ -160,6 +165,14 @@ export function Onboarding() {
   const handleDateNext = () => {
     setTouched((t) => ({ ...t, date: true, time: true }));
     if (dateError || timeError) return;
+    impact("light");
+    setStep("birth_city");
+  };
+
+  const handleSkipTime = () => {
+    setTouched((t) => ({ ...t, date: true, time: true }));
+    setTimeAccuracy("unknown");
+    if (dateError) return;
     impact("light");
     setStep("birth_city");
   };
@@ -202,11 +215,37 @@ export function Onboarding() {
           animate={{ opacity: 1, y: 0 }}
         >
           <motion.div
-            className="onboarding__moon"
-            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            className="onboarding__orb-stage"
+            initial={{ opacity: 0, scale: 0.85, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ duration: 0.7, ease: "easeOut" }}
-          />
+          >
+            <div className="onboarding__orb" aria-hidden="true">
+              <div className="onboarding__orb-nebula" />
+              <div className="onboarding__orb-stars" />
+              <div className="onboarding__orb-shine" />
+            </div>
+            <svg
+              className="onboarding__pedestal"
+              viewBox="-60 -8 120 40"
+              aria-hidden="true"
+            >
+              {/* upper ring cup */}
+              <ellipse cx="0" cy="0" rx="32" ry="7" />
+              <ellipse cx="0" cy="0" rx="26" ry="5" opacity="0.55" />
+              {/* three arc legs */}
+              <path d="M-26 2 Q -20 18 -12 26" />
+              <path d="M 26 2 Q 20 18 12 26" />
+              <path d="M 0 5 L 0 28" />
+              {/* base ellipse */}
+              <ellipse cx="0" cy="29" rx="18" ry="3.5" />
+              <ellipse cx="0" cy="29" rx="10" ry="2" opacity="0.55" />
+              {/* gold dot accents */}
+              <circle cx="-32" cy="0" r="1.6" />
+              <circle cx="32" cy="0" r="1.6" />
+              <circle cx="0" cy="-4" r="1.2" />
+            </svg>
+          </motion.div>
           <h1 className="onboarding__title">Astro</h1>
           <p className="onboarding__subtitle">Астрология & Гороскоп</p>
           <p className="onboarding__desc">
@@ -370,19 +409,44 @@ export function Onboarding() {
               <p className="form-error">{dateError}</p>
             )}
           </div>
-          <div className="form-group">
-            <label className="form-label checkbox-label">
-              <input
-                type="checkbox"
-                checked={birthTimeKnown}
-                onChange={(e) => setBirthTimeKnown(e.target.checked)}
-              />
-              Знаю точное время рождения
-            </label>
+          <div className="form-group time-accuracy">
+            <h3 className="time-accuracy__title">Время рождения</h3>
+            {(
+              [
+                { key: "exact", label: "Знаю точно" },
+                { key: "approximate", label: "Знаю примерно" },
+                { key: "unknown", label: "Не знаю" },
+              ] as const
+            ).map((opt) => {
+              const selected = timeAccuracy === opt.key;
+              return (
+                <button
+                  key={opt.key}
+                  type="button"
+                  className={`time-accuracy__option${selected ? " is-selected" : ""}`}
+                  onClick={() => {
+                    impact("light");
+                    setTimeAccuracy(opt.key);
+                    setTouched((t) => ({ ...t, time: true }));
+                  }}
+                >
+                  <span
+                    className={`time-accuracy__radio${selected ? " is-selected" : ""}`}
+                    aria-hidden="true"
+                  />
+                  <span className="time-accuracy__label">{opt.label}</span>
+                </button>
+              );
+            })}
           </div>
+
           {birthTimeKnown && (
             <div className="form-group">
-              <label className="form-label">Время рождения</label>
+              <label className="form-label">
+                {timeAccuracy === "approximate"
+                  ? "Примерное время"
+                  : "Время рождения"}
+              </label>
               <div className="time-inputs">
                 <input
                   type="text"
@@ -423,6 +487,7 @@ export function Onboarding() {
               )}
             </div>
           )}
+
           <motion.button
             className="btn-primary"
             onClick={handleDateNext}
@@ -431,6 +496,13 @@ export function Onboarding() {
           >
             Далее
           </motion.button>
+          <button
+            type="button"
+            className="btn-ghost btn-skip-time"
+            onClick={handleSkipTime}
+          >
+            Пропустить
+          </button>
         </motion.div>
       )}
 

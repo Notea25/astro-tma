@@ -168,6 +168,8 @@ async def get_moon_today(tg_user: dict = Depends(get_tg_user)):
         description_ru=phase.description_ru,
         illumination=phase.illumination,
         date=phase.date,
+        favorable_actions=phase.favorable_actions,
+        avoid_actions=phase.avoid_actions,
     )
     await cache_set(cache_key, response.model_dump(mode="json"), settings.CACHE_TTL_MOON)
     return response

@@ -2,10 +2,14 @@ import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { PremiumGate } from "@/components/ui/PremiumGate";
+import {
+  CityAutocomplete,
+  type CityOption,
+} from "@/components/ui/CityAutocomplete";
 import { useAppStore } from "@/stores/app";
 import { synastryApi, ApiError } from "@/services/api";
 import { useHaptic } from "@/hooks/useTelegram";
-import type { SynastryResult } from "@/types";
+import type { SynastryResult, SynastryManualInput } from "@/types";
 
 const PLANET_GLYPH: Record<string, string> = {
   sun: "☉",
@@ -45,10 +49,13 @@ const SPHERE_LABELS: { key: keyof SynastryResult["scores"]; label: string }[] =
     { key: "passion", label: "Страсть" },
   ];
 
+type Mode = "pick" | "invite" | "manual";
+
 export function Synastry() {
   const { setScreen, user } = useAppStore();
   const { impact, notification } = useHaptic();
   const [localResult, setLocalResult] = useState<SynastryResult | null>(null);
+  const [mode, setMode] = useState<Mode>("pick");
 
   const requestMutation = useMutation({
     mutationFn: synastryApi.createRequest,
@@ -81,11 +88,17 @@ export function Synastry() {
   };
 
   return (
-    <div className="screen">
+    <div className="screen synastry-screen">
       <div className="screen-header screen-header--with-back">
         <button
           className="back-btn"
-          onClick={() => setScreen("discover", "back")}
+          onClick={() => {
+            if (mode !== "pick" && !result) {
+              setMode("pick");
+              return;
+            }
+            setScreen("discover", "back");
+          }}
           aria-label="Назад"
         >
           <svg
@@ -108,7 +121,10 @@ export function Synastry() {
         {result ? (
           <SynastryResultView
             result={result}
-            onReset={() => setLocalResult(null)}
+            onReset={() => {
+              setLocalResult(null);
+              setMode("pick");
+            }}
           />
         ) : (
           <PremiumGate
@@ -144,86 +160,281 @@ export function Synastry() {
               </div>
             )}
 
-            <div className="horoscope-card">
-              <div
-                className="horoscope-card__period"
-                style={{ marginBottom: 8 }}
-              >
-                Глубокий анализ совместимости
-              </div>
-              <p
-                style={{
-                  color: "var(--text-secondary)",
-                  fontSize: 13,
-                  marginBottom: 16,
-                }}
-              >
-                Создайте приглашение и отправьте партнёру. После принятия вы оба
-                увидите карту отношений: топ-12 аспектов и 4 сферы
-                совместимости.
-              </p>
-              {!invite ? (
-                <button
-                  className="btn-primary"
-                  onClick={() => requestMutation.mutate()}
-                  disabled={requestMutation.isPending}
+            {mode === "pick" && (
+              <div className="synastry-modes">
+                <p className="synastry-modes__intro">
+                  Синастрия — карта встречи двух натальных гороскопов. Выберите,
+                  как добавить партнёра.
+                </p>
+
+                <motion.button
+                  type="button"
+                  className="synastry-mode-card"
+                  onClick={() => {
+                    impact("light");
+                    setMode("invite");
+                  }}
+                  whileTap={{ scale: 0.97 }}
                 >
-                  {requestMutation.isPending
-                    ? "Создаём..."
-                    : "Создать приглашение"}
-                </button>
-              ) : (
-                <>
-                  <p
-                    style={{
-                      fontSize: 12,
-                      color: "var(--text-secondary)",
-                      marginBottom: 6,
-                    }}
-                  >
-                    Ссылка-приглашение (действительна 7 дней):
-                  </p>
-                  <div
-                    onClick={() => copy(invite.invite_url)}
-                    style={{
-                      padding: "10px 12px",
-                      background: "rgba(255,255,255,0.04)",
-                      borderRadius: 10,
-                      fontSize: 12,
-                      fontFamily: "monospace",
-                      wordBreak: "break-all",
-                      cursor: "pointer",
-                      marginBottom: 12,
-                    }}
-                  >
-                    {invite.invite_url}
+                  <div className="synastry-mode-card__icon">🔗</div>
+                  <div className="synastry-mode-card__body">
+                    <div className="synastry-mode-card__title">
+                      Пригласить по ссылке
+                    </div>
+                    <div className="synastry-mode-card__desc">
+                      Партнёр получит ссылку, откроет и увидит ваш общий расчёт.
+                    </div>
                   </div>
+                </motion.button>
+
+                <motion.button
+                  type="button"
+                  className="synastry-mode-card"
+                  onClick={() => {
+                    impact("light");
+                    setMode("manual");
+                  }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  <div className="synastry-mode-card__icon">✍</div>
+                  <div className="synastry-mode-card__body">
+                    <div className="synastry-mode-card__title">
+                      Ввести данные партнёра
+                    </div>
+                    <div className="synastry-mode-card__desc">
+                      Если партнёр не в Telegram — укажите дату, время и город
+                      его рождения.
+                    </div>
+                  </div>
+                </motion.button>
+              </div>
+            )}
+
+            {mode === "invite" && (
+              <div className="horoscope-card">
+                <div
+                  className="horoscope-card__period"
+                  style={{ marginBottom: 8 }}
+                >
+                  Приглашение партнёра
+                </div>
+                <p
+                  style={{
+                    color: "var(--text-secondary)",
+                    fontSize: 13,
+                    marginBottom: 16,
+                  }}
+                >
+                  Создайте ссылку-приглашение и отправьте партнёру. После того
+                  как он её откроет, оба увидите карту отношений: топ аспектов и
+                  пять сфер совместимости.
+                </p>
+                {!invite ? (
                   <button
                     className="btn-primary"
-                    onClick={() => {
-                      const tg = (window as any).Telegram?.WebApp;
-                      tg?.openTelegramLink?.(
-                        `https://t.me/share/url?url=${encodeURIComponent(invite.invite_url)}&text=${encodeURIComponent("Давай узнаем нашу совместимость!")}`,
-                      );
-                    }}
+                    onClick={() => requestMutation.mutate()}
+                    disabled={requestMutation.isPending}
                   >
-                    Поделиться в Telegram
+                    {requestMutation.isPending
+                      ? "Создаём..."
+                      : "Создать приглашение"}
                   </button>
-                </>
-              )}
-              {requestMutation.error instanceof ApiError && (
-                <p style={{ color: "#e88b8b", fontSize: 12, marginTop: 8 }}>
-                  {requestMutation.error.status === 422
-                    ? "Заполните данные рождения в профиле."
-                    : requestMutation.error.status === 402
-                      ? "Сначала купите Синастрию."
-                      : "Не удалось создать приглашение."}
-                </p>
-              )}
-            </div>
+                ) : (
+                  <>
+                    <p
+                      style={{
+                        fontSize: 12,
+                        color: "var(--text-secondary)",
+                        marginBottom: 6,
+                      }}
+                    >
+                      Ссылка-приглашение (действительна 7 дней):
+                    </p>
+                    <div
+                      onClick={() => copy(invite.invite_url)}
+                      style={{
+                        padding: "10px 12px",
+                        background: "rgba(255,255,255,0.04)",
+                        borderRadius: 10,
+                        fontSize: 12,
+                        fontFamily: "monospace",
+                        wordBreak: "break-all",
+                        cursor: "pointer",
+                        marginBottom: 12,
+                      }}
+                    >
+                      {invite.invite_url}
+                    </div>
+                    <button
+                      className="btn-primary"
+                      onClick={() => {
+                        const tg = (window as any).Telegram?.WebApp;
+                        tg?.openTelegramLink?.(
+                          `https://t.me/share/url?url=${encodeURIComponent(invite.invite_url)}&text=${encodeURIComponent("Давай узнаем нашу совместимость!")}`,
+                        );
+                      }}
+                    >
+                      Поделиться в Telegram
+                    </button>
+                  </>
+                )}
+                {requestMutation.error instanceof ApiError && (
+                  <p style={{ color: "#e88b8b", fontSize: 12, marginTop: 8 }}>
+                    {requestMutation.error.status === 422
+                      ? "Заполните данные рождения в профиле."
+                      : requestMutation.error.status === 402
+                        ? "Сначала купите Синастрию."
+                        : "Не удалось создать приглашение."}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {mode === "manual" && (
+              <ManualPartnerForm onResult={(r) => setLocalResult(r)} />
+            )}
           </PremiumGate>
         )}
       </div>
+    </div>
+  );
+}
+
+function ManualPartnerForm({
+  onResult,
+}: {
+  onResult: (r: SynastryResult) => void;
+}) {
+  const [name, setName] = useState("");
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("12:00");
+  const [timeKnown, setTimeKnown] = useState(true);
+  const [city, setCity] = useState("");
+  const [coords, setCoords] = useState<CityOption | null>(null);
+
+  const manualMutation = useMutation({
+    mutationFn: (payload: SynastryManualInput) => synastryApi.manual(payload),
+    onSuccess: (result) => onResult(result),
+  });
+
+  const canSubmit =
+    name.trim().length > 0 &&
+    date.length > 0 &&
+    city.trim().length > 0 &&
+    coords !== null &&
+    !manualMutation.isPending;
+
+  const submit = () => {
+    if (!coords || !canSubmit) return;
+    manualMutation.mutate({
+      partner_name: name.trim(),
+      birth_date: date,
+      birth_time: time,
+      birth_time_known: timeKnown,
+      birth_city: coords.cityName,
+      birth_lat: coords.lat,
+      birth_lng: coords.lng,
+      birth_tz: "", // backend resolves from lat/lng
+    });
+  };
+
+  const errMsg = (() => {
+    const err = manualMutation.error;
+    if (!(err instanceof ApiError)) return null;
+    if (err.status === 422) return "Заполните данные рождения в профиле.";
+    if (err.status === 402) return "Сначала купите Синастрию.";
+    return "Не удалось рассчитать совместимость.";
+  })();
+
+  return (
+    <div className="horoscope-card">
+      <div className="horoscope-card__period" style={{ marginBottom: 8 }}>
+        Данные партнёра
+      </div>
+      <p
+        style={{
+          color: "var(--text-secondary)",
+          fontSize: 13,
+          marginBottom: 16,
+        }}
+      >
+        Укажите дату, время и город рождения партнёра. Часовой пояс определим
+        автоматически.
+      </p>
+      <label className="form-label">
+        Имя партнёра
+        <input
+          className="form-input"
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Например, Анна"
+        />
+      </label>
+      <label className="form-label">
+        Дата рождения
+        <input
+          className="form-input"
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+        />
+      </label>
+      <label className="form-label">
+        Время рождения
+        <input
+          className="form-input"
+          type="time"
+          value={time}
+          onChange={(e) => setTime(e.target.value)}
+          disabled={!timeKnown}
+        />
+        <label
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            marginTop: 6,
+            fontSize: 12,
+            color: "var(--text-muted)",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={!timeKnown}
+            onChange={(e) => setTimeKnown(!e.target.checked)}
+          />
+          Время неизвестно (используем 12:00)
+        </label>
+      </label>
+      <label className="form-label">
+        Город рождения
+        <CityAutocomplete
+          value={city}
+          onChange={(v) => {
+            setCity(v);
+            if (coords && v !== coords.displayName) setCoords(null);
+          }}
+          onSelect={(opt) => {
+            setCity(opt.displayName);
+            setCoords(opt);
+          }}
+          placeholder="Москва, Лондон, Нью-Йорк..."
+        />
+      </label>
+
+      <button
+        className="btn-primary"
+        style={{ marginTop: 8 }}
+        disabled={!canSubmit}
+        onClick={submit}
+      >
+        {manualMutation.isPending ? "Считаем..." : "Рассчитать совместимость"}
+      </button>
+
+      {errMsg && (
+        <p style={{ color: "#e88b8b", fontSize: 12, marginTop: 8 }}>{errMsg}</p>
+      )}
     </div>
   );
 }

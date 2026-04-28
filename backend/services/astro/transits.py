@@ -90,7 +90,11 @@ def calculate_transits(
     results: list[dict[str, Any]] = []
 
     for aspect in synastry.all_aspects:
-        aspect_name = aspect.aspect_name.lower()
+        # Kerykeion v5 exposes "aspect"; older versions used "aspect_name".
+        aspect_raw = getattr(aspect, "aspect", None) or getattr(aspect, "aspect_name", "")
+        if callable(aspect_raw):
+            aspect_raw = aspect_raw()
+        aspect_name = str(aspect_raw).lower()
         if aspect_name not in TRANSIT_ORBS:
             continue
         if abs(aspect.orbit) > TRANSIT_ORBS[aspect_name]:
@@ -100,12 +104,34 @@ def calculate_transits(
             PLANET_WEIGHT.get(aspect.p1_name.lower(), 1)
             + ASPECT_WEIGHT.get(aspect_name, 1)
         )
+
+        # Detect retrograde on the transit subject planet.
+        t_attr = aspect.p2_name.lower()
+        t_obj = getattr(transit_subject, t_attr, None)
+        transit_retro = bool(getattr(t_obj, "retrograde", False)) if t_obj else False
+
+        # Determine applying/separating. Prefer Kerykeion's native hints:
+        #   aspect_movement: "Applying" | "Separating" | "Static"
+        # Fallback: sign of p2_speed (transit planet) vs retro flag.
+        applying: bool | None = None
+        movement = str(getattr(aspect, "aspect_movement", "") or "").lower()
+        if movement == "applying":
+            applying = True
+        elif movement == "separating":
+            applying = False
+        elif movement == "static":
+            p2_speed = getattr(aspect, "p2_speed", 0.0) or 0.0
+            if p2_speed != 0:
+                applying = bool(p2_speed > 0) and not transit_retro
+
         results.append({
             "transit_planet": aspect.p2_name,
             "natal_planet": aspect.p1_name,
             "aspect": aspect_name,
-            "orb": round(aspect.orbit, 2),
+            "orb": round(abs(aspect.orbit), 2),
             "weight": weight,
+            "transit_retrograde": transit_retro,
+            "applying": applying,
         })
 
     results.sort(key=lambda x: x["weight"], reverse=True)
