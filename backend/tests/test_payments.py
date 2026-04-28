@@ -1,5 +1,4 @@
 """Tests for payment payload parsing."""
-import pytest
 import time
 
 

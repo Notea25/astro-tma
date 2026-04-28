@@ -1,23 +1,24 @@
 """Payment endpoints — Telegram Stars flow."""
 
-import hashlib
-import hmac
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.middleware.telegram_auth import get_tg_user
 from api.schemas.payments import (
-    CreateInvoiceRequest, CreateInvoiceResponse, ProductInfo,
+    CreateInvoiceRequest,
+    CreateInvoiceResponse,
+    ProductInfo,
 )
 from core.logging import get_logger
 from core.settings import settings
 from db.database import get_db
 from services.payments.stars import (
-    PRODUCTS, create_invoice_link,
-    grant_product_access, handle_pre_checkout,
+    PRODUCTS,
+    create_invoice_link,
+    grant_product_access,
+    handle_pre_checkout,
 )
-from services.users import repository as user_repo
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 log = get_logger(__name__)

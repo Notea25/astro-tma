@@ -4,9 +4,8 @@ Revision ID: 005_unlock_features
 Create Date: 2026-04-20
 """
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = '005_unlock_features'
 down_revision = '004_interpretation_sign_nullable'

@@ -4,7 +4,6 @@ Two-level: fast sign-level matrix + deep natal synastry (premium).
 """
 
 from dataclasses import dataclass
-from typing import Any
 
 from core.logging import get_logger
 

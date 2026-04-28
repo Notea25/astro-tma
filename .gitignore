@@ -2,6 +2,8 @@ __pycache__/
 *.pyc
 .env
 *.egg-info/
+.coverage
+coverage.xml
 node_modules/
 dist/
 .vite/

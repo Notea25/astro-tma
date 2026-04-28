@@ -3,7 +3,7 @@ Astro event detection — scans ephemeris for noteworthy events in a date range.
 Produces seed data for the news generator.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from kerykeion import AstrologicalSubjectFactory
@@ -70,7 +70,7 @@ def detect_events(start: datetime, days: int = 2) -> list[dict[str, Any]]:
     snapshots: list[tuple[datetime, dict]] = []
     for i in range(days + 1):
         d = start + timedelta(days=i)
-        d = d.replace(hour=12, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
+        d = d.replace(hour=12, minute=0, second=0, microsecond=0, tzinfo=UTC)
         snapshots.append((d, _sky_snapshot(d)))
 
     for idx in range(1, len(snapshots)):

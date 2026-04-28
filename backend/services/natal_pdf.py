@@ -1,15 +1,12 @@
 """Generate natal chart PDF report using ReportLab."""
+import os
 from io import BytesIO
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import mm
+
 from reportlab.lib.colors import HexColor
-from reportlab.pdfgen import canvas
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.platypus import Paragraph
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.lib.pagesizes import A4
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-import os
+from reportlab.pdfgen import canvas
 
 # Register DejaVu Sans — supports Cyrillic + astro symbols
 _FONT_DIR = os.path.join(os.path.dirname(__file__), '..', 'fonts')

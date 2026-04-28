@@ -9,42 +9,88 @@ jobs:
   deploy-backend:
     name: Deploy Backend
     runs-on: ubuntu-latest
-    needs: []  # add ci job here once set up
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+      VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
 
     steps:
+      - name: Check backend deploy secrets
+        id: backend_secrets
+        run: |
+          missing=0
+          for name in VPS_HOST VPS_USER VPS_SSH_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::notice title=Backend deploy skipped::Missing ${name} secret."
+              missing=1
+            fi
+          done
+
+          if [ "$missing" -eq 0 ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.backend_secrets.outputs.configured == 'true'
 
       - name: Build Docker image
+        if: steps.backend_secrets.outputs.configured == 'true'
         run: |
           docker build -t astro-backend:${{ github.sha }} ./backend
           docker tag astro-backend:${{ github.sha }} astro-backend:latest
 
       - name: Deploy to VPS via SSH
+        if: steps.backend_secrets.outputs.configured == 'true'
         uses: appleboy/ssh-action@v1
         with:
-          host:     ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key:      ${{ secrets.VPS_SSH_KEY }}
+          host:     ${{ env.VPS_HOST }}
+          username: ${{ env.VPS_USER }}
+          key:      ${{ env.VPS_SSH_KEY }}
           script: |
             cd /opt/astro-tma
             git pull origin main
             docker compose pull
             docker compose up -d --build backend
             docker compose exec -T backend alembic upgrade head
-            echo "✅ Backend deployed: ${{ github.sha }}"
+            echo "Backend deployed: ${{ github.sha }}"
 
   deploy-frontend:
     name: Deploy Frontend (Vercel)
     runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
     steps:
+      - name: Check frontend deploy secrets
+        id: frontend_secrets
+        run: |
+          missing=0
+          for name in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::notice title=Frontend deploy skipped::Missing ${name} secret."
+              missing=1
+            fi
+          done
+
+          if [ "$missing" -eq 0 ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.frontend_secrets.outputs.configured == 'true'
 
       - name: Deploy to Vercel
+        if: steps.frontend_secrets.outputs.configured == 'true'
         uses: amondnet/vercel-action@v25
         with:
-          vercel-token:   ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id:  ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-token:   ${{ env.VERCEL_TOKEN }}
+          vercel-org-id:  ${{ env.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ env.VERCEL_PROJECT_ID }}
           working-directory: ./frontend
           vercel-args: '--prod'

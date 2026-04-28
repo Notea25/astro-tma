@@ -6,16 +6,16 @@ Parses the markdown and updates upright_ru/reversed_ru in the database.
 Run: docker compose exec backend python scripts/update_tarot_meanings.py
 """
 import asyncio
+import os
 import re
 import sys
-import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sqlalchemy import select, update
+from sqlalchemy import select
+
 from db.database import AsyncSessionLocal
 from db.models import TarotCard
-
 
 # --- Markdown parser ---
 
@@ -124,7 +124,7 @@ async def update_meanings():
         md_path = '/app/services/tarot/tarot_full.md'
 
     print(f"Reading {md_path}")
-    with open(md_path, 'r', encoding='utf-8') as f:
+    with open(md_path, encoding='utf-8') as f:
         md_text = f.read()
 
     cards = parse_cards(md_text)

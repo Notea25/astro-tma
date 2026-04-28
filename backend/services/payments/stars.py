@@ -11,7 +11,7 @@ ALL access grants happen in webhook handler — never trust client callback alon
 """
 
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,8 +19,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.logging import get_logger
 from core.settings import settings
 from db.models import (
-    Purchase, PurchaseStatus,
-    Subscription, SubscriptionPlan, SubscriptionStatus,
+    Purchase,
+    PurchaseStatus,
+    Subscription,
+    SubscriptionPlan,
+    SubscriptionStatus,
 )
 
 log = get_logger(__name__)
@@ -157,7 +160,7 @@ async def grant_product_access(
         return
 
     product = PRODUCTS[product_id]
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     if product["type"] == "subscription":
         sub = Subscription(

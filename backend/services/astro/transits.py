@@ -3,11 +3,10 @@ Daily transit calculation — current sky vs natal chart.
 Used to personalise horoscopes beyond generic sun-sign text.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from kerykeion import AstrologicalSubjectFactory
-from kerykeion import SynastryAspects
+from kerykeion import AstrologicalSubjectFactory, SynastryAspects
 
 from core.logging import get_logger
 from services.astro.natal import _PLANET_ATTRS
@@ -37,7 +36,7 @@ ASPECT_WEIGHT: dict[str, int] = {
 
 def get_current_sky(dt: datetime | None = None) -> dict[str, Any]:
     """Return current planetary positions as a plain dict."""
-    dt = dt or datetime.now(timezone.utc)
+    dt = dt or datetime.now(UTC)
     subject = AstrologicalSubjectFactory.from_birth_data(
         name="_transit",
         year=dt.year, month=dt.month, day=dt.day,
@@ -67,7 +66,7 @@ def calculate_transits(
     Find significant transit aspects to natal chart.
     Returns list sorted by significance (highest-weight first).
     """
-    dt = dt or datetime.now(timezone.utc)
+    dt = dt or datetime.now(UTC)
     hour = birth_dt.hour if birth_time_known else 12
     minute = birth_dt.minute if birth_time_known else 0
 

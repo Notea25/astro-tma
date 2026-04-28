@@ -6,7 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.logging import get_logger
 from core.settings import settings
 from db.models import (
-    NotificationLog, NotificationStatus, NotificationType, User,
+    NotificationLog,
+    NotificationStatus,
+    NotificationType,
+    User,
 )
 
 log = get_logger(__name__)
