@@ -3,7 +3,10 @@ Tests for Telegram initData verification.
 Uses real HMAC logic with a fake bot token.
 """
 
-import hashlib, hmac, time, json
+import hashlib
+import hmac
+import json
+import time
 from urllib.parse import urlencode
 
 import pytest
@@ -40,8 +43,8 @@ def test_invalid_hash(monkeypatch):
     monkeypatch.setattr(
         "api.middleware.telegram_auth.settings.TELEGRAM_BOT_TOKEN", FAKE_TOKEN
     )
+
     from api.middleware.telegram_auth import verify_init_data
-    from fastapi import HTTPException
 
     init_data = _make_init_data() + "&hash=deadbeef"  # append duplicate hash
     with pytest.raises(Exception):
@@ -55,8 +58,9 @@ def test_expired_init_data(monkeypatch):
     # Patch _MAX_AGE_SECONDS to 0 so everything expires
     monkeypatch.setattr("api.middleware.telegram_auth._MAX_AGE_SECONDS", 0)
 
-    from api.middleware.telegram_auth import verify_init_data
     from fastapi import HTTPException
+
+    from api.middleware.telegram_auth import verify_init_data
 
     init_data = _make_init_data()
     with pytest.raises(HTTPException) as exc:

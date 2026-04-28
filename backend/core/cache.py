@@ -2,11 +2,14 @@
 Redis cache client — singleton pattern via lifespan.
 All cache keys live here to avoid magic strings across the codebase.
 """
-from typing import Any
 import json
+from collections.abc import Awaitable
+from typing import Any, cast
+
 import redis.asyncio as aioredis
-from core.settings import settings
+
 from core.logging import get_logger
+from core.settings import settings
 
 log = get_logger(__name__)
 
@@ -22,14 +25,14 @@ async def init_redis() -> None:
         socket_connect_timeout=5,
         socket_timeout=5,
     )
-    await _redis.ping()
+    await cast(Awaitable[Any], _redis.ping())
     log.info("redis.connected", url=str(settings.REDIS_URL))
 
 
 async def close_redis() -> None:
     global _redis
     if _redis:
-        await _redis.aclose()
+        await cast(Awaitable[Any], _redis.aclose())
         _redis = None
         log.info("redis.disconnected")
 
@@ -83,4 +86,4 @@ async def cache_set(key: str, value: Any, ttl: int) -> None:
 
 
 async def cache_delete(key: str) -> None:
-    await get_redis().delete(key)
+    await cast(Awaitable[Any], get_redis().delete(key))

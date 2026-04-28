@@ -4,8 +4,8 @@ Revision ID: 003_add_gender
 Create Date: 2026-04-01
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = '003_add_gender'
 down_revision = '002_mac_cards'

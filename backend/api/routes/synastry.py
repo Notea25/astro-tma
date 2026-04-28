@@ -1,7 +1,7 @@
 """Synastry endpoints — invite-based compatibility flow between two users."""
 
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -9,8 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.middleware.telegram_auth import get_tg_user
 from api.schemas.synastry import (
-    SynastryAspectOut, SynastryManualInput, SynastryPending, SynastryRequestOut,
-    SynastryResult, SynastryScores,
+    SynastryAspectOut,
+    SynastryManualInput,
+    SynastryPending,
+    SynastryRequestOut,
+    SynastryResult,
+    SynastryScores,
 )
 from core.logging import get_logger
 from core.settings import settings
@@ -80,7 +84,7 @@ async def create_request(
     if not await user_repo.has_purchased(db, user.id, "synastry"):
         raise HTTPException(status.HTTP_402_PAYMENT_REQUIRED, "Покупка Синастрии обязательна")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     result = await db.execute(
         select(SynastryRequest)
@@ -122,7 +126,7 @@ async def get_pending(
     db: AsyncSession = Depends(get_db),
 ):
     """Inbound pending invitations where current user is the partner."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     result = await db.execute(
         select(SynastryRequest, User)
         .join(User, User.id == SynastryRequest.initiator_user_id)
@@ -152,7 +156,7 @@ async def accept_request(
     """Partner accepts the invitation. Both users must have natal charts."""
     partner = await _require_user_with_chart(db, tg_user["id"])
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     result = await db.execute(
         select(SynastryRequest).where(SynastryRequest.token == token)
     )

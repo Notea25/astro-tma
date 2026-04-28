@@ -1,6 +1,6 @@
 """Daily push scheduler — runs hourly, sends to users whose local time hits PUSH_DAILY_HOUR."""
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
@@ -30,7 +30,7 @@ async def _already_sent_today(db: AsyncSession, user_id: int) -> bool:
             NotificationLog.user_id == user_id,
             NotificationLog.type == NotificationType.DAILY_HOROSCOPE,
             NotificationLog.status == NotificationStatus.SENT,
-            NotificationLog.created_at >= datetime.combine(today, datetime.min.time(), tzinfo=timezone.utc),
+            NotificationLog.created_at >= datetime.combine(today, datetime.min.time(), tzinfo=UTC),
         ).limit(1)
     )
     return result.scalar_one_or_none() is not None
@@ -39,7 +39,7 @@ async def _already_sent_today(db: AsyncSession, user_id: int) -> bool:
 async def send_daily_pushes() -> None:
     """Hourly job: find users whose local hour == PUSH_DAILY_HOUR and send them today's horoscope."""
     target_hour = settings.PUSH_DAILY_HOUR
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
     today_iso = date.today().isoformat()
 
     async with AsyncSessionLocal() as db:
@@ -61,6 +61,10 @@ async def send_daily_pushes() -> None:
                 continue
 
             if await _already_sent_today(db, user.id):
+                skipped += 1
+                continue
+
+            if user.sun_sign is None:
                 skipped += 1
                 continue
 

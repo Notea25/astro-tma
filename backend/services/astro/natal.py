@@ -10,8 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from kerykeion import AstrologicalSubjectFactory
-from kerykeion import NatalAspects
+from kerykeion import AstrologicalSubjectFactory, NatalAspects
 
 from core.logging import get_logger
 

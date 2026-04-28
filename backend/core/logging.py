@@ -1,10 +1,15 @@
 """Structured logging via structlog. JSON in prod, pretty-print in dev."""
-import logging, sys
+import logging
+import sys
+from typing import Any
+
 import structlog
+
 from core.settings import settings
 
+
 def setup_logging() -> None:
-    shared_processors = [
+    shared_processors: list[Any] = [
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_log_level,
 

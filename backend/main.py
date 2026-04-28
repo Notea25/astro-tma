@@ -8,8 +8,8 @@ Architecture notes:
 - Middleware: request logging, error normalisation
 """
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,7 +17,19 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
-from api.routes import compatibility, glossary, horoscope, mac, natal, news, payments, synastry, tarot, transits, users
+from api.routes import (
+    compatibility,
+    glossary,
+    horoscope,
+    mac,
+    natal,
+    news,
+    payments,
+    synastry,
+    tarot,
+    transits,
+    users,
+)
 from core.cache import close_redis, init_redis
 from core.logging import get_logger, setup_logging
 from core.settings import settings
@@ -155,6 +167,7 @@ app.include_router(news.router,          prefix="/api")
 
 # ── Admin ─────────────────────────────────────────────────────────────────────
 from admin import create_admin
+
 create_admin(app)
 
 
@@ -172,12 +185,14 @@ async def _generate_daily_horoscopes() -> None:
     Falls back to generic texts if LLM unavailable.
     """
     from datetime import date
-    from db.models import ZodiacSign
-    from core.cache import cache_set, key_horoscope
+
     from api.routes.horoscope import _GENERIC_TEXTS, _SIGN_RU
     from api.schemas.horoscope import EnergyScores, HoroscopeResponse
+    from core.cache import cache_set, key_horoscope
+    from db.models import ZodiacSign
     from services.astro.llm_horoscope import (
-        generate_daily_horoscope, generate_energy_scores_llm, _fallback_scores,
+        generate_daily_horoscope,
+        generate_energy_scores_llm,
     )
 
     today_date = date.today()

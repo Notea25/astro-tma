@@ -1,6 +1,7 @@
 """Single source of truth for all configuration. Values from env vars / .env file."""
 from functools import lru_cache
 from typing import Literal
+
 from pydantic import PostgresDsn, RedisDsn, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 

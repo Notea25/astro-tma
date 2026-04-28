@@ -11,12 +11,12 @@ Existing terms are updated by slug (non-destructive — preserves `full_ru` if a
 import asyncio
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.logging import get_logger
 from core.settings import settings
 from db.database import AsyncSessionLocal
 from db.models import GlossaryCategory, GlossaryTerm
+from services.llm_utils import first_text_block
 
 log = get_logger(__name__)
 
@@ -100,7 +100,7 @@ async def _generate_full(title: str, short: str, category: str) -> str:
             max_tokens=500,
             messages=[{"role": "user", "content": prompt}],
         )
-        text = message.content[0].text.strip()
+        text = first_text_block(message.content).strip()
         return text or short
     except Exception as e:
         log.warning("glossary.llm_failed", title=title, error=str(e))

@@ -9,6 +9,7 @@ from datetime import date
 
 from core.logging import get_logger
 from core.settings import settings
+from services.llm_utils import first_text_block
 
 log = get_logger(__name__)
 
@@ -90,7 +91,7 @@ async def generate_daily_horoscope(
             max_tokens=500,
             messages=[{"role": "user", "content": prompt}],
         )
-        text = message.content[0].text.strip()
+        text = first_text_block(message.content).strip()
         log.info("llm_horoscope.generated", sign=sign, period=period, chars=len(text))
         return text
     except Exception as e:
@@ -121,7 +122,7 @@ async def generate_energy_scores_llm(sign: str, target_date: date) -> dict[str, 
                 ),
             }],
         )
-        text = message.content[0].text.strip()
+        text = first_text_block(message.content).strip()
         scores = {}
         for pair in text.split():
             if ":" in pair:

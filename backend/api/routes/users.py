@@ -1,17 +1,21 @@
 """User profile endpoints."""
 
+from typing import TypedDict
+
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.middleware.telegram_auth import get_tg_user
 from api.schemas.user import (
-    SetGenderRequest, SetPushRequest, SetupBirthDataRequest,
-    SetupBirthDataResponse, UserProfile,
+    SetGenderRequest,
+    SetPushRequest,
+    SetupBirthDataRequest,
+    SetupBirthDataResponse,
+    UserProfile,
 )
-from core.cache import cache_delete, key_natal, key_user_premium
+from core.cache import cache_delete, key_natal
 from core.logging import get_logger
-from core.settings import settings
 from db.database import get_db
 from db.models import Gender, ZodiacSign
 from services.astro.natal import calculate_natal, chart_to_json
@@ -19,6 +23,14 @@ from services.users import repository as user_repo
 
 router = APIRouter(prefix="/users", tags=["users"])
 log = get_logger(__name__)
+
+
+class GeoResult(TypedDict):
+    city: str
+    lat: float
+    lng: float
+    tz: str
+
 
 # Sun sign → ZodiacSign enum mapping (Kerykeion returns English names)
 _SIGN_MAP: dict[str, ZodiacSign] = {s.value: s for s in ZodiacSign}
@@ -141,7 +153,7 @@ async def setup_birth_data(
     # Use pre-resolved coordinates if provided, otherwise geocode
     if body.lat is not None and body.lng is not None:
         tz = await _get_timezone(body.lat, body.lng)
-        geo = {"city": body.birth_city, "lat": body.lat, "lng": body.lng, "tz": tz}
+        geo: GeoResult = {"city": body.birth_city, "lat": body.lat, "lng": body.lng, "tz": tz}
         log.info("geocode.from_client", city=body.birth_city, lat=body.lat, lng=body.lng)
     else:
         geo = await _geocode_city(body.birth_city)
@@ -216,7 +228,7 @@ async def _get_timezone(lat: float, lng: float) -> str:
         return "UTC"
 
 
-async def _geocode_city(city: str) -> dict:
+async def _geocode_city(city: str) -> GeoResult:
     """
     Resolve city name to lat/lng/tz via Nominatim (OpenStreetMap).
     Free, no API key required. Falls back to Moscow on failure.
