@@ -3378,6 +3378,8 @@ body::after {
   width: 100%;
   position: relative;
   height: clamp(218px, 58vw, 252px);
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
 }
 
 .tarot-flip__face {
@@ -3386,6 +3388,8 @@ body::after {
   width: 100%;
   border-radius: 12px;
   overflow: hidden;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 .tarot-flip__face--back {
   display: flex;
@@ -3398,6 +3402,11 @@ body::after {
   border: 1px solid rgba(201, 168, 76, 0.3);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+}
+.tarot-flip__inner--revealed .tarot-flip__face--back {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 .tarot-flip__face--back::before {
   content: "";
@@ -3443,6 +3452,7 @@ body::after {
   padding: 12px;
   align-items: flex-start;
   overflow: hidden;
+  pointer-events: none;
 }
 
 .tarot-flip__back-ornament {
@@ -3560,6 +3570,9 @@ body::after {
   -webkit-line-clamp: 5;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+.tarot-flip .meaning-styled--compact .meaning-styled__intro {
+  -webkit-line-clamp: 3;
 }
 
 /* ── Three Card Flow ─────────────────────────────────────────────────────── */
