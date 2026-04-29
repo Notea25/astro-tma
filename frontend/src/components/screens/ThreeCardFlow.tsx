@@ -20,10 +20,6 @@ const EASE = [0.22, 0.61, 0.36, 1] as const;
 
 type Phase = "spinning" | "fly-in" | "revealed" | "fly-out" | "reading";
 
-interface Props {
-  onReset: () => void;
-}
-
 // ── Pre-compute wheel positions ────────────────────────────────────────────
 // Seeded random for consistent "messy" layout across renders
 function seededRand(seed: number) {
@@ -81,7 +77,7 @@ function CardFront({ card }: { card: TarotCardDetail }) {
 }
 
 // ── Main component ──────────────────────────────────────────────────────────
-export function ThreeCardFlow({ onReset }: Props) {
+export function ThreeCardFlow() {
   const { impact } = useHaptic();
   const [phase, setPhase] = useState<Phase>("spinning");
   const [drawnCount, setDrawnCount] = useState(0);
@@ -94,6 +90,7 @@ export function ThreeCardFlow({ onReset }: Props) {
   const [showContinue, setShowContinue] = useState(false);
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const [shownCards, setShownCards] = useState<number[]>([]);
+  const [isAutoShowing, setIsAutoShowing] = useState(false);
 
   const slotRef0 = useRef<HTMLDivElement>(null);
   const slotRef1 = useRef<HTMLDivElement>(null);
@@ -194,10 +191,30 @@ export function ThreeCardFlow({ onReset }: Props) {
     setPhase(next >= 3 ? "reading" : "spinning");
   }, [drawnCount]);
 
+  useEffect(() => {
+    if (phase !== "reading" || !isAutoShowing) return;
+    if (shownCards.length >= 3) {
+      setIsAutoShowing(false);
+      return;
+    }
+    const t = setTimeout(() => {
+      setShownCards((prev) =>
+        prev.length >= 3 ? prev : [...prev, prev.length],
+      );
+    }, shownCards.length === 0 ? 120 : 420);
+    timers.current.push(t);
+    return () => clearTimeout(t);
+  }, [phase, isAutoShowing, shownCards.length]);
+
   // ── Reading phase card tap ────────────────────────────────────────────────
   const handleCardTap = useCallback(
     (idx: number) => {
       if (phase !== "reading") return;
+      if (shownCards.length < 3) {
+        impact("medium");
+        setIsAutoShowing(true);
+        return;
+      }
       if (expandedIdx === idx) {
         setExpandedIdx(null);
         setShownCards((prev) => (prev.includes(idx) ? prev : [...prev, idx]));
@@ -206,16 +223,8 @@ export function ThreeCardFlow({ onReset }: Props) {
         setExpandedIdx(idx);
       }
     },
-    [phase, expandedIdx, impact],
+    [phase, shownCards.length, expandedIdx, impact],
   );
-
-  const handleReset = useCallback(() => {
-    timers.current.forEach(clearTimeout);
-    timers.current = [];
-    // parent unmounts this via setSelectedSpread(null);
-    // state/mutation will be re-created when the user re-enters the spread
-    onReset();
-  }, [onReset]);
 
   // Derived state for wheel appearance
   const isWheelSpinning = phase === "spinning" || phase === "fly-out";
@@ -375,11 +384,12 @@ export function ThreeCardFlow({ onReset }: Props) {
             {shownCards.length === 0 && (
               <motion.p
                 className="three-flow__hint"
+                onClick={() => setIsAutoShowing(true)}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.6 }}
               >
-                Нажмите на карту, чтобы открыть
+                Нажмите один раз, чтобы открыть карты по порядку
               </motion.p>
             )}
             <div className="reading-meanings">
@@ -422,31 +432,6 @@ export function ThreeCardFlow({ onReset }: Props) {
                 readingId={drawMutation.data.reading_id}
                 cards={apiCards}
               />
-            )}
-            {shownCards.length === 3 && (
-              <motion.button
-                className="btn-secondary btn-with-icon"
-                onClick={handleReset}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
-              >
-                <svg
-                  width="15"
-                  height="15"
-                  viewBox="0 0 15 15"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M1.5 7.5A6 6 0 0 1 13 4.5M13.5 7.5A6 6 0 0 1 2 10.5" />
-                  <polyline points="11,2 13,4.5 10.5,6.5" />
-                  <polyline points="4,12.5 2,10.5 4.5,8.5" />
-                </svg>
-                Новый расклад
-              </motion.button>
             )}
           </motion.div>
         )}

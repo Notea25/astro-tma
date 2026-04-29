@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import styles from './MacCardsPage.module.css';
 import { MacCardBack } from './MacCardBack';
 import { MAC_DECK, CATEGORY_INFO, CARD_W, CARD_H } from './macData';
@@ -47,6 +48,14 @@ const FILTERS: { id: Filter; name: string; symbol: string; accent: string }[] = 
 
 const FAN_CARD_W = 140;
 const FAN_CARD_H = 216;
+
+function formatResetTime(value?: string): string {
+  if (!value) return '00:00';
+  return new Date(value).toLocaleTimeString('ru-RU', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
 
 // ─── card front ────────────────────────────────────────────────────────────
 
@@ -112,8 +121,25 @@ export function MacCardsPage({ onBack }: { onBack: () => void }) {
 
   useTelegramBackButton(onBack, true);
 
+  const todayQuery = useQuery({
+    queryKey: ['mac-today'],
+    queryFn: macApi.today,
+    staleTime: 1000 * 60,
+  });
+
   const filterInfo = useMemo(() => FILTERS.find(f => f.id === filter)!, [filter]);
   const cardInfo = card ? CATEGORY_INFO[card.category] : null;
+  const todayPick = todayQuery.data?.pick ?? null;
+  const nextResetAt = todayQuery.data?.next_reset_at;
+
+  useEffect(() => {
+    if (!todayPick || phase !== 'idle') return;
+    const existing = MAC_DECK.find((c) => c.number === todayPick.card_number);
+    if (!existing) return;
+    setCard(existing);
+    setFilter(existing.category);
+    setPhase('revealed');
+  }, [todayPick, phase]);
 
   useEffect(() => {
     const h = () => setViewW(window.innerWidth);
@@ -136,6 +162,7 @@ export function MacCardsPage({ onBack }: { onBack: () => void }) {
   // ── shuffle → show fan ───────────────────────────────────────────────────
 
   const handleShuffleAndDraw = useCallback(() => {
+    if (todayPick) return;
     if (phase !== 'idle') return;
     impact('medium');
     setPhase('shuffle');
@@ -147,7 +174,7 @@ export function MacCardsPage({ onBack }: { onBack: () => void }) {
       setFanCards(picks.map((c, i) => ({ id: i, card: c, gone: false })));
       setPhase('fan');
     }, 2000);
-  }, [phase, filter, fanCount, card, impact]);
+  }, [todayPick, phase, filter, fanCount, card, impact]);
 
   // ── fan card click → fly to center ───────────────────────────────────────
 
@@ -210,30 +237,25 @@ export function MacCardsPage({ onBack }: { onBack: () => void }) {
         card_name: card.name,
         category: card.category,
       })
+      .then((pick) => {
+        const existing = MAC_DECK.find((c) => c.number === pick.card_number);
+        if (existing) {
+          setCard(existing);
+          setFilter(existing.category);
+        }
+      })
       .catch(() => {});
   }, [phase, impact, card]);
-
-  // ── draw another → back to idle, keep card for exclusion ─────────────────
-
-  const handleDrawAgain = useCallback(() => {
-    setPhase('idle');
-  }, []);
-
-  // ── reset ────────────────────────────────────────────────────────────────
-
-  const handleReset = useCallback(() => {
-    setPhase('idle');
-    setCard(null);
-    setFanCards([]);
-    setFlyingCard(null);
-    setJustLanded(false);
-  }, []);
 
   // ── prompt ───────────────────────────────────────────────────────────────
 
   const prompt = (() => {
+    if (todayQuery.isLoading) return 'Проверяем сегодняшнюю карту...';
+    if (phase === 'revealed' && nextResetAt) {
+      return `Сегодняшняя карта открыта. Следующее обновление в ${formatResetTime(nextResetAt)}`;
+    }
     if (phase === 'idle') return card
-      ? 'Нажмите на колоду — вытяните новую карту'
+      ? 'Сегодняшняя карта уже выбрана'
       : 'Задайте вопрос и нажмите на колоду';
     if (phase === 'shuffle') return 'Карты перемешиваются…';
     if (phase === 'fan') return flyingCard ? '' : 'Выберите карту, которую чувствуете';
@@ -241,7 +263,7 @@ export function MacCardsPage({ onBack }: { onBack: () => void }) {
     return '';
   })();
 
-  const showDeck = phase === 'idle' || phase === 'shuffle';
+  const showDeck = phase === 'idle' || phase === 'shuffle' || phase === 'revealed';
   const showCard = phase === 'drawn' || phase === 'revealed';
   const showFan = phase === 'fan';
   const activeFan = fanCards.filter(fc => !fc.gone);
@@ -265,20 +287,20 @@ export function MacCardsPage({ onBack }: { onBack: () => void }) {
           ЗЕРКАЛО&nbsp;ДУШИ
           <span className={styles.titleSub}>метафорические карты</span>
         </h1>
-        <button className={styles.resetBtn} onClick={handleReset}>Сначала</button>
+        <span className={styles.headerSpacer} aria-hidden="true" />
       </header>
 
       {/* Category selector — only while idle and no card shown */}
       {phase === 'idle' && !card && (
-        <div className={styles.categorySelector}>
+        <div className="category-chips">
           {FILTERS.map(f => (
             <button
               key={f.id}
-              className={`${styles.categoryTab} ${filter === f.id ? styles.categoryTabActive : ''}`}
+              className={`category-chip ${filter === f.id ? 'is-active' : ''}`}
               style={{ '--tab-accent': f.accent } as React.CSSProperties}
               onClick={() => handleSelectFilter(f.id)}
             >
-              <span className={styles.categorySym}>{f.symbol}</span>
+              <span>{f.symbol}</span>
               {f.name}
             </button>
           ))}
@@ -338,10 +360,6 @@ export function MacCardsPage({ onBack }: { onBack: () => void }) {
 
               <p className={styles.readingAffirmation}>«{card.affirmation}»</p>
             </div>
-
-            <button className={styles.drawAgain} onClick={handleDrawAgain}>
-              Вытянуть ещё карту
-            </button>
           </>
         )}
       </div>
@@ -402,29 +420,32 @@ export function MacCardsPage({ onBack }: { onBack: () => void }) {
         <div className={styles.deckContainer}>
           <div
             className={`${styles.deck} ${phase === 'shuffle' ? styles.deckShuffling : ''} ${phase === 'idle' ? styles.deckCursorPointer : ''}`}
-            onClick={phase === 'idle' ? handleShuffleAndDraw : undefined}
+            onClick={phase === 'idle' && !todayPick ? handleShuffleAndDraw : undefined}
           >
             {[3, 2, 1, 0].map((idx) => (
               <div key={idx} className={styles.deckCardLayer} style={{
                 zIndex: 4 - idx,
                 left: idx * 2.5 - 5,
                 top: idx * 2.5,
-                width: 160,
-                height: 246,
+                width: 128,
+                height: 196,
                 opacity: 0.55 + idx * 0.12,
               }}>
-                <MacCardBack width={160} height={246} />
+                <MacCardBack width={128} height={196} />
               </div>
             ))}
-            <div className={styles.deckCardLayer} style={{ zIndex: 10, left: 5, top: 10, width: 160, height: 246 }}>
-              <MacCardBack width={160} height={246} />
+            <div className={styles.deckCardLayer} style={{ zIndex: 10, left: 5, top: 10, width: 128, height: 196 }}>
+              <MacCardBack width={128} height={196} />
             </div>
           </div>
-          {phase === 'idle' && (
+          {phase === 'idle' && !todayPick && (
             <>
               <span className={styles.deckLabel}>{filterInfo.symbol} &nbsp; {filterInfo.name.toUpperCase()}</span>
               <span className={styles.deckHint}>нажмите, чтобы вытянуть</span>
             </>
+          )}
+          {phase === 'revealed' && (
+            <span className={styles.deckHint}>остальная колода ждёт нового дня</span>
           )}
         </div>
       )}

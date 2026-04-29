@@ -50,12 +50,12 @@ export function GlossaryTerm() {
 
       <div className="screen-content">
         {isLoading && (
-          <p style={{ color: "var(--text-secondary)", textAlign: "center" }}>
+          <p style={{ color: "var(--text-dim)", textAlign: "center" }}>
             Загрузка...
           </p>
         )}
         {error && (
-          <p style={{ color: "var(--text-secondary)", textAlign: "center" }}>
+          <p style={{ color: "var(--text-dim)", textAlign: "center" }}>
             Термин не найден.
           </p>
         )}

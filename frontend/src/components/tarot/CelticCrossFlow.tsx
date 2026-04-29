@@ -1,30 +1,26 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
 import { FanOfCards, type FanCard } from './FanOfCards'
 import { FlipCard } from './FlipCard'
 import { SpreadReading } from './SpreadReading'
 import { TarotCardBack } from './TarotCardBack'
 import { useHaptic } from '@/hooks/useTelegram'
 import type { TarotCardDetail } from '@/types'
+import { CARD_H, CARD_W, SPREAD_CONFIG } from '@/data/spread-config'
 import styles from './CelticCrossFlow.module.css'
 
-const CARD_W = 88
-const CARD_H = 150
-const LAYOUT_W = 720
-const LAYOUT_H = 720
+const CONFIG = SPREAD_CONFIG.celtic_cross
+const LAYOUT_W = CONFIG.layout.w
+const LAYOUT_H = CONFIG.layout.h
 const INITIAL_FAN_COUNT = 15
 
 const SLOTS: { slot: number; x: number; y: number; label: string; rotate?: number }[] = [
-  { slot: 1,  x: 200, y: 280, label: 'Суть' },
-  { slot: 2,  x: 200, y: 280, label: 'Препятствие', rotate: 90 },
-  { slot: 3,  x: 200, y: 100, label: 'Идеал' },
-  { slot: 4,  x: 200, y: 460, label: 'Основа' },
-  { slot: 5,  x: 40,  y: 280, label: 'Прошлое' },
-  { slot: 6,  x: 360, y: 280, label: 'Будущее' },
-  { slot: 7,  x: 560, y: 560, label: 'Вы сами' },
-  { slot: 8,  x: 560, y: 380, label: 'Окружение' },
-  { slot: 9,  x: 560, y: 200, label: 'Надежды' },
-  { slot: 10, x: 560, y: 20,  label: 'Исход' },
+  ...CONFIG.layout.slots.map((slot, idx) => ({
+    slot: idx + 1,
+    x: slot.x,
+    y: slot.y,
+    rotate: slot.rotate,
+    label: CONFIG.sections.flatMap((section) => section.positions)[idx]?.label ?? String(idx + 1),
+  })),
 ]
 
 type Phase = 'idle' | 'shuffle' | 'fan' | 'reading' | 'complete'
@@ -45,16 +41,16 @@ interface PlacedState {
 interface Props {
   readingId: number
   cards: TarotCardDetail[]
-  onNewReading: () => void
 }
 
-export function CelticCrossFlow({ readingId, cards, onNewReading }: Props) {
+export function CelticCrossFlow({ readingId, cards }: Props) {
   const { impact } = useHaptic()
   const [phase, setPhase] = useState<Phase>('idle')
   const [fanCards, setFanCards] = useState<FanCard[]>([])
   const [placed, setPlaced] = useState<Map<number, PlacedState>>(new Map())
   const [flyCard, setFlyCard] = useState<FlyCardState | null>(null)
   const [revealedCount, setRevealedCount] = useState(0)
+  const [isAutoRevealing, setIsAutoRevealing] = useState(false)
   const [selected, setSelected] = useState<number | null>(null)
   const [scale, setScale] = useState(1)
 
@@ -159,12 +155,28 @@ export function CelticCrossFlow({ readingId, cards, onNewReading }: Props) {
     }
   }, [phase, isAllRevealed])
 
-  const handleOverlayClick = useCallback(() => {
+  useEffect(() => {
+    if (!isAutoRevealing || phase !== 'reading') return
+
+    if (isAllRevealed) {
+      setIsAutoRevealing(false)
+      return
+    }
+
+    const t = setTimeout(
+      () => setRevealedCount((n) => Math.min(n + 1, SLOTS.length)),
+      revealedCount === 0 ? 120 : 420,
+    )
+
+    return () => clearTimeout(t)
+  }, [isAutoRevealing, phase, isAllRevealed, revealedCount])
+
+  const handleStartReveal = useCallback(() => {
     if (phase !== 'reading') return
-    if (revealedCount >= SLOTS.length) return
+    if (isAutoRevealing || isAllRevealed) return
     impact('medium')
-    setRevealedCount((n) => n + 1)
-  }, [phase, revealedCount, impact])
+    setIsAutoRevealing(true)
+  }, [phase, isAutoRevealing, isAllRevealed, impact])
 
   const handleSlotClick = useCallback(
     (idx: number) => {
@@ -181,17 +193,6 @@ export function CelticCrossFlow({ readingId, cards, onNewReading }: Props) {
     [phase, revealedCount],
   )
 
-  const handleRestart = useCallback(() => {
-    impact('medium')
-    setPhase('idle')
-    setFanCards([])
-    setPlaced(new Map())
-    setFlyCard(null)
-    setRevealedCount(0)
-    setSelected(null)
-    onNewReading()
-  }, [impact, onNewReading])
-
   /* ── Render helpers ────────────────────────────────────────────────── */
 
   const prompt =
@@ -204,7 +205,9 @@ export function CelticCrossFlow({ readingId, cards, onNewReading }: Props) {
             ? 'Выберите карту, которую чувствуете'
             : `Выбрано ${placedCount} из ${SLOTS.length}`
           : phase === 'reading' && !isAllRevealed
-            ? 'Нажмите в любом месте, чтобы открыть карту'
+            ? isAutoRevealing
+              ? 'Карты открываются…'
+              : 'Нажмите в любом месте, чтобы открыть все карты'
             : ''
 
   const containerPadded = phase === 'idle' || phase === 'shuffle' || phase === 'fan'
@@ -309,7 +312,7 @@ export function CelticCrossFlow({ readingId, cards, onNewReading }: Props) {
                       </div>
                     )}
                   </div>
-                  {(!isCross || !isPlaced) && (
+                  {!isPlaced && (
                     <span
                       className={`${styles.slotLabel} ${isCross ? styles.slotLabelInside : ''}`}
                     >
@@ -366,6 +369,14 @@ export function CelticCrossFlow({ readingId, cards, onNewReading }: Props) {
         />
       )}
 
+      {(phase === 'reading' || phase === 'complete') && (
+        <div className={styles.remainingDeck} aria-hidden="true">
+          <span className={styles.remainingCard} />
+          <span className={styles.remainingCard} />
+          <span className={styles.remainingCard} />
+        </div>
+      )}
+
       {/* ── Flying card ── */}
       {flyCard && (
         <div
@@ -390,7 +401,7 @@ export function CelticCrossFlow({ readingId, cards, onNewReading }: Props) {
 
       {/* ── Reading-phase tap-anywhere overlay ── */}
       {phase === 'reading' && !isAllRevealed && (
-        <div className={styles.revealOverlay} onClick={handleOverlayClick} />
+        <div className={styles.revealOverlay} onClick={handleStartReveal} />
       )}
 
       {/* ── Completion banner ── */}
@@ -409,33 +420,6 @@ export function CelticCrossFlow({ readingId, cards, onNewReading }: Props) {
         />
       )}
 
-      {/* ── Restart button (complete phase) ── */}
-      {phase === 'complete' && (
-        <motion.button
-          className="btn-secondary btn-with-icon"
-          onClick={handleRestart}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          style={{ marginTop: 16 }}
-        >
-          <svg
-            width="15"
-            height="15"
-            viewBox="0 0 15 15"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M1.5 7.5A6 6 0 0 1 13 4.5M13.5 7.5A6 6 0 0 1 2 10.5" />
-            <polyline points="11,2 13,4.5 10.5,6.5" />
-            <polyline points="4,12.5 2,10.5 4.5,8.5" />
-          </svg>
-          Новый расклад
-        </motion.button>
-      )}
     </div>
   )
 }

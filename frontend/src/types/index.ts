@@ -69,6 +69,9 @@ export interface TarotSpreadResponse {
   spread_type: string;
   cards: TarotCardDetail[];
   is_premium: boolean;
+  next_reset_at?: string | null;
+  reused_existing?: boolean;
+  period_type?: "daily" | "weekly" | string | null;
 }
 
 export interface TarotPositionNarrative {
@@ -268,9 +271,9 @@ export interface SynastryManualInput {
   birth_time: string; // HH:MM
   birth_time_known: boolean;
   birth_city: string;
-  birth_lat: number;
-  birth_lng: number;
-  birth_tz: string;
+  birth_lat?: number;
+  birth_lng?: number;
+  birth_tz?: string;
 }
 
 export interface SkyPosition {
@@ -301,6 +304,24 @@ export interface MacCardResponse {
 export interface MacReadingResponse {
   reading_id: number;
   card: MacCardResponse;
+}
+
+export interface MacPickHistoryItem {
+  pick_id: number;
+  card_number: number;
+  card_name: string;
+  category: string;
+  created_at: string;
+}
+
+export interface MacPickResponse extends MacPickHistoryItem {
+  next_reset_at: string;
+  reused_existing: boolean;
+}
+
+export interface MacTodayResponse {
+  pick: MacPickHistoryItem | null;
+  next_reset_at: string;
 }
 
 export interface ProductInfo {

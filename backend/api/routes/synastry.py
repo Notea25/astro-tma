@@ -41,7 +41,12 @@ _ASPECT_RU: dict[str, str] = {
 
 
 def _invite_url(token: str) -> str:
-    bot = settings.TELEGRAM_BOT_USERNAME or "astro_bot"
+    bot = (settings.TELEGRAM_BOT_USERNAME or "").strip().lstrip("@")
+    if not bot:
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "TELEGRAM_BOT_USERNAME не настроен",
+        )
     return f"https://t.me/{bot}?startapp=syn_{token}"
 
 
@@ -251,11 +256,22 @@ async def manual_synastry(
             "Некорректный формат времени рождения (ожидается HH:MM)",
         ) from exc
 
+    # Resolve partner coordinates from city if not provided by the client.
+    partner_lat = payload.birth_lat
+    partner_lng = payload.birth_lng
+    partner_city = payload.birth_city
+    if partner_lat is None or partner_lng is None:
+        from api.routes.users import _geocode_city  # late import to avoid cycles
+        geo = await _geocode_city(payload.birth_city)
+        partner_lat = geo["lat"]
+        partner_lng = geo["lng"]
+        partner_city = geo.get("city") or partner_city
+
     # Resolve partner timezone from coords if not provided by the client.
     partner_tz = payload.birth_tz
     if not partner_tz:
         from api.routes.users import _get_timezone  # late import to avoid cycles
-        partner_tz = await _get_timezone(payload.birth_lat, payload.birth_lng)
+        partner_tz = await _get_timezone(partner_lat, partner_lng)
 
     raw = calculate_synastry(
         user_a={
@@ -269,8 +285,8 @@ async def manual_synastry(
         user_b={
             "name": payload.partner_name,
             "birth_dt": partner_dt,
-            "lat": payload.birth_lat,
-            "lng": payload.birth_lng,
+            "lat": partner_lat,
+            "lng": partner_lng,
             "tz_str": partner_tz,
             "birth_time_known": payload.birth_time_known,
         },
@@ -280,6 +296,7 @@ async def manual_synastry(
         "synastry.manual_computed",
         initiator_id=initiator.id,
         partner_name=payload.partner_name,
+        partner_city=partner_city,
         total=raw["total_aspects"],
     )
 

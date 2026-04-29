@@ -16,11 +16,13 @@ from api.schemas.tarot import (
 )
 from core.cache import cache_get, cache_set, key_tarot_interpret
 from core.logging import get_logger
+from core.periods import is_active_period, next_reset_at, now_utc, period_type_for_tarot
 from core.settings import settings
 from db.database import get_db
 from db.models import TarotCard, TarotPositionMeaning, TarotReading
 from services.tarot.engine import (
     PREMIUM_SPREADS,
+    SPREADS,
     draw_spread,
     to_reading_json,
 )
@@ -33,6 +35,72 @@ from services.users import repository as user_repo
 
 router = APIRouter(prefix="/tarot", tags=["tarot"])
 log = get_logger(__name__)
+
+
+async def _build_spread_response(
+    db: AsyncSession,
+    reading: TarotReading,
+    *,
+    reused_existing: bool = False,
+) -> TarotSpreadResponse:
+    cards_json = reading.cards_json or []
+    drawn_ids = [c["card_id"] for c in cards_json]
+
+    cards_result = await db.execute(
+        select(TarotCard).where(TarotCard.id.in_(drawn_ids))
+    )
+    cards_map: dict[int, TarotCard] = {c.id: c for c in cards_result.scalars()}
+
+    pos_result = await db.execute(
+        select(TarotPositionMeaning).where(
+            TarotPositionMeaning.spread_type == reading.spread_type,
+            TarotPositionMeaning.card_id.in_(drawn_ids),
+        )
+    )
+    pos_meanings: dict[tuple[int, int], str] = {}
+    pos_names: dict[tuple[int, int], str] = {}
+    for pm in pos_result.scalars():
+        pos_meanings[(pm.card_id, pm.position)] = pm.meaning_ru
+        pos_names[(pm.card_id, pm.position)] = pm.position_name_ru
+
+    card_details: list[TarotCardDetail] = []
+    for drawn in sorted(cards_json, key=lambda x: x.get("position", 0)):
+        card = cards_map.get(drawn["card_id"])
+        if not card:
+            continue
+        reversed_flag = bool(drawn.get("reversed"))
+        meaning = card.reversed_ru if reversed_flag else card.upright_ru
+        position = drawn["position"]
+        fallback_position_name = ""
+        spread_positions = SPREADS.get(reading.spread_type)
+        if spread_positions and 0 <= position < len(spread_positions):
+            fallback_position_name = spread_positions[position].name_ru
+        card_details.append(
+            TarotCardDetail(
+                id=card.id,
+                name_ru=card.name_ru,
+                name_en=card.name_en,
+                emoji=card.emoji,
+                arcana=card.arcana.value,
+                reversed=reversed_flag,
+                meaning_ru=meaning,
+                position_name_ru=fallback_position_name or pos_names.get((card.id, position), ""),
+                position_meaning_ru=pos_meanings.get((card.id, position)),
+                keywords_ru=card.keywords_ru or [],
+                image_url=(_IMAGE_BASE + card.image_key) if card.image_key else None,
+            )
+        )
+
+    period_type = period_type_for_tarot(reading.spread_type)
+    return TarotSpreadResponse(
+        reading_id=reading.id,
+        spread_type=reading.spread_type,
+        cards=card_details,
+        is_premium=reading.spread_type in PREMIUM_SPREADS,
+        next_reset_at=next_reset_at(reading.created_at, period_type),
+        reused_existing=reused_existing,
+        period_type=period_type,
+    )
 
 
 @router.post("/draw", response_model=TarotSpreadResponse)
@@ -58,6 +126,20 @@ async def draw_tarot(
         if not (is_prem or has_purchase):
             raise HTTPException(status.HTTP_402_PAYMENT_REQUIRED, f"{spread_type} requires Premium")
 
+    period_type = period_type_for_tarot(spread_type)
+    latest_result = await db.execute(
+        select(TarotReading)
+        .where(
+            TarotReading.user_id == user.id,
+            TarotReading.spread_type == spread_type,
+        )
+        .order_by(TarotReading.created_at.desc())
+        .limit(1)
+    )
+    latest = latest_result.scalar_one_or_none()
+    if latest and is_active_period(latest.created_at, period_type, now=now_utc()):
+        return await _build_spread_response(db, latest, reused_existing=True)
+
     # Load all card IDs
     result = await db.execute(select(TarotCard.id))
     card_ids = [row[0] for row in result.all()]
@@ -76,50 +158,9 @@ async def draw_tarot(
     )
     db.add(reading)
     await db.flush()
+    await db.refresh(reading)
 
-    # Load card details + position meanings
-    drawn_ids = [c.card_id for c in drawn.cards]
-    cards_result = await db.execute(select(TarotCard).where(TarotCard.id.in_(drawn_ids)))
-    cards_map: dict[int, TarotCard] = {c.id: c for c in cards_result.scalars()}
-
-    # Load position meanings for this spread
-    pos_result = await db.execute(
-        select(TarotPositionMeaning).where(
-            TarotPositionMeaning.spread_type == spread_type,
-            TarotPositionMeaning.card_id.in_(drawn_ids),
-        )
-    )
-    pos_meanings: dict[tuple[int, int], str] = {}
-    for pm in pos_result.scalars():
-        pos_meanings[(pm.card_id, pm.position)] = pm.meaning_ru
-
-    # Build response
-    card_details: list[TarotCardDetail] = []
-    for drawn_card in drawn.cards:
-        card = cards_map[drawn_card.card_id]
-        meaning = card.reversed_ru if drawn_card.reversed else card.upright_ru
-        pos_meaning = pos_meanings.get((drawn_card.card_id, drawn_card.position))
-
-        card_details.append(TarotCardDetail(
-            id=card.id,
-            name_ru=card.name_ru,
-            name_en=card.name_en,
-            emoji=card.emoji,
-            arcana=card.arcana.value,
-            reversed=drawn_card.reversed,
-            meaning_ru=meaning,
-            position_name_ru=drawn_card.position_name_ru,
-            position_meaning_ru=pos_meaning,
-            keywords_ru=card.keywords_ru,
-            image_url=(_IMAGE_BASE + card.image_key) if card.image_key else None,
-        ))
-
-    return TarotSpreadResponse(
-        reading_id=reading.id,
-        spread_type=spread_type,
-        cards=card_details,
-        is_premium=spread_type in PREMIUM_SPREADS,
-    )
+    return await _build_spread_response(db, reading)
 
 
 @router.get("/history", response_model=list[TarotHistoryItem])
@@ -177,55 +218,7 @@ async def get_reading_by_id(
     if not reading or reading.user_id != tg_user["id"]:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Reading not found")
 
-    cards_json = reading.cards_json or []
-    drawn_ids = [c["card_id"] for c in cards_json]
-
-    cards_result = await db.execute(
-        select(TarotCard).where(TarotCard.id.in_(drawn_ids))
-    )
-    cards_map: dict[int, TarotCard] = {c.id: c for c in cards_result.scalars()}
-
-    pos_result = await db.execute(
-        select(TarotPositionMeaning).where(
-            TarotPositionMeaning.spread_type == reading.spread_type,
-            TarotPositionMeaning.card_id.in_(drawn_ids),
-        )
-    )
-    pos_meanings: dict[tuple[int, int], str] = {}
-    pos_names: dict[tuple[int, int], str] = {}
-    for pm in pos_result.scalars():
-        pos_meanings[(pm.card_id, pm.position)] = pm.meaning_ru
-        pos_names[(pm.card_id, pm.position)] = pm.position_name_ru
-
-    card_details: list[TarotCardDetail] = []
-    for drawn in sorted(cards_json, key=lambda x: x.get("position", 0)):
-        card = cards_map.get(drawn["card_id"])
-        if not card:
-            continue
-        reversed_flag = bool(drawn.get("reversed"))
-        meaning = card.reversed_ru if reversed_flag else card.upright_ru
-        card_details.append(
-            TarotCardDetail(
-                id=card.id,
-                name_ru=card.name_ru,
-                name_en=card.name_en,
-                emoji=card.emoji,
-                arcana=card.arcana.value,
-                reversed=reversed_flag,
-                meaning_ru=meaning,
-                position_name_ru=pos_names.get((card.id, drawn["position"]), ""),
-                position_meaning_ru=pos_meanings.get((card.id, drawn["position"])),
-                keywords_ru=card.keywords_ru or [],
-                image_url=(_IMAGE_BASE + card.image_key) if card.image_key else None,
-            )
-        )
-
-    return TarotSpreadResponse(
-        reading_id=reading.id,
-        spread_type=reading.spread_type,
-        cards=card_details,
-        is_premium=reading.spread_type in PREMIUM_SPREADS,
-    )
+    return await _build_spread_response(db, reading)
 
 
 @router.post("/interpret/{reading_id}", response_model=TarotInterpretationResponse)

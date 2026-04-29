@@ -220,7 +220,7 @@ export function Synastry() {
                 </div>
                 <p
                   style={{
-                    color: "var(--text-secondary)",
+                    color: "var(--text-dim)",
                     fontSize: 13,
                     marginBottom: 16,
                   }}
@@ -244,7 +244,7 @@ export function Synastry() {
                     <p
                       style={{
                         fontSize: 12,
-                        color: "var(--text-secondary)",
+                        color: "var(--text-dim)",
                         marginBottom: 6,
                       }}
                     >
@@ -284,6 +284,8 @@ export function Synastry() {
                       ? "Заполните данные рождения в профиле."
                       : requestMutation.error.status === 402
                         ? "Сначала купите Синастрию."
+                        : requestMutation.error.status === 500
+                          ? requestMutation.error.message
                         : "Не удалось создать приглашение."}
                   </p>
                 )}
@@ -321,20 +323,19 @@ function ManualPartnerForm({
     name.trim().length > 0 &&
     date.length > 0 &&
     city.trim().length > 0 &&
-    coords !== null &&
     !manualMutation.isPending;
 
   const submit = () => {
-    if (!coords || !canSubmit) return;
+    if (!canSubmit) return;
     manualMutation.mutate({
       partner_name: name.trim(),
       birth_date: date,
       birth_time: time,
       birth_time_known: timeKnown,
-      birth_city: coords.cityName,
-      birth_lat: coords.lat,
-      birth_lng: coords.lng,
-      birth_tz: "", // backend resolves from lat/lng
+      birth_city: coords?.cityName ?? city.trim(),
+      birth_lat: coords?.lat,
+      birth_lng: coords?.lng,
+      birth_tz: "", // backend resolves from lat/lng or city
     });
   };
 
@@ -353,7 +354,7 @@ function ManualPartnerForm({
       </div>
       <p
         style={{
-          color: "var(--text-secondary)",
+          color: "var(--text-dim)",
           fontSize: 13,
           marginBottom: 16,
         }}
@@ -490,7 +491,7 @@ function SynastryResultView({
               <span
                 className="transit-row__aspect"
                 style={{
-                  color: ASPECT_COLOR[a.aspect] ?? "var(--text-secondary)",
+                  color: ASPECT_COLOR[a.aspect] ?? "var(--text-dim)",
                 }}
               >
                 {ASPECT_SYMBOL[a.aspect] ?? a.aspect_ru}
