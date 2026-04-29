@@ -8,6 +8,7 @@ import { ThreeCardFlow } from "./ThreeCardFlow";
 import { SpreadLayout } from "./SpreadLayout";
 import { SpreadIntro } from "./SpreadIntro";
 import { CelticCrossFlow } from "@/components/tarot/CelticCrossFlow";
+import { DrawSpreadFlow } from "@/components/tarot/DrawSpreadFlow";
 import { SpreadReading } from "@/components/tarot/SpreadReading";
 import { TarotHistory } from "@/components/tarot/TarotHistory";
 import { tarotApi } from "@/services/api";
@@ -351,22 +352,43 @@ export function Tarot() {
           />
         )}
 
-        {reading && selectedSpread !== "celtic_cross" && (
-          <>
-            <SpreadLayout
-              spreadType={selectedSpread}
-              cards={reading.cards}
-              onAllFlipped={() => setAllFlipped(true)}
-            />
-            {allFlipped &&
-              (selectedSpread === "week" ||
-                selectedSpread === "relationship") && (
+        {reading &&
+          (selectedSpread === "week" || selectedSpread === "relationship") && (
+            <>
+              <DrawSpreadFlow
+                spreadType={selectedSpread}
+                cards={reading.cards}
+                reusedExisting={reading.reused_existing}
+                nextResetAt={reading.next_reset_at}
+                onAllFlipped={() => setAllFlipped(true)}
+              />
+              {allFlipped && (
                 <SpreadReading
                   spreadType={selectedSpread}
                   readingId={reading.reading_id}
                   cards={reading.cards}
                 />
               )}
+            </>
+          )}
+
+        {reading &&
+          selectedSpread !== "celtic_cross" &&
+          selectedSpread !== "week" &&
+          selectedSpread !== "relationship" && (
+          <>
+            <SpreadLayout
+              spreadType={selectedSpread}
+              cards={reading.cards}
+              onAllFlipped={() => setAllFlipped(true)}
+            />
+            {allFlipped && (
+              <SpreadReading
+                spreadType={selectedSpread}
+                readingId={reading.reading_id}
+                cards={reading.cards}
+              />
+            )}
           </>
         )}
       </div>
