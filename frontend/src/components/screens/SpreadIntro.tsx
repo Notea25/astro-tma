@@ -14,7 +14,7 @@ interface Props {
 const SCALE_BY_KEY: Record<SpreadKey, number> = {
   three_card: 0.9,
   celtic_cross: 0.44,
-  week: 0.58,
+  week: 0.94,
   relationship: 0.44,
 };
 
@@ -28,10 +28,13 @@ export function SpreadIntro({ spreadKey, onStart }: Props) {
   const cardW = CARD_W * scale;
   const cardH = CARD_H * scale;
   const symbolFontSize = Math.round(cardH * 0.32);
+  const firstPosition = config.sections[0]?.positions[0];
 
   return (
     <motion.div
-      className={`spread-intro-v2 spread-intro-v2--showcase spread-intro-v2--${spreadKey}`}
+      className={`spread-intro-v2 spread-intro-v2--showcase spread-intro-v2--${spreadKey}${
+        spreadKey === "week" ? " spread-intro-v2--week-ritual" : ""
+      }`}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
@@ -75,40 +78,65 @@ export function SpreadIntro({ spreadKey, onStart }: Props) {
         </div>
       </div>
 
-      <div className="spread-intro-v2__frame">
-        <p
-          className="spread-intro-v2__intro-text"
-          dangerouslySetInnerHTML={{ __html: config.intro }}
-        />
-
-        {config.sections.map((section, si) => (
-          <div key={si} className="spread-intro-v2__section">
-            {section.title && (
-              <h4 className="spread-intro-v2__section-title">
-                {section.title}
-              </h4>
-            )}
-            <div className="spread-intro-v2__positions">
-              {section.positions.map((pos) => (
-                <div key={pos.num} className="spread-intro-v2__pos">
-                  <span className="spread-intro-v2__num">{pos.num}</span>
-                  <div className="spread-intro-v2__pos-body">
-                    <strong>{pos.label}</strong>
-                    <p>{pos.description}</p>
-                  </div>
+      {spreadKey === "week" ? (
+        <div className="spread-intro-v2__frame spread-intro-v2__frame--week">
+          <p
+            className="spread-intro-v2__intro-text spread-intro-v2__intro-text--week"
+            dangerouslySetInnerHTML={{ __html: config.intro }}
+          />
+          {firstPosition && (
+            <>
+              <div className="spread-intro-v2__divider" aria-hidden="true">
+                <span />
+              </div>
+              <div className="spread-intro-v2__week-focus">
+                <span className="spread-intro-v2__week-icon">
+                  {previewSymbols?.[0] ?? "☽"}
+                </span>
+                <div>
+                  <strong>{firstPosition.label}</strong>
+                  <p>{firstPosition.description}</p>
                 </div>
-              ))}
+              </div>
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="spread-intro-v2__frame">
+          <p
+            className="spread-intro-v2__intro-text"
+            dangerouslySetInnerHTML={{ __html: config.intro }}
+          />
+
+          {config.sections.map((section, si) => (
+            <div key={si} className="spread-intro-v2__section">
+              {section.title && (
+                <h4 className="spread-intro-v2__section-title">
+                  {section.title}
+                </h4>
+              )}
+              <div className="spread-intro-v2__positions">
+                {section.positions.map((pos) => (
+                  <div key={pos.num} className="spread-intro-v2__pos">
+                    <span className="spread-intro-v2__num">{pos.num}</span>
+                    <div className="spread-intro-v2__pos-body">
+                      <strong>{pos.label}</strong>
+                      <p>{pos.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       <motion.button
         className="btn-primary spread-intro-v2__start-btn"
         onClick={onStart}
         whileTap={{ scale: 0.96 }}
       >
-        Перейти к раскладу
+        {spreadKey === "week" ? "ОТКРЫТЬ КАРТЫ ✦" : "Перейти к раскладу"}
       </motion.button>
     </motion.div>
   );
