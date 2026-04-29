@@ -3,76 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useHaptic } from "@/hooks/useTelegram";
 import { MeaningText } from "@/components/ui/MeaningText";
 import type { TarotCardDetail } from "@/types";
-
-interface SlotDef {
-  slot: number;
-  x: number;
-  y: number;
-  label: string;
-  rotate?: number;
-}
-
-interface LayoutDef {
-  slots: SlotDef[];
-  w: number;
-  h: number;
-  cardW: number;
-  cardH: number;
-  showLabels?: boolean;
-}
-
-const DEFAULT_CARD_W = 68;
-const DEFAULT_CARD_H = 102;
-
-const LAYOUTS: Record<string, LayoutDef> = {
-  relationship: {
-    w: 280,
-    h: 460,
-    cardW: DEFAULT_CARD_W,
-    cardH: DEFAULT_CARD_H,
-    slots: [
-      { slot: 1, x: 16, y: 0, label: "Вы" },
-      { slot: 2, x: 196, y: 0, label: "Партнёр" },
-      { slot: 3, x: 106, y: 116, label: "Связь" },
-      { slot: 4, x: 106, y: 230, label: "Вызов" },
-      { slot: 5, x: 106, y: 344, label: "Потенциал" },
-    ],
-  },
-  celtic_cross: {
-    w: 720,
-    h: 720,
-    cardW: 88,
-    cardH: 150,
-    showLabels: true,
-    slots: [
-      { slot: 1, x: 200, y: 280, label: "Суть" },
-      { slot: 2, x: 200, y: 280, label: "Препятствие", rotate: 90 },
-      { slot: 3, x: 200, y: 100, label: "Идеал" },
-      { slot: 4, x: 200, y: 460, label: "Основа" },
-      { slot: 5, x: 40, y: 280, label: "Прошлое" },
-      { slot: 6, x: 360, y: 280, label: "Будущее" },
-      { slot: 7, x: 560, y: 560, label: "Вы сами" },
-      { slot: 8, x: 560, y: 380, label: "Окружение" },
-      { slot: 9, x: 560, y: 200, label: "Надежды" },
-      { slot: 10, x: 560, y: 20, label: "Исход" },
-    ],
-  },
-  week: {
-    w: 340,
-    h: 240,
-    cardW: DEFAULT_CARD_W,
-    cardH: DEFAULT_CARD_H,
-    slots: [
-      { slot: 1, x: 0, y: 0, label: "Пн" },
-      { slot: 2, x: 82, y: 0, label: "Вт" },
-      { slot: 3, x: 164, y: 0, label: "Ср" },
-      { slot: 4, x: 246, y: 0, label: "Чт" },
-      { slot: 5, x: 40, y: 116, label: "Пт" },
-      { slot: 6, x: 136, y: 116, label: "Сб" },
-      { slot: 7, x: 232, y: 116, label: "Вс" },
-    ],
-  },
-};
+import { CARD_H, CARD_W, SPREAD_CONFIG, type SpreadKey } from "@/data/spread-config";
 
 interface Props {
   spreadType: string;
@@ -88,19 +19,44 @@ export function SpreadLayout({
   onAllFlipped,
 }: Props) {
   const { impact } = useHaptic();
-  const [flipped, setFlipped] = useState<Set<number>>(new Set());
+  const [revealedCount, setRevealedCount] = useState(0);
+  const [isAutoRevealing, setIsAutoRevealing] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
   const [scale, setScale] = useState(1);
   const detailRef = useRef<HTMLDivElement>(null);
   const areaRef = useRef<HTMLDivElement>(null);
 
-  const layout = LAYOUTS[spreadType];
+  const config = SPREAD_CONFIG[spreadType as SpreadKey];
+  const layout = config?.layout;
+  const slots =
+    config?.layout.slots.map((slot, idx) => {
+      const position = config.sections.flatMap((s) => s.positions)[idx];
+      return {
+        ...slot,
+        slot: idx + 1,
+        label: position?.label ?? String(idx + 1),
+        symbol: config.previewSymbols?.[idx] ?? String(idx + 1),
+      };
+    }) ?? [];
 
   useEffect(() => {
-    if (onAllFlipped && cards.length > 0 && flipped.size === cards.length) {
+    if (onAllFlipped && cards.length > 0 && revealedCount === cards.length) {
       onAllFlipped();
     }
-  }, [flipped, cards.length, onAllFlipped]);
+  }, [revealedCount, cards.length, onAllFlipped]);
+
+  useEffect(() => {
+    if (!isAutoRevealing) return;
+    if (revealedCount >= cards.length) {
+      setIsAutoRevealing(false);
+      return;
+    }
+    const t = setTimeout(
+      () => setRevealedCount((count) => Math.min(count + 1, cards.length)),
+      revealedCount === 0 ? 120 : 420,
+    );
+    return () => clearTimeout(t);
+  }, [isAutoRevealing, revealedCount, cards.length]);
 
   useEffect(() => {
     if (!layout) return;
@@ -123,35 +79,36 @@ export function SpreadLayout({
 
   if (!layout) return null;
 
-  const handleFlip = (idx: number) => {
-    if (flipped.has(idx)) {
-      setSelected(idx);
-      setTimeout(() => {
-        detailRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "nearest",
-        });
-      }, 120);
-      return;
-    }
-
+  const handleStartReveal = () => {
+    if (isAutoRevealing || revealedCount >= cards.length) return;
     impact("medium");
-    setFlipped((prev) => new Set(prev).add(idx));
+    setIsAutoRevealing(true);
+  };
+
+  const handleSelect = (idx: number) => {
+    if (idx >= revealedCount) return;
     setSelected(idx);
     setTimeout(() => {
       detailRef.current?.scrollIntoView({
         behavior: "smooth",
         block: "nearest",
       });
-    }, 400);
+    }, 120);
   };
 
   const selectedCard = selected !== null ? cards[selected] : null;
-  const selectedSlot = selected !== null ? layout.slots[selected] : null;
-  const { cardW, cardH } = layout;
+  const selectedSlot = selected !== null ? slots[selected] : null;
+  const isAllRevealed = revealedCount >= cards.length;
 
   return (
     <div className={`spread-layout spread-layout--${spreadType}`}>
+      <p className="fan-prompt">
+        {isAllRevealed
+          ? "Расклад открыт"
+          : isAutoRevealing
+            ? "Карты открываются..."
+            : "Нажмите один раз, чтобы открыть карты по порядку"}
+      </p>
       <div className="spread-area" ref={areaRef}>
         <div
           className="spread-fit"
@@ -165,22 +122,14 @@ export function SpreadLayout({
               transform: `scale(${scale})`,
             }}
           >
-            {layout.slots.map((slot, idx) => {
+            {slots.map((slot, idx) => {
               const card = cards[idx];
               const isPlaced =
                 placedCount === undefined ? !!card : idx < placedCount;
-              const isFlipped = flipped.has(idx);
+              const isFlipped = idx < revealedCount;
               const isSelected = selected === idx;
               const isCross = !!slot.rotate;
-              const label = layout.showLabels ? (
-                <span
-                  className={`spread-slot__label${
-                    isCross ? " spread-slot__label--right" : ""
-                  }`}
-                >
-                  {slot.label}
-                </span>
-              ) : null;
+              const label = null;
 
               if (!isPlaced) {
                 return (
@@ -192,8 +141,8 @@ export function SpreadLayout({
                     style={{
                       left: slot.x,
                       top: slot.y,
-                      width: cardW,
-                      height: cardH,
+                      width: CARD_W,
+                      height: CARD_H,
                     }}
                   >
                     <div
@@ -222,13 +171,16 @@ export function SpreadLayout({
                   style={{
                     left: slot.x,
                     top: slot.y,
-                    width: cardW,
-                    height: cardH,
+                    width: CARD_W,
+                    height: CARD_H,
                   }}
                   initial={{ opacity: 0, scale: 0.5 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.3 }}
-                  onClick={() => handleFlip(idx)}
+                  onClick={() => {
+                    if (isAllRevealed) handleSelect(idx);
+                    else handleStartReveal();
+                  }}
                 >
                   <div
                     className="spread-slot__rotor"
@@ -245,7 +197,7 @@ export function SpreadLayout({
                     >
                       <div className="spread-slot__back">
                         <span className="spread-slot__number">
-                          {slot.slot}
+                          {slot.symbol}
                         </span>
                       </div>
                       <div className="spread-slot__front">
@@ -274,9 +226,16 @@ export function SpreadLayout({
         </div>
       </div>
 
+      <div className="spread-remaining-deck" aria-hidden="true">
+        <span className="spread-remaining-deck__card" />
+        <span className="spread-remaining-deck__card" />
+        <span className="spread-remaining-deck__card" />
+        <span className="spread-remaining-deck__label">Оставшаяся колода</span>
+      </div>
+
       <div ref={detailRef}>
         <AnimatePresence mode="wait">
-          {selectedCard && selectedSlot && selected !== null && flipped.has(selected) && (
+          {selectedCard && selectedSlot && selected !== null && selected < revealedCount && (
             <motion.div
               key={selected}
               className="spread-detail"

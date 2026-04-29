@@ -32,17 +32,17 @@ export const ZODIAC_ELEMENT: Record<ZodiacSign, Element> = {
 };
 
 export const ZODIAC_LABEL: Record<ZodiacSign, string> = {
-  aries: 'Aries', taurus: 'Taurus', gemini: 'Gemini', cancer: 'Cancer',
-  leo: 'Leo', virgo: 'Virgo', libra: 'Libra', scorpio: 'Scorpio',
-  sagittarius: 'Sagittarius', capricorn: 'Capricorn',
-  aquarius: 'Aquarius', pisces: 'Pisces',
+  aries: 'Овен', taurus: 'Телец', gemini: 'Близнецы', cancer: 'Рак',
+  leo: 'Лев', virgo: 'Дева', libra: 'Весы', scorpio: 'Скорпион',
+  sagittarius: 'Стрелец', capricorn: 'Козерог',
+  aquarius: 'Водолей', pisces: 'Рыбы',
 };
 
 export const ELEMENT_LABEL: Record<Element, string> = {
-  fire: 'FIRE',
-  earth: 'EARTH',
-  air: 'AIR',
-  water: 'WATER',
+  fire: 'ОГОНЬ',
+  earth: 'ЗЕМЛЯ',
+  air: 'ВОЗДУХ',
+  water: 'ВОДА',
 };
 
 export const PLANET_GLYPH: Record<PlanetName, string> = {
@@ -61,10 +61,10 @@ export const PLANET_GLYPH: Record<PlanetName, string> = {
 };
 
 export const PLANET_LABEL: Record<PlanetName, string> = {
-  sun: 'Sun', moon: 'Moon', mercury: 'Mercury', venus: 'Venus',
-  mars: 'Mars', jupiter: 'Jupiter', saturn: 'Saturn', uranus: 'Uranus',
-  neptune: 'Neptune', pluto: 'Pluto',
-  northNode: 'North Node', chiron: 'Chiron',
+  sun: 'Солнце', moon: 'Луна', mercury: 'Меркурий', venus: 'Венера',
+  mars: 'Марс', jupiter: 'Юпитер', saturn: 'Сатурн', uranus: 'Уран',
+  neptune: 'Нептун', pluto: 'Плутон',
+  northNode: 'Северный узел', chiron: 'Хирон',
 };
 
 export const PLANET_DRAW_ORDER: PlanetName[] = [
@@ -92,4 +92,3 @@ export const WHEEL = {
   innerR: 210,    // house/planet boundary
   planetR: 175,   // nominal radius for planet glyphs
 } as const;
-

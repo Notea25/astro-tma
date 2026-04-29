@@ -204,19 +204,13 @@ export const transitsApi = {
 export const macApi = {
   draw: () =>
     request<import("@/types").MacReadingResponse>("POST", "/mac/draw"),
+  today: () =>
+    request<import("@/types").MacTodayResponse>("GET", "/mac/today"),
   // 48-card deck flow — log a pick (card content stays client-side)
   pick: (body: { card_number: number; card_name: string; category: string }) =>
-    request<{ pick_id: number }>("POST", "/mac/pick", body),
+    request<import("@/types").MacPickResponse>("POST", "/mac/pick", body),
   picks: () =>
-    request<
-      {
-        pick_id: number;
-        card_number: number;
-        card_name: string;
-        category: string;
-        created_at: string;
-      }[]
-    >("GET", "/mac/picks"),
+    request<import("@/types").MacPickHistoryItem[]>("GET", "/mac/picks"),
 };
 
 export const paymentsApi = {

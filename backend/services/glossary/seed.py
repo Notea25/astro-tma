@@ -34,6 +34,10 @@ SEED: list[tuple[str, str, GlossaryCategory, str, list[str]]] = [
     ("uranus", "Уран", GlossaryCategory.PLANET, "Свобода, перемены, оригинальность.", ["aquarius"]),
     ("neptune", "Нептун", GlossaryCategory.PLANET, "Мечты, интуиция, духовность, иллюзии.", ["pisces"]),
     ("pluto", "Плутон", GlossaryCategory.PLANET, "Трансформация, власть, глубокие перемены.", ["scorpio"]),
+    ("chiron", "Хирон", GlossaryCategory.PLANET, "Точка раны и исцеления: где боль становится мудростью.", []),
+    ("north-node", "Северный узел", GlossaryCategory.PLANET, "Направление роста души, новые навыки и задачи развития.", ["south-node"]),
+    ("south-node", "Южный узел", GlossaryCategory.PLANET, "Привычный опыт, прошлые сценарии и зона автоматизма.", ["north-node"]),
+    ("lilith", "Лилит", GlossaryCategory.PLANET, "Тень, запретная сила, искушения и темы личной честности.", []),
 
     # Signs
     ("aries", "Овен", GlossaryCategory.SIGN, "Кардинальный огонь. Инициатива, смелость, лидерство.", ["mars"]),
@@ -72,14 +76,24 @@ SEED: list[tuple[str, str, GlossaryCategory, str, list[str]]] = [
 
     # Concepts
     ("ascendant", "Асцендент", GlossaryCategory.CONCEPT, "Восходящий знак на горизонте в момент рождения — маска для мира.", ["house-1"]),
+    ("descendant", "Десцендент", GlossaryCategory.CONCEPT, "Точка партнёрства напротив Асцендента — образ значимого другого.", ["house-7"]),
+    ("ic", "IC (Нижняя точка неба)", GlossaryCategory.CONCEPT, "Корни, семья, приватная жизнь и эмоциональный фундамент карты.", ["house-4"]),
     ("mc", "MC (Середина Неба)", GlossaryCategory.CONCEPT, "Вершина карты — призвание, репутация, карьерные цели.", ["house-10"]),
     ("retrograde", "Ретроградность", GlossaryCategory.CONCEPT, "Видимое движение планеты вспять — время переосмысления её темы.", []),
+    ("direct-motion", "Директное движение", GlossaryCategory.CONCEPT, "Планета снова движется прямо: её темы проявляются внешне и понятнее.", ["retrograde"]),
     ("transit", "Транзит", GlossaryCategory.CONCEPT, "Текущее положение планеты относительно вашей натальной карты.", []),
+    ("ingress", "Переход планеты", GlossaryCategory.CONCEPT, "Вход планеты в новый знак зодиака, меняющий общий тон её влияния.", ["transit"]),
     ("synastry", "Синастрия", GlossaryCategory.CONCEPT, "Анализ совместимости через наложение двух натальных карт.", []),
     ("natal-chart", "Натальная карта", GlossaryCategory.CONCEPT, "Снимок неба в момент рождения — ваша астрологическая ДНК.", []),
+    ("birth-time", "Время рождения", GlossaryCategory.CONCEPT, "Ключ к точным домам, Асценденту и углам натальной карты.", ["ascendant", "house-1"]),
+    ("unknown-birth-time", "Неизвестное время рождения", GlossaryCategory.CONCEPT, "Режим расчёта без точных домов: обычно используется 12:00 как нейтральная точка.", ["birth-time"]),
     ("orb", "Орб", GlossaryCategory.CONCEPT, "Допустимое отклонение от точного угла аспекта.", []),
     ("element", "Стихия", GlossaryCategory.CONCEPT, "Огонь, Земля, Воздух, Вода — базовые энергетические качества знаков.", []),
     ("modality", "Крест качеств", GlossaryCategory.CONCEPT, "Кардинальный, фиксированный, мутабельный — способ проявления энергии.", []),
+    ("moon-phase", "Фаза Луны", GlossaryCategory.CONCEPT, "Видимая стадия лунного цикла: новолуние, рост, полнолуние и убывание.", ["moon"]),
+    ("new-moon", "Новолуние", GlossaryCategory.CONCEPT, "Начало лунного цикла, время намерений и запуска новых процессов.", ["moon-phase"]),
+    ("full-moon", "Полнолуние", GlossaryCategory.CONCEPT, "Пик лунного цикла, кульминация, ясность и эмоциональное усиление.", ["moon-phase"]),
+    ("eclipse", "Затмение", GlossaryCategory.CONCEPT, "Сильная точка лунно-солнечного цикла, подсвечивающая развороты и решения.", ["moon", "sun"]),
 ]
 
 

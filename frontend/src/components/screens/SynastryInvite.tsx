@@ -87,7 +87,7 @@ export function SynastryInvite() {
           <h2 className="screen-title">Синастрия</h2>
         </div>
         <div className="screen-content">
-          <p style={{ textAlign: "center", color: "var(--text-secondary)" }}>
+          <p style={{ textAlign: "center", color: "var(--text-dim)" }}>
             Неверная ссылка-приглашение.
           </p>
         </div>
@@ -178,7 +178,7 @@ export function SynastryInvite() {
                       className="transit-row__aspect"
                       style={{
                         color:
-                          ASPECT_COLOR[a.aspect] ?? "var(--text-secondary)",
+                          ASPECT_COLOR[a.aspect] ?? "var(--text-dim)",
                       }}
                     >
                       {ASPECT_SYMBOL[a.aspect] ?? a.aspect_ru}
@@ -213,7 +213,7 @@ export function SynastryInvite() {
             </p>
             <p
               style={{
-                color: "var(--text-secondary)",
+                color: "var(--text-dim)",
                 fontSize: 13,
                 marginBottom: 20,
               }}

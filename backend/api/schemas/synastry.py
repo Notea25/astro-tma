@@ -10,9 +10,9 @@ class SynastryManualInput(BaseModel):
     birth_time: str = Field(..., pattern=r"^\d{2}:\d{2}$")  # HH:MM
     birth_time_known: bool = True
     birth_city: str = Field(..., min_length=1, max_length=128)
-    birth_lat: float
-    birth_lng: float
-    # Optional — backend resolves from lat/lng if missing.
+    birth_lat: float | None = None
+    birth_lng: float | None = None
+    # Optional — backend resolves from lat/lng or city if missing.
     birth_tz: str | None = None
 
 

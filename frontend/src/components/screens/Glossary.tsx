@@ -107,13 +107,13 @@ export function Glossary() {
         )}
 
         {isLoading && (
-          <p style={{ color: "var(--text-secondary)", textAlign: "center" }}>
+          <p style={{ color: "var(--text-dim)", textAlign: "center" }}>
             Загрузка...
           </p>
         )}
 
         {terms && terms.length === 0 && (
-          <p style={{ color: "var(--text-secondary)", textAlign: "center" }}>
+          <p style={{ color: "var(--text-dim)", textAlign: "center" }}>
             Ничего не найдено.
           </p>
         )}
