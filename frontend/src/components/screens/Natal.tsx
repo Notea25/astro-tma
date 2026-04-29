@@ -301,6 +301,27 @@ const PLANET_ROWS = [
   { key: "saturn", label: "♄ Сатурн", desc: "Дисциплина, уроки, структура" },
 ];
 
+const PLANET_RU: Record<string, string> = {
+  sun: "Солнце",
+  moon: "Луна",
+  mercury: "Меркурий",
+  venus: "Венера",
+  mars: "Марс",
+  jupiter: "Юпитер",
+  saturn: "Сатурн",
+  uranus: "Уран",
+  neptune: "Нептун",
+  pluto: "Плутон",
+};
+
+const CATEGORY_RU: Record<string, string> = {
+  personality: "Личность",
+  emotion: "Эмоции",
+  communication: "Общение",
+  love: "Любовь",
+  career: "Действие",
+};
+
 export function Natal() {
   const { user, setScreen } = useAppStore();
   const hasBirthData = !!user?.birth_city;
@@ -676,7 +697,9 @@ export function Natal() {
                       {full.interpretations.map((interp, i) => (
                         <div key={i} className="natal-interp-item">
                           <div className="natal-interp-item__title">
-                            {interp.planet} · {interp.category}
+                            {PLANET_SYMBOLS[interp.planet] ?? "✦"}{" "}
+                            {PLANET_RU[interp.planet] ?? interp.planet} ·{" "}
+                            {CATEGORY_RU[interp.category] ?? interp.category}
                           </div>
                           <p className="natal-interp-item__text">
                             {interp.text}

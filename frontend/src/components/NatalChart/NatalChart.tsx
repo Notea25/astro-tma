@@ -8,6 +8,7 @@ import { CornerMetadata } from './parts/CornerMetadata';
 import { SideFigure } from './parts/SideFigure';
 import { ChartWheel } from './parts/ChartWheel';
 import { BottomFrame } from './parts/BottomFrame';
+import { ZODIAC_LABEL } from './constants';
 import { formatBirthDate } from './utils/formatting';
 
 /** Below this rendered width, collapse to a wheel-only layout — side figures
@@ -49,10 +50,10 @@ export function NatalChart(props: NatalChartProps) {
 
   const effectiveSideFigures = showSideFigures && !compact;
 
-  const subject = data.name ? ` for ${data.name}` : '';
+  const subject = data.name ? ` для ${data.name}` : '';
   const dateReadable = formatBirthDate(data.birthDate);
-  const ariaLabel = `Natal chart${subject}, born ${dateReadable} at ${data.birthTime} in ${data.birthLocation.city}, ${data.birthLocation.country}.`;
-  const ariaDesc = `Sun in ${data.sun.sign}, ascendant in ${data.ascendant.sign}, midheaven in ${data.midheaven.sign}.`;
+  const ariaLabel = `Натальная карта${subject}: рождение ${dateReadable} в ${data.birthTime}, ${data.birthLocation.city}, ${data.birthLocation.country}.`;
+  const ariaDesc = `Солнце в знаке ${ZODIAC_LABEL[data.sun.sign]}, асцендент в знаке ${ZODIAC_LABEL[data.ascendant.sign]}, середина неба в знаке ${ZODIAC_LABEL[data.midheaven.sign]}.`;
 
   return (
     <svg

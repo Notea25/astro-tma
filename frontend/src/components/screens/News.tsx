@@ -13,7 +13,7 @@ const CATEGORY_EMOJI: Record<string, string> = {
 
 const CATEGORY_LABEL: Record<string, string> = {
   aspect: "Аспекты",
-  ingress: "Ингрессии",
+  ingress: "Переходы планет",
   moon: "Луна",
   event: "События",
 };
@@ -90,9 +90,9 @@ export function News() {
 
       <div className="screen-content">
         <div className="news-intro">
-          Астрособытия — важные транзиты, ингрессии планет, затмения,
-          полнолуния. Они влияют на коллективное поле и объясняют, почему в
-          определённые недели «весь мир штормит».
+          Астрособытия — важные транзиты, переходы планет в новые знаки,
+          затмения и полнолуния. Переход планеты означает вход в новый знак
+          зодиака: меняется общий тон события и то, как эта планета проявляется.
         </div>
 
         {data && data.length > 0 && (
@@ -119,17 +119,17 @@ export function News() {
         )}
 
         {isLoading && (
-          <p style={{ color: "var(--text-secondary)", textAlign: "center" }}>
+          <p style={{ color: "var(--text-dim)", textAlign: "center" }}>
             Загрузка...
           </p>
         )}
         {data && data.length === 0 && (
-          <p style={{ color: "var(--text-secondary)", textAlign: "center" }}>
+          <p style={{ color: "var(--text-dim)", textAlign: "center" }}>
             Новостей пока нет. Загляните позже.
           </p>
         )}
         {filtered.length === 0 && data && data.length > 0 && (
-          <p style={{ color: "var(--text-secondary)", textAlign: "center" }}>
+          <p style={{ color: "var(--text-dim)", textAlign: "center" }}>
             В этой категории пока пусто.
           </p>
         )}

@@ -49,7 +49,7 @@ interface CornerProps {
   y: number;
   align: 'start' | 'end';
   mark: React.ReactNode;          // top row (glyph or element triangle)
-  label: string;                  // middle row (e.g. "SUN" / "EARTH")
+  label: string;                  // middle row label
   value: string;                  // bottom row (e.g. "6°25' ♍" / "VIRGO")
 }
 
@@ -111,7 +111,7 @@ export function CornerMetadata({ sun, ascendant }: Props) {
         y={80}
         align="start"
         mark={glyph(PLANET_GLYPH.sun)}
-        label="SUN"
+        label="СОЛНЦЕ"
         value={sunValue}
       />
       {/* top-right: Rising / Ascendant */}
@@ -131,7 +131,7 @@ export function CornerMetadata({ sun, ascendant }: Props) {
             AC
           </text>
         }
-        label="RISING"
+        label="АСЦ"
         value={acValue}
       />
       {/* bottom-left: Sun element */}

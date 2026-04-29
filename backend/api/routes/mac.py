@@ -13,8 +13,10 @@ from api.schemas.mac import (
     MacPickRequest,
     MacPickResponse,
     MacReadingResponse,
+    MacTodayResponse,
 )
 from core.logging import get_logger
+from core.periods import DAILY, is_active_period, next_reset_at, now_utc
 from db.database import get_db
 from db.models import MacCard, MacPick, MacReading
 from services.users import repository as user_repo
@@ -99,6 +101,55 @@ _VALID_CATEGORIES = {
 }
 
 
+def _pick_history_item(pick: MacPick) -> MacPickHistoryItem:
+    return MacPickHistoryItem(
+        pick_id=pick.id,
+        card_number=pick.card_number,
+        card_name=pick.card_name,
+        category=pick.category,
+        created_at=pick.created_at,
+    )
+
+
+def _pick_response(pick: MacPick, *, reused_existing: bool = False) -> MacPickResponse:
+    return MacPickResponse(
+        pick_id=pick.id,
+        card_number=pick.card_number,
+        card_name=pick.card_name,
+        category=pick.category,
+        created_at=pick.created_at,
+        next_reset_at=next_reset_at(pick.created_at, DAILY),
+        reused_existing=reused_existing,
+    )
+
+
+async def _latest_active_pick(db: AsyncSession, user_id: int) -> MacPick | None:
+    result = await db.execute(
+        select(MacPick)
+        .where(MacPick.user_id == user_id)
+        .order_by(MacPick.created_at.desc())
+        .limit(1)
+    )
+    pick = result.scalar_one_or_none()
+    if pick and is_active_period(pick.created_at, DAILY, now=now_utc()):
+        return pick
+    return None
+
+
+@router.get("/today", response_model=MacTodayResponse)
+async def mac_today(
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return today's MAC pick, if one exists, plus the next daily reset time."""
+    pick = await _latest_active_pick(db, tg_user["id"])
+    reset_base = pick.created_at if pick else now_utc()
+    return MacTodayResponse(
+        pick=_pick_history_item(pick) if pick else None,
+        next_reset_at=next_reset_at(reset_base, DAILY),
+    )
+
+
 @router.post("/pick", response_model=MacPickResponse)
 async def log_mac_pick(
     body: MacPickRequest,
@@ -115,6 +166,10 @@ async def log_mac_pick(
             status.HTTP_400_BAD_REQUEST, f"unknown category: {body.category}"
         )
 
+    existing = await _latest_active_pick(db, tg_user["id"])
+    if existing:
+        return _pick_response(existing, reused_existing=True)
+
     pick = MacPick(
         user_id=tg_user["id"],
         card_number=body.card_number,
@@ -123,13 +178,14 @@ async def log_mac_pick(
     )
     db.add(pick)
     await db.flush()
+    await db.refresh(pick)
     log.info(
         "mac.pick",
         user_id=tg_user["id"],
         card=body.card_number,
         category=body.category,
     )
-    return MacPickResponse(pick_id=pick.id)
+    return _pick_response(pick)
 
 
 @router.get("/picks", response_model=list[MacPickHistoryItem])
@@ -145,12 +201,6 @@ async def mac_picks_history(
         .limit(30)
     )
     return [
-        MacPickHistoryItem(
-            pick_id=p.id,
-            card_number=p.card_number,
-            card_name=p.card_name,
-            category=p.category,
-            created_at=p.created_at,
-        )
+        _pick_history_item(p)
         for p in result.scalars()
     ]

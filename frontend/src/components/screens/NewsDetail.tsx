@@ -4,7 +4,7 @@ import { newsApi } from "@/services/api";
 
 const CATEGORY_LABEL: Record<string, string> = {
   aspect: "Аспект",
-  ingress: "Переход",
+  ingress: "Переход планеты",
   moon: "Луна",
   event: "Событие",
 };
@@ -64,12 +64,12 @@ export function NewsDetail() {
 
       <div className="screen-content">
         {isLoading && (
-          <p style={{ color: "var(--text-secondary)", textAlign: "center" }}>
+          <p style={{ color: "var(--text-dim)", textAlign: "center" }}>
             Загрузка...
           </p>
         )}
         {error && (
-          <p style={{ color: "var(--text-secondary)", textAlign: "center" }}>
+          <p style={{ color: "var(--text-dim)", textAlign: "center" }}>
             Не найдено.
           </p>
         )}
@@ -87,7 +87,7 @@ export function NewsDetail() {
                 fontSize: 14,
                 lineHeight: 1.6,
                 whiteSpace: "pre-wrap",
-                color: "var(--text-primary)",
+                color: "var(--text-soft)",
               }}
             >
               {data.body_md}

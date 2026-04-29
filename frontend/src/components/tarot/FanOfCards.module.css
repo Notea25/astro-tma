@@ -1,6 +1,6 @@
 .fanContainer {
   position: fixed;
-  bottom: 110px;
+  bottom: calc(var(--nav-height) + var(--safe-bottom) + 34px);
   left: 50%;
   transform: translateX(-50%);
   width: 0;

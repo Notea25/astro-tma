@@ -8,7 +8,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0 0 260px;
+  padding: 0 0 calc(var(--nav-height) + var(--safe-bottom) + 220px);
   position: relative;
   overflow-x: hidden;
 }
@@ -95,6 +95,10 @@
 .resetBtn:hover {
   border-color: rgba(201, 168, 76, 0.55);
   color: #c9a84c;
+}
+.headerSpacer {
+  width: 72px;
+  flex-shrink: 0;
 }
 
 /* ===== CATEGORY SELECTOR ===== */
@@ -537,10 +541,10 @@
 
 .deckContainer {
   position: fixed;
-  bottom: 32px;
+  bottom: calc(var(--nav-height) + var(--safe-bottom) + 22px);
   left: 50%;
   transform: translateX(-50%);
-  z-index: 300;
+  z-index: 30;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -549,8 +553,8 @@
 }
 .deck {
   position: relative;
-  width: 160px;
-  height: 246px;
+  width: 128px;
+  height: 196px;
   pointer-events: all;
   transition: filter 0.3s;
 }
@@ -597,11 +601,11 @@
 
 .fanContainer {
   position: fixed;
-  bottom: -32px;
+  bottom: calc(var(--nav-height) + var(--safe-bottom) + 12px);
   left: 50%;
   width: 0;
   height: 0;
-  z-index: 300;
+  z-index: 30;
   pointer-events: none;
 }
 

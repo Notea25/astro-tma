@@ -83,7 +83,7 @@ function TransitCard({
   retrograde?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const color = ASPECT_COLOR[aspect.aspect] ?? "var(--text-secondary)";
+  const color = ASPECT_COLOR[aspect.aspect] ?? "var(--text-dim)";
   // Prefer server data; fall back to caller-supplied sky retrograde.
   const isRetro = aspect.transit_retrograde ?? retrograde ?? false;
   const applying = aspect.applying;
@@ -244,7 +244,7 @@ export function Transits() {
             className="horoscope-card"
             style={{ textAlign: "center", padding: "32px 20px" }}
           >
-            <p style={{ marginBottom: 16, color: "var(--text-secondary)" }}>
+            <p style={{ marginBottom: 16, color: "var(--text-dim)" }}>
               Заполните данные рождения, чтобы увидеть транзиты.
             </p>
             <button
@@ -259,7 +259,7 @@ export function Transits() {
         {error && !noBirthData && (
           <p
             style={{
-              color: "var(--text-secondary)",
+              color: "var(--text-dim)",
               textAlign: "center",
               padding: "20px",
             }}
@@ -290,14 +290,14 @@ export function Transits() {
               <p
                 style={{
                   fontSize: 12,
-                  color: "var(--text-secondary)",
+                  color: "var(--text-dim)",
                   marginBottom: 12,
                 }}
               >
                 Быстрые транзиты — настроение дня
               </p>
               {split.fast.length === 0 ? (
-                <p style={{ color: "var(--text-secondary)", fontSize: 13 }}>
+                <p style={{ color: "var(--text-dim)", fontSize: 13 }}>
                   Значимых быстрых аспектов сейчас нет.
                 </p>
               ) : (
@@ -324,14 +324,14 @@ export function Transits() {
               <p
                 style={{
                   fontSize: 12,
-                  color: "var(--text-secondary)",
+                  color: "var(--text-dim)",
                   marginBottom: 12,
                 }}
               >
                 Медленные транзиты — долгие жизненные процессы
               </p>
               {split.slow.length === 0 ? (
-                <p style={{ color: "var(--text-secondary)", fontSize: 13 }}>
+                <p style={{ color: "var(--text-dim)", fontSize: 13 }}>
                   Значимых медленных аспектов сейчас нет.
                 </p>
               ) : (

@@ -85,9 +85,9 @@ export function Tarot() {
     if (reading) {
       setReading(null);
       setAllFlipped(false);
-      if (selectedSpread === "celtic_cross") {
-        setShowInfo(true);
-      }
+      setSelectedSpread(null);
+      setShowInfo(true);
+      drawMutation.reset();
     } else if (!showInfo && selectedSpread) {
       setShowInfo(true);
     } else if (selectedSpread) {
@@ -98,7 +98,7 @@ export function Tarot() {
     } else {
       setScreen("discover", "back");
     }
-  }, [reading, selectedSpread, showInfo, showHistory, setScreen]);
+  }, [reading, selectedSpread, showInfo, showHistory, setScreen, drawMutation]);
 
   useTelegramBackButton(handleBack, true);
 
@@ -125,11 +125,6 @@ export function Tarot() {
     if (selectedSpread !== "three_card") {
       handleDraw();
     }
-  };
-
-  const handleNewCelticReading = () => {
-    if (selectedSpread !== "celtic_cross") return;
-    drawMutation.mutate(selectedSpread);
   };
 
   if (!selectedSpread && showHistory) {
@@ -288,7 +283,7 @@ export function Tarot() {
           <h2 className="screen-title">{spreadInfo.name}</h2>
         </div>
         <div className="screen-content">
-          <ThreeCardFlow onReset={() => setSelectedSpread(null)} />
+          <ThreeCardFlow />
         </div>
       </div>
     );
@@ -349,52 +344,10 @@ export function Tarot() {
           </div>
         )}
 
-        {!reading &&
-          !drawMutation.isPending &&
-          !drawMutation.isError &&
-          selectedSpread !== "celtic_cross" && (
-            <motion.div
-              className="draw-prompt"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-            >
-              <div className="deck-preview">
-                {[2, 1, 0].map((i) => (
-                  <div
-                    key={i}
-                    className="deck-card"
-                    style={{
-                      transform: `rotate(${(i - 1) * 6}deg) translateY(${i * -4}px)`,
-                    }}
-                  >
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                      opacity="0.5"
-                    >
-                      <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z" />
-                    </svg>
-                  </div>
-                ))}
-              </div>
-              <motion.button
-                className="btn-primary btn-draw"
-                onClick={handleDraw}
-                whileTap={{ scale: 0.96 }}
-                disabled={drawMutation.isPending}
-              >
-                {drawMutation.isPending ? "Тасуем..." : "Тянуть карты"}
-              </motion.button>
-            </motion.div>
-          )}
-
         {reading && selectedSpread === "celtic_cross" && (
           <CelticCrossFlow
             readingId={reading.reading_id}
             cards={reading.cards}
-            onNewReading={handleNewCelticReading}
           />
         )}
 
@@ -414,34 +367,6 @@ export function Tarot() {
                   cards={reading.cards}
                 />
               )}
-            <motion.button
-              className="btn-secondary btn-with-icon"
-              onClick={() => {
-                setReading(null);
-                setAllFlipped(false);
-                setShowInfo(true);
-                drawMutation.reset();
-              }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-            >
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 15 15"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M1.5 7.5A6 6 0 0 1 13 4.5M13.5 7.5A6 6 0 0 1 2 10.5" />
-                <polyline points="11,2 13,4.5 10.5,6.5" />
-                <polyline points="4,12.5 2,10.5 4.5,8.5" />
-              </svg>
-              Новый расклад
-            </motion.button>
           </>
         )}
       </div>
