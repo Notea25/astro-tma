@@ -24,6 +24,9 @@ class TarotSpreadResponse(BaseModel):
     spread_type: str
     cards: list[TarotCardDetail]
     is_premium: bool
+    next_reset_at: datetime | None = None
+    reused_existing: bool = False
+    period_type: str | None = None
 
 
 class DrawSpreadRequest(BaseModel):

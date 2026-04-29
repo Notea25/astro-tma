@@ -48,7 +48,7 @@ export function HouseRing({ houses, ascendantDegree, onHouseClick }: Props) {
             }
           : undefined;
 
-        const ariaLabel = `House ${house.number} in ${ZODIAC_LABEL[house.sign]}`;
+        const ariaLabel = `Дом ${house.number} в знаке ${ZODIAC_LABEL[house.sign]}`;
         const hitPath = sectorPath(
           WHEEL.innerR,
           WHEEL.middleR,

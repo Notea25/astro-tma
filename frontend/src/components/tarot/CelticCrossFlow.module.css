@@ -25,7 +25,7 @@
   50%      { opacity: 1; }
 }
 
-/* ── Spread area (scaled container of 720×720 slots) ─────────────────────── */
+/* ── Spread area (scaled container from shared spread config) ────────────── */
 .spreadArea {
   width: 100%;
   display: flex;
@@ -121,7 +121,7 @@
 /* ── Deck (idle / shuffle phases) ──────────────────────────────────────── */
 .deckWrap {
   position: fixed;
-  bottom: 110px;
+  bottom: calc(var(--nav-height) + var(--safe-bottom) + 34px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 250;
@@ -166,6 +166,35 @@
   font-size: 11px;
   letter-spacing: 0.28em;
   color: rgba(201, 168, 76, 0.75);
+}
+
+.remainingDeck {
+  position: relative;
+  width: 78px;
+  height: 56px;
+  margin: -2px auto 4px;
+  opacity: 0.72;
+  pointer-events: none;
+}
+.remainingCard {
+  position: absolute;
+  left: 24px;
+  top: 0;
+  width: 34px;
+  height: 50px;
+  border-radius: 5px;
+  background: url("/tarot-back.jpg") center/cover no-repeat;
+  border: 1px solid rgba(212, 178, 84, 0.32);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.42);
+}
+.remainingCard:nth-child(1) {
+  transform: rotate(-8deg) translate(-8px, 4px);
+}
+.remainingCard:nth-child(2) {
+  transform: rotate(0deg);
+}
+.remainingCard:nth-child(3) {
+  transform: rotate(7deg) translate(8px, 5px);
 }
 
 /* ── Flying card ───────────────────────────────────────────────────────── */

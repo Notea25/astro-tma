@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import type { PlacedPlanet } from '../utils/planetLayout';
 import type { PlanetName } from '../types';
-import { PLANET_GLYPH, PLANET_LABEL, RETROGRADE_MARK } from '../constants';
+import { PLANET_GLYPH, PLANET_LABEL, RETROGRADE_MARK, ZODIAC_LABEL } from '../constants';
 import { polar, zodiacToSvgAngle } from '../utils/geometry';
 import { formatDegreeMinute } from '../utils/formatting';
 import styles from '../NatalChart.module.css';
@@ -34,9 +34,9 @@ export function PlanetLayer({ placed, ascendantDegree, onPlanetClick }: Props) {
 
         const retroSuffix = position.retrograde ? ' ' + RETROGRADE_MARK : '';
         const srDescription =
-          `${PLANET_LABEL[name]} ${formatDegreeMinute(position)} in ${position.sign}` +
-          (position.retrograde ? ' (retrograde)' : '') +
-          `, house ${position.house}`;
+          `${PLANET_LABEL[name]} ${formatDegreeMinute(position)} в знаке ${ZODIAC_LABEL[position.sign]}` +
+          (position.retrograde ? ' (ретроградная)' : '') +
+          `, дом ${position.house}`;
 
         return (
           <g

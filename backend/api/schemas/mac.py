@@ -29,6 +29,12 @@ class MacPickRequest(BaseModel):
 
 class MacPickResponse(BaseModel):
     pick_id: int
+    card_number: int
+    card_name: str
+    category: str
+    created_at: datetime
+    next_reset_at: datetime
+    reused_existing: bool = False
 
 
 class MacPickHistoryItem(BaseModel):
@@ -37,3 +43,8 @@ class MacPickHistoryItem(BaseModel):
     card_name: str
     category: str
     created_at: datetime
+
+
+class MacTodayResponse(BaseModel):
+    pick: MacPickHistoryItem | None
+    next_reset_at: datetime
