@@ -233,72 +233,31 @@ export function Home() {
           transition={{ delay: 0.14 }}
         >
           <div className="card-tag">✦ Карта таро на сегодня</div>
-          <div className="tarot-flip" style={{ perspective: "1000px" }}>
+          <div className="tarot-flip">
             <motion.div
-              className={`tarot-flip__inner${cardRevealed ? " tarot-flip__inner--revealed" : ""}`}
-              animate={{ rotateY: cardRevealed ? 180 : 0 }}
-              transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
-              style={{
-                transformStyle: "preserve-3d",
-                WebkitTransformStyle: "preserve-3d",
-                position: "relative",
-              }}
+              key={cardRevealed ? "front" : "back"}
+              className="tarot-flip__inner"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.28, ease: "easeOut" }}
             >
-              {/* Back face */}
-              <div
-                className="tarot-flip__face tarot-flip__face--back"
-                style={{
-                  backfaceVisibility: "hidden",
-                  WebkitBackfaceVisibility: "hidden",
-                }}
-                aria-hidden={cardRevealed}
-                onClick={() => {
-                  if (cardRevealed) return;
-                  impact("medium");
-                  setCardRevealed(true);
-                }}
-              >
-                <div className="tarot-flip__back-ornament">
-                  <svg
-                    width="48"
-                    height="48"
-                    viewBox="0 0 48 48"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="0.8"
-                    opacity="0.5"
-                  >
-                    <rect
-                      x="4"
-                      y="4"
-                      width="40"
-                      height="40"
-                      rx="4"
-                      strokeDasharray="3 3"
-                    />
-                    <circle cx="24" cy="24" r="12" />
-                    <circle cx="24" cy="24" r="6" />
-                    <path d="M24 4 L24 12 M24 36 L24 44 M4 24 L12 24 M36 24 L44 24" />
-                    <path
-                      d="M24 18 L26.4 22.7 L31.4 23.5 L27.7 27.1 L28.6 32.1 L24 29.6 L19.4 32.1 L20.3 27.1 L16.6 23.5 L21.6 22.7 Z"
-                      strokeWidth="0.6"
-                    />
-                  </svg>
-                </div>
-                <span className="tarot-flip__hint">Нажмите, чтобы открыть</span>
-                <span className="tarot-flip__free">Бесплатно</span>
-              </div>
-
-              {/* Front face */}
-              <div
-                className="tarot-flip__face tarot-flip__face--front"
-                style={{
-                  backfaceVisibility: "hidden",
-                  WebkitBackfaceVisibility: "hidden",
-                  transform: "rotateY(180deg)",
-                }}
-                aria-hidden={!cardRevealed}
-              >
+              {!cardRevealed ? (
+                <button
+                  type="button"
+                  className="tarot-flip__face tarot-flip__face--back"
+                  onClick={() => {
+                    impact("medium");
+                    setCardRevealed(true);
+                  }}
+                >
+                  <div className="tarot-flip__back-ornament" aria-hidden="true">
+                    ✦
+                  </div>
+                  <span className="tarot-flip__hint">Нажмите, чтобы открыть</span>
+                  <span className="tarot-flip__free">Бесплатно</span>
+                </button>
+              ) : (
+                <div className="tarot-flip__face tarot-flip__face--front">
                 {cardLoading ? (
                   <div className="tarot-flip__loading">
                     <LoadingSpinner message="Карты открываются..." />
@@ -343,7 +302,8 @@ export function Home() {
                     );
                   })()
                 ) : null}
-              </div>
+                </div>
+              )}
             </motion.div>
           </div>
         </motion.div>
