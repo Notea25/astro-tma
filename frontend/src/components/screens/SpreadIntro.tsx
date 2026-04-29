@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   SPREAD_CONFIG,
@@ -19,6 +20,7 @@ const SCALE_BY_KEY: Record<SpreadKey, number> = {
 };
 
 export function SpreadIntro({ spreadKey, onStart }: Props) {
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
   const config = SPREAD_CONFIG[spreadKey];
   const { layout, backVariant, previewSymbols, title } = config;
   const scale = SCALE_BY_KEY[spreadKey] ?? 0.55;
@@ -84,11 +86,10 @@ export function SpreadIntro({ spreadKey, onStart }: Props) {
             className="spread-intro-v2__intro-text spread-intro-v2__intro-text--week"
             dangerouslySetInnerHTML={{ __html: config.intro }}
           />
-          {firstPosition && (
-            <>
-              <div className="spread-intro-v2__divider" aria-hidden="true">
-                <span />
-              </div>
+          <div className="spread-intro-v2__divider" aria-hidden="true">
+            <span />
+          </div>
+          {!detailsExpanded && firstPosition && (
               <div className="spread-intro-v2__week-focus">
                 <span className="spread-intro-v2__week-icon">
                   {previewSymbols?.[0] ?? "☽"}
@@ -98,8 +99,40 @@ export function SpreadIntro({ spreadKey, onStart }: Props) {
                   <p>{firstPosition.description}</p>
                 </div>
               </div>
-            </>
           )}
+          {detailsExpanded && (
+            <div className="spread-intro-v2__week-details">
+              {config.sections.map((section, si) => (
+                <div key={si} className="spread-intro-v2__section">
+                  {section.title && (
+                    <h4 className="spread-intro-v2__section-title">
+                      {section.title}
+                    </h4>
+                  )}
+                  <div className="spread-intro-v2__positions spread-intro-v2__positions--week-details">
+                    {section.positions.map((pos) => (
+                      <div key={pos.num} className="spread-intro-v2__pos">
+                        <span className="spread-intro-v2__num">
+                          {previewSymbols?.[pos.num - 1] ?? pos.num}
+                        </span>
+                        <div className="spread-intro-v2__pos-body">
+                          <strong>{pos.label}</strong>
+                          <p>{pos.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <button
+            type="button"
+            className="btn-ghost spread-intro-v2__details-btn"
+            onClick={() => setDetailsExpanded((value) => !value)}
+          >
+            {detailsExpanded ? "Скрыть подробности ↑" : "Подробнее ↓"}
+          </button>
         </div>
       ) : (
         <div className="spread-intro-v2__frame">
