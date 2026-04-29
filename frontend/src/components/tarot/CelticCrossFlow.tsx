@@ -13,13 +13,13 @@ const LAYOUT_W = CONFIG.layout.w
 const LAYOUT_H = CONFIG.layout.h
 const INITIAL_FAN_COUNT = 15
 
-const SLOTS: { slot: number; x: number; y: number; label: string; rotate?: number }[] = [
+const SLOTS: { slot: number; x: number; y: number; symbol: string; rotate?: number }[] = [
   ...CONFIG.layout.slots.map((slot, idx) => ({
     slot: idx + 1,
     x: slot.x,
     y: slot.y,
     rotate: slot.rotate,
-    label: CONFIG.sections.flatMap((section) => section.positions)[idx]?.label ?? String(idx + 1),
+    symbol: CONFIG.previewSymbols?.[idx] ?? String(idx + 1),
   })),
 ]
 
@@ -268,7 +268,11 @@ export function CelticCrossFlow({ readingId, cards }: Props) {
                     }
                   >
                     {!isPlaced ? (
-                      <div className={styles.placeholder} />
+                      <div className={styles.placeholder}>
+                        <span className={styles.placeholderSymbol}>
+                          {slot.symbol}
+                        </span>
+                      </div>
                     ) : (
                       <div className={justLanded ? styles.cardLand : ''}>
                         <FlipCard
@@ -312,13 +316,6 @@ export function CelticCrossFlow({ readingId, cards }: Props) {
                       </div>
                     )}
                   </div>
-                  {!isPlaced && (
-                    <span
-                      className={`${styles.slotLabel} ${isCross ? styles.slotLabelInside : ''}`}
-                    >
-                      {slot.label}
-                    </span>
-                  )}
                 </div>
               )
             })}
