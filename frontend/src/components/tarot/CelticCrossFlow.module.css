@@ -64,6 +64,17 @@
   border-radius: 8px;
   background: rgba(201, 168, 76, 0.04);
   animation: slotBreath 2.6s ease-in-out infinite;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.placeholderSymbol {
+  font-family: "Playfair Display", serif;
+  font-size: 20px;
+  line-height: 1;
+  color: rgba(212, 178, 84, 0.64);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.65);
+  pointer-events: none;
 }
 @keyframes slotBreath {
   0%, 100% {
@@ -86,7 +97,7 @@
   100% { transform: scale(1) rotate(0deg); opacity: 1; }
 }
 
-/* Slot labels ─ same visuals as globals.css spread-slot__label */
+/* Slot labels are kept for legacy markup but are not used in the live canvas. */
 .slotLabel {
   position: absolute;
   top: 100%;

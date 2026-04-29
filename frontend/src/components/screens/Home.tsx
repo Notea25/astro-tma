@@ -235,10 +235,14 @@ export function Home() {
           <div className="card-tag">✦ Карта таро на сегодня</div>
           <div className="tarot-flip" style={{ perspective: "1000px" }}>
             <motion.div
-              className="tarot-flip__inner"
+              className={`tarot-flip__inner${cardRevealed ? " tarot-flip__inner--revealed" : ""}`}
               animate={{ rotateY: cardRevealed ? 180 : 0 }}
               transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
-              style={{ transformStyle: "preserve-3d", position: "relative" }}
+              style={{
+                transformStyle: "preserve-3d",
+                WebkitTransformStyle: "preserve-3d",
+                position: "relative",
+              }}
             >
               {/* Back face */}
               <div
@@ -247,7 +251,9 @@ export function Home() {
                   backfaceVisibility: "hidden",
                   WebkitBackfaceVisibility: "hidden",
                 }}
+                aria-hidden={cardRevealed}
                 onClick={() => {
+                  if (cardRevealed) return;
                   impact("medium");
                   setCardRevealed(true);
                 }}
@@ -291,6 +297,7 @@ export function Home() {
                   WebkitBackfaceVisibility: "hidden",
                   transform: "rotateY(180deg)",
                 }}
+                aria-hidden={!cardRevealed}
               >
                 {cardLoading ? (
                   <div className="tarot-flip__loading">
