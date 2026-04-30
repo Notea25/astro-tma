@@ -413,13 +413,55 @@ const PLANET_SYMBOLS: Record<string, string> = {
 };
 
 const PLANET_ROWS = [
-  { key: "sun", label: "☉ Солнце", desc: "Ядро личности, творческая сила" },
-  { key: "moon", label: "☽ Луна", desc: "Эмоции, интуиция, подсознание" },
-  { key: "mercury", label: "☿ Меркурий", desc: "Мышление, коммуникация" },
-  { key: "venus", label: "♀ Венера", desc: "Любовь, ценности, красота" },
-  { key: "mars", label: "♂ Марс", desc: "Энергия, действие, желание" },
-  { key: "jupiter", label: "♃ Юпитер", desc: "Удача, рост, философия" },
-  { key: "saturn", label: "♄ Сатурн", desc: "Дисциплина, уроки, структура" },
+  {
+    key: "sun",
+    name: "Солнце",
+    symbol: "☉",
+    desc: "Ядро личности, творческая сила",
+    tone: "sun",
+  },
+  {
+    key: "moon",
+    name: "Луна",
+    symbol: "☽",
+    desc: "Эмоции, интуиция, подсознание",
+    tone: "moon",
+  },
+  {
+    key: "mercury",
+    name: "Меркурий",
+    symbol: "☿",
+    desc: "Мышление, коммуникация",
+    tone: "mercury",
+  },
+  {
+    key: "venus",
+    name: "Венера",
+    symbol: "♀",
+    desc: "Любовь, ценности, красота",
+    tone: "venus",
+  },
+  {
+    key: "mars",
+    name: "Марс",
+    symbol: "♂",
+    desc: "Энергия, действие, желание",
+    tone: "mars",
+  },
+  {
+    key: "jupiter",
+    name: "Юпитер",
+    symbol: "♃",
+    desc: "Удача, рост, философия",
+    tone: "jupiter",
+  },
+  {
+    key: "saturn",
+    name: "Сатурн",
+    symbol: "♄",
+    desc: "Дисциплина, уроки, структура",
+    tone: "saturn",
+  },
 ];
 
 const PLANET_RU: Record<string, string> = {
@@ -793,31 +835,64 @@ export function Natal() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
               >
-                {tab === "planets" && (
-                  <div className="natal-card__tag">✦ Полная карта</div>
-                )}
                 {tab === "planets" && fullLoading && (
                   <div className="natal-loading">Вычисление планет...</div>
                 )}
                 {tab === "planets" && !fullLoading && full && (
-                  <div className="planet-table">
-                    {PLANET_ROWS.map((row) => {
-                      const planet = full.planets?.[row.key];
-                      const signText = planet
-                        ? `${planet.sign_ru} ${Math.floor(planet.sign_degree)}°${planet.retrograde ? " ℞" : ""} • Дом ${planet.house}`
-                        : "—";
-                      return (
-                        <div key={row.key} className="planet-row">
-                          <span className="planet-row__symbol">
-                            {row.label}
-                          </span>
-                          <div>
-                            <div className="planet-row__sign">{signText}</div>
-                            <div className="planet-row__desc">{row.desc}</div>
+                  <div className="natal-planets">
+                    <div className="natal-planets-hero">
+                      <div className="natal-planets-hero__copy">
+                        <div className="natal-card__tag">✦ Полная карта</div>
+                        <p className="natal-planets-hero__count">
+                          {PLANET_ROWS.length} планет отображено
+                        </p>
+                        <div className="natal-planets-hero__pill">✦ О карте</div>
+                      </div>
+                      <div
+                        className="natal-planets-hero__wheel"
+                        aria-hidden="true"
+                      >
+                        <span>♓</span>
+                        <span>♎</span>
+                        <span>♏</span>
+                        <span>♌</span>
+                        <span>♍</span>
+                        <span>♐</span>
+                        <div className="natal-planets-hero__sun">☉</div>
+                      </div>
+                    </div>
+
+                    <div className="natal-planet-list">
+                      {PLANET_ROWS.map((row) => {
+                        const planet = full.planets?.[row.key];
+                        const signText = planet
+                          ? `${planet.sign_ru} ${Math.floor(planet.sign_degree)}°${planet.retrograde ? " ℞" : ""} • Дом ${planet.house}`
+                          : "—";
+                        return (
+                          <div
+                            key={row.key}
+                            className={`natal-planet-card natal-planet-card--${row.tone}`}
+                          >
+                            <div className="natal-planet-orb" aria-hidden="true">
+                              <span className="natal-planet-orb__symbol">
+                                {row.symbol}
+                              </span>
+                            </div>
+                            <div className="natal-planet-main">
+                              <div className="natal-planet-name">{row.name}</div>
+                              <div className="natal-planet-meta">{signText}</div>
+                              <div className="natal-planet-desc">{row.desc}</div>
+                            </div>
+                            <span
+                              className="natal-planet-arrow"
+                              aria-hidden="true"
+                            >
+                              ›
+                            </span>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
                 {tab === "planets" && !fullLoading && !full && (
