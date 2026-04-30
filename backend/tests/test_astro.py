@@ -1,5 +1,7 @@
 """Unit tests for astro calculation services."""
-from datetime import datetime
+from datetime import datetime, timedelta
+
+import pytest
 
 from services.astro.compatibility import calculate_compatibility
 from services.astro.moon import get_moon_phase
@@ -96,6 +98,45 @@ def test_synastry_timezone_fallback_without_coordinates():
         asyncio.run(_resolve_synastry_timezone("Bad/Timezone", None, None))
         == "UTC"
     )
+
+
+def test_synastry_manual_input_rejects_under_14_partner():
+    from api.schemas.synastry import (
+        MIN_SYNASTRY_AGE,
+        SynastryManualInput,
+        _date_years_ago,
+    )
+
+    birthday_too_young = _date_years_ago(MIN_SYNASTRY_AGE) + timedelta(days=1)
+
+    with pytest.raises(ValueError, match="не меньше 14 лет"):
+        SynastryManualInput(
+            partner_name="Анна",
+            birth_date=birthday_too_young,
+            birth_time="12:00",
+            birth_time_known=False,
+            birth_city="Минск",
+        )
+
+
+def test_synastry_manual_input_allows_14_plus_partner():
+    from api.schemas.synastry import (
+        MIN_SYNASTRY_AGE,
+        SynastryManualInput,
+        _date_years_ago,
+    )
+
+    birthday_14_plus = _date_years_ago(MIN_SYNASTRY_AGE)
+
+    payload = SynastryManualInput(
+        partner_name="Анна",
+        birth_date=birthday_14_plus,
+        birth_time="12:00",
+        birth_time_known=False,
+        birth_city="Минск",
+    )
+
+    assert payload.birth_date == birthday_14_plus
 
 
 def test_energy_scores_clamped():

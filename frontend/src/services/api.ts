@@ -6,7 +6,16 @@
 
 import WebApp from "@twa-dev/sdk";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "/api";
+const configuredBaseUrl = (
+  (import.meta.env.VITE_API_URL as string | undefined) ?? ""
+)
+  .trim()
+  .replace(/\/+$/, "");
+const BASE_URL = configuredBaseUrl
+  ? configuredBaseUrl.endsWith("/api")
+    ? configuredBaseUrl
+    : `${configuredBaseUrl}/api`
+  : "/api";
 
 class ApiError extends Error {
   constructor(
