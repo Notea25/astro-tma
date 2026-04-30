@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "framer-motion";
+import { motion, type PanInfo } from "framer-motion";
 import { PremiumGate } from "@/components/ui/PremiumGate";
 import { NatalBasicSkeleton } from "@/components/ui/Skeleton";
 import { useAppStore } from "@/stores/app";
@@ -10,6 +10,14 @@ import { NatalChart } from "@/components/NatalChart";
 import { toNatalChartData } from "@/components/NatalChart/adapter";
 
 type NatalTab = "circle" | "elements" | "planets" | "houses" | "aspects";
+type ReadingSection = { title?: string; body: string };
+type NatalInterpretationSlide = {
+  id: string;
+  label: string;
+  title: string;
+  body: string;
+};
+
 const NATAL_TABS: { key: NatalTab; label: string }[] = [
   { key: "circle", label: "Круг" },
   { key: "elements", label: "Стихии" },
@@ -18,15 +26,19 @@ const NATAL_TABS: { key: NatalTab; label: string }[] = [
   { key: "aspects", label: "Аспекты" },
 ];
 
-// Render LLM reading: split by **Section** markers into visual blocks
-function ReadingBlocks({ text }: { text: string }) {
+const SWIPE_OFFSET_THRESHOLD = 60;
+const SWIPE_VELOCITY_THRESHOLD = 500;
+
+// Split LLM reading by **Section** markers into reusable slide data.
+function parseReadingSections(text: string): ReadingSection[] {
   // Remove leading # header line if present
   const cleaned = text.replace(/^#[^\n]*\n?/, "").trim();
+  if (!cleaned) return [];
 
   // Split into segments: ["intro text", "SectionTitle", "body", "SectionTitle", "body", ...]
   const parts = cleaned.split(/\*\*([^*]+)\*\*/);
 
-  const blocks: { title?: string; body: string }[] = [];
+  const blocks: ReadingSection[] = [];
   let i = 0;
 
   // If text starts before first **, treat as intro
@@ -42,23 +54,84 @@ function ReadingBlocks({ text }: { text: string }) {
     i += 2;
   }
 
+  return blocks.filter((block) => block.title || block.body);
+}
+
+function NatalInterpretationSlider({
+  slides,
+}: {
+  slides: NatalInterpretationSlide[];
+}) {
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    if (activeIndex > slides.length - 1) {
+      setActiveIndex(Math.max(slides.length - 1, 0));
+    }
+  }, [activeIndex, slides.length]);
+
+  if (slides.length === 0) return null;
+
+  const activeSlide = slides[Math.min(activeIndex, slides.length - 1)] ?? slides[0];
+  const goToSlide = (index: number) => {
+    setActiveIndex(Math.max(0, Math.min(slides.length - 1, index)));
+  };
+
+  const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const shouldGoNext =
+      info.offset.x < -SWIPE_OFFSET_THRESHOLD ||
+      info.velocity.x < -SWIPE_VELOCITY_THRESHOLD;
+    const shouldGoPrevious =
+      info.offset.x > SWIPE_OFFSET_THRESHOLD ||
+      info.velocity.x > SWIPE_VELOCITY_THRESHOLD;
+
+    if (shouldGoNext) {
+      goToSlide(activeIndex + 1);
+    } else if (shouldGoPrevious) {
+      goToSlide(activeIndex - 1);
+    }
+  };
+
   return (
-    <div className="natal-reading-blocks">
-      {blocks.map((block, idx) => (
-        <div
-          key={idx}
-          className={
-            block.title ? "natal-reading-section" : "natal-reading-intro"
-          }
-        >
-          {block.title && (
-            <div className="natal-reading-section__title">{block.title}</div>
-          )}
-          {block.body && (
-            <p className="natal-reading-section__body">{block.body}</p>
-          )}
+    <div className="natal-interpretation-slider">
+      <div className="natal-interpretation-tabs" role="tablist">
+        {slides.map((slide, index) => (
+          <button
+            key={slide.id}
+            type="button"
+            role="tab"
+            aria-selected={index === activeIndex}
+            className={`natal-interpretation-tab${
+              index === activeIndex ? " is-active" : ""
+            }`}
+            onClick={() => goToSlide(index)}
+          >
+            {slide.label}
+          </button>
+        ))}
+      </div>
+
+      <motion.div
+        key={activeSlide.id}
+        className="natal-interpretation-slide"
+        drag={slides.length > 1 ? "x" : false}
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0.18}
+        onDragEnd={handleDragEnd}
+        initial={{ opacity: 0, x: 18 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.22, ease: "easeOut" }}
+      >
+        <div className="natal-interpretation-slide__head">
+          <h3 className="natal-interpretation-slide__title">
+            {activeSlide.title}
+          </h3>
+          <span className="natal-interpretation-slide__count">
+            {activeIndex + 1}/{slides.length}
+          </span>
         </div>
-      ))}
+        <p className="natal-interpretation-slide__text">{activeSlide.body}</p>
+      </motion.div>
     </div>
   );
 }
@@ -343,6 +416,41 @@ export function Natal() {
 
   const sunSign = summary?.sun_sign ?? user?.sun_sign;
   const userSign = ZODIAC_SIGNS.find((s) => s.value === sunSign);
+  const interpretationSlides = useMemo<NatalInterpretationSlide[]>(() => {
+    if (!full) return [];
+
+    const readingSlides =
+      full.reading
+        ? parseReadingSections(full.reading).map((section, index) => {
+            const title = section.title || "Вступление";
+            return {
+              id: `reading-${index}`,
+              label: title,
+              title,
+              body: section.body,
+            };
+          })
+        : [];
+
+    const planetSlides =
+      full.interpretations?.map((interp, index) => {
+        const symbol = PLANET_SYMBOLS[interp.planet] ?? "✦";
+        const planet = PLANET_RU[interp.planet] ?? interp.planet;
+        const category = CATEGORY_RU[interp.category] ?? interp.category;
+        const title = `${symbol} ${planet} · ${category}`;
+
+        return {
+          id: `interp-${interp.planet}-${interp.category}-${index}`,
+          label: title,
+          title,
+          body: interp.text,
+        };
+      }) ?? [];
+
+    return [...readingSlides, ...planetSlides].filter((slide) =>
+      slide.body.trim(),
+    );
+  }, [full]);
 
   return (
     <div className="screen natal-screen">
@@ -670,8 +778,8 @@ export function Natal() {
                   </div>
                 )}
 
-                {/* LLM Reading */}
-                {tab === "elements" && full?.reading && (
+                {/* Personal interpretation slider */}
+                {tab === "elements" && interpretationSlides.length > 0 && (
                   <div className="natal-reading">
                     <div
                       className="natal-card__tag"
@@ -679,35 +787,9 @@ export function Natal() {
                     >
                       ✦ Персональная интерпретация
                     </div>
-                    <ReadingBlocks text={full.reading} />
+                    <NatalInterpretationSlider slides={interpretationSlides} />
                   </div>
                 )}
-
-                {/* Interpretations */}
-                {tab === "elements" &&
-                  full?.interpretations &&
-                  full.interpretations.length > 0 && (
-                    <div className="natal-interpretations">
-                      <div
-                        className="natal-card__tag"
-                        style={{ marginTop: "1rem" }}
-                      >
-                        ✦ Интерпретации
-                      </div>
-                      {full.interpretations.map((interp, i) => (
-                        <div key={i} className="natal-interp-item">
-                          <div className="natal-interp-item__title">
-                            {PLANET_SYMBOLS[interp.planet] ?? "✦"}{" "}
-                            {PLANET_RU[interp.planet] ?? interp.planet} ·{" "}
-                            {CATEGORY_RU[interp.category] ?? interp.category}
-                          </div>
-                          <p className="natal-interp-item__text">
-                            {interp.text}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
 
                 {/* Aspects table */}
                 {tab === "aspects" &&
