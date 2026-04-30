@@ -846,7 +846,6 @@ export function Natal() {
                         <p className="natal-planets-hero__count">
                           {PLANET_ROWS.length} планет отображено
                         </p>
-                        <div className="natal-planets-hero__pill">✦ О карте</div>
                       </div>
                       <div
                         className="natal-planets-hero__wheel"
@@ -883,12 +882,6 @@ export function Natal() {
                               <div className="natal-planet-meta">{signText}</div>
                               <div className="natal-planet-desc">{row.desc}</div>
                             </div>
-                            <span
-                              className="natal-planet-arrow"
-                              aria-hidden="true"
-                            >
-                              ›
-                            </span>
                           </div>
                         );
                       })}
