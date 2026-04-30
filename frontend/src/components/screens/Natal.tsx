@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, type PanInfo } from "framer-motion";
 import { PremiumGate } from "@/components/ui/PremiumGate";
@@ -63,6 +63,8 @@ function NatalInterpretationSlider({
   slides: NatalInterpretationSlide[];
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const tabsRef = useRef<HTMLDivElement | null>(null);
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   useEffect(() => {
     if (activeIndex > slides.length - 1) {
@@ -70,9 +72,24 @@ function NatalInterpretationSlider({
     }
   }, [activeIndex, slides.length]);
 
+  useEffect(() => {
+    const tabs = tabsRef.current;
+    const activeTab = tabRefs.current[activeIndex];
+    if (!tabs || !activeTab) return;
+
+    const centeredLeft =
+      activeTab.offsetLeft - tabs.clientWidth / 2 + activeTab.clientWidth / 2;
+    tabs.scrollTo({
+      left: Math.max(0, centeredLeft),
+      behavior: "smooth",
+    });
+  }, [activeIndex]);
+
   if (slides.length === 0) return null;
 
-  const activeSlide = slides[Math.min(activeIndex, slides.length - 1)] ?? slides[0];
+  const activeSlide =
+    slides[Math.min(activeIndex, slides.length - 1)] ?? slides[0];
+
   const goToSlide = (index: number) => {
     setActiveIndex(Math.max(0, Math.min(slides.length - 1, index)));
   };
@@ -94,10 +111,13 @@ function NatalInterpretationSlider({
 
   return (
     <div className="natal-interpretation-slider">
-      <div className="natal-interpretation-tabs" role="tablist">
+      <div className="natal-interpretation-tabs" role="tablist" ref={tabsRef}>
         {slides.map((slide, index) => (
           <button
             key={slide.id}
+            ref={(node) => {
+              tabRefs.current[index] = node;
+            }}
             type="button"
             role="tab"
             aria-selected={index === activeIndex}
