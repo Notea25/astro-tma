@@ -7,9 +7,14 @@ import {
   type CityOption,
 } from "@/components/ui/CityAutocomplete";
 import { useAppStore } from "@/stores/app";
-import { synastryApi, ApiError } from "@/services/api";
+import { compatibilityApi, synastryApi, ApiError } from "@/services/api";
 import { useHaptic } from "@/hooks/useTelegram";
-import type { SynastryResult, SynastryManualInput } from "@/types";
+import type {
+  CompatibilityResponse,
+  SynastryResult,
+  SynastryManualInput,
+  ZodiacSign,
+} from "@/types";
 
 const PLANET_GLYPH: Record<string, string> = {
   sun: "☉",
@@ -50,6 +55,9 @@ const SPHERE_LABELS: { key: keyof SynastryResult["scores"]; label: string }[] =
   ];
 
 type Mode = "pick" | "invite" | "manual";
+type SynastryDisplayResult = SynastryResult & {
+  fallbackCompatibility?: CompatibilityResponse;
+};
 
 const MIN_SYNASTRY_AGE = 14;
 
@@ -155,6 +163,45 @@ function validatePartnerBirthDate(value: string): {
   return { normalizedDate, message: null };
 }
 
+function getZodiacSignFromDate(isoDate: string): ZodiacSign {
+  const [, monthRaw, dayRaw] = isoDate.split("-").map(Number);
+  const mmdd = monthRaw * 100 + dayRaw;
+
+  if (mmdd >= 321 && mmdd <= 419) return "aries";
+  if (mmdd >= 420 && mmdd <= 520) return "taurus";
+  if (mmdd >= 521 && mmdd <= 620) return "gemini";
+  if (mmdd >= 621 && mmdd <= 722) return "cancer";
+  if (mmdd >= 723 && mmdd <= 822) return "leo";
+  if (mmdd >= 823 && mmdd <= 922) return "virgo";
+  if (mmdd >= 923 && mmdd <= 1022) return "libra";
+  if (mmdd >= 1023 && mmdd <= 1121) return "scorpio";
+  if (mmdd >= 1122 && mmdd <= 1221) return "sagittarius";
+  if (mmdd >= 1222 || mmdd <= 119) return "capricorn";
+  if (mmdd >= 120 && mmdd <= 218) return "aquarius";
+  return "pisces";
+}
+
+function compatibilityToSynastryResult(
+  result: CompatibilityResponse,
+  initiatorName: string | null,
+  partnerName: string,
+): SynastryDisplayResult {
+  return {
+    aspects: [],
+    scores: {
+      love: result.love,
+      communication: result.communication,
+      trust: result.trust,
+      passion: result.passion,
+      overall: result.overall,
+    },
+    total_aspects: 0,
+    initiator_name: initiatorName,
+    partner_name: partnerName,
+    fallbackCompatibility: result,
+  };
+}
+
 function getManualSynastryErrorMessage(error: unknown): string | null {
   if (!error) return null;
 
@@ -182,7 +229,9 @@ function getManualSynastryErrorMessage(error: unknown): string | null {
 export function Synastry() {
   const { setScreen, user } = useAppStore();
   const { impact, notification } = useHaptic();
-  const [localResult, setLocalResult] = useState<SynastryResult | null>(null);
+  const [localResult, setLocalResult] = useState<SynastryDisplayResult | null>(
+    null,
+  );
   const [mode, setMode] = useState<Mode>("pick");
 
   const requestMutation = useMutation({
@@ -434,8 +483,9 @@ export function Synastry() {
 function ManualPartnerForm({
   onResult,
 }: {
-  onResult: (r: SynastryResult) => void;
+  onResult: (r: SynastryDisplayResult) => void;
 }) {
+  const { user } = useAppStore();
   const [name, setName] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("12:00");
@@ -445,7 +495,34 @@ function ManualPartnerForm({
   const [localError, setLocalError] = useState<string | null>(null);
 
   const manualMutation = useMutation({
-    mutationFn: (payload: SynastryManualInput) => synastryApi.manual(payload),
+    mutationFn: async (payload: SynastryManualInput) => {
+      try {
+        return await synastryApi.manual(payload);
+      } catch (error) {
+        if (!(error instanceof ApiError) || error.status !== 404) {
+          throw error;
+        }
+
+        if (!user?.sun_sign) {
+          throw new ApiError(
+            422,
+            "Заполните свои данные рождения в профиле, чтобы рассчитать совместимость.",
+          );
+        }
+
+        const partnerSign = getZodiacSignFromDate(payload.birth_date);
+        const compatibility = await compatibilityApi.get(
+          user.sun_sign,
+          partnerSign,
+        );
+
+        return compatibilityToSynastryResult(
+          compatibility,
+          user.name,
+          payload.partner_name,
+        );
+      }
+    },
     onSuccess: (result) => onResult(result),
   });
 
@@ -584,9 +661,11 @@ function SynastryResultView({
   result,
   onReset,
 }: {
-  result: SynastryResult;
+  result: SynastryDisplayResult;
   onReset: () => void;
 }) {
+  const fallback = result.fallbackCompatibility;
+
   return (
     <>
       <div className="horoscope-card">
@@ -612,38 +691,75 @@ function SynastryResultView({
         </div>
       </div>
 
-      <div className="horoscope-card">
-        <div className="horoscope-card__period" style={{ marginBottom: 12 }}>
-          Ключевые аспекты ({result.total_aspects} всего)
+      {fallback ? (
+        <div className="horoscope-card">
+          <div className="horoscope-card__period" style={{ marginBottom: 12 }}>
+            Базовая совместимость
+          </div>
+          <p className="compat-description" style={{ marginTop: 0 }}>
+            {fallback.description_ru}
+          </p>
+          {fallback.strengths_ru.length > 0 && (
+            <div className="compat-list compat-list--strengths">
+              <div className="compat-list__title">
+                <span className="compat-list__dot compat-list__dot--green" />
+                Сильные стороны
+              </div>
+              {fallback.strengths_ru.map((item, idx) => (
+                <div key={idx} className="compat-list__item">
+                  • {item}
+                </div>
+              ))}
+            </div>
+          )}
+          {fallback.challenges_ru.length > 0 && (
+            <div className="compat-list compat-list--challenges">
+              <div className="compat-list__title">
+                <span className="compat-list__dot compat-list__dot--amber" />
+                Вызовы
+              </div>
+              {fallback.challenges_ru.map((item, idx) => (
+                <div key={idx} className="compat-list__item">
+                  • {item}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-        <div className="transits-list">
-          {result.aspects.map((a, idx) => (
-            <motion.div
-              key={idx}
-              className="transit-row"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.04, duration: 0.3 }}
-            >
-              <span className="transit-row__planet">
-                {PLANET_GLYPH[a.p1_name.toLowerCase()] ?? "●"} {a.p1_name_ru}
-              </span>
-              <span
-                className="transit-row__aspect"
-                style={{
-                  color: ASPECT_COLOR[a.aspect] ?? "var(--text-dim)",
-                }}
+      ) : (
+        <div className="horoscope-card">
+          <div className="horoscope-card__period" style={{ marginBottom: 12 }}>
+            Ключевые аспекты ({result.total_aspects} всего)
+          </div>
+          <div className="transits-list">
+            {result.aspects.map((a, idx) => (
+              <motion.div
+                key={idx}
+                className="transit-row"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.04, duration: 0.3 }}
               >
-                {ASPECT_SYMBOL[a.aspect] ?? a.aspect_ru}
-              </span>
-              <span className="transit-row__planet">
-                {PLANET_GLYPH[a.p2_name.toLowerCase()] ?? "●"} {a.p2_name_ru}
-              </span>
-              <span className="transit-row__orb">{a.orb.toFixed(1)}°</span>
-            </motion.div>
-          ))}
+                <span className="transit-row__planet">
+                  {PLANET_GLYPH[a.p1_name.toLowerCase()] ?? "●"} {a.p1_name_ru}
+                </span>
+                <span
+                  className="transit-row__aspect"
+                  style={{
+                    color: ASPECT_COLOR[a.aspect] ?? "var(--text-dim)",
+                  }}
+                >
+                  {ASPECT_SYMBOL[a.aspect] ?? a.aspect_ru}
+                </span>
+                <span className="transit-row__planet">
+                  {PLANET_GLYPH[a.p2_name.toLowerCase()] ?? "●"} {a.p2_name_ru}
+                </span>
+                <span className="transit-row__orb">{a.orb.toFixed(1)}°</span>
+              </motion.div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <button
         className="btn-primary"
