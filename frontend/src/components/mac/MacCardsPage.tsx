@@ -263,14 +263,14 @@ export function MacCardsPage({ onBack }: { onBack: () => void }) {
     return '';
   })();
 
-  const showDeck = phase === 'idle' || phase === 'shuffle' || phase === 'revealed';
+  const showDeck = phase === 'idle' || phase === 'shuffle';
   const showCard = phase === 'drawn' || phase === 'revealed';
   const showFan = phase === 'fan';
   const activeFan = fanCards.filter(fc => !fc.gone);
   const N = activeFan.length;
 
   return (
-    <div className={styles.page}>
+    <div className={`screen mac-screen ${styles.page}`}>
       {/* Stars */}
       {STARS.map(s => (
         <div key={s.id} className={styles.star} style={{
@@ -281,87 +281,140 @@ export function MacCardsPage({ onBack }: { onBack: () => void }) {
       ))}
 
       {/* Header */}
-      <header className={styles.header}>
-        <button className={styles.backBtn} onClick={onBack}>← Назад</button>
-        <h1 className={styles.title}>
-          ЗЕРКАЛО&nbsp;ДУШИ
-          <span className={styles.titleSub}>метафорические карты</span>
-        </h1>
-        <span className={styles.headerSpacer} aria-hidden="true" />
-      </header>
+      <div className="screen-header screen-header--with-back">
+        <button className="back-btn" onClick={onBack} aria-label="Назад">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M13 4l-6 6 6 6" />
+          </svg>
+        </button>
+        <h2 className="screen-title">Зеркало души</h2>
+      </div>
 
-      {/* Category selector — only while idle and no card shown */}
-      {phase === 'idle' && !card && (
-        <div className="category-chips">
-          {FILTERS.map(f => (
-            <button
-              key={f.id}
-              className={`category-chip ${filter === f.id ? 'is-active' : ''}`}
-              style={{ '--tab-accent': f.accent } as React.CSSProperties}
-              onClick={() => handleSelectFilter(f.id)}
-            >
-              <span>{f.symbol}</span>
-              {f.name}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Prompt */}
-      <p className={styles.prompt}>{prompt}</p>
-
-      {/* Stage */}
-      <div className={styles.stage}>
-        <div className={styles.drawnCardArea} ref={dropTargetRef}>
-          {showCard && card && (
-            <div
-              className={styles.cardPerspective}
-              onClick={phase === 'drawn' ? handleReveal : undefined}
-              style={phase === 'revealed' ? { cursor: 'default' } : undefined}
-            >
-              <div
-                className={`${styles.cardInner} ${phase === 'revealed' ? styles.revealed : ''} ${justLanded ? styles.cardJustLanded : ''}`}
+      <div className={`screen-content ${styles.content}`}>
+        {/* Category selector — only while idle and no card shown */}
+        {phase === 'idle' && !card && (
+          <div className={`category-chips ${styles.categoryBar}`}>
+            {FILTERS.map(f => (
+              <button
+                key={f.id}
+                className={`category-chip ${filter === f.id ? 'is-active' : ''}`}
+                style={{ '--tab-accent': f.accent } as React.CSSProperties}
+                onClick={() => handleSelectFilter(f.id)}
               >
-                <div className={`${styles.cardBackFace} ${phase === 'drawn' ? styles.cardWaiting : ''}`}>
-                  <MacCardBack width={CARD_W} height={CARD_H} />
+                <span>{f.symbol}</span>
+                {f.name}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <section className={styles.drawPanel}>
+          <div className={styles.panelHeader}>
+            <span className={styles.panelEyebrow}>✦ Метафорические карты</span>
+            <span className={styles.panelMeta}>{MAC_DECK.length} образов</span>
+          </div>
+
+          {/* Prompt */}
+          <p className={styles.prompt}>{prompt}</p>
+
+          {/* Stage */}
+          <div className={styles.stage}>
+            <div
+              className={`${styles.drawnCardArea} ${showCard ? styles.drawnCardAreaActive : ''}`}
+              ref={dropTargetRef}
+            >
+              {showCard && card && (
+                <div
+                  className={styles.cardPerspective}
+                  onClick={phase === 'drawn' ? handleReveal : undefined}
+                  style={phase === 'revealed' ? { cursor: 'default' } : undefined}
+                >
+                  <div
+                    className={`${styles.cardInner} ${phase === 'revealed' ? styles.revealed : ''} ${justLanded ? styles.cardJustLanded : ''}`}
+                  >
+                    <div className={`${styles.cardBackFace} ${phase === 'drawn' ? styles.cardWaiting : ''}`}>
+                      <MacCardBack width={CARD_W} height={CARD_H} />
+                    </div>
+                    <div className={styles.cardFrontFace}>
+                      <CardFront card={card} />
+                    </div>
+                  </div>
                 </div>
-                <div className={styles.cardFrontFace}>
-                  <CardFront card={card} />
+              )}
+            </div>
+
+            {/* Reading panel — appears after reveal */}
+            {phase === 'revealed' && card && cardInfo && (
+              <>
+                <div
+                  className={styles.readingPanel}
+                  style={{ '--accent': cardInfo.accent } as React.CSSProperties}
+                >
+                  <div className={styles.readingHeader}>
+                    <div className={styles.readingCategory}>{cardInfo.symbol} &nbsp; {cardInfo.name}</div>
+                    <h2 className={styles.readingName}>{card.name}</h2>
+                    <div className={styles.readingNumber}>Карта №{card.number} из {MAC_DECK.length}</div>
+                  </div>
+
+                  <div className={styles.readingDivider} />
+
+                  <p className={styles.readingDescription}>{card.description}</p>
+
+                  <p className={styles.readingSectionTitle}>✦ &nbsp; Вопросы для размышления &nbsp; ✦</p>
+
+                  <ul className={styles.readingQuestions}>
+                    {card.questions.map((q, i) => <li key={i}>{q}</li>)}
+                  </ul>
+
+                  <p className={styles.readingSectionTitle}>✦ &nbsp; Аффирмация &nbsp; ✦</p>
+
+                  <p className={styles.readingAffirmation}>«{card.affirmation}»</p>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Deck — shown during idle and shuffle */}
+          {showDeck && (
+            <div className={styles.deckContainer}>
+              <div
+                className={`${styles.deck} ${phase === 'shuffle' ? styles.deckShuffling : ''} ${phase === 'idle' ? styles.deckCursorPointer : ''}`}
+                onClick={phase === 'idle' && !todayPick ? handleShuffleAndDraw : undefined}
+              >
+                {[3, 2, 1, 0].map((idx) => (
+                  <div key={idx} className={styles.deckCardLayer} style={{
+                    zIndex: 4 - idx,
+                    left: idx * 2.5 - 5,
+                    top: idx * 2.5,
+                    width: 128,
+                    height: 196,
+                    opacity: 0.55 + idx * 0.12,
+                  }}>
+                    <MacCardBack width={128} height={196} />
+                  </div>
+                ))}
+                <div className={styles.deckCardLayer} style={{ zIndex: 10, left: 5, top: 10, width: 128, height: 196 }}>
+                  <MacCardBack width={128} height={196} />
                 </div>
               </div>
+              {phase === 'idle' && !todayPick && (
+                <>
+                  <span className={styles.deckLabel}>{filterInfo.symbol} &nbsp; {filterInfo.name.toUpperCase()}</span>
+                  <span className={styles.deckHint}>нажмите, чтобы вытянуть</span>
+                </>
+              )}
             </div>
           )}
-        </div>
-
-        {/* Reading panel — appears after reveal */}
-        {phase === 'revealed' && card && cardInfo && (
-          <>
-            <div
-              className={styles.readingPanel}
-              style={{ '--accent': cardInfo.accent } as React.CSSProperties}
-            >
-              <div className={styles.readingHeader}>
-                <div className={styles.readingCategory}>{cardInfo.symbol} &nbsp; {cardInfo.name}</div>
-                <h2 className={styles.readingName}>{card.name}</h2>
-                <div className={styles.readingNumber}>Карта №{card.number} из {MAC_DECK.length}</div>
-              </div>
-
-              <div className={styles.readingDivider} />
-
-              <p className={styles.readingDescription}>{card.description}</p>
-
-              <p className={styles.readingSectionTitle}>✦ &nbsp; Вопросы для размышления &nbsp; ✦</p>
-
-              <ul className={styles.readingQuestions}>
-                {card.questions.map((q, i) => <li key={i}>{q}</li>)}
-              </ul>
-
-              <p className={styles.readingSectionTitle}>✦ &nbsp; Аффирмация &nbsp; ✦</p>
-
-              <p className={styles.readingAffirmation}>«{card.affirmation}»</p>
-            </div>
-          </>
-        )}
+        </section>
       </div>
 
       {/* Flying card — in transit from fan to centre */}
@@ -415,40 +468,6 @@ export function MacCardsPage({ onBack }: { onBack: () => void }) {
         </div>
       )}
 
-      {/* Deck — shown during idle and shuffle */}
-      {showDeck && (
-        <div className={styles.deckContainer}>
-          <div
-            className={`${styles.deck} ${phase === 'shuffle' ? styles.deckShuffling : ''} ${phase === 'idle' ? styles.deckCursorPointer : ''}`}
-            onClick={phase === 'idle' && !todayPick ? handleShuffleAndDraw : undefined}
-          >
-            {[3, 2, 1, 0].map((idx) => (
-              <div key={idx} className={styles.deckCardLayer} style={{
-                zIndex: 4 - idx,
-                left: idx * 2.5 - 5,
-                top: idx * 2.5,
-                width: 128,
-                height: 196,
-                opacity: 0.55 + idx * 0.12,
-              }}>
-                <MacCardBack width={128} height={196} />
-              </div>
-            ))}
-            <div className={styles.deckCardLayer} style={{ zIndex: 10, left: 5, top: 10, width: 128, height: 196 }}>
-              <MacCardBack width={128} height={196} />
-            </div>
-          </div>
-          {phase === 'idle' && !todayPick && (
-            <>
-              <span className={styles.deckLabel}>{filterInfo.symbol} &nbsp; {filterInfo.name.toUpperCase()}</span>
-              <span className={styles.deckHint}>нажмите, чтобы вытянуть</span>
-            </>
-          )}
-          {phase === 'revealed' && (
-            <span className={styles.deckHint}>остальная колода ждёт нового дня</span>
-          )}
-        </div>
-      )}
     </div>
   );
 }
