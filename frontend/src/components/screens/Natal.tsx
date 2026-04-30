@@ -750,7 +750,11 @@ export function Natal() {
                         transition={{ duration: 0.5 }}
                         style={{ padding: "0 4px" }}
                       >
-                        <NatalChart data={chartData} theme="midnight-gold" />
+                        <NatalChart
+                          data={chartData}
+                          theme="ember-copper"
+                          variant="zodiac-poster"
+                        />
                       </motion.div>
                     );
                   })()}

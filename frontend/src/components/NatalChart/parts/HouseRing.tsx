@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import type { HousePosition } from '../types';
+import type { ChartVariant, HousePosition } from '../types';
 import { ROMAN, WHEEL, ZODIAC_LABEL } from '../constants';
 import { polar, sectorPath, zodiacToSvgAngle } from '../utils/geometry';
 import styles from '../NatalChart.module.css';
@@ -7,6 +7,7 @@ import styles from '../NatalChart.module.css';
 interface Props {
   houses: HousePosition[];
   ascendantDegree: number;
+  variant?: ChartVariant;
   onHouseClick?: (house: number) => void;
 }
 
@@ -17,10 +18,16 @@ function midpointCCW(fromDeg: number, toDeg: number): number {
   return (fromDeg + span / 2) % 360;
 }
 
-export function HouseRing({ houses, ascendantDegree, onHouseClick }: Props) {
+export function HouseRing({
+  houses,
+  ascendantDegree,
+  variant = 'editorial',
+  onHouseClick,
+}: Props) {
   const romanR = (WHEEL.middleR + WHEEL.innerR) / 2;
   const ordered = [...houses].sort((a, b) => a.number - b.number);
   const interactive = Boolean(onHouseClick);
+  const isPoster = variant === 'zodiac-poster';
 
   return (
     <g data-part="house-ring">
@@ -81,8 +88,8 @@ export function HouseRing({ houses, ascendantDegree, onHouseClick }: Props) {
               x2={p2.x}
               y2={p2.y}
               stroke="var(--natal-primary)"
-              strokeWidth={isAxis ? 1.5 : 1}
-              opacity={isAxis ? 0.88 : 0.55}
+              strokeWidth={isAxis ? 1.5 : 0.9}
+              opacity={isAxis ? 0.84 : isPoster ? 0.42 : 0.55}
             />
 
             <text
@@ -90,10 +97,10 @@ export function HouseRing({ houses, ascendantDegree, onHouseClick }: Props) {
               y={romanPos.y}
               textAnchor="middle"
               dominantBaseline="central"
-              fontSize={ROMAN_FONT_SIZE}
+              fontSize={isPoster ? 13 : ROMAN_FONT_SIZE}
               fill="var(--natal-primary)"
               className={styles.bodyText}
-              opacity={0.85}
+              opacity={isPoster ? 0.58 : 0.85}
             >
               {ROMAN[house.number - 1]}
             </text>
