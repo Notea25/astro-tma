@@ -3289,49 +3289,270 @@ body::after {
   color: var(--text-muted);
 }
 
-/* ── House cusps table ── */
-.natal-houses-table {
-  margin-top: 4px;
+/* ── Natal houses visual grid ──────────────────────────────────────────────── */
+.natal-houses {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.natal-houses-hero {
+  position: relative;
+  min-height: clamp(140px, 34vw, 188px);
+  overflow: hidden;
+  border: 0.5px solid rgba(212, 178, 84, 0.2);
+  border-radius: 22px;
+  padding: clamp(18px, 5vw, 24px);
+  background:
+    radial-gradient(circle at 78% 42%, rgba(212, 178, 84, 0.16), transparent 36%),
+    radial-gradient(circle at 22% 76%, rgba(139, 106, 208, 0.2), transparent 42%),
+    linear-gradient(145deg, rgba(10, 8, 26, 0.94), rgba(17, 12, 41, 0.88));
+}
+.natal-houses-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(1px 1px at 10% 30%, rgba(240, 212, 138, 0.8), transparent),
+    radial-gradient(0.8px 0.8px at 34% 64%, rgba(208, 196, 245, 0.58), transparent),
+    radial-gradient(1.2px 1.2px at 84% 22%, rgba(240, 212, 138, 0.76), transparent),
+    linear-gradient(120deg, transparent 42%, rgba(212, 178, 84, 0.05), transparent 58%);
+  pointer-events: none;
+}
+.natal-houses-hero__copy {
+  position: relative;
+  z-index: 1;
+  max-width: 56%;
+}
+.natal-houses-hero__count {
+  color: var(--text-dim);
+  font-size: var(--fs-small);
+  line-height: 1.4;
+  margin: -10px 0 0;
+}
+.natal-houses-hero__wheel {
+  position: absolute;
+  right: clamp(-60px, -10vw, -32px);
+  top: 50%;
+  width: clamp(160px, 48vw, 228px);
+  aspect-ratio: 1;
+  transform: translateY(-50%);
+  border: 1px solid rgba(212, 178, 84, 0.44);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(212, 178, 84, 0.18) 0 17%, transparent 18%),
+    repeating-conic-gradient(
+      from -15deg,
+      rgba(212, 178, 84, 0.3) 0 1deg,
+      transparent 1deg 30deg
+    );
+  box-shadow:
+    0 0 36px rgba(139, 106, 208, 0.16),
+    inset 0 0 0 28px rgba(8, 7, 22, 0.42),
+    inset 0 0 0 58px rgba(8, 7, 22, 0.2);
+  color: var(--gold-light);
+  opacity: 0.9;
+}
+.natal-houses-hero__wheel span {
+  position: absolute;
+  font-size: clamp(14px, 4vw, 22px);
+  line-height: 1;
+  text-shadow: 0 0 12px rgba(240, 212, 138, 0.26);
+}
+.natal-houses-hero__wheel span:nth-child(1) {
+  top: 7%;
+  left: 46%;
+}
+.natal-houses-hero__wheel span:nth-child(2) {
+  top: 13%;
+  right: 27%;
+}
+.natal-houses-hero__wheel span:nth-child(3) {
+  top: 28%;
+  right: 12%;
+}
+.natal-houses-hero__wheel span:nth-child(4) {
+  top: 49%;
+  right: 7%;
+}
+.natal-houses-hero__wheel span:nth-child(5) {
+  right: 14%;
+  bottom: 24%;
+}
+.natal-houses-hero__wheel span:nth-child(6) {
+  right: 30%;
+  bottom: 10%;
+}
+.natal-houses-hero__wheel span:nth-child(7) {
+  left: 46%;
+  bottom: 6%;
+}
+.natal-houses-hero__wheel span:nth-child(8) {
+  left: 27%;
+  bottom: 12%;
+}
+.natal-houses-hero__wheel span:nth-child(9) {
+  left: 12%;
+  bottom: 28%;
+}
+.natal-houses-hero__wheel span:nth-child(10) {
+  top: 49%;
+  left: 7%;
+}
+.natal-houses-hero__wheel span:nth-child(11) {
+  top: 27%;
+  left: 12%;
+}
+.natal-houses-hero__wheel span:nth-child(12) {
+  top: 13%;
+  left: 28%;
+}
+.natal-houses-hero__sun {
+  position: absolute;
+  inset: 35%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(212, 178, 84, 0.13);
+  border: 1px solid rgba(212, 178, 84, 0.34);
+  font-size: clamp(24px, 7vw, 38px);
 }
 .natal-houses-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(10px, 3vw, 14px);
 }
-.natal-house-row {
+.natal-house-card {
+  --house-accent: #f0d48a;
+  --house-glow: rgba(212, 178, 84, 0.24);
+  position: relative;
+  min-width: 0;
+  min-height: clamp(122px, 30vw, 152px);
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.02);
+  justify-content: center;
+  padding: clamp(12px, 3.5vw, 16px) 8px;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 0.5px solid rgba(212, 178, 84, 0.16);
+  background:
+    radial-gradient(circle at 28% 18%, rgba(255, 255, 255, 0.04), transparent 34%),
+    radial-gradient(circle at 78% 88%, color-mix(in srgb, var(--house-accent) 18%, transparent), transparent 34%),
+    linear-gradient(145deg, rgba(17, 14, 39, 0.9), rgba(9, 9, 29, 0.86));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02),
+    0 10px 22px rgba(0, 0, 0, 0.2);
 }
-.natal-house-row--axis {
-  background: rgba(212, 178, 84, 0.06);
-  border: 0.5px solid rgba(212, 178, 84, 0.12);
+.natal-house-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(1px 1px at 18% 22%, rgba(240, 212, 138, 0.44), transparent),
+    radial-gradient(0.8px 0.8px at 82% 34%, rgba(208, 196, 245, 0.38), transparent);
+  pointer-events: none;
 }
-.natal-house-row__num {
-  font-family: "Playfair Display", serif;
-  font-size: 13px;
-  color: var(--gold-dim);
-  width: 18px;
-  text-align: center;
+.natal-house-card--axis {
+  border-color: rgba(240, 212, 138, 0.32);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 0 18px rgba(212, 178, 84, 0.08),
+    0 10px 22px rgba(0, 0, 0, 0.2);
 }
-.natal-house-row__sign {
-  font-size: var(--fs-small);
-  color: var(--text-soft);
-  flex: 1;
+.natal-house-card__num,
+.natal-house-card__glyph,
+.natal-house-card__sign,
+.natal-house-card__deg,
+.natal-house-card__axis {
+  position: relative;
+  z-index: 1;
 }
-.natal-house-row__deg {
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
-  font-family: "Playfair Display", serif;
-}
-.natal-house-row__axis {
-  font-size: 9px;
+.natal-house-card__num {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: clamp(20px, 5.4vw, 28px);
   font-weight: 600;
-  color: var(--gold);
+  color: var(--gold-light);
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.natal-house-card__glyph {
+  color: var(--house-accent);
+  font-size: clamp(34px, 9vw, 52px);
+  line-height: 1;
+  margin-bottom: 8px;
+  text-shadow:
+    0 0 14px var(--house-glow),
+    0 1px 0 rgba(255, 255, 255, 0.18);
+}
+.natal-house-card__sign {
+  max-width: 100%;
+  color: var(--text);
+  font-size: clamp(14px, 3.8vw, 19px);
+  line-height: 1.18;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.natal-house-card__deg {
+  color: var(--text-dim);
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: clamp(13px, 3.5vw, 17px);
+  line-height: 1.2;
+  margin-top: 4px;
+}
+.natal-house-card__axis {
+  min-width: 60px;
+  margin-top: 10px;
+  padding: 3px 14px 4px;
+  border-radius: 999px;
+  border: 0.5px solid var(--house-accent);
+  background: rgba(10, 9, 28, 0.58);
+  color: var(--house-accent);
+  font-size: clamp(11px, 3vw, 13px);
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
   letter-spacing: 0.05em;
+  box-shadow: 0 0 14px var(--house-glow);
+}
+.natal-house-card--gold {
+  --house-accent: #f0d48a;
+  --house-glow: rgba(240, 212, 138, 0.32);
+}
+.natal-house-card--violet {
+  --house-accent: #c285ff;
+  --house-glow: rgba(194, 133, 255, 0.32);
+}
+.natal-house-card--aqua {
+  --house-accent: #80eadb;
+  --house-glow: rgba(128, 234, 219, 0.3);
+}
+.natal-house-card--coral {
+  --house-accent: #ff7f8e;
+  --house-glow: rgba(255, 127, 142, 0.32);
+}
+.natal-house-card--green {
+  --house-accent: #a9df79;
+  --house-glow: rgba(169, 223, 121, 0.3);
+}
+.natal-house-card--blue {
+  --house-accent: #7db7ff;
+  --house-glow: rgba(125, 183, 255, 0.3);
+}
+.natal-house-card--teal {
+  --house-accent: #70e1d7;
+  --house-glow: rgba(112, 225, 215, 0.32);
+}
+.natal-house-card--rose {
+  --house-accent: #ff779c;
+  --house-glow: rgba(255, 119, 156, 0.32);
+}
+@media (max-width: 360px) {
+  .natal-houses-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 /* ── Loading ───────────────────────────────────────────────────────────────── */
