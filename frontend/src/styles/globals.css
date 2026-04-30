@@ -2869,61 +2869,93 @@ body::after {
   color: var(--text-dim);
 }
 
-/* ── Natal Reading ─────────────────────────────────────────────────────────── */
-.natal-reading-blocks {
+/* ── Natal interpretation slider ───────────────────────────────────────────── */
+.natal-reading {
+  margin-top: 4px;
+}
+.natal-interpretation-slider {
+  overflow: hidden;
+}
+.natal-interpretation-tabs {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 0 0 12px;
+  margin-bottom: 10px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  scroll-snap-type: x proximity;
 }
-
-.natal-reading-intro {
-  font-size: var(--fs-body);
-  color: var(--text-dim);
-  line-height: 1.7;
-  padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 12px;
-  border-left: 2px solid var(--gold-border);
+.natal-interpretation-tabs::-webkit-scrollbar {
+  display: none;
 }
-
-.natal-reading-section {
-  background: rgba(255, 255, 255, 0.03);
-  border: 0.5px solid rgba(255, 255, 255, 0.07);
-  border-radius: 14px;
-  padding: 16px;
-}
-.natal-reading-section__title {
+.natal-interpretation-tab {
+  flex-shrink: 0;
+  max-width: min(74vw, 260px);
+  padding: 8px 14px;
+  background: transparent;
+  border: 0.5px solid var(--glass-border);
+  border-radius: 18px;
+  color: var(--text-soft);
   font-size: var(--fs-small);
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  scroll-snap-align: start;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    border-color 0.2s,
+    color 0.2s,
+    background 0.2s;
+}
+.natal-interpretation-tab.is-active {
+  border-color: var(--gold-border);
+  background: var(--gold-glow);
+  color: var(--gold-light);
+}
+.natal-interpretation-tab:active {
+  transform: scale(0.97);
+}
+.natal-interpretation-slide {
+  min-height: clamp(228px, 56vw, 320px);
+  padding: clamp(16px, 4vw, 22px);
+  background: rgba(255, 255, 255, 0.03);
+  border: 0.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  cursor: grab;
+  touch-action: pan-y;
+}
+.natal-interpretation-slide:active {
+  cursor: grabbing;
+}
+.natal-interpretation-slide__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.natal-interpretation-slide__title {
+  font-size: var(--fs-h3);
   font-weight: 600;
   color: var(--gold-light);
-  margin-bottom: 8px;
-  letter-spacing: 0.01em;
+  line-height: 1.25;
+  margin: 0;
 }
-.natal-reading-section__body {
+.natal-interpretation-slide__count {
+  flex-shrink: 0;
+  padding-top: 2px;
+  font-size: var(--fs-xs);
+  color: var(--gold-dim);
+  letter-spacing: 0.06em;
+}
+.natal-interpretation-slide__text {
   font-size: var(--fs-body);
   color: var(--text-dim);
   line-height: 1.7;
-  margin: 0;
-}
-
-/* ── Natal Interpretations ─────────────────────────────────────────────────── */
-.natal-interp-item {
-  padding: 14px 0;
-  border-bottom: 0.5px solid rgba(255, 255, 255, 0.06);
-}
-.natal-interp-item:last-child {
-  border-bottom: none;
-}
-.natal-interp-item__title {
-  font-size: var(--fs-small);
-  font-weight: 600;
-  color: var(--gold);
-  margin-bottom: 6px;
-}
-.natal-interp-item__text {
-  font-size: var(--fs-body);
-  color: var(--text-dim);
-  line-height: 1.65;
   margin: 0;
 }
 
