@@ -111,27 +111,55 @@ function NatalInterpretationSlider({
         ))}
       </div>
 
-      <motion.div
-        key={activeSlide.id}
-        className="natal-interpretation-slide"
-        drag={slides.length > 1 ? "x" : false}
-        dragConstraints={{ left: 0, right: 0 }}
-        dragElastic={0.18}
-        onDragEnd={handleDragEnd}
-        initial={{ opacity: 0, x: 18 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.22, ease: "easeOut" }}
-      >
-        <div className="natal-interpretation-slide__head">
-          <h3 className="natal-interpretation-slide__title">
-            {activeSlide.title}
-          </h3>
-          <span className="natal-interpretation-slide__count">
-            {activeIndex + 1}/{slides.length}
-          </span>
+      <div className="natal-interpretation-progress">
+        <div className="natal-interpretation-progress__count">
+          {activeIndex + 1}/{slides.length}
         </div>
-        <p className="natal-interpretation-slide__text">{activeSlide.body}</p>
-      </motion.div>
+        <div className="natal-interpretation-dots">
+          {slides.map((slide, index) => {
+            const distance = Math.abs(index - activeIndex);
+            const sizeClass =
+              distance === 0
+                ? " is-active"
+                : distance === 1
+                  ? " is-near"
+                  : distance === 2
+                    ? " is-mid"
+                    : "";
+
+            return (
+              <button
+                key={`dot-${slide.id}`}
+                type="button"
+                className={`natal-interpretation-dot${sizeClass}`}
+                onClick={() => goToSlide(index)}
+                aria-label={`Открыть слайд ${index + 1}`}
+              />
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="natal-interpretation-stage">
+        <motion.div
+          key={activeSlide.id}
+          className="natal-interpretation-slide"
+          drag={slides.length > 1 ? "x" : false}
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.18}
+          onDragEnd={handleDragEnd}
+          initial={{ opacity: 0, x: 18 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.22, ease: "easeOut" }}
+        >
+          <div className="natal-interpretation-slide__head">
+            <h3 className="natal-interpretation-slide__title">
+              {activeSlide.title}
+            </h3>
+          </div>
+          <p className="natal-interpretation-slide__text">{activeSlide.body}</p>
+        </motion.div>
+      </div>
     </div>
   );
 }
