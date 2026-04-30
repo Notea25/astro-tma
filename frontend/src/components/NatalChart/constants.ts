@@ -38,6 +38,21 @@ export const ZODIAC_LABEL: Record<ZodiacSign, string> = {
   aquarius: 'Водолей', pisces: 'Рыбы',
 };
 
+export const ZODIAC_EN_LABEL: Record<ZodiacSign, string> = {
+  aries: 'ARIES',
+  taurus: 'TAURUS',
+  gemini: 'GEMINI',
+  cancer: 'CANCER',
+  leo: 'LEO',
+  virgo: 'VIRGO',
+  libra: 'LIBRA',
+  scorpio: 'SCORPIO',
+  sagittarius: 'SAGITTARIUS',
+  capricorn: 'CAPRICORN',
+  aquarius: 'AQUARIUS',
+  pisces: 'PISCES',
+};
+
 export const ELEMENT_LABEL: Record<Element, string> = {
   fire: 'ОГОНЬ',
   earth: 'ЗЕМЛЯ',

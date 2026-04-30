@@ -11,7 +11,9 @@ export type Element = 'fire' | 'earth' | 'air' | 'water';
 
 export type AspectType = 'conjunction' | 'opposition' | 'trine' | 'square' | 'sextile';
 
-export type ThemeName = 'midnight-gold' | 'purple-silver' | 'forest-gold';
+export type ThemeName = 'midnight-gold' | 'purple-silver' | 'forest-gold' | 'ember-copper';
+
+export type ChartVariant = 'editorial' | 'zodiac-poster';
 
 export interface PlanetPosition {
   sign: ZodiacSign;
@@ -58,6 +60,7 @@ export interface NatalChartData {
 export interface NatalChartProps {
   data: NatalChartData;
   theme?: ThemeName;
+  variant?: ChartVariant;
   size?: number;
   title?: string;
   showDecorative?: boolean;

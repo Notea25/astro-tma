@@ -8,6 +8,7 @@ import { CornerMetadata } from './parts/CornerMetadata';
 import { SideFigure } from './parts/SideFigure';
 import { ChartWheel } from './parts/ChartWheel';
 import { BottomFrame } from './parts/BottomFrame';
+import { PosterBackdrop } from './parts/PosterBackdrop';
 import { ZODIAC_LABEL } from './constants';
 import { formatBirthDate } from './utils/formatting';
 
@@ -23,6 +24,7 @@ export function NatalChart(props: NatalChartProps) {
   const {
     data,
     theme = 'midnight-gold',
+    variant = 'editorial',
     size = 800,
     title = 'NATAL',
     showDecorative = true,
@@ -36,6 +38,7 @@ export function NatalChart(props: NatalChartProps) {
   const [compact, setCompact] = useState(false);
   const titleId = useId();
   const descId = useId();
+  const isPoster = variant === 'zodiac-poster';
 
   useEffect(() => {
     const el = svgRef.current;
@@ -54,45 +57,57 @@ export function NatalChart(props: NatalChartProps) {
   const dateReadable = formatBirthDate(data.birthDate);
   const ariaLabel = `Натальная карта${subject}: рождение ${dateReadable} в ${data.birthTime}, ${data.birthLocation.city}, ${data.birthLocation.country}.`;
   const ariaDesc = `Солнце в знаке ${ZODIAC_LABEL[data.sun.sign]}, асцендент в знаке ${ZODIAC_LABEL[data.ascendant.sign]}, середина неба в знаке ${ZODIAC_LABEL[data.midheaven.sign]}.`;
+  const viewBox = isPoster ? '0 0 1000 1000' : '0 0 1000 1400';
+  const aspectRatio = isPoster ? '1 / 1' : '1000 / 1400';
 
   return (
     <svg
       ref={svgRef}
-      className={clsx(styles.root, className)}
+      className={clsx(styles.root, isPoster && styles.posterRoot, className)}
       data-theme={theme}
+      data-variant={variant}
       role="img"
       aria-labelledby={titleId}
       aria-describedby={descId}
-      viewBox="0 0 1000 1400"
+      viewBox={viewBox}
       width={size}
-      style={{ maxWidth: '100%', height: 'auto', aspectRatio: '1000 / 1400' }}
+      style={{ maxWidth: '100%', height: 'auto', aspectRatio }}
     >
       <title id={titleId}>{ariaLabel}</title>
       <desc id={descId}>{ariaDesc}</desc>
 
-      <rect width={1000} height={1400} fill="var(--natal-bg)" />
+      {isPoster ? (
+        <PosterBackdrop />
+      ) : (
+        <rect width={1000} height={1400} fill="var(--natal-bg)" />
+      )}
 
-      {showDecorative && <TopFrame />}
+      {!isPoster && showDecorative && <TopFrame />}
 
-      <Header
-        title={title}
-        birthDate={data.birthDate}
-        birthTime={data.birthTime}
-        birthLocation={data.birthLocation}
-      />
+      {!isPoster && (
+        <Header
+          title={title}
+          birthDate={data.birthDate}
+          birthTime={data.birthTime}
+          birthLocation={data.birthLocation}
+        />
+      )}
 
-      <CornerMetadata sun={data.sun} ascendant={data.ascendant} />
+      {!isPoster && <CornerMetadata sun={data.sun} ascendant={data.ascendant} />}
 
-      {effectiveSideFigures && <SideFigure sign={data.sun.sign}       side="left"  />}
-      {effectiveSideFigures && <SideFigure sign={data.ascendant.sign} side="right" />}
+      {!isPoster && effectiveSideFigures && <SideFigure sign={data.sun.sign}       side="left"  />}
+      {!isPoster && effectiveSideFigures && <SideFigure sign={data.ascendant.sign} side="right" />}
 
-      <ChartWheel
-        data={data}
-        onPlanetClick={onPlanetClick}
-        onHouseClick={onHouseClick}
-      />
+      <g transform={isPoster ? 'translate(0 -320)' : undefined}>
+        <ChartWheel
+          data={data}
+          variant={variant}
+          onPlanetClick={onPlanetClick}
+          onHouseClick={onHouseClick}
+        />
+      </g>
 
-      {showDecorative && <BottomFrame />}
+      {!isPoster && showDecorative && <BottomFrame />}
     </svg>
   );
 }
