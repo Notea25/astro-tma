@@ -265,6 +265,21 @@ export function ThreeCardFlow() {
               <p className="wheel-scene__subtitle">
                 Первая — прошлое, вторая — настоящее, третья — будущее
               </p>
+              <motion.p
+                className="wheel-pick-note"
+                animate={{
+                  opacity: apiReady ? [0.72, 1, 0.72] : [0.46, 0.72, 0.46],
+                }}
+                transition={{
+                  duration: 2.2,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              >
+                {!apiReady
+                  ? "Готовим карты"
+                  : `Шаг ${drawnCount + 1}/3 · ${POSITIONS[drawnCount]}`}
+              </motion.p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -289,25 +304,6 @@ export function ThreeCardFlow() {
             ))}
           </div>
         </div>
-        {isWheelSpinning && (
-          <motion.p
-            className="wheel-pick-note"
-            animate={{
-              opacity: apiReady ? [0.68, 1, 0.68] : [0.42, 0.7, 0.42],
-            }}
-            transition={{
-              duration: 2.2,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-          >
-            {!apiReady
-              ? "Готовим карты..."
-              : drawnCount === 0
-                ? "Выбирайте карты и размещайте их в ячейки"
-                : `Выберите карту для позиции «${POSITIONS[drawnCount]}»`}
-          </motion.p>
-        )}
       </motion.div>
 
       {/* ══ SLOTS (all phases) ══ */}
