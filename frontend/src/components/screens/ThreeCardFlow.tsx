@@ -9,36 +9,28 @@ import { SpreadReading } from "@/components/tarot/SpreadReading";
 import type { TarotCardDetail } from "@/types";
 
 const POSITIONS = ["Прошлое", "Настоящее", "Будущее"];
-const WHEEL_COUNT = 22;
-const WHEEL_R = 105; // orbit radius px — tighter for overlap
+const FAN_COUNT = 9;
 const FLY_W = 180; // revealed card width
 const FLY_H = 270; // revealed card height
-const SLOT_W = 80;
-const SLOT_H = 116;
-const CARD_SCALE = 52 / FLY_W; // wheel card visual scale (~0.289)
+const SLOT_W = 86;
+const SLOT_H = 126;
+const FAN_CARD_W = 92;
+const CARD_SCALE = FAN_CARD_W / FLY_W;
 const EASE = [0.22, 0.61, 0.36, 1] as const;
 
 type Phase = "spinning" | "fly-in" | "revealed" | "fly-out" | "reading";
 
-// ── Pre-compute wheel positions ────────────────────────────────────────────
-// Seeded random for consistent "messy" layout across renders
-function seededRand(seed: number) {
-  const x = Math.sin(seed * 9301 + 49297) * 49297;
-  return x - Math.floor(x);
-}
-
-const WHEEL_POS = Array.from({ length: WHEEL_COUNT }, (_, i) => {
-  const angleDeg = (360 / WHEEL_COUNT) * i;
-  const rad = angleDeg * (Math.PI / 180);
-  // Random offsets for organic "hand-spread" look
-  const rOff = (seededRand(i * 3 + 1) - 0.5) * 14; // ±7px radial jitter
-  const aOff = (seededRand(i * 3 + 2) - 0.5) * 12; // ±6° rotation jitter
-  const r = WHEEL_R + rOff;
+// ── Pre-compute fan positions ──────────────────────────────────────────────
+const FAN_POS = Array.from({ length: FAN_COUNT }, (_, i) => {
+  const center = (FAN_COUNT - 1) / 2;
+  const offset = i - center;
+  const abs = Math.abs(offset);
   return {
     i,
-    x: Math.cos(rad) * r,
-    y: Math.sin(rad) * r,
-    angleDeg: angleDeg + aOff,
+    x: offset * 42,
+    y: abs * 13 + (offset === 0 ? -42 : 0),
+    angleDeg: offset * 10,
+    z: 20 - abs,
   };
 });
 
@@ -244,7 +236,7 @@ export function ThreeCardFlow() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="three-flow">
-      {/* ══ WHEEL SCENE ══ */}
+      {/* ══ FAN SCENE ══ */}
       {/* stays mounted even at reading phase — the remaining deck is visible behind the reading */}
       <motion.div
         key="wheel-scene"
@@ -269,55 +261,53 @@ export function ThreeCardFlow() {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.4 }}
             >
-              <h3 className="wheel-scene__title">Выберите карту</h3>
-              <p className="wheel-scene__subtitle">Прислушайтесь к интуиции</p>
+              <h3 className="wheel-scene__title">Выберите 3 карты</h3>
+              <p className="wheel-scene__subtitle">
+                Первая — прошлое, вторая — настоящее, третья — будущее
+              </p>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Wheel */}
+        {/* Fan */}
         <div className="wheel-outer">
-          {/* Rotating ring */}
-          <div className={`wheel-ring${isWheelSpinning ? " is-spinning" : ""}`}>
-            {WHEEL_POS.map(({ i, x, y, angleDeg }) => (
+          <div className="wheel-ring">
+            {FAN_POS.map(({ i, x, y, angleDeg, z }) => (
               <div
                 key={i}
                 className={`wheel-card${!cardsVisible ? " is-hidden" : ""}`}
                 style={{
-                  left: `calc(50% + ${x}px)`,
-                  top: `calc(50% + ${y}px)`,
-                  transform: `translate(-50%, -50%) rotate(${angleDeg + 90}deg)`,
-                }}
+                  "--fan-x": `${x}px`,
+                  "--fan-y": `${y}px`,
+                  "--fan-rot": `${angleDeg}deg`,
+                  zIndex: z,
+                } as React.CSSProperties}
                 onClick={handleCardClick}
               >
                 <CardBack />
               </div>
             ))}
           </div>
-
-          {/* Center hint */}
-          {isWheelSpinning && (
-            <div className="wheel-center-hint">
-              <motion.p
-                className="wheel-hint-pill"
-                animate={{
-                  opacity: apiReady ? [0.65, 1, 0.65] : [0.4, 0.7, 0.4],
-                }}
-                transition={{
-                  duration: 2.2,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-              >
-                {!apiReady
-                  ? "Загрузка..."
-                  : drawnCount === 0
-                    ? "Нажмите на карту, когда почувствуете"
-                    : "·"}
-              </motion.p>
-            </div>
-          )}
         </div>
+        {isWheelSpinning && (
+          <motion.p
+            className="wheel-pick-note"
+            animate={{
+              opacity: apiReady ? [0.68, 1, 0.68] : [0.42, 0.7, 0.42],
+            }}
+            transition={{
+              duration: 2.2,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          >
+            {!apiReady
+              ? "Готовим карты..."
+              : drawnCount === 0
+                ? "Выбирайте карты и размещайте их в ячейки"
+                : `Выберите карту для позиции «${POSITIONS[drawnCount]}»`}
+          </motion.p>
+        )}
       </motion.div>
 
       {/* ══ SLOTS (all phases) ══ */}
@@ -359,13 +349,12 @@ export function ThreeCardFlow() {
                   </motion.div>
                 ) : (
                   <div className="wheel-slot__empty">
+                    <span className="wheel-slot__spark">✦</span>
                     <span className="slot-number">{i + 1}</span>
                   </div>
                 )}
               </div>
-              {phase !== "reading" && (
-                <span className="wheel-slot__label">{pos}</span>
-              )}
+              <span className="wheel-slot__label">{pos}</span>
             </div>
           );
         })}
