@@ -18,6 +18,29 @@ class ApiError extends Error {
   }
 }
 
+function formatApiErrorDetail(detail: unknown, fallback: string): string {
+  if (typeof detail === "string") return detail;
+
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object" && "msg" in item) {
+          return String((item as { msg?: unknown }).msg ?? "");
+        }
+        return "";
+      })
+      .filter(Boolean);
+    return messages.join("; ") || fallback;
+  }
+
+  if (detail && typeof detail === "object" && "msg" in detail) {
+    return String((detail as { msg?: unknown }).msg ?? fallback);
+  }
+
+  return fallback;
+}
+
 async function request<T>(
   method: string,
   path: string,
@@ -35,10 +58,17 @@ async function request<T>(
   });
 
   if (!response.ok) {
-    const detail = await response
+    const payload = await response
       .json()
       .catch(() => ({ detail: "Unknown error" }));
-    throw new ApiError(response.status, detail.detail ?? response.statusText);
+    const detail =
+      payload && typeof payload === "object" && "detail" in payload
+        ? (payload as { detail?: unknown }).detail
+        : undefined;
+    throw new ApiError(
+      response.status,
+      formatApiErrorDetail(detail, response.statusText),
+    );
   }
 
   return response.json() as Promise<T>;
