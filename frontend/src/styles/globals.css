@@ -2879,19 +2879,7 @@ body::after {
   color: var(--text-dim);
   font-size: var(--fs-small);
   line-height: 1.4;
-  margin: -10px 0 28px;
-}
-.natal-planets-hero__pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 34px;
-  padding: 7px 16px;
-  border-radius: 13px;
-  border: 0.5px solid rgba(212, 178, 84, 0.24);
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text-soft);
-  font-size: var(--fs-xs);
+  margin: -10px 0 0;
 }
 .natal-planets-hero__wheel {
   position: absolute;
@@ -2966,7 +2954,7 @@ body::after {
   --planet-b: #5b3a75;
   --planet-glow: rgba(212, 178, 84, 0.22);
   display: grid;
-  grid-template-columns: clamp(62px, 17vw, 72px) minmax(0, 1fr) 18px;
+  grid-template-columns: clamp(62px, 17vw, 72px) minmax(0, 1fr);
   align-items: center;
   gap: clamp(12px, 4vw, 20px);
   min-height: clamp(90px, 23vw, 108px);
@@ -3034,12 +3022,6 @@ body::after {
   color: var(--text-dim);
   font-size: clamp(14px, 3.8vw, 18px);
   line-height: 1.35;
-}
-.natal-planet-arrow {
-  color: var(--gold-light);
-  font-size: clamp(28px, 7vw, 38px);
-  line-height: 1;
-  opacity: 0.9;
 }
 .natal-planet-card--sun {
   --planet-a: #f5d36b;
