@@ -54,6 +54,7 @@
 .drawPanel {
   position: relative;
   width: 100%;
+  min-height: clamp(520px, 72dvh, 720px);
   border: 0.5px solid var(--glass-border);
   border-radius: var(--card-radius);
   background:
@@ -89,9 +90,32 @@
   opacity: 0.55;
 }
 
+.drawPanel::after {
+  content: "";
+  position: absolute;
+  top: -150px;
+  left: 50%;
+  width: min(620px, 120vw);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translateX(-50%);
+  opacity: 0.28;
+  background:
+    radial-gradient(circle, transparent 0 24%, rgba(201, 168, 76, 0.42) 24.2% 24.5%, transparent 24.7% 36%),
+    radial-gradient(circle, transparent 0 43%, rgba(201, 168, 76, 0.38) 43.2% 43.5%, transparent 43.7% 53%),
+    radial-gradient(circle, transparent 0 59%, rgba(201, 168, 76, 0.34) 59.2% 59.5%, transparent 59.7%),
+    repeating-conic-gradient(
+      from -8deg,
+      rgba(201, 168, 76, 0.34) 0deg 0.7deg,
+      transparent 0.7deg 30deg
+    );
+  mask-image: linear-gradient(180deg, #000 0%, #000 42%, transparent 82%);
+}
+
 .panelHeader {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -236,7 +260,7 @@
 
 .prompt {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   font-family: inherit;
   font-size: var(--fs-body);
   font-style: normal;
@@ -257,7 +281,7 @@
 
 .stage {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -265,6 +289,193 @@
   max-width: 1000px;
   margin: 18px auto 0;
   padding: 0;
+}
+
+/* ===== READER SCENE ===== */
+
+.readerScene {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  min-height: clamp(380px, 54dvh, 520px);
+  margin: 18px auto 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  overflow: hidden;
+  cursor: default;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.readerScene[role="button"] {
+  cursor: pointer;
+}
+
+.readerScene[role="button"]:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 4px;
+  border-radius: calc(var(--card-radius) - 8px);
+}
+
+.readerCopy {
+  position: absolute;
+  top: clamp(14px, 5vh, 42px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(100%, 520px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.readerDeckTitle {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: clamp(26px, 7vw, 44px);
+  font-weight: 600;
+  line-height: 1.05;
+  color: var(--gold);
+  text-shadow:
+    0 0 24px rgba(201, 168, 76, 0.22),
+    0 10px 42px rgba(0, 0, 0, 0.32);
+}
+
+.readerOrnament {
+  width: min(180px, 48vw);
+  height: 16px;
+  position: relative;
+}
+
+.readerOrnament::before,
+.readerOrnament::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: calc(50% - 12px);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201, 168, 76, 0.72));
+}
+
+.readerOrnament::before {
+  left: 0;
+}
+
+.readerOrnament::after {
+  right: 0;
+  transform: scaleX(-1);
+}
+
+.readerOrnament {
+  background:
+    radial-gradient(circle at 50% 50%, var(--gold) 0 4px, transparent 4.5px),
+    radial-gradient(circle at 50% 50%, rgba(201, 168, 76, 0.28) 0 12px, transparent 12.5px);
+}
+
+.readerFan {
+  position: relative;
+  width: min(100%, 520px);
+  height: clamp(230px, 36dvh, 330px);
+  margin-top: auto;
+  pointer-events: none;
+}
+
+.readerFan::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  width: min(520px, 118vw);
+  height: 210px;
+  border-top: 1px solid rgba(201, 168, 76, 0.34);
+  border-radius: 50% 50% 0 0;
+  transform: translateX(-50%);
+  opacity: 0.55;
+}
+
+.readerFanCard {
+  position: absolute;
+  left: 50%;
+  bottom: -34px;
+  width: clamp(62px, 18vw, 94px);
+  aspect-ratio: 220 / 340;
+  border-radius: 8px;
+  overflow: hidden;
+  transform-origin: 50% 115%;
+  transform:
+    translateX(calc(-50% + var(--reader-x, 0px)))
+    translateY(var(--reader-y, 0px))
+    rotate(var(--reader-angle, 0deg))
+    scale(var(--reader-scale, 1));
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.52),
+    0 0 0 1px rgba(201, 168, 76, 0.18);
+  transition:
+    transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+    filter 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.readerFanCardCenter {
+  filter: brightness(1.08);
+  box-shadow:
+    0 18px 44px rgba(0, 0, 0, 0.62),
+    0 0 0 1px rgba(201, 168, 76, 0.62),
+    0 0 34px rgba(201, 168, 76, 0.22);
+}
+
+.readerScene[role="button"]:active .readerFanCardCenter {
+  transform:
+    translateX(calc(-50% + var(--reader-x, 0px)))
+    translateY(calc(var(--reader-y, 0px) - 6px))
+    rotate(var(--reader-angle, 0deg))
+    scale(var(--reader-scale, 1));
+}
+
+.readerSceneShuffling .readerFanCard {
+  animation: readerShuffle 1.7s ease-in-out infinite;
+  animation-delay: var(--reader-delay, 0s);
+}
+
+@keyframes readerShuffle {
+  0%, 100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.18);
+  }
+}
+
+.readerHint {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 24px;
+  font-size: var(--fs-xs);
+  color: rgba(232, 224, 208, 0.52);
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+}
+
+.readerHint::before,
+.readerHint::after {
+  content: "";
+  width: 42px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201, 168, 76, 0.42));
+}
+
+.readerHint::after {
+  transform: scaleX(-1);
 }
 
 .drawnCardArea {
@@ -692,19 +903,19 @@
 /* ===== FAN ===== */
 
 .fanContainer {
-  position: fixed;
-  bottom: calc(var(--nav-height) + var(--safe-bottom) + 12px);
-  left: 50%;
-  width: 0;
-  height: 0;
-  z-index: 30;
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: clamp(230px, 34dvh, 310px);
+  margin: 22px auto 0;
   pointer-events: none;
+  overflow: visible;
 }
 
 .fanCardWrapper {
   position: absolute;
-  bottom: 0;
-  left: -70px;                           /* = -FAN_CARD_W/2 (140/2) */
+  bottom: 6px;
+  left: calc(50% - 70px);                /* = -FAN_CARD_W/2 (140/2) */
   transform-origin: bottom center;
   transform: rotate(var(--angle, 0deg));
   transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
