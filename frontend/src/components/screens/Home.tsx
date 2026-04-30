@@ -77,7 +77,13 @@ export function Home() {
     staleTime: 1000 * 60 * 60,
   });
 
-  const { data: dailyCard, isLoading: cardLoading } = useQuery({
+  const {
+    data: dailyCard,
+    isLoading: cardLoading,
+    isFetching: cardFetching,
+    isError: cardError,
+    refetch: refetchDailyCard,
+  } = useQuery({
     queryKey: ["tarot-daily"],
     queryFn: () => tarotApi.draw("single"),
     enabled: cardRevealed,
@@ -94,6 +100,7 @@ export function Home() {
     day: "numeric",
     month: "long",
   });
+  const openedDailyCard = dailyCard?.cards?.[0];
 
   return (
     <div className="screen home-screen">
@@ -236,7 +243,9 @@ export function Home() {
           <div className="tarot-flip">
             <motion.div
               key={cardRevealed ? "front" : "back"}
-              className="tarot-flip__inner"
+              className={`tarot-flip__inner ${
+                cardRevealed ? "tarot-flip__inner--revealed" : ""
+              }`}
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.28, ease: "easeOut" }}
@@ -258,50 +267,79 @@ export function Home() {
                 </button>
               ) : (
                 <div className="tarot-flip__face tarot-flip__face--front">
-                {cardLoading ? (
-                  <div className="tarot-flip__loading">
-                    <LoadingSpinner message="Карты открываются..." />
-                  </div>
-                ) : dailyCard?.cards?.[0] ? (
-                  (() => {
-                    const card = dailyCard.cards[0];
-                    return (
-                      <>
-                        <div className="tarot-flip__img-wrap">
-                          {card.image_url ? (
-                            <img
-                              src={card.image_url}
-                              alt={card.name_ru}
-                              className="tarot-flip__img"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <div className="tarot-flip__img-fallback">
-                              {card.emoji}
-                            </div>
-                          )}
-                          <span
-                            className={`tarot-flip__orientation ${card.reversed ? "tarot-flip__orientation--rev" : ""}`}
-                          >
-                            {card.reversed ? "↓ Перевёрнутое" : "↑ Прямое"}
-                          </span>
-                        </div>
-                        <div className="tarot-flip__info">
-                          <div className="tarot-flip__arcana">
-                            {card.arcana === "major"
-                              ? "Старший аркан"
-                              : "Младший аркан"}
+                  {cardLoading || cardFetching ? (
+                    <div className="tarot-flip__loading">
+                      <LoadingSpinner message="Карты открываются..." />
+                    </div>
+                  ) : cardError ? (
+                    <div className="tarot-flip__empty">
+                      <p className="tarot-flip__empty-title">Не удалось открыть карту</p>
+                      <button
+                        type="button"
+                        className="tarot-flip__retry"
+                        onClick={() => {
+                          impact("light");
+                          void refetchDailyCard();
+                        }}
+                      >
+                        Повторить
+                      </button>
+                    </div>
+                  ) : openedDailyCard ? (
+                    <>
+                      <div className="tarot-flip__img-wrap">
+                        {openedDailyCard.image_url ? (
+                          <img
+                            src={openedDailyCard.image_url}
+                            alt={openedDailyCard.name_ru}
+                            className="tarot-flip__img"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="tarot-flip__img-fallback">
+                            {openedDailyCard.emoji}
                           </div>
-                          <div className="tarot-flip__name">{card.name_ru}</div>
-                          <p className="tarot-flip__keywords">
-                            {card.keywords_ru?.slice(0, 3).join(" · ")}
-                          </p>
-                          <MeaningText text={card.meaning_ru} compact />
+                        )}
+                        <span
+                          className={`tarot-flip__orientation ${
+                            openedDailyCard.reversed
+                              ? "tarot-flip__orientation--rev"
+                              : ""
+                          }`}
+                        >
+                          {openedDailyCard.reversed ? "↓ Перевёрнутое" : "↑ Прямое"}
+                        </span>
+                      </div>
+                      <div className="tarot-flip__info">
+                        <div className="tarot-flip__arcana">
+                          {openedDailyCard.arcana === "major"
+                            ? "Старший аркан"
+                            : "Младший аркан"}
                         </div>
-                      </>
-                    );
-                  })()
-                ) : null}
+                        <div className="tarot-flip__name">
+                          {openedDailyCard.name_ru}
+                        </div>
+                        <p className="tarot-flip__keywords">
+                          {openedDailyCard.keywords_ru?.slice(0, 3).join(" · ")}
+                        </p>
+                        <MeaningText text={openedDailyCard.meaning_ru} compact />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="tarot-flip__empty">
+                      <p className="tarot-flip__empty-title">Карта пока не пришла</p>
+                      <button
+                        type="button"
+                        className="tarot-flip__retry"
+                        onClick={() => {
+                          impact("light");
+                          void refetchDailyCard();
+                        }}
+                      >
+                        Открыть снова
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </motion.div>

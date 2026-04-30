@@ -3452,7 +3452,10 @@ body::after {
   padding: 12px;
   align-items: flex-start;
   overflow: hidden;
-  pointer-events: none;
+  pointer-events: auto;
+}
+.tarot-flip__inner--revealed .tarot-flip__face--front {
+  transform: rotateY(0deg);
 }
 
 .tarot-flip__back-ornament {
@@ -3482,6 +3485,32 @@ body::after {
   justify-content: center;
   width: 100%;
   min-height: 218px;
+}
+.tarot-flip__empty {
+  width: 100%;
+  min-height: 218px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+  color: var(--text-dim);
+}
+.tarot-flip__empty-title {
+  font-size: var(--fs-small);
+  line-height: 1.4;
+}
+.tarot-flip__retry {
+  border: 1px solid rgba(212, 178, 84, 0.28);
+  border-radius: 8px;
+  background: rgba(212, 178, 84, 0.1);
+  color: var(--gold-light);
+  font: inherit;
+  font-size: var(--fs-xs);
+  padding: 8px 14px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Front face content */
