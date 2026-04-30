@@ -1,6 +1,16 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+MIN_SYNASTRY_AGE = 14
+
+
+def _date_years_ago(years: int) -> date:
+    today = date.today()
+    try:
+        return today.replace(year=today.year - years)
+    except ValueError:
+        return today.replace(year=today.year - years, day=28)
 
 
 class SynastryManualInput(BaseModel):
@@ -14,6 +24,15 @@ class SynastryManualInput(BaseModel):
     birth_lng: float | None = None
     # Optional — backend resolves from lat/lng or city if missing.
     birth_tz: str | None = None
+
+    @field_validator("birth_date")
+    @classmethod
+    def validate_partner_age(cls, value: date) -> date:
+        if value > _date_years_ago(MIN_SYNASTRY_AGE):
+            raise ValueError(
+                f"Партнёру должно быть не меньше {MIN_SYNASTRY_AGE} лет"
+            )
+        return value
 
 
 class SynastryAspectOut(BaseModel):

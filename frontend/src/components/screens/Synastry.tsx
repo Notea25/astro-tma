@@ -51,6 +51,8 @@ const SPHERE_LABELS: { key: keyof SynastryResult["scores"]; label: string }[] =
 
 type Mode = "pick" | "invite" | "manual";
 
+const MIN_SYNASTRY_AGE = 14;
+
 const TELEGRAM_BOT_USERNAME =
   ((import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined) ??
     "astrologiyatut_bot")
@@ -113,6 +115,44 @@ function normalizeBirthDateInput(value: string): string | null {
   }
 
   return normalized;
+}
+
+function formatBirthDateInput(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}.${digits.slice(2, 4)}.${digits.slice(4)}`;
+}
+
+function isBirthDateAtLeastAge(isoDate: string, minAge: number): boolean {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  const birthDate = new Date(year, month - 1, day);
+  const cutoff = new Date();
+  cutoff.setFullYear(cutoff.getFullYear() - minAge);
+  cutoff.setHours(0, 0, 0, 0);
+  return birthDate <= cutoff;
+}
+
+function validatePartnerBirthDate(value: string): {
+  normalizedDate: string | null;
+  message: string | null;
+} {
+  const normalizedDate = normalizeBirthDateInput(value);
+  if (!normalizedDate) {
+    return {
+      normalizedDate: null,
+      message: "Введите дату рождения в формате ДД.ММ.ГГГГ.",
+    };
+  }
+
+  if (!isBirthDateAtLeastAge(normalizedDate, MIN_SYNASTRY_AGE)) {
+    return {
+      normalizedDate: null,
+      message: `Партнёру должно быть не меньше ${MIN_SYNASTRY_AGE} лет.`,
+    };
+  }
+
+  return { normalizedDate, message: null };
 }
 
 function getManualSynastryErrorMessage(error: unknown): string | null {
@@ -402,24 +442,32 @@ function ManualPartnerForm({
   const [timeKnown, setTimeKnown] = useState(true);
   const [city, setCity] = useState("");
   const [coords, setCoords] = useState<CityOption | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
 
   const manualMutation = useMutation({
     mutationFn: (payload: SynastryManualInput) => synastryApi.manual(payload),
     onSuccess: (result) => onResult(result),
   });
 
-  const normalizedDate = normalizeBirthDateInput(date);
   const canSubmit =
     name.trim().length > 0 &&
-    normalizedDate !== null &&
+    date.trim().length > 0 &&
     city.trim().length > 0 &&
     !manualMutation.isPending;
 
   const submit = () => {
-    if (!canSubmit || !normalizedDate) return;
+    if (!canSubmit) return;
+
+    const dateValidation = validatePartnerBirthDate(date);
+    if (!dateValidation.normalizedDate) {
+      setLocalError(dateValidation.message);
+      return;
+    }
+
+    setLocalError(null);
     manualMutation.mutate({
       partner_name: name.trim(),
-      birth_date: normalizedDate,
+      birth_date: dateValidation.normalizedDate,
       birth_time: time,
       birth_time_known: timeKnown,
       birth_city: coords?.cityName ?? city.trim(),
@@ -429,7 +477,7 @@ function ManualPartnerForm({
     });
   };
 
-  const errMsg = getManualSynastryErrorMessage(manualMutation.error);
+  const errMsg = localError ?? getManualSynastryErrorMessage(manualMutation.error);
 
   return (
     <div className="horoscope-card">
@@ -460,9 +508,17 @@ function ManualPartnerForm({
         Дата рождения
         <input
           className="form-input"
-          type="date"
+          type="text"
+          inputMode="numeric"
           value={date}
-          onChange={(e) => setDate(e.target.value)}
+          onChange={(e) => {
+            setDate(formatBirthDateInput(e.target.value));
+            setLocalError(null);
+            manualMutation.reset();
+          }}
+          placeholder="ДД.ММ.ГГГГ"
+          autoComplete="bday"
+          maxLength={10}
         />
       </label>
       <label className="form-label">
