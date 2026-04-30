@@ -29,6 +29,60 @@ const NATAL_TABS: { key: NatalTab; label: string }[] = [
 const SWIPE_OFFSET_THRESHOLD = 60;
 const SWIPE_VELOCITY_THRESHOLD = 500;
 
+type HouseAxisLabel = "ASC" | "IC" | "DC" | "MC";
+
+const HOUSE_AXIS_LABELS: Record<number, HouseAxisLabel> = {
+  1: "ASC",
+  4: "IC",
+  7: "DC",
+  10: "MC",
+};
+
+const ZODIAC_GLYPHS: Record<string, string> = {
+  aries: "♈",
+  taurus: "♉",
+  gemini: "♊",
+  cancer: "♋",
+  leo: "♌",
+  virgo: "♍",
+  libra: "♎",
+  scorpio: "♏",
+  sagittarius: "♐",
+  capricorn: "♑",
+  aquarius: "♒",
+  pisces: "♓",
+};
+
+const ZODIAC_TONES: Record<string, string> = {
+  aries: "coral",
+  taurus: "green",
+  gemini: "violet",
+  cancer: "blue",
+  leo: "gold",
+  virgo: "gold",
+  libra: "teal",
+  scorpio: "rose",
+  sagittarius: "gold",
+  capricorn: "violet",
+  aquarius: "blue",
+  pisces: "aqua",
+};
+
+const ZODIAC_WHEEL_GLYPHS = [
+  "♓",
+  "♈",
+  "♉",
+  "♊",
+  "♋",
+  "♌",
+  "♍",
+  "♎",
+  "♏",
+  "♐",
+  "♑",
+  "♒",
+];
+
 // Split LLM reading by **Section** markers into reusable slide data.
 function parseReadingSections(text: string): ReadingSection[] {
   // Remove leading # header line if present
@@ -972,17 +1026,27 @@ export function Natal() {
                     </div>
                   )}
 
-                {/* House cusps table */}
+                {/* House cusps */}
                 {tab === "houses" && full?.houses && full.houses.length > 0 && (
-                  <div className="natal-houses-table">
-                    <div
-                      className="natal-card__tag"
-                      style={{ marginTop: "1.25rem" }}
-                    >
-                      ✦ Куспиды домов
+                  <div className="natal-houses">
+                    <div className="natal-houses-hero">
+                      <div className="natal-houses-hero__copy">
+                        <div className="natal-card__tag">✦ Куспиды домов</div>
+                        <p className="natal-houses-hero__count">
+                          {full.houses.length} домов гороскопа
+                        </p>
+                      </div>
+                      <div className="natal-houses-hero__wheel" aria-hidden="true">
+                        {ZODIAC_WHEEL_GLYPHS.map((glyph) => (
+                          <span key={glyph}>{glyph}</span>
+                        ))}
+                        <div className="natal-houses-hero__sun">☉</div>
+                      </div>
                     </div>
+
                     <div className="natal-houses-grid">
                       {full.houses.map((h: any) => {
+                        const signKey = String(h.sign ?? "").toLowerCase();
                         const signRu =
                           SIGN_EN_TO_RU[
                             h.sign?.charAt(0).toUpperCase() + h.sign?.slice(1)
@@ -993,29 +1057,31 @@ export function Natal() {
                         const signDeg = deg % 30;
                         const d = Math.floor(signDeg);
                         const m = Math.floor((signDeg - d) * 60);
-                        const axisLabel: Record<number, string> = {
-                          1: "AC",
-                          4: "IC",
-                          7: "DC",
-                          10: "MC",
-                        };
+                        const axisLabel = HOUSE_AXIS_LABELS[h.number];
+                        const glyph = ZODIAC_GLYPHS[signKey] ?? "✦";
+                        const tone = ZODIAC_TONES[signKey] ?? "gold";
                         return (
                           <div
                             key={h.number}
-                            className={`natal-house-row${axisLabel[h.number] ? " natal-house-row--axis" : ""}`}
+                            className={`natal-house-card natal-house-card--${tone}${
+                              axisLabel ? " natal-house-card--axis" : ""
+                            }`}
                           >
-                            <span className="natal-house-row__num">
+                            <span className="natal-house-card__num">
                               {h.number}
                             </span>
-                            <span className="natal-house-row__sign">
+                            <span className="natal-house-card__glyph" aria-hidden="true">
+                              {glyph}
+                            </span>
+                            <span className="natal-house-card__sign">
                               {signRu}
                             </span>
-                            <span className="natal-house-row__deg">
+                            <span className="natal-house-card__deg">
                               {d}°{m.toString().padStart(2, "0")}'
                             </span>
-                            {axisLabel[h.number] && (
-                              <span className="natal-house-row__axis">
-                                {axisLabel[h.number]}
+                            {axisLabel && (
+                              <span className="natal-house-card__axis">
+                                {axisLabel}
                               </span>
                             )}
                           </div>
