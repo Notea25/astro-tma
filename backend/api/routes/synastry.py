@@ -2,6 +2,7 @@
 
 import secrets
 from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -118,6 +119,49 @@ def _aspects_to_schema(raw: list[dict]) -> list[SynastryAspectOut]:
         )
         for a in raw
     ]
+
+
+def _coord_or_default(value: float | None) -> float:
+    return value if value is not None else 0.0
+
+
+def _is_valid_timezone(value: str | None) -> bool:
+    if not value:
+        return False
+    try:
+        ZoneInfo(value)
+    except ZoneInfoNotFoundError:
+        return False
+    return True
+
+
+async def _resolve_synastry_timezone(
+    tz: str | None,
+    lat: float | None,
+    lng: float | None,
+) -> str:
+    if _is_valid_timezone(tz):
+        return str(tz)
+
+    if lat is not None and lng is not None:
+        from api.routes.users import _get_timezone  # late import to avoid cycles
+
+        resolved = await _get_timezone(lat, lng)
+        if _is_valid_timezone(resolved):
+            return resolved
+
+    return "UTC"
+
+
+def _synastry_user_payload(user: User, tz: str) -> dict:
+    return {
+        "name": user.tg_first_name,
+        "birth_dt": user.birth_date,
+        "lat": _coord_or_default(user.birth_lat),
+        "lng": _coord_or_default(user.birth_lng),
+        "tz_str": tz,
+        "birth_time_known": user.birth_time_known,
+    }
 
 
 async def _require_user_with_chart(db: AsyncSession, user_id: int) -> User:
@@ -244,24 +288,34 @@ async def accept_request(
 
     initiator = await _require_user_with_chart(db, req.initiator_user_id)
 
-    raw = calculate_synastry(
-        user_a={
-            "name": initiator.tg_first_name,
-            "birth_dt": initiator.birth_date,
-            "lat": initiator.birth_lat or 0.0,
-            "lng": initiator.birth_lng or 0.0,
-            "tz_str": initiator.birth_tz,
-            "birth_time_known": initiator.birth_time_known,
-        },
-        user_b={
-            "name": partner.tg_first_name,
-            "birth_dt": partner.birth_date,
-            "lat": partner.birth_lat or 0.0,
-            "lng": partner.birth_lng or 0.0,
-            "tz_str": partner.birth_tz,
-            "birth_time_known": partner.birth_time_known,
-        },
+    initiator_tz = await _resolve_synastry_timezone(
+        initiator.birth_tz,
+        initiator.birth_lat,
+        initiator.birth_lng,
     )
+    partner_tz = await _resolve_synastry_timezone(
+        partner.birth_tz,
+        partner.birth_lat,
+        partner.birth_lng,
+    )
+
+    try:
+        raw = calculate_synastry(
+            user_a=_synastry_user_payload(initiator, initiator_tz),
+            user_b=_synastry_user_payload(partner, partner_tz),
+        )
+    except Exception as exc:
+        log.exception(
+            "synastry.accept_calculation_failed",
+            request_id=req.id,
+            initiator=initiator.id,
+            partner=partner.id,
+            error=str(exc),
+        )
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Не удалось рассчитать совместимость. Проверьте данные рождения в профиле.",
+        ) from exc
 
     req.partner_user_id = partner.id
     req.status = SynastryRequestStatus.COMPLETED
@@ -321,30 +375,43 @@ async def manual_synastry(
         partner_lng = geo["lng"]
         partner_city = geo.get("city") or partner_city
 
-    # Resolve partner timezone from coords if not provided by the client.
-    partner_tz = payload.birth_tz
-    if not partner_tz:
-        from api.routes.users import _get_timezone  # late import to avoid cycles
-        partner_tz = await _get_timezone(partner_lat, partner_lng)
-
-    raw = calculate_synastry(
-        user_a={
-            "name": initiator.tg_first_name,
-            "birth_dt": initiator.birth_date,
-            "lat": initiator.birth_lat or 0.0,
-            "lng": initiator.birth_lng or 0.0,
-            "tz_str": initiator.birth_tz,
-            "birth_time_known": initiator.birth_time_known,
-        },
-        user_b={
-            "name": payload.partner_name,
-            "birth_dt": partner_dt,
-            "lat": partner_lat,
-            "lng": partner_lng,
-            "tz_str": partner_tz,
-            "birth_time_known": payload.birth_time_known,
-        },
+    # Resolve and validate timezones. Older profiles may contain stale/invalid
+    # timezone strings, so we recover from coordinates before calculating.
+    initiator_tz = await _resolve_synastry_timezone(
+        initiator.birth_tz,
+        initiator.birth_lat,
+        initiator.birth_lng,
     )
+    partner_tz = await _resolve_synastry_timezone(
+        payload.birth_tz,
+        partner_lat,
+        partner_lng,
+    )
+
+    try:
+        raw = calculate_synastry(
+            user_a=_synastry_user_payload(initiator, initiator_tz),
+            user_b={
+                "name": payload.partner_name,
+                "birth_dt": partner_dt,
+                "lat": partner_lat,
+                "lng": partner_lng,
+                "tz_str": partner_tz,
+                "birth_time_known": payload.birth_time_known,
+            },
+        )
+    except Exception as exc:
+        log.exception(
+            "synastry.manual_calculation_failed",
+            initiator_id=initiator.id,
+            partner_name=payload.partner_name,
+            partner_city=partner_city,
+            error=str(exc),
+        )
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Не удалось рассчитать совместимость. Проверьте дату, время и город рождения.",
+        ) from exc
 
     log.info(
         "synastry.manual_computed",

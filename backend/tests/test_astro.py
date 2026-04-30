@@ -4,6 +4,7 @@ from datetime import datetime
 from services.astro.compatibility import calculate_compatibility
 from services.astro.moon import get_moon_phase
 from services.astro.natal import calculate_natal, chart_to_json
+from services.astro.synastry import calculate_synastry
 from services.astro.transits import build_energy_scores
 
 
@@ -59,6 +60,42 @@ def test_compatibility_normalised_key():
     ab = calculate_compatibility("cancer", "scorpio")
     ba = calculate_compatibility("scorpio", "cancer")
     assert ab.overall == ba.overall
+
+
+def test_synastry_manual_like_calculation():
+    """Manual synastry should handle Cyrillic names and unknown partner time."""
+    result = calculate_synastry(
+        user_a={
+            "name": "Андрей",
+            "birth_dt": datetime(1998, 7, 1, 12, 0),
+            "lat": 53.9,
+            "lng": 27.5667,
+            "tz_str": "Europe/Minsk",
+            "birth_time_known": False,
+        },
+        user_b={
+            "name": "миша",
+            "birth_dt": datetime(2000, 4, 18, 12, 0),
+            "lat": 55.6026007,
+            "lng": 37.3479176,
+            "tz_str": "Europe/Moscow",
+            "birth_time_known": False,
+        },
+    )
+
+    assert result["total_aspects"] > 0
+    assert 15 <= result["scores"]["overall"] <= 95
+
+
+def test_synastry_timezone_fallback_without_coordinates():
+    import asyncio
+
+    from api.routes.synastry import _resolve_synastry_timezone
+
+    assert (
+        asyncio.run(_resolve_synastry_timezone("Bad/Timezone", None, None))
+        == "UTC"
+    )
 
 
 def test_energy_scores_clamped():

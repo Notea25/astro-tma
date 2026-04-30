@@ -51,6 +51,94 @@ const SPHERE_LABELS: { key: keyof SynastryResult["scores"]; label: string }[] =
 
 type Mode = "pick" | "invite" | "manual";
 
+const TELEGRAM_BOT_USERNAME =
+  ((import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined) ??
+    "astrologiyatut_bot")
+    .trim()
+    .replace(/^@/, "");
+
+const INVALID_INVITE_BOT_USERNAMES = new Set([
+  "astro_bot",
+  "bot_username",
+  "your_bot_username",
+  "telegram_bot_username",
+]);
+
+function normalizeSynastryInviteUrl(url: string): string {
+  if (!TELEGRAM_BOT_USERNAME) return url;
+
+  try {
+    const parsed = new URL(url);
+    const isTelegramHost =
+      parsed.hostname === "t.me" || parsed.hostname === "telegram.me";
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    const botUsername = parts[0]?.toLowerCase();
+
+    if (
+      isTelegramHost &&
+      botUsername &&
+      INVALID_INVITE_BOT_USERNAMES.has(botUsername)
+    ) {
+      parts[0] = TELEGRAM_BOT_USERNAME;
+      parsed.pathname = `/${parts.join("/")}`;
+      return parsed.toString();
+    }
+  } catch {
+    return url;
+  }
+
+  return url;
+}
+
+function normalizeBirthDateInput(value: string): string | null {
+  const trimmed = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+
+  const match = trimmed.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
+  if (!match) return null;
+
+  const [, day, month, year] = match;
+  const dd = day.padStart(2, "0");
+  const mm = month.padStart(2, "0");
+  const normalized = `${year}-${mm}-${dd}`;
+  const parsed = new Date(Date.UTC(Number(year), Number(mm) - 1, Number(dd)));
+
+  if (
+    Number.isNaN(parsed.getTime()) ||
+    parsed.getUTCFullYear() !== Number(year) ||
+    parsed.getUTCMonth() + 1 !== Number(mm) ||
+    parsed.getUTCDate() !== Number(dd)
+  ) {
+    return null;
+  }
+
+  return normalized;
+}
+
+function getManualSynastryErrorMessage(error: unknown): string | null {
+  if (!error) return null;
+
+  if (!(error instanceof ApiError)) {
+    return "Не удалось отправить запрос. Проверьте соединение и попробуйте ещё раз.";
+  }
+
+  if (error.status === 401) {
+    return "Сессия Telegram устарела. Закройте и снова откройте приложение.";
+  }
+
+  if (error.status === 402) return "Сначала купите Синастрию.";
+
+  if (error.status === 422) {
+    return error.message || "Проверьте дату, время и город рождения.";
+  }
+
+  if (error.message && error.message !== "Internal server error") {
+    return error.message;
+  }
+
+  return "Не удалось рассчитать совместимость. Проверьте данные и попробуйте ещё раз.";
+}
+
 export function Synastry() {
   const { setScreen, user } = useAppStore();
   const { impact, notification } = useHaptic();
@@ -79,6 +167,7 @@ export function Synastry() {
   });
 
   const invite = requestMutation.data;
+  const inviteUrl = invite ? normalizeSynastryInviteUrl(invite.invite_url) : "";
   const result = localResult;
 
   const copy = (text: string) => {
@@ -251,7 +340,7 @@ export function Synastry() {
                       Ссылка-приглашение (действительна 7 дней):
                     </p>
                     <div
-                      onClick={() => copy(invite.invite_url)}
+                      onClick={() => copy(inviteUrl)}
                       style={{
                         padding: "10px 12px",
                         background: "rgba(255,255,255,0.04)",
@@ -263,14 +352,14 @@ export function Synastry() {
                         marginBottom: 12,
                       }}
                     >
-                      {invite.invite_url}
+                      {inviteUrl}
                     </div>
                     <button
                       className="btn-primary"
                       onClick={() => {
                         const tg = (window as any).Telegram?.WebApp;
                         tg?.openTelegramLink?.(
-                          `https://t.me/share/url?url=${encodeURIComponent(invite.invite_url)}&text=${encodeURIComponent("Давай узнаем нашу совместимость!")}`,
+                          `https://t.me/share/url?url=${encodeURIComponent(inviteUrl)}&text=${encodeURIComponent("Давай узнаем нашу совместимость!")}`,
                         );
                       }}
                     >
@@ -319,17 +408,18 @@ function ManualPartnerForm({
     onSuccess: (result) => onResult(result),
   });
 
+  const normalizedDate = normalizeBirthDateInput(date);
   const canSubmit =
     name.trim().length > 0 &&
-    date.length > 0 &&
+    normalizedDate !== null &&
     city.trim().length > 0 &&
     !manualMutation.isPending;
 
   const submit = () => {
-    if (!canSubmit) return;
+    if (!canSubmit || !normalizedDate) return;
     manualMutation.mutate({
       partner_name: name.trim(),
-      birth_date: date,
+      birth_date: normalizedDate,
       birth_time: time,
       birth_time_known: timeKnown,
       birth_city: coords?.cityName ?? city.trim(),
@@ -339,13 +429,7 @@ function ManualPartnerForm({
     });
   };
 
-  const errMsg = (() => {
-    const err = manualMutation.error;
-    if (!(err instanceof ApiError)) return null;
-    if (err.status === 422) return "Заполните данные рождения в профиле.";
-    if (err.status === 402) return "Сначала купите Синастрию.";
-    return "Не удалось рассчитать совместимость.";
-  })();
+  const errMsg = getManualSynastryErrorMessage(manualMutation.error);
 
   return (
     <div className="horoscope-card">
