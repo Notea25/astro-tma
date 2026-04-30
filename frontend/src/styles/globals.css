@@ -3503,19 +3503,23 @@ body::after {
   margin-top: 4px;
 }
 .natal-house-card__axis {
-  min-width: 60px;
+  max-width: 100%;
+  min-width: 0;
   margin-top: 10px;
-  padding: 3px 14px 4px;
+  padding: 4px 10px 5px;
   border-radius: 999px;
   border: 0.5px solid var(--house-accent);
   background: rgba(10, 9, 28, 0.58);
   color: var(--house-accent);
-  font-size: clamp(11px, 3vw, 13px);
+  font-size: clamp(9px, 2.5vw, 11px);
   font-weight: 700;
-  line-height: 1;
+  line-height: 1.05;
   text-align: center;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.02em;
   box-shadow: 0 0 14px var(--house-glow);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .natal-house-card--gold {
   --house-accent: #f0d48a;

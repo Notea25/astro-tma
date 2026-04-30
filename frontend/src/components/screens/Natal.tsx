@@ -29,13 +29,13 @@ const NATAL_TABS: { key: NatalTab; label: string }[] = [
 const SWIPE_OFFSET_THRESHOLD = 60;
 const SWIPE_VELOCITY_THRESHOLD = 500;
 
-type HouseAxisLabel = "ASC" | "IC" | "DC" | "MC";
+type HouseAxisLabel = "Асцендент" | "Основание" | "Десцендент" | "Середина неба";
 
 const HOUSE_AXIS_LABELS: Record<number, HouseAxisLabel> = {
-  1: "ASC",
-  4: "IC",
-  7: "DC",
-  10: "MC",
+  1: "Асцендент",
+  4: "Основание",
+  7: "Десцендент",
+  10: "Середина неба",
 };
 
 const ZODIAC_GLYPHS: Record<string, string> = {
