@@ -15,6 +15,7 @@ import asyncio
 from api.schemas.synastry import (
     SynastryAspectInterp,
     SynastryAspectOut,
+    SynastryHistoryItem,
     SynastryHouseInfo,
     SynastryInviteInfo,
     SynastryManualInput,
@@ -393,17 +394,20 @@ async def accept_request(
             db, data["aspects"], settings.ANTHROPIC_API_KEY
         )
         return SynastryResult(
+            id=req.id,
             aspects=_aspects_to_schema(data["aspects"]),
             scores=SynastryScores(**data["scores"]),
             total_aspects=data["total_aspects"],
             initiator_name=initiator.tg_first_name if initiator else None,
             partner_name=partner.tg_first_name,
+            is_initiator=False,
             planets_a=_planets_from_chart(initiator.natal_chart.chart_data) if initiator and initiator.natal_chart else [],
             planets_b=_planets_from_chart(partner.natal_chart.chart_data) if partner.natal_chart else [],
             houses_a=_houses_from_chart(initiator.natal_chart.chart_data) if initiator and initiator.natal_chart else [],
             houses_b=_houses_from_chart(partner.natal_chart.chart_data) if partner.natal_chart else [],
             interpretations=_interp_to_schema(data["aspects"], texts),
             summary_ru=data.get("summary_ru"),
+            created_at=req.created_at,
         )
 
     initiator = await _require_user_with_chart(db, req.initiator_user_id)
@@ -457,17 +461,20 @@ async def accept_request(
     log.info("synastry.completed", request_id=req.id, initiator=initiator.id, partner=partner.id)
 
     return SynastryResult(
+        id=req.id,
         aspects=_aspects_to_schema(raw["aspects"]),
         scores=SynastryScores(**raw["scores"]),
         total_aspects=raw["total_aspects"],
         initiator_name=initiator.tg_first_name,
         partner_name=partner.tg_first_name,
+        is_initiator=False,
         planets_a=_planets_from_chart(initiator.natal_chart.chart_data),
         planets_b=_planets_from_chart(partner.natal_chart.chart_data),
         houses_a=_houses_from_chart(initiator.natal_chart.chart_data),
         houses_b=_houses_from_chart(partner.natal_chart.chart_data),
         interpretations=_interp_to_schema(raw["aspects"], texts),
         summary_ru=summary,
+        created_at=req.created_at,
     )
 
 
@@ -575,7 +582,9 @@ async def get_result(
     tg_user: dict = Depends(get_tg_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Fetch the synastry result — accessible to both initiator and partner."""
+    """Fetch the full synastry result — accessible to both initiator and partner.
+    Returns the same shape as accept_request, including planets, interpretations
+    and the pair summary, so the same SynastryReport component renders it."""
     user_id = tg_user["id"]
     result = await db.execute(
         select(SynastryRequest).where(SynastryRequest.id == request_id)
@@ -590,14 +599,136 @@ async def get_result(
     if req.status != SynastryRequestStatus.COMPLETED or not req.result_json:
         raise HTTPException(status.HTTP_409_CONFLICT, "Расчёт ещё не готов")
 
+    is_initiator = user_id == req.initiator_user_id
     initiator = await user_repo.get_by_id(db, req.initiator_user_id)
-    partner = await user_repo.get_by_id(db, req.partner_user_id) if req.partner_user_id else None
+    partner = (
+        await user_repo.get_by_id(db, req.partner_user_id)
+        if req.partner_user_id
+        else None
+    )
     data = req.result_json
 
+    texts = await get_or_generate_aspect_texts(
+        db, data["aspects"], settings.ANTHROPIC_API_KEY
+    )
+
     return SynastryResult(
+        id=req.id,
         aspects=_aspects_to_schema(data["aspects"]),
         scores=SynastryScores(**data["scores"]),
         total_aspects=data["total_aspects"],
         initiator_name=initiator.tg_first_name if initiator else None,
         partner_name=partner.tg_first_name if partner else None,
+        is_initiator=is_initiator,
+        planets_a=_planets_from_chart(initiator.natal_chart.chart_data)
+        if initiator and initiator.natal_chart
+        else [],
+        planets_b=_planets_from_chart(partner.natal_chart.chart_data)
+        if partner and partner.natal_chart
+        else [],
+        houses_a=_houses_from_chart(initiator.natal_chart.chart_data)
+        if initiator and initiator.natal_chart
+        else [],
+        houses_b=_houses_from_chart(partner.natal_chart.chart_data)
+        if partner and partner.natal_chart
+        else [],
+        interpretations=_interp_to_schema(data["aspects"], texts),
+        summary_ru=data.get("summary_ru"),
+        created_at=req.created_at,
     )
+
+
+@router.get("/history", response_model=list[SynastryHistoryItem])
+async def get_history(
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Past completed synastries the user participated in (as either side),
+    sorted newest first. Hidden flags filter by the viewer's perspective."""
+    user_id = tg_user["id"]
+
+    result = await db.execute(
+        select(SynastryRequest)
+        .where(
+            SynastryRequest.status == SynastryRequestStatus.COMPLETED,
+            SynastryRequest.result_json.is_not(None),
+            or_(
+                and_(
+                    SynastryRequest.initiator_user_id == user_id,
+                    SynastryRequest.hidden_by_initiator.is_(False),
+                ),
+                and_(
+                    SynastryRequest.partner_user_id == user_id,
+                    SynastryRequest.hidden_by_partner.is_(False),
+                ),
+            ),
+        )
+        .order_by(SynastryRequest.created_at.desc())
+    )
+    rows = result.scalars().all()
+    if not rows:
+        return []
+
+    # Resolve the OTHER party's display name in one pass
+    counterpart_ids = {
+        (req.partner_user_id if req.initiator_user_id == user_id else req.initiator_user_id)
+        for req in rows
+    }
+    counterpart_ids.discard(None)
+    name_lookup: dict[int, str | None] = {}
+    if counterpart_ids:
+        users = await db.execute(
+            select(User.id, User.tg_first_name).where(User.id.in_(counterpart_ids))
+        )
+        name_lookup = {u_id: name for u_id, name in users.all()}
+
+    out: list[SynastryHistoryItem] = []
+    for req in rows:
+        is_initiator = req.initiator_user_id == user_id
+        counterpart_id = req.partner_user_id if is_initiator else req.initiator_user_id
+        partner_name = name_lookup.get(counterpart_id) if counterpart_id else None
+        data = req.result_json or {}
+        scores = SynastryScores(**data.get("scores", {
+            "love": 0, "communication": 0, "trust": 0, "passion": 0, "overall": 0,
+        }))
+        out.append(
+            SynastryHistoryItem(
+                id=req.id,
+                partner_name=partner_name,
+                is_initiator=is_initiator,
+                scores=scores,
+                total_aspects=int(data.get("total_aspects", 0)),
+                created_at=req.created_at,
+            )
+        )
+    return out
+
+
+@router.delete("/history/{request_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def hide_from_history(
+    request_id: int,
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Soft-delete from the current user's history. The other side keeps it.
+    Once both sides have hidden the row, drop it entirely."""
+    user_id = tg_user["id"]
+    result = await db.execute(
+        select(SynastryRequest).where(SynastryRequest.id == request_id)
+    )
+    req = result.scalar_one_or_none()
+    if req is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Запись не найдена")
+
+    if user_id == req.initiator_user_id:
+        req.hidden_by_initiator = True
+    elif user_id == req.partner_user_id:
+        req.hidden_by_partner = True
+    else:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Нет доступа")
+
+    if req.hidden_by_initiator and req.hidden_by_partner:
+        await db.delete(req)
+
+    await db.commit()
+    return None

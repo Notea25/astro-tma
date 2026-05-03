@@ -248,6 +248,8 @@ class SynastryRequest(TimestampMixin, Base):
         default=SynastryRequestStatus.PENDING, nullable=False)
     result_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    hidden_by_initiator: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    hidden_by_partner: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
 
 class SynastryInterpretation(TimestampMixin, Base):

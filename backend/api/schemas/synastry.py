@@ -84,17 +84,30 @@ class SynastryAspectInterp(BaseModel):
 
 
 class SynastryResult(BaseModel):
+    id: int | None = None
     aspects: list[SynastryAspectOut]
     scores: SynastryScores
     total_aspects: int
     initiator_name: str | None = None
     partner_name: str | None = None
+    is_initiator: bool = False
     planets_a: list[SynastryPlanetInfo] = []
     planets_b: list[SynastryPlanetInfo] = []
     houses_a: list[SynastryHouseInfo] = []
     houses_b: list[SynastryHouseInfo] = []
     interpretations: list[SynastryAspectInterp] = []
     summary_ru: str | None = None
+    created_at: datetime | None = None
+
+
+class SynastryHistoryItem(BaseModel):
+    """Compact list-row for the Синастрия → История screen."""
+    id: int
+    partner_name: str | None  # the OTHER person from the current viewer's POV
+    is_initiator: bool
+    scores: SynastryScores
+    total_aspects: int
+    created_at: datetime
 
 
 class SynastryRequestOut(BaseModel):
