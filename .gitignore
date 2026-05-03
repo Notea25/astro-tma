@@ -13,3 +13,4 @@ dist/
 docs/
 .specify/
 CLAUDE.md
+.codex-local/
