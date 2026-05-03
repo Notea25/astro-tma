@@ -1,11 +1,14 @@
 """Natal chart endpoints — full chart retrieval and SVG generation."""
 
+from secrets import token_urlsafe
+from urllib.parse import quote
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.middleware.telegram_auth import get_tg_user
-from core.cache import cache_get, cache_set, key_natal
+from core.cache import cache_get, cache_set, key_natal, key_natal_pdf_download
 from core.logging import get_logger
 from core.settings import settings
 from db.database import get_db
@@ -16,6 +19,76 @@ from services.users import repository as user_repo
 log = get_logger(__name__)
 
 router = APIRouter(prefix="/natal", tags=["natal"])
+_PDF_DOWNLOAD_TTL_SECONDS = 300
+
+
+async def _get_pdf_user_or_error(db: AsyncSession, user_id: int):
+    user = await user_repo.get_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+
+    is_prem = await user_repo.is_premium(db, user.id)
+    has_purchase = await user_repo.has_purchased(db, user.id, "natal_full")
+    if not (is_prem or has_purchase):
+        raise HTTPException(status.HTTP_402_PAYMENT_REQUIRED, "Premium required")
+
+    if not user.natal_chart:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "No birth data")
+
+    return user
+
+
+def _natal_pdf_filename(user) -> str:
+    safe_name = str(user.tg_first_name or "chart").replace('"', "").strip() or "chart"
+    return f"natal_{safe_name}.pdf"
+
+
+async def _build_natal_pdf_response(user) -> Response:
+    from services.natal_pdf import generate_natal_pdf
+
+    chart = user.natal_chart
+    planets = chart.chart_data.get("planets", {})
+    houses = chart.chart_data.get("houses", [])
+    aspects_raw = chart.chart_data.get("aspects", [])
+    aspects = [
+        {"p1": a.get("p1", ""), "p2": a.get("p2", ""), "aspect": a.get("aspect", ""), "orb": a.get("orb", 0)}
+        for a in aspects_raw
+    ]
+
+    cache_key = key_natal(user.id)
+    cached = await cache_get(cache_key)
+    reading = cached.get("reading") if isinstance(cached, dict) else None
+
+    pdf_bytes = generate_natal_pdf(
+        user_name=user.tg_first_name or "User",
+        birth_date=str(user.birth_date) if user.birth_date else "",
+        birth_time=(
+            user.birth_date.strftime("%H:%M")
+            if user.birth_date and user.birth_time_known
+            else None
+        ),
+        birth_city=user.birth_city or "",
+        sun_sign=chart.sun_sign or "",
+        moon_sign=chart.moon_sign or "",
+        asc_sign=chart.ascendant_sign,
+        planets=planets,
+        houses=houses,
+        aspects=aspects,
+        reading=reading,
+    )
+
+    filename = _natal_pdf_filename(user)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": (
+                f"attachment; filename=\"natal-chart.pdf\"; "
+                f"filename*=UTF-8''{quote(filename)}"
+            ),
+        },
+    )
 
 
 @router.get("/summary")
@@ -167,55 +240,39 @@ async def get_natal_pdf(
     db: AsyncSession = Depends(get_db),
 ):
     """Generate and return natal chart PDF report."""
-    from services.natal_pdf import generate_natal_pdf
+    user = await _get_pdf_user_or_error(db, tg_user["id"])
+    return await _build_natal_pdf_response(user)
 
-    user = await user_repo.get_by_id(db, tg_user["id"])
-    if not user:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
 
-    is_prem = await user_repo.is_premium(db, user.id)
-    has_purchase = await user_repo.has_purchased(db, user.id, "natal_full")
-    if not (is_prem or has_purchase):
-        raise HTTPException(status.HTTP_402_PAYMENT_REQUIRED, "Premium required")
-
-    if not user.natal_chart:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "No birth data")
-
-    chart = user.natal_chart
-    planets = chart.chart_data.get("planets", {})
-    houses = chart.chart_data.get("houses", [])
-    aspects_raw = chart.chart_data.get("aspects", [])
-    aspects = [
-        {"p1": a.get("p1",""), "p2": a.get("p2",""), "aspect": a.get("aspect",""), "orb": a.get("orb",0)}
-        for a in aspects_raw
-    ]
-
-    # Get cached reading if available
-    cache_key = key_natal(user.id)
-    cached = await cache_get(cache_key)
-    reading = cached.get("reading") if cached else None
-
-    pdf_bytes = generate_natal_pdf(
-        user_name=user.tg_first_name or "User",
-        birth_date=str(user.birth_date) if user.birth_date else "",
-        birth_time=(
-            user.birth_date.strftime("%H:%M")
-            if user.birth_date and user.birth_time_known
-            else None
-        ),
-        birth_city=user.birth_city or "",
-        sun_sign=chart.sun_sign or "",
-        moon_sign=chart.moon_sign or "",
-        asc_sign=chart.ascendant_sign,
-        planets=planets,
-        houses=houses,
-        aspects=aspects,
-        reading=reading,
+@router.post("/pdf-link")
+async def create_natal_pdf_link(
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a short-lived direct download URL for WebViews that block blob downloads."""
+    user = await _get_pdf_user_or_error(db, tg_user["id"])
+    token = token_urlsafe(24)
+    await cache_set(
+        key_natal_pdf_download(token),
+        {"user_id": user.id},
+        _PDF_DOWNLOAD_TTL_SECONDS,
     )
+    return {
+        "download_url": f"/natal/pdf-download/{token}",
+        "filename": _natal_pdf_filename(user),
+        "expires_in": _PDF_DOWNLOAD_TTL_SECONDS,
+    }
 
-    filename = f"natal_{user.tg_first_name or 'chart'}.pdf"
-    return Response(
-        content=pdf_bytes,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
+
+@router.get("/pdf-download/{token}")
+async def get_natal_pdf_by_token(
+    token: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Download a natal PDF using a temporary token created by /pdf-link."""
+    payload = await cache_get(key_natal_pdf_download(token))
+    if not isinstance(payload, dict) or "user_id" not in payload:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Download link expired")
+
+    user = await _get_pdf_user_or_error(db, int(payload["user_id"]))
+    return await _build_natal_pdf_response(user)

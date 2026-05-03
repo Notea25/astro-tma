@@ -993,6 +993,10 @@ body::after {
   margin-top: 12px;
   -webkit-tap-highlight-color: transparent;
 }
+.btn-secondary:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
 
 .btn-with-icon {
   display: flex;
@@ -2918,6 +2922,13 @@ body::after {
   color: var(--text-dim);
   margin-top: 6px;
   letter-spacing: 0.02em;
+}
+.natal-download-error {
+  margin-top: 12px;
+  color: var(--red);
+  font-size: var(--fs-small);
+  line-height: 1.45;
+  text-align: center;
 }
 @media (max-width: 360px) {
   .natal-chips {

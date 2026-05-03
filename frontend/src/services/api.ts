@@ -17,6 +17,12 @@ const BASE_URL = configuredBaseUrl
     : `${configuredBaseUrl}/api`
   : "/api";
 
+type NatalPdfLinkResponse = {
+  download_url: string;
+  filename: string;
+  expires_in: number;
+};
+
 class ApiError extends Error {
   constructor(
     public status: number,
@@ -48,6 +54,46 @@ function formatApiErrorDetail(detail: unknown, fallback: string): string {
   }
 
   return fallback;
+}
+
+function apiUrl(path: string): string {
+  if (/^https?:\/\//i.test(path)) return path;
+  const suffix = path.startsWith("/") ? path : `/${path}`;
+  return `${BASE_URL}${suffix}`;
+}
+
+function absoluteUrl(url: string): string {
+  return new URL(url, window.location.origin).toString();
+}
+
+function openDownloadWindow(): Window | null {
+  try {
+    const popup = window.open("about:blank", "_blank");
+    if (popup?.document) {
+      popup.document.title = "Готовим PDF";
+      popup.document.body.style.cssText =
+        "margin:0;display:grid;place-items:center;min-height:100vh;background:#07060f;color:#f0d48a;font:16px system-ui,sans-serif;";
+      popup.document.body.textContent = "Готовим PDF...";
+    }
+    return popup;
+  } catch {
+    return null;
+  }
+}
+
+function triggerDownload(url: string, filename: string): void {
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.target = "_blank";
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function canUseTelegramOpenLink(): boolean {
+  return Boolean(WebApp.initData) && typeof WebApp.openLink === "function";
 }
 
 async function request<T>(
@@ -133,23 +179,33 @@ export const natalApi = {
   getFull: () =>
     request<import("@/types").NatalFullResponse>("GET", "/natal/full"),
   downloadPdf: async () => {
-    const res = await fetch(`${BASE_URL}/natal/pdf`, {
-      headers: { "X-Init-Data": WebApp.initData },
-    });
-    if (!res.ok) throw new ApiError(res.status, "PDF generation failed");
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    // Try standard download
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "natal-chart.pdf";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    // Fallback: open in new tab (for Telegram WebView)
-    setTimeout(() => {
-      window.open(url, "_blank");
-    }, 500);
+    const useTelegramOpenLink = canUseTelegramOpenLink();
+    const popup = useTelegramOpenLink ? null : openDownloadWindow();
+    try {
+      const link = await request<NatalPdfLinkResponse>("POST", "/natal/pdf-link");
+      const downloadUrl = apiUrl(link.download_url);
+
+      if (useTelegramOpenLink) {
+        try {
+          WebApp.openLink(absoluteUrl(downloadUrl));
+          return;
+        } catch {
+          // Fall through to a regular browser download if Telegram rejects it.
+        }
+      }
+
+      if (popup && !popup.closed) {
+        popup.location.href = downloadUrl;
+        return;
+      }
+
+      triggerDownload(downloadUrl, link.filename || "natal-chart.pdf");
+    } catch (error) {
+      if (popup && !popup.closed) {
+        popup.close();
+      }
+      throw error;
+    }
   },
 };
 
