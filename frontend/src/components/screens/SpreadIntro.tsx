@@ -14,9 +14,9 @@ interface Props {
 
 const SCALE_BY_KEY: Record<SpreadKey, number> = {
   three_card: 0.9,
-  celtic_cross: 0.44,
+  celtic_cross: 0.7,
   week: 0.94,
-  relationship: 0.44,
+  relationship: 0.55,
 };
 
 export function SpreadIntro({ spreadKey, onStart }: Props) {
@@ -50,12 +50,11 @@ export function SpreadIntro({ spreadKey, onStart }: Props) {
         >
           {layout.slots.map((slot, idx) => {
             const symbol = previewSymbols?.[idx];
+            const label = symbol ?? String(idx + 1);
             return (
               <div
                 key={idx}
-                className={`spread-intro-v2__mini-card card-back-pattern--${backVariant}${
-                  symbol ? " spread-intro-v2__mini-card--symbolic" : ""
-                }`}
+                className={`spread-intro-v2__mini-card card-back-pattern--${backVariant} spread-intro-v2__mini-card--symbolic`}
                 style={{
                   left: slot.x * scale,
                   top: slot.y * scale,
@@ -66,14 +65,12 @@ export function SpreadIntro({ spreadKey, onStart }: Props) {
                     : {}),
                 }}
               >
-                {symbol && (
-                  <span
-                    className="spread-intro-v2__mini-symbol"
-                    style={{ fontSize: symbolFontSize }}
-                  >
-                    {symbol}
-                  </span>
-                )}
+                <span
+                  className="spread-intro-v2__mini-symbol"
+                  style={{ fontSize: symbolFontSize }}
+                >
+                  {label}
+                </span>
               </div>
             );
           })}
