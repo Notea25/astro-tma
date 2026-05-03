@@ -1,5 +1,6 @@
+/* 3D flip mechanics — matches MAC card flip exactly */
 .cardPerspective {
-  perspective: 700px;
+  perspective: 1200px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
@@ -20,10 +21,13 @@
 .cardFrontFace {
   position: absolute;
   inset: 0;
-  border-radius: 6px;
+  border-radius: 10px;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   overflow: hidden;
+  box-shadow:
+    0 14px 40px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(201, 168, 76, 0.15);
 }
 
 .cardFrontFace {
