@@ -153,7 +153,11 @@ export function SpreadLayout({
                           : undefined
                       }
                     >
-                      <div className="spread-slot__placeholder" />
+                      <div className="spread-slot__placeholder">
+                        <span className="spread-slot__placeholder-num">
+                          {slot.slot}
+                        </span>
+                      </div>
                     </div>
                     {label}
                   </div>
@@ -197,7 +201,7 @@ export function SpreadLayout({
                     >
                       <div className="spread-slot__back">
                         <span className="spread-slot__number">
-                          {slot.symbol}
+                          {slot.slot}
                         </span>
                       </div>
                       <div className="spread-slot__front">
@@ -224,13 +228,6 @@ export function SpreadLayout({
             })}
           </div>
         </div>
-      </div>
-
-      <div className="spread-remaining-deck" aria-hidden="true">
-        <span className="spread-remaining-deck__card" />
-        <span className="spread-remaining-deck__card" />
-        <span className="spread-remaining-deck__card" />
-        <span className="spread-remaining-deck__label">Оставшаяся колода</span>
       </div>
 
       <div ref={detailRef}>

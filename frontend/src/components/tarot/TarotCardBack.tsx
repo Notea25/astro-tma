@@ -10,7 +10,7 @@ export function TarotCardBack({ width = '100%', height = '100%' }: Props) {
       viewBox="0 0 88 150"
       width={width}
       height={height}
-      preserveAspectRatio="xMidYMid slice"
+      preserveAspectRatio="none"
       xmlns="http://www.w3.org/2000/svg"
       style={{ display: 'block' }}
     >

@@ -270,7 +270,7 @@ export function CelticCrossFlow({ readingId, cards }: Props) {
                     {!isPlaced ? (
                       <div className={styles.placeholder}>
                         <span className={styles.placeholderSymbol}>
-                          {slot.symbol}
+                          {slot.slot}
                         </span>
                       </div>
                     ) : (
@@ -364,14 +364,6 @@ export function CelticCrossFlow({ readingId, cards }: Props) {
           onPick={handleFanPick}
           renderCard={() => <TarotCardBack />}
         />
-      )}
-
-      {(phase === 'reading' || phase === 'complete') && (
-        <div className={styles.remainingDeck} aria-hidden="true">
-          <span className={styles.remainingCard} />
-          <span className={styles.remainingCard} />
-          <span className={styles.remainingCard} />
-        </div>
       )}
 
       {/* ── Flying card ── */}

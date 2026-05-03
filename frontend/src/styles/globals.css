@@ -1941,9 +1941,20 @@ body::after {
 .spread-slot__placeholder {
   position: absolute;
   inset: 0;
-  border: 1px dashed rgba(201, 168, 76, 0.25);
+  border: 1px dashed rgba(201, 168, 76, 0.28);
   border-radius: 8px;
-  background: rgba(201, 168, 76, 0.03);
+  background: rgba(201, 168, 76, 0.04);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.spread-slot__placeholder-num {
+  font-family: "Playfair Display", serif;
+  font-size: 20px;
+  line-height: 1;
+  color: rgba(212, 178, 84, 0.64);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.65);
+  pointer-events: none;
 }
 
 /* Rotor wraps flipper; optional inline rotate keeps label outside of rotation */
