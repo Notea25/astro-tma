@@ -249,7 +249,11 @@ export function DrawSpreadFlow({
                     }
                   >
                     {!isPlaced || !card ? (
-                      <div className={styles.placeholder}>
+                      <div
+                        className={`${styles.placeholder} ${
+                          isCross ? styles.placeholderCross : ''
+                        }`}
+                      >
                         <span className={styles.placeholderSymbol}>
                           {slot.slot}
                         </span>

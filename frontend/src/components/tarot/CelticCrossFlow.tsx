@@ -272,7 +272,11 @@ export function CelticCrossFlow({ readingId, cards }: Props) {
                     }
                   >
                     {!isPlaced ? (
-                      <div className={styles.placeholder}>
+                      <div
+                        className={`${styles.placeholder} ${
+                          isCross ? styles.placeholderCross : ''
+                        }`}
+                      >
                         <span className={styles.placeholderSymbol}>
                           {slot.slot}
                         </span>
