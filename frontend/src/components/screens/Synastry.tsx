@@ -211,6 +211,7 @@ function getManualSynastryErrorMessage(error: unknown): string | null {
 export function Synastry() {
   const { setScreen, user } = useAppStore();
   const { impact, notification } = useHaptic();
+  const queryClient = useQueryClient();
   const [localResult, setLocalResult] = useState<SynastryDisplayResult | null>(
     null,
   );
@@ -234,6 +235,8 @@ export function Synastry() {
     onSuccess: (data) => {
       setLocalResult(data);
       notification("success");
+      queryClient.invalidateQueries({ queryKey: ["synastry-history"] });
+      queryClient.invalidateQueries({ queryKey: ["synastry-pending"] });
     },
     onError: () => notification("error"),
   });
@@ -475,7 +478,14 @@ export function Synastry() {
             )}
 
             {mode === "manual" && (
-              <ManualPartnerForm onResult={(r) => setLocalResult(r)} />
+              <ManualPartnerForm
+                onResult={(r) => {
+                  setLocalResult(r);
+                  queryClient.invalidateQueries({
+                    queryKey: ["synastry-history"],
+                  });
+                }}
+              />
             )}
 
             {openingHistoryId !== null && (

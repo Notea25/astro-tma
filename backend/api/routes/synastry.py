@@ -485,10 +485,15 @@ async def manual_synastry(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Compute synastry between current user and a manually-entered partner.
-    No invite flow — the partner isn't required to be a Telegram user.
-    Result is returned directly; not persisted to the database.
+    Compute synastry between the current user and a manually-entered partner.
+    The partner isn't a Telegram user, so we calculate their natal chart
+    on the fly and stash it inside the persisted SynastryRequest.result_json
+    (no User / NatalChart row). The full report — planets, interpretations,
+    summary — is returned and the row shows up in the user's history just
+    like an invite-flow synastry.
     """
+    from services.astro.natal import calculate_natal, chart_to_json
+
     initiator = await _require_user_with_chart(db, tg_user["id"])
 
     if not await user_repo.has_purchased(db, initiator.id, "synastry"):
@@ -521,8 +526,6 @@ async def manual_synastry(
         partner_lng = geo["lng"]
         partner_city = geo.get("city") or partner_city
 
-    # Resolve and validate timezones. Older profiles may contain stale/invalid
-    # timezone strings, so we recover from coordinates before calculating.
     initiator_tz = await _resolve_synastry_timezone(
         initiator.birth_tz,
         initiator.birth_lat,
@@ -559,20 +562,86 @@ async def manual_synastry(
             "Не удалось рассчитать совместимость. Проверьте дату, время и город рождения.",
         ) from exc
 
+    # Build partner's natal chart data so the report can render their planet
+    # table and the bi-wheel's outer ring. Failure here just means the report
+    # falls back to "no chart data for partner" — the synastry numbers above
+    # are still valid.
+    partner_chart_data: dict | None = None
+    try:
+        partner_chart = calculate_natal(
+            name=payload.partner_name,
+            birth_dt=partner_dt,
+            lat=partner_lat,
+            lng=partner_lng,
+            tz_str=partner_tz,
+            birth_time_known=payload.birth_time_known,
+        )
+        partner_chart_data = chart_to_json(partner_chart)
+    except Exception as exc:  # noqa: BLE001
+        log.warning(
+            "synastry.manual_partner_chart_failed",
+            initiator_id=initiator.id,
+            partner_name=payload.partner_name,
+            error=str(exc),
+        )
+
+    # Aspect texts + pair summary in parallel — same as the invite flow.
+    texts, summary = await asyncio.gather(
+        get_or_generate_aspect_texts(db, raw["aspects"], settings.ANTHROPIC_API_KEY),
+        generate_pair_summary(
+            initiator.tg_first_name,
+            payload.partner_name,
+            raw["aspects"],
+            raw["scores"],
+            settings.ANTHROPIC_API_KEY,
+        ),
+    )
+
+    # Persist as a SynastryRequest with no partner_user_id — this is the
+    # marker for "manual entry". result_json carries everything the report
+    # needs: aspects, scores, summary, partner name and partner chart data.
+    req = SynastryRequest(
+        initiator_user_id=initiator.id,
+        partner_user_id=None,
+        token=f"m_{secrets.token_urlsafe(10)}",
+        status=SynastryRequestStatus.COMPLETED,
+        result_json={
+            **raw,
+            "summary_ru": summary,
+            "partner_name": payload.partner_name,
+            "partner_chart_data": partner_chart_data,
+            "manual": True,
+        },
+        expires_at=datetime.now(UTC) + timedelta(days=365 * 5),
+    )
+    db.add(req)
+    await db.flush()
+    await db.commit()
+
     log.info(
-        "synastry.manual_computed",
+        "synastry.manual_completed",
         initiator_id=initiator.id,
+        request_id=req.id,
         partner_name=payload.partner_name,
         partner_city=partner_city,
         total=raw["total_aspects"],
     )
 
     return SynastryResult(
+        id=req.id,
         aspects=_aspects_to_schema(raw["aspects"]),
         scores=SynastryScores(**raw["scores"]),
         total_aspects=raw["total_aspects"],
         initiator_name=initiator.tg_first_name,
         partner_name=payload.partner_name,
+        is_initiator=True,
+        planets_a=_planets_from_chart(initiator.natal_chart.chart_data),
+        planets_b=_planets_from_chart(partner_chart_data) if partner_chart_data else [],
+        houses_a=_houses_from_chart(initiator.natal_chart.chart_data),
+        houses_b=_houses_from_chart(partner_chart_data) if partner_chart_data else [],
+        interpretations=_interp_to_schema(raw["aspects"], texts),
+        summary_ru=summary,
+        created_at=req.created_at,
     )
 
 
@@ -608,6 +677,18 @@ async def get_result(
     )
     data = req.result_json
 
+    # Manual entries: partner has no User row; their natal-chart-shaped data
+    # was stashed in result_json at create time, and the name comes from
+    # there too.
+    partner_name: str | None = None
+    partner_chart_data: dict | None = None
+    if partner is not None:
+        partner_name = partner.tg_first_name
+        partner_chart_data = partner.natal_chart.chart_data if partner.natal_chart else None
+    else:
+        partner_name = data.get("partner_name")
+        partner_chart_data = data.get("partner_chart_data")
+
     texts = await get_or_generate_aspect_texts(
         db, data["aspects"], settings.ANTHROPIC_API_KEY
     )
@@ -618,20 +699,16 @@ async def get_result(
         scores=SynastryScores(**data["scores"]),
         total_aspects=data["total_aspects"],
         initiator_name=initiator.tg_first_name if initiator else None,
-        partner_name=partner.tg_first_name if partner else None,
+        partner_name=partner_name,
         is_initiator=is_initiator,
         planets_a=_planets_from_chart(initiator.natal_chart.chart_data)
         if initiator and initiator.natal_chart
         else [],
-        planets_b=_planets_from_chart(partner.natal_chart.chart_data)
-        if partner and partner.natal_chart
-        else [],
+        planets_b=_planets_from_chart(partner_chart_data) if partner_chart_data else [],
         houses_a=_houses_from_chart(initiator.natal_chart.chart_data)
         if initiator and initiator.natal_chart
         else [],
-        houses_b=_houses_from_chart(partner.natal_chart.chart_data)
-        if partner and partner.natal_chart
-        else [],
+        houses_b=_houses_from_chart(partner_chart_data) if partner_chart_data else [],
         interpretations=_interp_to_schema(data["aspects"], texts),
         summary_ru=data.get("summary_ru"),
         created_at=req.created_at,
@@ -688,6 +765,10 @@ async def get_history(
         counterpart_id = req.partner_user_id if is_initiator else req.initiator_user_id
         partner_name = name_lookup.get(counterpart_id) if counterpart_id else None
         data = req.result_json or {}
+        # Manual entries store the partner name directly in result_json
+        # (no User row to look up).
+        if not partner_name:
+            partner_name = data.get("partner_name")
         scores = SynastryScores(**data.get("scores", {
             "love": 0, "communication": 0, "trust": 0, "passion": 0, "overall": 0,
         }))
