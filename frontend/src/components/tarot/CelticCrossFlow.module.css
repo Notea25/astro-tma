@@ -100,13 +100,13 @@
   justify-content: center;
 }
 /* Cross slot: place the digit absolutely at a pre-rotation point that the
- * rotor's 90deg CW rotation maps to the bottom-right of the underlying
- * slot 1, then counter-rotate -90deg so the digit sits "rotated 90 left".
+ * rotor's 90deg CW rotation maps to the visible bottom-right corner of the
+ * rotated card itself. Counter-rotate -90deg so the digit reads upright.
  * Cards themselves stay at the original cross coordinates. */
 .placeholderCross .placeholderSymbol {
   position: absolute;
-  left: 58px;
-  top: 45px;
+  left: 60px;
+  top: 8px;
   transform: translate(-50%, -50%) rotate(-90deg);
 }
 .placeholderSymbol {
