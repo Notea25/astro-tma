@@ -258,17 +258,29 @@ export interface SynastryAspectInterp {
 }
 
 export interface SynastryResult {
+  id: number | null;
   aspects: SynastryAspectOut[];
   scores: SynastryScores;
   total_aspects: number;
   initiator_name: string | null;
   partner_name: string | null;
+  is_initiator: boolean;
   planets_a: SynastryPlanetInfo[];
   planets_b: SynastryPlanetInfo[];
   houses_a: SynastryHouseInfo[];
   houses_b: SynastryHouseInfo[];
   interpretations: SynastryAspectInterp[];
   summary_ru: string | null;
+  created_at: string | null;
+}
+
+export interface SynastryHistoryItem {
+  id: number;
+  partner_name: string | null;
+  is_initiator: boolean;
+  scores: SynastryScores;
+  total_aspects: number;
+  created_at: string;
 }
 
 export interface SynastryRequestOut {

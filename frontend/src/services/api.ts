@@ -80,6 +80,10 @@ async function request<T>(
     );
   }
 
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
   return response.json() as Promise<T>;
 }
 
@@ -257,6 +261,13 @@ export const synastryApi = {
       "/synastry/manual",
       payload,
     ),
+  history: () =>
+    request<import("@/types").SynastryHistoryItem[]>(
+      "GET",
+      "/synastry/history",
+    ),
+  hideHistoryItem: (id: number) =>
+    request<void>("DELETE", `/synastry/history/${id}`),
 };
 
 // ── Transits ───────────────────────────────────────────────────────────────────
