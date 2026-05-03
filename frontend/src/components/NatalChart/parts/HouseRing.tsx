@@ -28,6 +28,8 @@ export function HouseRing({
   const ordered = [...houses].sort((a, b) => a.number - b.number);
   const interactive = Boolean(onHouseClick);
   const isPoster = variant === 'zodiac-poster';
+  const isReferenceWheel = variant === 'reference-wheel';
+  const isSquareWheel = isPoster || isReferenceWheel;
 
   return (
     <g data-part="house-ring">
@@ -89,7 +91,7 @@ export function HouseRing({
               y2={p2.y}
               stroke="var(--natal-primary)"
               strokeWidth={isAxis ? 1.5 : 0.9}
-              opacity={isAxis ? 0.84 : isPoster ? 0.42 : 0.55}
+              opacity={isAxis ? 0.84 : isSquareWheel ? 0.42 : 0.55}
             />
 
             <text
@@ -97,10 +99,10 @@ export function HouseRing({
               y={romanPos.y}
               textAnchor="middle"
               dominantBaseline="central"
-              fontSize={isPoster ? 13 : ROMAN_FONT_SIZE}
+              fontSize={isSquareWheel ? 13 : ROMAN_FONT_SIZE}
               fill="var(--natal-primary)"
               className={styles.bodyText}
-              opacity={isPoster ? 0.58 : 0.85}
+              opacity={isSquareWheel ? 0.58 : 0.85}
             >
               {ROMAN[house.number - 1]}
             </text>

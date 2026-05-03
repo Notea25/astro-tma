@@ -39,6 +39,8 @@ export function NatalChart(props: NatalChartProps) {
   const titleId = useId();
   const descId = useId();
   const isPoster = variant === 'zodiac-poster';
+  const isReferenceWheel = variant === 'reference-wheel';
+  const isSquareWheel = isPoster || isReferenceWheel;
 
   useEffect(() => {
     const el = svgRef.current;
@@ -57,13 +59,18 @@ export function NatalChart(props: NatalChartProps) {
   const dateReadable = formatBirthDate(data.birthDate);
   const ariaLabel = `Натальная карта${subject}: рождение ${dateReadable} в ${data.birthTime}, ${data.birthLocation.city}, ${data.birthLocation.country}.`;
   const ariaDesc = `Солнце в знаке ${ZODIAC_LABEL[data.sun.sign]}, асцендент в знаке ${ZODIAC_LABEL[data.ascendant.sign]}, середина неба в знаке ${ZODIAC_LABEL[data.midheaven.sign]}.`;
-  const viewBox = isPoster ? '0 0 1000 1000' : '0 0 1000 1400';
-  const aspectRatio = isPoster ? '1 / 1' : '1000 / 1400';
+  const viewBox = isSquareWheel ? '0 0 1000 1000' : '0 0 1000 1400';
+  const aspectRatio = isSquareWheel ? '1 / 1' : '1000 / 1400';
 
   return (
     <svg
       ref={svgRef}
-      className={clsx(styles.root, isPoster && styles.posterRoot, className)}
+      className={clsx(
+        styles.root,
+        isPoster && styles.posterRoot,
+        isReferenceWheel && styles.referenceRoot,
+        className,
+      )}
       data-theme={theme}
       data-variant={variant}
       role="img"
@@ -79,12 +86,16 @@ export function NatalChart(props: NatalChartProps) {
       {isPoster ? (
         <PosterBackdrop />
       ) : (
-        <rect width={1000} height={1400} fill="var(--natal-bg)" />
+        <rect
+          width={1000}
+          height={isSquareWheel ? 1000 : 1400}
+          fill="var(--natal-bg)"
+        />
       )}
 
-      {!isPoster && showDecorative && <TopFrame />}
+      {!isSquareWheel && showDecorative && <TopFrame />}
 
-      {!isPoster && (
+      {!isSquareWheel && (
         <Header
           title={title}
           birthDate={data.birthDate}
@@ -93,12 +104,18 @@ export function NatalChart(props: NatalChartProps) {
         />
       )}
 
-      {!isPoster && <CornerMetadata sun={data.sun} ascendant={data.ascendant} />}
+      {!isSquareWheel && (
+        <CornerMetadata sun={data.sun} ascendant={data.ascendant} />
+      )}
 
-      {!isPoster && effectiveSideFigures && <SideFigure sign={data.sun.sign}       side="left"  />}
-      {!isPoster && effectiveSideFigures && <SideFigure sign={data.ascendant.sign} side="right" />}
+      {!isSquareWheel && effectiveSideFigures && (
+        <SideFigure sign={data.sun.sign} side="left" />
+      )}
+      {!isSquareWheel && effectiveSideFigures && (
+        <SideFigure sign={data.ascendant.sign} side="right" />
+      )}
 
-      <g transform={isPoster ? 'translate(0 -320)' : undefined}>
+      <g transform={isSquareWheel ? 'translate(0 -320)' : undefined}>
         <ChartWheel
           data={data}
           variant={variant}
@@ -107,7 +124,7 @@ export function NatalChart(props: NatalChartProps) {
         />
       </g>
 
-      {!isPoster && showDecorative && <BottomFrame />}
+      {!isSquareWheel && showDecorative && <BottomFrame />}
     </svg>
   );
 }

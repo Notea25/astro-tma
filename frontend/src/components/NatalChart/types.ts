@@ -11,9 +11,14 @@ export type Element = 'fire' | 'earth' | 'air' | 'water';
 
 export type AspectType = 'conjunction' | 'opposition' | 'trine' | 'square' | 'sextile';
 
-export type ThemeName = 'midnight-gold' | 'purple-silver' | 'forest-gold' | 'ember-copper';
+export type ThemeName =
+  | 'midnight-gold'
+  | 'purple-silver'
+  | 'forest-gold'
+  | 'ember-copper'
+  | 'onyx-gold';
 
-export type ChartVariant = 'editorial' | 'zodiac-poster';
+export type ChartVariant = 'editorial' | 'zodiac-poster' | 'reference-wheel';
 
 export interface PlanetPosition {
   sign: ZodiacSign;

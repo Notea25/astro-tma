@@ -6,8 +6,8 @@ import { NatalBasicSkeleton } from "@/components/ui/Skeleton";
 import { useAppStore } from "@/stores/app";
 import { natalApi } from "@/services/api";
 import { ZODIAC_SIGNS } from "@/types";
-import { NatalChart } from "@/components/NatalChart";
 import { toNatalChartData } from "@/components/NatalChart/adapter";
+import { NatalBirthCard } from "@/components/NatalBirthCard";
 
 type NatalTab = "circle" | "elements" | "planets" | "houses" | "aspects";
 type ReadingSection = { title?: string; body: string };
@@ -254,7 +254,11 @@ const SIGN_EN_TO_RU: Record<string, string> = {
   Pisces: "Рыбы",
 };
 const toRu = (s: string | null | undefined) =>
-  s ? (SIGN_EN_TO_RU[s] ?? s) : "—";
+  s
+    ? (SIGN_EN_TO_RU[s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()] ??
+      ZODIAC_SIGNS.find((sign) => sign.value === s.toLowerCase())?.label ??
+      s)
+    : "—";
 
 // SVG icons for elements (celestial style)
 function IconFire() {
@@ -560,6 +564,10 @@ export function Natal() {
 
   const sunSign = summary?.sun_sign ?? user?.sun_sign;
   const userSign = ZODIAC_SIGNS.find((s) => s.value === sunSign);
+  const chartData = useMemo(
+    () => (summary ? toNatalChartData(summary) : null),
+    [summary],
+  );
   const interpretationSlides = useMemo<NatalInterpretationSlide[]>(() => {
     if (!full) return [];
 
@@ -737,28 +745,6 @@ export function Natal() {
               <NatalBasicSkeleton />
             ) : (
               <>
-                {/* ── Natal Chart Wheel ── */}
-                {tab === "circle" &&
-                  summary &&
-                  (() => {
-                    const chartData = toNatalChartData(summary);
-                    if (!chartData) return null;
-                    return (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.5 }}
-                        style={{ padding: "0 4px" }}
-                      >
-                        <NatalChart
-                          data={chartData}
-                          theme="ember-copper"
-                          variant="zodiac-poster"
-                        />
-                      </motion.div>
-                    );
-                  })()}
-
                 {/* ── Elements distribution ── */}
                 {tab === "elements" &&
                   summary?.sun_sign &&
@@ -811,7 +797,26 @@ export function Natal() {
                     </div>
                   )}
 
-                {tab === "circle" && (
+                {tab === "circle" && chartData ? (
+                  <motion.div
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.42, ease: "easeOut" }}
+                  >
+                    <NatalBirthCard
+                      chartData={chartData}
+                      userName={user?.name}
+                      ascendantLabel={toRu(summary?.ascendant_sign)}
+                      birthDate={summary?.birth_date}
+                      birthTime={summary?.birth_time}
+                      birthTimeKnown={summary?.birth_time_known ?? false}
+                      birthCity={summary?.birth_city}
+                      birthLat={summary?.birth_lat}
+                      birthLng={summary?.birth_lng}
+                      birthTz={summary?.birth_tz}
+                    />
+                  </motion.div>
+                ) : tab === "circle" ? (
                   <motion.div
                     className="natal-card natal-card--basic"
                     initial={{ opacity: 0, y: 16 }}
@@ -876,7 +881,7 @@ export function Natal() {
                       </div>
                     )}
                   </motion.div>
-                )}
+                ) : null}
               </>
             )}
 

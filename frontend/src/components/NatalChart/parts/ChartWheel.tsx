@@ -32,23 +32,45 @@ export function ChartWheel({
 
   const placed = useMemo(() => layOutPlanets(data.planets), [data.planets]);
   const isPoster = variant === 'zodiac-poster';
+  const isReferenceWheel = variant === 'reference-wheel';
+  const isSquareWheel = isPoster || isReferenceWheel;
 
   return (
     <g data-part="chart-wheel" transform={`translate(${WHEEL.cx} ${WHEEL.cy})`}>
-      {isPoster && (
+      {isSquareWheel && (
         <g data-part="poster-outer-rings">
-          <circle r={WHEEL.outerR + 66} fill="none" stroke="var(--natal-accent)" strokeWidth={2} opacity={0.9} />
-          <circle r={WHEEL.outerR + 52} fill="none" stroke="var(--natal-accent)" strokeWidth={1} opacity={0.62} />
           <circle
-            r={WHEEL.outerR + 38}
+            r={WHEEL.outerR + 66}
             fill="none"
             stroke="var(--natal-accent)"
             strokeWidth={2}
-            strokeDasharray="1 12"
-            strokeLinecap="round"
-            opacity={0.7}
+            opacity={0.9}
           />
-          <circle r={WHEEL.outerR + 16} fill="none" stroke="var(--natal-dim)" strokeWidth={1} opacity={0.62} />
+          <circle
+            r={WHEEL.outerR + 52}
+            fill="none"
+            stroke="var(--natal-accent)"
+            strokeWidth={1}
+            opacity={isReferenceWheel ? 0.32 : 0.62}
+          />
+          {!isReferenceWheel && (
+            <circle
+              r={WHEEL.outerR + 38}
+              fill="none"
+              stroke="var(--natal-accent)"
+              strokeWidth={2}
+              strokeDasharray="1 12"
+              strokeLinecap="round"
+              opacity={0.7}
+            />
+          )}
+          <circle
+            r={WHEEL.outerR + 16}
+            fill="none"
+            stroke="var(--natal-dim)"
+            strokeWidth={1}
+            opacity={0.62}
+          />
         </g>
       )}
 
@@ -82,7 +104,7 @@ export function ChartWheel({
         <DegreeLabels placed={placed} ascendantDegree={ascendantDegree} />
       )}
 
-      {isPoster ? <PosterMandala /> : <CenterGlyph />}
+      {isSquareWheel ? <PosterMandala /> : <CenterGlyph />}
     </g>
   );
 }
