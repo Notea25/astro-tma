@@ -4,7 +4,7 @@ import { motion, type PanInfo } from "framer-motion";
 import { PremiumGate } from "@/components/ui/PremiumGate";
 import { NatalBasicSkeleton } from "@/components/ui/Skeleton";
 import { useAppStore } from "@/stores/app";
-import { natalApi } from "@/services/api";
+import { ApiError, natalApi } from "@/services/api";
 import { ZODIAC_SIGNS } from "@/types";
 import { toNatalChartData } from "@/components/NatalChart/adapter";
 import { NatalBirthCard } from "@/components/NatalBirthCard";
@@ -259,6 +259,20 @@ const toRu = (s: string | null | undefined) =>
       ZODIAC_SIGNS.find((sign) => sign.value === s.toLowerCase())?.label ??
       s)
     : "—";
+
+function getPdfDownloadError(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.status === 402) {
+      return "PDF доступен после покупки полной натальной карты.";
+    }
+    if (error.status === 422) {
+      return "Для PDF нужны дата, время и город рождения.";
+    }
+    return error.message || "Не удалось подготовить PDF.";
+  }
+
+  return "Не удалось скачать PDF. Попробуйте ещё раз.";
+}
 
 // SVG icons for elements (celestial style)
 function IconFire() {
@@ -547,6 +561,8 @@ export function Natal() {
   const { user, setScreen } = useAppStore();
   const hasBirthData = !!user?.birth_city;
   const [tab, setTab] = useState<NatalTab>("circle");
+  const [isPdfDownloading, setIsPdfDownloading] = useState(false);
+  const [pdfDownloadError, setPdfDownloadError] = useState<string | null>(null);
 
   const { data: summary, isLoading: summaryLoading } = useQuery({
     queryKey: ["natal-summary"],
@@ -603,6 +619,20 @@ export function Natal() {
       slide.body.trim(),
     );
   }, [full]);
+
+  const handlePdfDownload = async () => {
+    if (isPdfDownloading) return;
+
+    setIsPdfDownloading(true);
+    setPdfDownloadError(null);
+    try {
+      await natalApi.downloadPdf();
+    } catch (error) {
+      setPdfDownloadError(getPdfDownloadError(error));
+    } finally {
+      setIsPdfDownloading(false);
+    }
+  };
 
   return (
     <div className="screen natal-screen">
@@ -1101,26 +1131,35 @@ export function Natal() {
                 )}
                 {/* Download PDF button */}
                 {full && (
-                  <motion.button
-                    className="btn-secondary btn-with-icon"
-                    style={{ marginTop: 20 }}
-                    onClick={() => natalApi.downloadPdf()}
-                    whileTap={{ scale: 0.96 }}
-                  >
-                    <svg
-                      width="15"
-                      height="15"
-                      viewBox="0 0 15 15"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+                  <>
+                    <motion.button
+                      className="btn-secondary btn-with-icon"
+                      style={{ marginTop: 20 }}
+                      onClick={handlePdfDownload}
+                      disabled={isPdfDownloading}
+                      aria-busy={isPdfDownloading}
+                      whileTap={{ scale: isPdfDownloading ? 1 : 0.96 }}
                     >
-                      <path d="M7.5 1.5v9M3.5 7.5l4 4 4-4M2 13h11" />
-                    </svg>
-                    Скачать полный отчёт (PDF)
-                  </motion.button>
+                      <svg
+                        width="15"
+                        height="15"
+                        viewBox="0 0 15 15"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M7.5 1.5v9M3.5 7.5l4 4 4-4M2 13h11" />
+                      </svg>
+                      {isPdfDownloading
+                        ? "Готовим PDF..."
+                        : "Скачать полный отчёт (PDF)"}
+                    </motion.button>
+                    {pdfDownloadError && (
+                      <p className="natal-download-error">{pdfDownloadError}</p>
+                    )}
+                  </>
                 )}
               </motion.div>
             </PremiumGate>

@@ -51,6 +51,9 @@ def key_horoscope(sign: str, date: str, period: str) -> str:
 def key_natal(user_id: int) -> str:
     return f"natal:{user_id}"
 
+def key_natal_pdf_download(token: str) -> str:
+    return f"natal:pdf-download:{token}"
+
 def key_moon(date: str) -> str:
     return f"moon:{date}"
 
