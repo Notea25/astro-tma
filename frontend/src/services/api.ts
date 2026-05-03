@@ -150,11 +150,37 @@ export const natalApi = {
 };
 
 // ── Tarot ──────────────────────────────────────────────────────────────────────
+// Rewrite backend's webp image URL to local /tarot/<folder>/card-NN-<slug>.svg
+function localTarotImage(remoteUrl: string | null | undefined): string | null {
+  if (!remoteUrl) return null;
+  const filename = remoteUrl.split("/").pop() ?? "";
+  // Pattern: NN_Some_Card_Name.webp  →  NN, Some_Card_Name
+  const m = filename.match(/^(\d{2})_(.+)\.(webp|png|jpe?g|svg)$/i);
+  if (!m) return remoteUrl; // fallback to original
+  const [, num, namePart] = m;
+  const folder = parseInt(num, 10) < 22 ? "majors" : "minors";
+  const slug = namePart
+    .toLowerCase()
+    .replace(/^the_/, "")
+    .replace(/_/g, "-");
+  return `/tarot/${folder}/card-${num}-${slug}.svg`;
+}
+
+function rewriteCardImage<T extends { image_url?: string | null }>(card: T): T {
+  return { ...card, image_url: localTarotImage(card.image_url ?? undefined) };
+}
+
+function rewriteSpread<T extends { cards: { image_url?: string | null }[] }>(
+  resp: T,
+): T {
+  return { ...resp, cards: resp.cards.map(rewriteCardImage) } as T;
+}
+
 export const tarotApi = {
   draw: (spread_type: string) =>
     request<import("@/types").TarotSpreadResponse>("POST", "/tarot/draw", {
       spread_type,
-    }),
+    }).then(rewriteSpread),
   interpret: (reading_id: number) =>
     request<import("@/types").TarotInterpretationResponse>(
       "POST",
@@ -166,7 +192,7 @@ export const tarotApi = {
     request<import("@/types").TarotSpreadResponse>(
       "GET",
       `/tarot/readings/${reading_id}`,
-    ),
+    ).then(rewriteSpread),
 };
 
 // ── Compatibility ──────────────────────────────────────────────────────────────
