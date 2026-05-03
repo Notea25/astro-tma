@@ -54,7 +54,9 @@ export function SpreadIntro({ spreadKey, onStart }: Props) {
             return (
               <div
                 key={idx}
-                className={`spread-intro-v2__mini-card card-back-pattern--${backVariant} spread-intro-v2__mini-card--symbolic`}
+                className={`spread-intro-v2__mini-card card-back-pattern--${backVariant} spread-intro-v2__mini-card--symbolic${
+                  slot.rotate ? " spread-intro-v2__mini-card--cross" : ""
+                }`}
                 style={{
                   left: slot.x * scale,
                   top: slot.y * scale,

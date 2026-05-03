@@ -5659,6 +5659,18 @@ body::before {
   font-weight: 400;
 }
 
+/* Cross mini-card: digit at the pre-rotation position that maps to the
+ * visible bottom-right corner after the card's own +90deg rotation, with
+ * a -90deg counter-rotate so it reads upright. Mirrors the canvas fix in
+ * CelticCrossFlow.module.css. */
+.spread-intro-v2--showcase .spread-intro-v2__mini-card--cross .spread-intro-v2__mini-symbol {
+  inset: auto;
+  display: block;
+  left: 88%;
+  top: 8%;
+  transform: translate(-50%, -50%) rotate(-90deg);
+}
+
 .spread-intro-v2--week .spread-intro-v2__mini-symbol {
   font-family:
     "Inter",
