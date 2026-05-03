@@ -18,9 +18,11 @@ function readableTangentRotation(svgAng: number): number {
 
 export function ZodiacRing({ ascendantDegree, variant = 'editorial' }: Props) {
   const isPoster = variant === 'zodiac-poster';
-  const glyphR = isPoster ? WHEEL.outerR - 68 : (WHEEL.outerR + WHEEL.middleR) / 2;
+  const isReferenceWheel = variant === 'reference-wheel';
+  const isSquareWheel = isPoster || isReferenceWheel;
+  const glyphR = isSquareWheel ? WHEEL.outerR - 68 : (WHEEL.outerR + WHEEL.middleR) / 2;
   const labelR = WHEEL.outerR + 44;
-  const dividerOuterR = isPoster ? WHEEL.outerR + 58 : WHEEL.outerR;
+  const dividerOuterR = isSquareWheel ? WHEEL.outerR + 58 : WHEEL.outerR;
 
   return (
     <g data-part="zodiac-ring">
@@ -57,8 +59,8 @@ export function ZodiacRing({ ascendantDegree, variant = 'editorial' }: Props) {
             x2={p2.x}
             y2={p2.y}
             stroke="var(--natal-primary)"
-            strokeWidth={isPoster ? 1.1 : 1.3}
-            opacity={isPoster ? 0.72 : 0.7}
+            strokeWidth={isSquareWheel ? 1.1 : 1.3}
+            opacity={isSquareWheel ? 0.72 : 0.7}
           />
         );
       })}
@@ -74,9 +76,9 @@ export function ZodiacRing({ ascendantDegree, variant = 'editorial' }: Props) {
             y={pos.y}
             textAnchor="middle"
             dominantBaseline="central"
-            fontSize={isPoster ? 58 : GLYPH_FONT_SIZE}
-            fill={isPoster ? 'var(--natal-accent)' : 'var(--natal-primary)'}
-            className={isPoster ? styles.posterGlyphText : styles.glyphText}
+            fontSize={isSquareWheel ? 58 : GLYPH_FONT_SIZE}
+            fill={isSquareWheel ? 'var(--natal-accent)' : 'var(--natal-primary)'}
+            className={isSquareWheel ? styles.posterGlyphText : styles.glyphText}
           >
             {ZODIAC_GLYPH[sign]}
           </text>

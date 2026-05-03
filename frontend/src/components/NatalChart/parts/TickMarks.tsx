@@ -16,7 +16,9 @@ const MAJOR_LEN = 9;
 export function TickMarks({ ascendantDegree, variant = 'editorial' }: Props) {
   const ticks: React.ReactElement[] = [];
   const isPoster = variant === 'zodiac-poster';
-  const outerR = isPoster ? WHEEL.outerR + 52 : WHEEL.outerR;
+  const isReferenceWheel = variant === 'reference-wheel';
+  const isSquareWheel = isPoster || isReferenceWheel;
+  const outerR = isSquareWheel ? WHEEL.outerR + 52 : WHEEL.outerR;
   for (let d = 0; d < 360; d += TICK_STEP) {
     const isMajor = d % 30 === 0;
     const svgAng = zodiacToSvgAngle(d, ascendantDegree);
@@ -31,7 +33,7 @@ export function TickMarks({ ascendantDegree, variant = 'editorial' }: Props) {
         y2={p2.y}
         stroke="var(--natal-dim)"
         strokeWidth={isMajor ? 1.1 : 0.7}
-        opacity={isPoster ? 0.82 : 1}
+        opacity={isSquareWheel ? 0.82 : 1}
       />,
     );
   }

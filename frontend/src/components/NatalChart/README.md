@@ -20,8 +20,8 @@ import { NatalChart, sampleData } from './components/NatalChart';
 | Prop              | Type                          | Default          | Notes |
 | ----------------- | ----------------------------- | ---------------- | ----- |
 | `data`            | `NatalChartData`              | required         | Pre-calculated positions. |
-| `theme`           | `'midnight-gold'` · `'purple-silver'` · `'forest-gold'` · `'ember-copper'` | `'midnight-gold'` | Switches CSS custom properties. |
-| `variant`         | `'editorial'` · `'zodiac-poster'` | `'editorial'` | Switches between the tall editorial chart and the square zodiac-poster chart. |
+| `theme`           | `'midnight-gold'` · `'purple-silver'` · `'forest-gold'` · `'ember-copper'` · `'onyx-gold'` | `'midnight-gold'` | Switches CSS custom properties. |
+| `variant`         | `'editorial'` · `'zodiac-poster'` · `'reference-wheel'` | `'editorial'` | Switches between the tall editorial chart, square zodiac poster, and transparent reference wheel. |
 | `size`            | `number`                      | `800`            | Rendered width in px; height is derived from the 1000×1400 viewBox. |
 | `title`           | `string`                      | `'NATAL'`        | Header title (display serif). |
 | `showDecorative`  | `boolean`                     | `true`           | Toggle top/bottom arch frames. |

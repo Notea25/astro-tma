@@ -47,12 +47,26 @@
   --natal-grid:      rgba(255, 138, 69, 0.11);
 }
 
+.root[data-theme="onyx-gold"] {
+  --natal-bg:        transparent;
+  --natal-primary:   #c7a34a;
+  --natal-accent:    #d9b95a;
+  --natal-secondary: rgba(199, 163, 74, 0.22);
+  --natal-dim:       rgba(199, 163, 74, 0.38);
+  --natal-grid:      rgba(199, 163, 74, 0.10);
+}
+
 .posterRoot {
   border-radius: 18px;
   overflow: hidden;
   box-shadow:
     0 22px 44px rgba(0, 0, 0, 0.28),
     0 0 36px rgba(255, 138, 69, 0.1);
+}
+
+.referenceRoot {
+  overflow: visible;
+  background: transparent;
 }
 
 /* Typographic primitives — used by SVG <text> via class names */
