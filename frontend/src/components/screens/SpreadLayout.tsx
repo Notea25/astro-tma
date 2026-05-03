@@ -99,10 +99,11 @@ export function SpreadLayout({
   const selectedCard = selected !== null ? cards[selected] : null;
   const selectedSlot = selected !== null ? slots[selected] : null;
   const isAllRevealed = revealedCount >= cards.length;
+  const isRevealCta = !isAllRevealed && !isAutoRevealing;
 
   return (
     <div className={`spread-layout spread-layout--${spreadType}`}>
-      <p className="fan-prompt">
+      <p className={`fan-prompt${isRevealCta ? " fan-prompt--cta" : ""}`}>
         {isAllRevealed
           ? "Расклад открыт"
           : isAutoRevealing

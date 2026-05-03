@@ -195,10 +195,15 @@ export function DrawSpreadFlow({
               : 'Расклад открыт'
 
   const containerPadded = phase === 'idle' || phase === 'shuffle' || phase === 'fan'
+  const isRevealCta =
+    phase === 'reading' && !isAllRevealed && !isAutoRevealing
 
   return (
     <div className={`${styles.flowContainer} ${containerPadded ? '' : styles.noPad}`}>
-      <p className={styles.prompt} style={{ minHeight: 20 }}>
+      <p
+        className={isRevealCta ? styles.promptCta : styles.prompt}
+        style={{ minHeight: 20 }}
+      >
         {prompt}
       </p>
 
