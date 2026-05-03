@@ -211,6 +211,9 @@ async def get_natal_pdf(
         houses=houses,
         aspects=aspects,
         reading=reading,
+        birth_lat=user.birth_lat,
+        birth_lng=user.birth_lng,
+        birth_tz=user.birth_tz,
     )
 
     filename = f"natal_{user.tg_first_name or 'chart'}.pdf"
