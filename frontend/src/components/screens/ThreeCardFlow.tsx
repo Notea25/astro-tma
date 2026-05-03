@@ -68,8 +68,12 @@ function CardFront({ card }: { card: TarotCardDetail }) {
   );
 }
 
+interface ThreeCardFlowProps {
+  onProgressChange?: (inProgress: boolean) => void;
+}
+
 // ── Main component ──────────────────────────────────────────────────────────
-export function ThreeCardFlow() {
+export function ThreeCardFlow({ onProgressChange }: ThreeCardFlowProps = {}) {
   const { impact } = useHaptic();
   const [phase, setPhase] = useState<Phase>("spinning");
   const [drawnCount, setDrawnCount] = useState(0);
@@ -102,9 +106,20 @@ export function ThreeCardFlow() {
   useEffect(
     () => () => {
       timers.current.forEach(clearTimeout);
+      onProgressChange?.(false);
     },
-    [],
+    [], // eslint-disable-line
   );
+
+  useEffect(() => {
+    if (!onProgressChange) return;
+    const active =
+      phase === "fly-in" ||
+      phase === "revealed" ||
+      phase === "fly-out" ||
+      (phase === "spinning" && drawnCount > 0);
+    onProgressChange(active);
+  }, [phase, drawnCount, onProgressChange]);
 
   // Card center position on screen (revealed state)
   // Clamp Y so the card + reveal-info block never sits under the bottom nav.
