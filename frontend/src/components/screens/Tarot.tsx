@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import WebApp from "@twa-dev/sdk";
 import { PremiumGate } from "@/components/ui/PremiumGate";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { HeaderAvatarButton } from "@/components/ui/HeaderAvatarButton";
@@ -72,6 +73,7 @@ export function Tarot() {
   const [showInfo, setShowInfo] = useState(true);
   const [allFlipped, setAllFlipped] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [threeCardInProgress, setThreeCardInProgress] = useState(false);
 
   const drawMutation = useMutation({
     mutationFn: tarotApi.draw,
@@ -91,6 +93,7 @@ export function Tarot() {
       drawMutation.reset();
     } else if (!showInfo && selectedSpread) {
       setShowInfo(true);
+      setThreeCardInProgress(false);
     } else if (selectedSpread) {
       setSelectedSpread(null);
       setShowInfo(true);
@@ -101,7 +104,26 @@ export function Tarot() {
     }
   }, [reading, selectedSpread, showInfo, showHistory, setScreen, drawMutation]);
 
-  useTelegramBackButton(handleBack, true);
+  const isSpreadInProgress =
+    !!reading || (selectedSpread === "three_card" && threeCardInProgress);
+
+  const requestBack = useCallback(() => {
+    if (!isSpreadInProgress) {
+      handleBack();
+      return;
+    }
+    const message =
+      "Вы уверены, что хотите выйти?\nТекущий расклад будет потерян.";
+    if (typeof WebApp.showConfirm === "function") {
+      WebApp.showConfirm(message, (confirmed: boolean) => {
+        if (confirmed) handleBack();
+      });
+    } else if (window.confirm(message)) {
+      handleBack();
+    }
+  }, [isSpreadInProgress, handleBack]);
+
+  useTelegramBackButton(requestBack, true);
 
   const handleSelectSpread = (spread: SpreadOption) => {
     impact("light");
@@ -238,7 +260,7 @@ export function Tarot() {
     return (
       <div className="screen tarot-screen">
         <div className="screen-header screen-header--with-back">
-          <button className="back-btn" onClick={handleBack} aria-label="Назад">
+          <button className="back-btn" onClick={requestBack} aria-label="Назад">
             <svg
               width="20"
               height="20"
@@ -267,7 +289,7 @@ export function Tarot() {
     return (
       <div className="screen tarot-screen">
         <div className="screen-header screen-header--with-back">
-          <button className="back-btn" onClick={handleBack} aria-label="Назад">
+          <button className="back-btn" onClick={requestBack} aria-label="Назад">
             <svg
               width="20"
               height="20"
@@ -284,7 +306,7 @@ export function Tarot() {
           <h2 className="screen-title">{spreadInfo.name}</h2>
         </div>
         <div className="screen-content">
-          <ThreeCardFlow />
+          <ThreeCardFlow onProgressChange={setThreeCardInProgress} />
         </div>
       </div>
     );
@@ -293,7 +315,7 @@ export function Tarot() {
   return (
     <div className="screen tarot-screen">
       <div className="screen-header screen-header--with-back">
-        <button className="back-btn" onClick={handleBack} aria-label="Назад">
+        <button className="back-btn" onClick={requestBack} aria-label="Назад">
           <svg
             width="20"
             height="20"
