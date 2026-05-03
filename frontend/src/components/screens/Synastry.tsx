@@ -334,6 +334,15 @@ export function Synastry() {
             )}
 
             {mode === "pick" && (
+              <SynastryHistorySection
+                onOpen={(item) => {
+                  setOpeningHistoryId(item.id);
+                  openHistoryMutation.mutate(item.id);
+                }}
+              />
+            )}
+
+            {mode === "pick" && (
               <div className="synastry-modes">
                 <p className="synastry-modes__intro">
                   Синастрия — карта встречи двух натальных гороскопов. Выберите,
@@ -467,15 +476,6 @@ export function Synastry() {
 
             {mode === "manual" && (
               <ManualPartnerForm onResult={(r) => setLocalResult(r)} />
-            )}
-
-            {mode === "pick" && (
-              <SynastryHistorySection
-                onOpen={(item) => {
-                  setOpeningHistoryId(item.id);
-                  openHistoryMutation.mutate(item.id);
-                }}
-              />
             )}
 
             {openingHistoryId !== null && (
@@ -788,11 +788,51 @@ function SynastryHistorySection({
     onError: () => notification("error"),
   });
 
-  if (isPending) return null;
-  if (!data || data.length === 0) return null;
+  if (isPending) {
+    return (
+      <div className="horoscope-card" style={{ marginBottom: 12 }}>
+        <div className="horoscope-card__period" style={{ marginBottom: 8 }}>
+          История раскладов
+        </div>
+        <p
+          style={{
+            margin: 0,
+            color: "var(--text-dim)",
+            fontSize: 13,
+            textAlign: "center",
+            padding: "8px 0",
+          }}
+        >
+          Загружаем…
+        </p>
+      </div>
+    );
+  }
+  if (!data || data.length === 0) {
+    return (
+      <div className="horoscope-card" style={{ marginBottom: 12 }}>
+        <div className="horoscope-card__period" style={{ marginBottom: 8 }}>
+          История раскладов
+        </div>
+        <p
+          style={{
+            margin: 0,
+            color: "var(--text-dim)",
+            fontSize: 13,
+            lineHeight: 1.5,
+            textAlign: "center",
+            padding: "8px 4px",
+          }}
+        >
+          Здесь появятся прошлые расклады, как только партнёр примет ваше
+          приглашение или вы примете чужое.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div className="horoscope-card" style={{ marginTop: 12 }}>
+    <div className="horoscope-card" style={{ marginBottom: 12 }}>
       <div className="horoscope-card__period" style={{ marginBottom: 8 }}>
         История раскладов
       </div>
