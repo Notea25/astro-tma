@@ -287,9 +287,9 @@ function PlanetTable({
   );
 }
 
-interface PlanetGroupItem extends SynastryResult["interpretations"][number] {
+type PlanetGroupItem = SynastryResult["interpretations"][number] & {
   anchorName: string;
-}
+};
 
 /** Groups each interpretation under the planet with the higher significance
  * (Sun > Moon > inner > social > outer). The first planet listed is what

@@ -198,6 +198,12 @@ function compatibilityToSynastryResult(
     total_aspects: 0,
     initiator_name: initiatorName,
     partner_name: partnerName,
+    planets_a: [],
+    planets_b: [],
+    houses_a: [],
+    houses_b: [],
+    interpretations: [],
+    summary_ru: null,
     fallbackCompatibility: result,
   };
 }
