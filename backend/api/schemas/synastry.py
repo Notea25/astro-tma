@@ -54,12 +54,47 @@ class SynastryScores(BaseModel):
     overall: int
 
 
+class SynastryPlanetInfo(BaseModel):
+    name: str
+    name_ru: str
+    sign: str
+    sign_ru: str
+    degree: float
+    sign_degree: float
+    house: int
+    retrograde: bool
+
+
+class SynastryHouseInfo(BaseModel):
+    number: int
+    sign: str
+    sign_ru: str
+    degree: float
+
+
+class SynastryAspectInterp(BaseModel):
+    p1_name: str
+    p2_name: str
+    p1_name_ru: str
+    p2_name_ru: str
+    aspect: str
+    aspect_ru: str
+    orb: float
+    text_ru: str
+
+
 class SynastryResult(BaseModel):
     aspects: list[SynastryAspectOut]
     scores: SynastryScores
     total_aspects: int
     initiator_name: str | None = None
     partner_name: str | None = None
+    planets_a: list[SynastryPlanetInfo] = []
+    planets_b: list[SynastryPlanetInfo] = []
+    houses_a: list[SynastryHouseInfo] = []
+    houses_b: list[SynastryHouseInfo] = []
+    interpretations: list[SynastryAspectInterp] = []
+    summary_ru: str | None = None
 
 
 class SynastryRequestOut(BaseModel):

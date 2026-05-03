@@ -6582,3 +6582,109 @@ body::before {
 .glossary-screen::before {
   display: none !important;
 }
+
+/* ── Synastry report ───────────────────────────────────────────────────── */
+.synastry-report {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.syn-planet-table {
+  display: flex;
+  flex-direction: column;
+}
+.syn-planet-row {
+  display: grid;
+  grid-template-columns: 22px 1fr auto auto auto;
+  gap: 8px;
+  align-items: baseline;
+  padding: 7px 0;
+  border-bottom: 1px dashed rgba(212, 178, 84, 0.12);
+  font-size: 13px;
+}
+.syn-planet-row:last-child {
+  border-bottom: none;
+}
+.syn-planet-row__glyph {
+  font-family: serif;
+  font-size: 16px;
+  color: rgba(232, 200, 98, 0.85);
+  text-align: center;
+}
+.syn-planet-row__name {
+  color: var(--text-light, rgba(255, 240, 200, 0.92));
+}
+.syn-planet-row__sign {
+  color: rgba(232, 200, 98, 0.85);
+  font-family: "Playfair Display", serif;
+}
+.syn-planet-row__retro {
+  color: #c58be8;
+  margin-left: 2px;
+}
+.syn-planet-row__deg,
+.syn-planet-row__house {
+  color: var(--text-muted, rgba(180, 168, 140, 0.65));
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+.syn-planet-block {
+  margin-bottom: 18px;
+}
+.syn-planet-block:last-child {
+  margin-bottom: 0;
+}
+.syn-planet-block__title {
+  font-family: "Cormorant Garamond", "Playfair Display", serif;
+  font-size: 17px;
+  letter-spacing: 0.06em;
+  color: rgba(232, 200, 98, 0.95);
+  margin: 0 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.syn-planet-block__glyph {
+  font-family: serif;
+  font-size: 22px;
+  color: rgba(232, 200, 98, 0.85);
+}
+
+.syn-aspect-card {
+  background: rgba(212, 178, 84, 0.04);
+  border: 1px solid rgba(212, 178, 84, 0.14);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+}
+.syn-aspect-card:last-child {
+  margin-bottom: 0;
+}
+.syn-aspect-card__header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: rgba(232, 200, 98, 0.85);
+  font-family: "Playfair Display", serif;
+}
+.syn-aspect-card__symbol {
+  font-size: 16px;
+  margin-left: auto;
+}
+.syn-aspect-card__orb {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+.syn-aspect-card__text {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-light, rgba(240, 232, 210, 0.88));
+  margin: 0;
+}

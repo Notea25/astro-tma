@@ -250,6 +250,18 @@ class SynastryRequest(TimestampMixin, Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class SynastryInterpretation(TimestampMixin, Base):
+    """Cached LLM-generated text for a (planet_a, planet_b, aspect) triple.
+    Keys are normalized so planet_a is alphabetically <= planet_b."""
+    __tablename__ = "synastry_interpretations"
+    __table_args__ = (UniqueConstraint("p1", "p2", "aspect"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    p1: Mapped[str] = mapped_column(String(20), nullable=False)
+    p2: Mapped[str] = mapped_column(String(20), nullable=False)
+    aspect: Mapped[str] = mapped_column(String(20), nullable=False)
+    text_ru: Mapped[str] = mapped_column(Text, nullable=False)
+
+
 # ── Notifications ─────────────────────────────────────────────────────────────
 class NotificationLog(TimestampMixin, Base):
     __tablename__ = "notification_logs"
