@@ -218,12 +218,11 @@ export function CelticCrossFlow({ readingId, cards }: Props) {
     <div
       className={`${styles.flowContainer} ${containerPadded ? '' : styles.noPad}`}
     >
-      <p
-        className={isRevealCta ? styles.promptCta : styles.prompt}
-        style={{ minHeight: 20 }}
-      >
-        {prompt}
-      </p>
+      {!isRevealCta && (
+        <p className={styles.prompt} style={{ minHeight: 20 }}>
+          {prompt}
+        </p>
+      )}
 
       {/* ── Slot grid (always visible) ── */}
       <div className={styles.spreadArea} ref={areaRef}>
@@ -274,7 +273,17 @@ export function CelticCrossFlow({ readingId, cards }: Props) {
                   >
                     {!isPlaced ? (
                       <div className={styles.placeholder}>
-                        <span className={styles.placeholderSymbol}>
+                        <span
+                          className={styles.placeholderSymbol}
+                          style={
+                            isCross
+                              ? {
+                                  display: 'inline-block',
+                                  transform: `rotate(${-slot.rotate!}deg)`,
+                                }
+                              : undefined
+                          }
+                        >
                           {slot.slot}
                         </span>
                       </div>
@@ -327,6 +336,10 @@ export function CelticCrossFlow({ readingId, cards }: Props) {
           </div>
         </div>
       </div>
+
+      {isRevealCta && (
+        <p className={styles.promptCta}>{prompt}</p>
+      )}
 
       {/* ── Deck (idle + shuffle phases) ── */}
       {(phase === 'idle' || phase === 'shuffle') && (

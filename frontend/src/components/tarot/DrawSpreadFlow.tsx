@@ -200,12 +200,11 @@ export function DrawSpreadFlow({
 
   return (
     <div className={`${styles.flowContainer} ${containerPadded ? '' : styles.noPad}`}>
-      <p
-        className={isRevealCta ? styles.promptCta : styles.prompt}
-        style={{ minHeight: 20 }}
-      >
-        {prompt}
-      </p>
+      {!isRevealCta && (
+        <p className={styles.prompt} style={{ minHeight: 20 }}>
+          {prompt}
+        </p>
+      )}
 
       <div className={styles.spreadArea} ref={areaRef}>
         <div
@@ -251,7 +250,17 @@ export function DrawSpreadFlow({
                   >
                     {!isPlaced || !card ? (
                       <div className={styles.placeholder}>
-                        <span className={styles.placeholderSymbol}>
+                        <span
+                          className={styles.placeholderSymbol}
+                          style={
+                            isCross
+                              ? {
+                                  display: 'inline-block',
+                                  transform: `rotate(${-slot.rotate!}deg)`,
+                                }
+                              : undefined
+                          }
+                        >
                           {slot.slot}
                         </span>
                       </div>
@@ -303,6 +312,10 @@ export function DrawSpreadFlow({
           </div>
         </div>
       </div>
+
+      {isRevealCta && (
+        <p className={styles.promptCta}>{prompt}</p>
+      )}
 
       {(phase === 'idle' || phase === 'shuffle') && (
         <div className={styles.deckWrap}>
