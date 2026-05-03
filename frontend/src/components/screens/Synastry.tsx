@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { PremiumGate } from "@/components/ui/PremiumGate";
 import {
@@ -9,41 +9,14 @@ import {
 import { useAppStore } from "@/stores/app";
 import { compatibilityApi, synastryApi, ApiError } from "@/services/api";
 import { useHaptic } from "@/hooks/useTelegram";
+import { SynastryReport } from "@/components/synastry/SynastryReport";
 import type {
   CompatibilityResponse,
+  SynastryHistoryItem,
   SynastryResult,
   SynastryManualInput,
   ZodiacSign,
 } from "@/types";
-
-const PLANET_GLYPH: Record<string, string> = {
-  sun: "☉",
-  moon: "☽",
-  mercury: "☿",
-  venus: "♀",
-  mars: "♂",
-  jupiter: "♃",
-  saturn: "♄",
-  uranus: "♅",
-  neptune: "♆",
-  pluto: "♇",
-};
-
-const ASPECT_SYMBOL: Record<string, string> = {
-  conjunction: "☌",
-  trine: "△",
-  sextile: "⚹",
-  square: "□",
-  opposition: "☍",
-};
-
-const ASPECT_COLOR: Record<string, string> = {
-  conjunction: "#e8c97e",
-  trine: "#8bc89b",
-  sextile: "#7ec8e3",
-  square: "#e88b8b",
-  opposition: "#c58be8",
-};
 
 const SPHERE_LABELS: { key: keyof SynastryResult["scores"]; label: string }[] =
   [
@@ -187,6 +160,7 @@ function compatibilityToSynastryResult(
   partnerName: string,
 ): SynastryDisplayResult {
   return {
+    id: null,
     aspects: [],
     scores: {
       love: result.love,
@@ -198,12 +172,14 @@ function compatibilityToSynastryResult(
     total_aspects: 0,
     initiator_name: initiatorName,
     partner_name: partnerName,
+    is_initiator: true,
     planets_a: [],
     planets_b: [],
     houses_a: [],
     houses_b: [],
     interpretations: [],
     summary_ru: null,
+    created_at: null,
     fallbackCompatibility: result,
   };
 }
@@ -239,6 +215,7 @@ export function Synastry() {
     null,
   );
   const [mode, setMode] = useState<Mode>("pick");
+  const [openingHistoryId, setOpeningHistoryId] = useState<number | null>(null);
 
   const requestMutation = useMutation({
     mutationFn: synastryApi.createRequest,
@@ -259,6 +236,18 @@ export function Synastry() {
       notification("success");
     },
     onError: () => notification("error"),
+  });
+
+  const openHistoryMutation = useMutation({
+    mutationFn: (id: number) => synastryApi.result(id),
+    onSuccess: (data) => {
+      setLocalResult(data);
+      setOpeningHistoryId(null);
+    },
+    onError: () => {
+      setOpeningHistoryId(null);
+      notification("error");
+    },
   });
 
   const invite = requestMutation.data;
@@ -479,6 +468,28 @@ export function Synastry() {
             {mode === "manual" && (
               <ManualPartnerForm onResult={(r) => setLocalResult(r)} />
             )}
+
+            {mode === "pick" && (
+              <SynastryHistorySection
+                onOpen={(item) => {
+                  setOpeningHistoryId(item.id);
+                  openHistoryMutation.mutate(item.id);
+                }}
+              />
+            )}
+
+            {openingHistoryId !== null && (
+              <p
+                style={{
+                  textAlign: "center",
+                  marginTop: 8,
+                  color: "var(--text-dim)",
+                  fontSize: 12,
+                }}
+              >
+                Загружаем расклад…
+              </p>
+            )}
           </PremiumGate>
         )}
       </div>
@@ -674,97 +685,74 @@ function SynastryResultView({
 
   return (
     <>
-      <div className="horoscope-card">
-        <div className="horoscope-card__period" style={{ marginBottom: 8 }}>
-          {result.initiator_name}{" "}
-          {result.partner_name ? `× ${result.partner_name}` : ""}
-        </div>
-        <div className="energy-bars">
-          {SPHERE_LABELS.map(({ key, label }) => (
-            <div key={key} className="energy-row">
-              <span className="energy-label">{label}</span>
-              <div className="energy-track">
-                <motion.div
-                  className="energy-fill"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${result.scores[key]}%` }}
-                  transition={{ duration: 0.8, ease: "easeOut", delay: 0.1 }}
-                />
-              </div>
-              <span className="energy-val">{result.scores[key]}%</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {fallback ? (
-        <div className="horoscope-card">
-          <div className="horoscope-card__period" style={{ marginBottom: 12 }}>
-            Базовая совместимость
+        <>
+          <div className="horoscope-card">
+            <div
+              className="horoscope-card__period"
+              style={{ marginBottom: 8 }}
+            >
+              {result.initiator_name}{" "}
+              {result.partner_name ? `× ${result.partner_name}` : ""}
+            </div>
+            <div className="energy-bars">
+              {SPHERE_LABELS.map(({ key, label }) => (
+                <div key={key} className="energy-row">
+                  <span className="energy-label">{label}</span>
+                  <div className="energy-track">
+                    <motion.div
+                      className="energy-fill"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${result.scores[key]}%` }}
+                      transition={{
+                        duration: 0.8,
+                        ease: "easeOut",
+                        delay: 0.1,
+                      }}
+                    />
+                  </div>
+                  <span className="energy-val">{result.scores[key]}%</span>
+                </div>
+              ))}
+            </div>
           </div>
-          <p className="compat-description" style={{ marginTop: 0 }}>
-            {fallback.description_ru}
-          </p>
-          {fallback.strengths_ru.length > 0 && (
-            <div className="compat-list compat-list--strengths">
-              <div className="compat-list__title">
-                <span className="compat-list__dot compat-list__dot--green" />
-                Сильные стороны
-              </div>
-              {fallback.strengths_ru.map((item, idx) => (
-                <div key={idx} className="compat-list__item">
-                  • {item}
-                </div>
-              ))}
+          <div className="horoscope-card">
+            <div className="horoscope-card__period" style={{ marginBottom: 12 }}>
+              Базовая совместимость
             </div>
-          )}
-          {fallback.challenges_ru.length > 0 && (
-            <div className="compat-list compat-list--challenges">
-              <div className="compat-list__title">
-                <span className="compat-list__dot compat-list__dot--amber" />
-                Вызовы
-              </div>
-              {fallback.challenges_ru.map((item, idx) => (
-                <div key={idx} className="compat-list__item">
-                  • {item}
+            <p className="compat-description" style={{ marginTop: 0 }}>
+              {fallback.description_ru}
+            </p>
+            {fallback.strengths_ru.length > 0 && (
+              <div className="compat-list compat-list--strengths">
+                <div className="compat-list__title">
+                  <span className="compat-list__dot compat-list__dot--green" />
+                  Сильные стороны
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+                {fallback.strengths_ru.map((item, idx) => (
+                  <div key={idx} className="compat-list__item">
+                    • {item}
+                  </div>
+                ))}
+              </div>
+            )}
+            {fallback.challenges_ru.length > 0 && (
+              <div className="compat-list compat-list--challenges">
+                <div className="compat-list__title">
+                  <span className="compat-list__dot compat-list__dot--amber" />
+                  Вызовы
+                </div>
+                {fallback.challenges_ru.map((item, idx) => (
+                  <div key={idx} className="compat-list__item">
+                    • {item}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
       ) : (
-        <div className="horoscope-card">
-          <div className="horoscope-card__period" style={{ marginBottom: 12 }}>
-            Ключевые аспекты ({result.total_aspects} всего)
-          </div>
-          <div className="transits-list">
-            {result.aspects.map((a, idx) => (
-              <motion.div
-                key={idx}
-                className="transit-row"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.04, duration: 0.3 }}
-              >
-                <span className="transit-row__planet">
-                  {PLANET_GLYPH[a.p1_name.toLowerCase()] ?? "●"} {a.p1_name_ru}
-                </span>
-                <span
-                  className="transit-row__aspect"
-                  style={{
-                    color: ASPECT_COLOR[a.aspect] ?? "var(--text-dim)",
-                  }}
-                >
-                  {ASPECT_SYMBOL[a.aspect] ?? a.aspect_ru}
-                </span>
-                <span className="transit-row__planet">
-                  {PLANET_GLYPH[a.p2_name.toLowerCase()] ?? "●"} {a.p2_name_ru}
-                </span>
-                <span className="transit-row__orb">{a.orb.toFixed(1)}°</span>
-              </motion.div>
-            ))}
-          </div>
-        </div>
+        <SynastryReport result={result} />
       )}
 
       <button
@@ -776,4 +764,90 @@ function SynastryResultView({
       </button>
     </>
   );
+}
+
+function SynastryHistorySection({
+  onOpen,
+}: {
+  onOpen: (item: SynastryHistoryItem) => void;
+}) {
+  const queryClient = useQueryClient();
+  const { impact, notification } = useHaptic();
+  const { data, isPending } = useQuery({
+    queryKey: ["synastry-history"],
+    queryFn: synastryApi.history,
+    staleTime: 30_000,
+  });
+
+  const hideMutation = useMutation({
+    mutationFn: (id: number) => synastryApi.hideHistoryItem(id),
+    onSuccess: () => {
+      notification("success");
+      queryClient.invalidateQueries({ queryKey: ["synastry-history"] });
+    },
+    onError: () => notification("error"),
+  });
+
+  if (isPending) return null;
+  if (!data || data.length === 0) return null;
+
+  return (
+    <div className="horoscope-card" style={{ marginTop: 12 }}>
+      <div className="horoscope-card__period" style={{ marginBottom: 8 }}>
+        История раскладов
+      </div>
+      {data.map((item) => (
+        <div
+          key={item.id}
+          className="syn-history-row"
+          onClick={() => {
+            impact("light");
+            onOpen(item);
+          }}
+          role="button"
+          tabIndex={0}
+        >
+          <div className="syn-history-row__main">
+            <div className="syn-history-row__name">
+              {item.partner_name ?? "—"}
+            </div>
+            <div className="syn-history-row__meta">
+              {item.is_initiator ? "Вы пригласили" : "Вас пригласили"} ·{" "}
+              {formatHistoryDate(item.created_at)}
+            </div>
+          </div>
+          <div className="syn-history-row__score">
+            {item.scores.overall}%
+          </div>
+          <button
+            type="button"
+            className="syn-history-row__delete"
+            aria-label="Удалить"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (window.confirm("Удалить расклад из истории?")) {
+                hideMutation.mutate(item.id);
+              }
+            }}
+            disabled={hideMutation.isPending}
+          >
+            ✕
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function formatHistoryDate(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return new Intl.DateTimeFormat("ru-RU", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }).format(d);
+  } catch {
+    return iso;
+  }
 }

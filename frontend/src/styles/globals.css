@@ -6688,3 +6688,72 @@ body::before {
   color: var(--text-light, rgba(240, 232, 210, 0.88));
   margin: 0;
 }
+
+/* History rows */
+.syn-history-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px dashed rgba(212, 178, 84, 0.12);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.15s ease;
+}
+.syn-history-row:last-child {
+  border-bottom: none;
+}
+.syn-history-row:hover,
+.syn-history-row:focus-visible {
+  background: rgba(212, 178, 84, 0.04);
+  outline: none;
+}
+.syn-history-row__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.syn-history-row__name {
+  font-family: "Playfair Display", serif;
+  font-size: 14px;
+  color: var(--text-light, rgba(240, 232, 210, 0.92));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.syn-history-row__meta {
+  font-size: 11px;
+  color: var(--text-muted, rgba(180, 168, 140, 0.6));
+  letter-spacing: 0.04em;
+}
+.syn-history-row__score {
+  font-family: "Cinzel", "Playfair Display", serif;
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  color: rgba(232, 200, 98, 0.95);
+  font-variant-numeric: tabular-nums;
+}
+.syn-history-row__delete {
+  background: transparent;
+  border: 1px solid rgba(212, 178, 84, 0.22);
+  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(212, 178, 84, 0.55);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.syn-history-row__delete:hover {
+  border-color: rgba(232, 139, 139, 0.5);
+  color: rgba(232, 139, 139, 0.85);
+}
+.syn-history-row__delete:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
