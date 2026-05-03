@@ -10,11 +10,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.middleware.telegram_auth import get_tg_user
+import asyncio
+
 from api.schemas.synastry import (
+    SynastryAspectInterp,
     SynastryAspectOut,
+    SynastryHouseInfo,
     SynastryInviteInfo,
     SynastryManualInput,
     SynastryPending,
+    SynastryPlanetInfo,
     SynastryRequestOut,
     SynastryResult,
     SynastryScores,
@@ -24,6 +29,10 @@ from core.settings import settings
 from db.database import get_db
 from db.models import SynastryRequest, SynastryRequestStatus, User
 from services.astro.synastry import calculate_synastry
+from services.astro.synastry_interpreter import (
+    generate_pair_summary,
+    get_or_generate_aspect_texts,
+)
 from services.users import repository as user_repo
 
 log = get_logger(__name__)
@@ -177,6 +186,77 @@ async def _require_user_with_chart(db: AsyncSession, user_id: int) -> User:
     return user
 
 
+def _planets_from_chart(chart_data: dict) -> list[SynastryPlanetInfo]:
+    """Project NatalChart.chart_data['planets'] dict into the response schema."""
+    raw = chart_data.get("planets") if chart_data else None
+    if not isinstance(raw, dict):
+        return []
+    out: list[SynastryPlanetInfo] = []
+    for name, p in raw.items():
+        if not isinstance(p, dict):
+            continue
+        out.append(
+            SynastryPlanetInfo(
+                name=name,
+                name_ru=_PLANET_RU.get(name, name),
+                sign=str(p.get("sign", "")),
+                sign_ru=str(p.get("sign_ru") or p.get("sign", "")),
+                degree=float(p.get("degree", 0) or 0),
+                sign_degree=float(p.get("sign_degree", p.get("degree", 0)) or 0),
+                house=int(p.get("house", 0) or 0),
+                retrograde=bool(p.get("retrograde", False)),
+            )
+        )
+    return out
+
+
+def _houses_from_chart(chart_data: dict) -> list[SynastryHouseInfo]:
+    raw = chart_data.get("houses") if chart_data else None
+    if not isinstance(raw, list):
+        return []
+    out: list[SynastryHouseInfo] = []
+    for h in raw:
+        if not isinstance(h, dict):
+            continue
+        out.append(
+            SynastryHouseInfo(
+                number=int(h.get("number", 0) or 0),
+                sign=str(h.get("sign", "")),
+                sign_ru=str(h.get("sign_ru") or h.get("sign", "")),
+                degree=float(h.get("degree", 0) or 0),
+            )
+        )
+    return out
+
+
+def _interp_to_schema(
+    aspects: list[dict],
+    texts: dict[tuple[str, str, str], str],
+) -> list[SynastryAspectInterp]:
+    """Pair each aspect with its cached/generated Russian text.
+    Skips aspects with empty text so we don't render blank cards."""
+    out: list[SynastryAspectInterp] = []
+    for a in aspects:
+        p1l, p2l = a["p1_name"].lower(), a["p2_name"].lower()
+        key_a, key_b = (p1l, p2l) if p1l <= p2l else (p2l, p1l)
+        text = texts.get((key_a, key_b, a["aspect"]), "")
+        if not text:
+            continue
+        out.append(
+            SynastryAspectInterp(
+                p1_name=a["p1_name"],
+                p2_name=a["p2_name"],
+                p1_name_ru=_PLANET_RU.get(p1l, a["p1_name"]),
+                p2_name_ru=_PLANET_RU.get(p2l, a["p2_name"]),
+                aspect=a["aspect"],
+                aspect_ru=_ASPECT_RU.get(a["aspect"], a["aspect"]),
+                orb=float(a["orb"]),
+                text_ru=text,
+            )
+        )
+    return out
+
+
 @router.post("/request", response_model=SynastryRequestOut)
 async def create_request(
     tg_user: dict = Depends(get_tg_user),
@@ -307,12 +387,23 @@ async def accept_request(
     if req.status == SynastryRequestStatus.COMPLETED and req.result_json:
         initiator = await user_repo.get_by_id(db, req.initiator_user_id)
         data = req.result_json
+        # Re-fetch interpretations from cache (cheap) — text bodies are not
+        # stored in result_json so the table can be regenerated/edited later.
+        texts = await get_or_generate_aspect_texts(
+            db, data["aspects"], settings.ANTHROPIC_API_KEY
+        )
         return SynastryResult(
             aspects=_aspects_to_schema(data["aspects"]),
             scores=SynastryScores(**data["scores"]),
             total_aspects=data["total_aspects"],
             initiator_name=initiator.tg_first_name if initiator else None,
             partner_name=partner.tg_first_name,
+            planets_a=_planets_from_chart(initiator.natal_chart.chart_data) if initiator and initiator.natal_chart else [],
+            planets_b=_planets_from_chart(partner.natal_chart.chart_data) if partner.natal_chart else [],
+            houses_a=_houses_from_chart(initiator.natal_chart.chart_data) if initiator and initiator.natal_chart else [],
+            houses_b=_houses_from_chart(partner.natal_chart.chart_data) if partner.natal_chart else [],
+            interpretations=_interp_to_schema(data["aspects"], texts),
+            summary_ru=data.get("summary_ru"),
         )
 
     initiator = await _require_user_with_chart(db, req.initiator_user_id)
@@ -346,9 +437,22 @@ async def accept_request(
             "Не удалось рассчитать совместимость. Проверьте данные рождения в профиле.",
         ) from exc
 
+    # Run aspect texts + pair summary in parallel — both are independent LLM
+    # calls and the per-aspect lookup hits the cache for most aspects anyway.
+    texts, summary = await asyncio.gather(
+        get_or_generate_aspect_texts(db, raw["aspects"], settings.ANTHROPIC_API_KEY),
+        generate_pair_summary(
+            initiator.tg_first_name,
+            partner.tg_first_name,
+            raw["aspects"],
+            raw["scores"],
+            settings.ANTHROPIC_API_KEY,
+        ),
+    )
+
     req.partner_user_id = partner.id
     req.status = SynastryRequestStatus.COMPLETED
-    req.result_json = raw
+    req.result_json = {**raw, "summary_ru": summary}
     await db.commit()
     log.info("synastry.completed", request_id=req.id, initiator=initiator.id, partner=partner.id)
 
@@ -358,6 +462,12 @@ async def accept_request(
         total_aspects=raw["total_aspects"],
         initiator_name=initiator.tg_first_name,
         partner_name=partner.tg_first_name,
+        planets_a=_planets_from_chart(initiator.natal_chart.chart_data),
+        planets_b=_planets_from_chart(partner.natal_chart.chart_data),
+        houses_a=_houses_from_chart(initiator.natal_chart.chart_data),
+        houses_b=_houses_from_chart(partner.natal_chart.chart_data),
+        interpretations=_interp_to_schema(raw["aspects"], texts),
+        summary_ru=summary,
     )
 
 

@@ -228,12 +228,47 @@ export interface SynastryScores {
   overall: number;
 }
 
+export interface SynastryPlanetInfo {
+  name: string;
+  name_ru: string;
+  sign: string;
+  sign_ru: string;
+  degree: number;
+  sign_degree: number;
+  house: number;
+  retrograde: boolean;
+}
+
+export interface SynastryHouseInfo {
+  number: number;
+  sign: string;
+  sign_ru: string;
+  degree: number;
+}
+
+export interface SynastryAspectInterp {
+  p1_name: string;
+  p2_name: string;
+  p1_name_ru: string;
+  p2_name_ru: string;
+  aspect: string;
+  aspect_ru: string;
+  orb: number;
+  text_ru: string;
+}
+
 export interface SynastryResult {
   aspects: SynastryAspectOut[];
   scores: SynastryScores;
   total_aspects: number;
   initiator_name: string | null;
   partner_name: string | null;
+  planets_a: SynastryPlanetInfo[];
+  planets_b: SynastryPlanetInfo[];
+  houses_a: SynastryHouseInfo[];
+  houses_b: SynastryHouseInfo[];
+  interpretations: SynastryAspectInterp[];
+  summary_ru: string | null;
 }
 
 export interface SynastryRequestOut {
