@@ -616,7 +616,7 @@ def _draw_intro(c: canvas.Canvas, *, sun_sign: str, moon_sign: str, asc_sign: st
     quote = "«Я родился в момент, когда звёзды складывались именно так - и никогда более не сложатся точно так же.»"
     _paragraph(c, 76, 156, quote, width=260, font=FONT_SERIF_ITALIC, size=18, line_height=22, color=TEXT)
 
-    y = 280
+    y: float = 280
     y = _paragraph(
         c,
         56,
@@ -748,14 +748,14 @@ def _draw_planet_chapter(
     )
     _paragraph(c, 76, 312, quote, width=260, font=FONT_SERIF_ITALIC, size=17, line_height=22, color=TEXT)
 
-    y = 446 if planet_key == "sun" else 426
+    y: float = 446 if planet_key == "sun" else 426
     for paragraph in _chapter_copy(sign, planet_key, house_num):
         y = _paragraph(c, 56, y, paragraph, size=10.5, line_height=19, color=BODY) + 12
 
     if planet_key == "sun":
         _divider(c, 666)
         _section_label(c, 56, 696, "Ключевые черты")
-        x = 56
+        x: float = 56
         for trait in SIGN_TRAITS.get(sign_key, SIGN_TRAITS["scorpio"]):
             x += _pill(c, x, 722, trait) + 6
     else:
@@ -858,12 +858,12 @@ def _draw_aspects(c: canvas.Canvas, aspects: list[dict[str, Any]]) -> None:
 
     _card(c, 56, 240, 483, 100)
     _section_label(c, 76, 256, "Типы аспектов")
-    for i, aspect in enumerate(["trine", "square", "conjunction", "opposition"]):
+    for i, aspect_name in enumerate(["trine", "square", "conjunction", "opposition"]):
         x = 90 if i % 2 == 0 else 320
         top = 280 if i < 2 else 304
         c.setFillColor(GOLD)
         c.circle(x - 11, _top(top + 5), 3, fill=1, stroke=0)
-        _draw_aspect_type_card(c, x, top, aspect)
+        _draw_aspect_type_card(c, x, top, aspect_name)
 
     _section_label(c, 56, 376, "Ваши ключевые аспекты")
     y = 400
@@ -872,21 +872,21 @@ def _draw_aspects(c: canvas.Canvas, aspects: list[dict[str, Any]]) -> None:
         _paragraph(c, 56, y, "В карте пока нет сохранённых аспектов для отображения.", size=11, color=BODY)
         return
 
-    for aspect in sorted_aspects:
-        aspect_type = _norm_key(aspect.get("aspect"))
+    for aspect_data in sorted_aspects:
+        aspect_type = _norm_key(aspect_data.get("aspect"))
         sym = ASPECT_SYMBOLS.get(aspect_type, "✦")
-        p1 = _planet_key(aspect.get("p1"))
-        p2 = _planet_key(aspect.get("p2"))
+        p1 = _planet_key(aspect_data.get("p1"))
+        p2 = _planet_key(aspect_data.get("p2"))
         _card(c, 56, y, 483, 50, radius=9)
         c.setFillColor(GOLD)
         c.rect(56, _top(y + 40), 3, 30, fill=1, stroke=0)
         line = (
-            f"{PLANET_SYMBOLS.get(p1, '')} {PLANET_RU.get(p1, str(aspect.get('p1', '')))} "
-            f"{sym} {PLANET_SYMBOLS.get(p2, '')} {PLANET_RU.get(p2, str(aspect.get('p2', '')))}"
+            f"{PLANET_SYMBOLS.get(p1, '')} {PLANET_RU.get(p1, str(aspect_data.get('p1', '')))} "
+            f"{sym} {PLANET_SYMBOLS.get(p2, '')} {PLANET_RU.get(p2, str(aspect_data.get('p2', '')))}"
         )
         _text(c, 76, y + 8, line, font=FONT_BOLD, size=12, color=TEXT)
         _text(c, 76, y + 28, ASPECT_HINTS.get(aspect_type, ASPECT_RU.get(aspect_type, aspect_type)), font=FONT, size=10, color=MUTED)
-        _text(c, 485, y + 18, f"{_degree(aspect.get('orb')):.2f}°", font=FONT, size=10, color=BODY, right=True)
+        _text(c, 485, y + 18, f"{_degree(aspect_data.get('orb')):.2f}°", font=FONT, size=10, color=BODY, right=True)
         y += 56
 
 

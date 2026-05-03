@@ -14,7 +14,7 @@ caller gets either real text or a generic fallback.
 import json
 from typing import Any
 
-from sqlalchemy import and_, or_, select, tuple_
+from sqlalchemy import select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.logging import get_logger

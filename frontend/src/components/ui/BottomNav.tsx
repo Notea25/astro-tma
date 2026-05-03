@@ -72,7 +72,8 @@ const NAV_ITEMS = [
 ]
 
 export function BottomNav() {
-  const { screen, setScreen } = useAppStore()
+  const screen = useAppStore((s) => s.screen)
+  const setScreen = useAppStore((s) => s.setScreen)
   const { selection } = useHaptic()
 
   const activeTab = SCREEN_TO_TAB[screen] ?? 'home'

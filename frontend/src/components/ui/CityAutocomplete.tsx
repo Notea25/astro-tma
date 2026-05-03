@@ -1,91 +1,142 @@
-import { useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 
 export interface CityOption {
-  displayName: string   // shown in dropdown
-  cityName: string      // sent to backend
-  lat: number
-  lng: number
+  displayName: string; // shown in dropdown
+  cityName: string; // sent to backend
+  lat: number;
+  lng: number;
 }
 
 interface Props {
-  value: string
-  onChange: (value: string) => void
-  onSelect: (option: CityOption) => void
-  placeholder?: string
+  value: string;
+  onChange: (value: string) => void;
+  onSelect: (option: CityOption) => void;
+  placeholder?: string;
 }
 
-export function CityAutocomplete({ value, onChange, onSelect, placeholder }: Props) {
-  const [options, setOptions] = useState<CityOption[]>([])
-  const [open, setOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
+const citySearchCache = new Map<string, CityOption[]>();
+
+export function CityAutocomplete({
+  value,
+  onChange,
+  onSelect,
+  placeholder,
+}: Props) {
+  const [options, setOptions] = useState<CityOption[]>([]);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (value.length < 2) {
-      setOptions([])
-      setOpen(false)
-      return
+    const query = value.trim();
+    const cacheKey = query.toLocaleLowerCase("ru");
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    abortRef.current?.abort();
+
+    if (query.length < 2) {
+      setOptions([]);
+      setOpen(false);
+      setLoading(false);
+      return;
     }
 
-    if (debounceRef.current) clearTimeout(debounceRef.current)
+    const cached = citySearchCache.get(cacheKey);
+    if (cached) {
+      setOptions(cached);
+      setOpen(cached.length > 0);
+      setLoading(false);
+      return;
+    }
+
     debounceRef.current = setTimeout(async () => {
-      setLoading(true)
+      const controller = new AbortController();
+      abortRef.current = controller;
+      setLoading(true);
       try {
         const resp = await fetch(
           `https://nominatim.openstreetmap.org/search?` +
-          `q=${encodeURIComponent(value)}&format=json&limit=5&addressdetails=1`,
-          { headers: { 'Accept-Language': 'ru,en' } }
-        )
-        const data = await resp.json()
+            `q=${encodeURIComponent(query)}&format=json&limit=5&addressdetails=1`,
+          {
+            headers: { "Accept-Language": "ru,en" },
+            signal: controller.signal,
+          },
+        );
+        const data = await resp.json();
         const results: CityOption[] = data
-          .filter((p: any) => p.type !== 'administrative' || p.addresstype === 'city')
+          .filter(
+            (p: any) =>
+              p.type !== "administrative" || p.addresstype === "city",
+          )
           .slice(0, 5)
           .map((p: any) => {
-            const addr = p.address || {}
+            const addr = p.address || {};
             const cityName =
-              addr.city || addr.town || addr.village || addr.municipality ||
-              addr.county || p.name || value
-            const country = addr.country || ''
-            const state = addr.state || ''
-            const parts = [cityName, state !== cityName ? state : '', country]
-              .filter(Boolean)
+              addr.city ||
+              addr.town ||
+              addr.village ||
+              addr.municipality ||
+              addr.county ||
+              p.name ||
+              query;
+            const country = addr.country || "";
+            const state = addr.state || "";
+            const parts = [
+              cityName,
+              state !== cityName ? state : "",
+              country,
+            ].filter(Boolean);
             return {
-              displayName: parts.join(', '),
+              displayName: parts.join(", "),
               cityName,
               lat: parseFloat(p.lat),
               lng: parseFloat(p.lon),
-            }
-          })
-        setOptions(results)
-        setOpen(results.length > 0)
-      } catch {
-        setOptions([])
-        setOpen(false)
+            };
+          });
+        citySearchCache.set(cacheKey, results);
+        setOptions(results);
+        setOpen(results.length > 0);
+      } catch (error) {
+        if ((error as DOMException).name === "AbortError") return;
+        setOptions([]);
+        setOpen(false);
       } finally {
-        setLoading(false)
+        if (abortRef.current === controller) {
+          abortRef.current = null;
+          setLoading(false);
+        }
       }
-    }, 350)
-  }, [value])
+    }, 350);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      abortRef.current?.abort();
+    };
+  }, [value]);
 
   // Close on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false)
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
       }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   const handleSelect = (opt: CityOption) => {
-    onChange(opt.displayName)
-    onSelect(opt)
-    setOpen(false)
-    setOptions([])
-  }
+    onChange(opt.displayName);
+    onSelect(opt);
+    setOpen(false);
+    setOptions([]);
+  };
 
   return (
     <div ref={containerRef} className="city-autocomplete">
@@ -93,7 +144,7 @@ export function CityAutocomplete({ value, onChange, onSelect, placeholder }: Pro
         <input
           type="text"
           className="form-input"
-          placeholder={placeholder ?? 'Москва, Лондон, Нью-Йорк...'}
+          placeholder={placeholder ?? "Москва, Лондон, Нью-Йорк..."}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onFocus={() => options.length > 0 && setOpen(true)}
@@ -118,12 +169,14 @@ export function CityAutocomplete({ value, onChange, onSelect, placeholder }: Pro
                 onMouseDown={() => handleSelect(opt)}
               >
                 <span className="city-autocomplete__option-icon">📍</span>
-                <span className="city-autocomplete__option-text">{opt.displayName}</span>
+                <span className="city-autocomplete__option-text">
+                  {opt.displayName}
+                </span>
               </li>
             ))}
           </motion.ul>
         )}
       </AnimatePresence>
     </div>
-  )
+  );
 }

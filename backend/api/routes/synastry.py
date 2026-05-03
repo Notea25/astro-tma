@@ -1,5 +1,6 @@
 """Synastry endpoints — invite-based compatibility flow between two users."""
 
+import asyncio
 import secrets
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -10,8 +11,6 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.middleware.telegram_auth import get_tg_user
-import asyncio
-
 from api.schemas.synastry import (
     SynastryAspectInterp,
     SynastryAspectOut,
@@ -187,6 +186,16 @@ async def _require_user_with_chart(db: AsyncSession, user_id: int) -> User:
     return user
 
 
+def _required_chart_data(user: User) -> dict:
+    chart = user.natal_chart
+    if chart is None:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Заполните данные рождения в профиле",
+        )
+    return chart.chart_data
+
+
 def _planets_from_chart(chart_data: dict) -> list[SynastryPlanetInfo]:
     """Project NatalChart.chart_data['planets'] dict into the response schema."""
     raw = chart_data.get("planets") if chart_data else None
@@ -196,10 +205,11 @@ def _planets_from_chart(chart_data: dict) -> list[SynastryPlanetInfo]:
     for name, p in raw.items():
         if not isinstance(p, dict):
             continue
+        planet_name = str(name)
         out.append(
             SynastryPlanetInfo(
-                name=name,
-                name_ru=_PLANET_RU.get(name, name),
+                name=planet_name,
+                name_ru=_PLANET_RU.get(planet_name.lower(), planet_name),
                 sign=str(p.get("sign", "")),
                 sign_ru=str(p.get("sign_ru") or p.get("sign", "")),
                 degree=float(p.get("degree", 0) or 0),
@@ -460,6 +470,9 @@ async def accept_request(
     await db.commit()
     log.info("synastry.completed", request_id=req.id, initiator=initiator.id, partner=partner.id)
 
+    initiator_chart_data = _required_chart_data(initiator)
+    partner_chart_data = _required_chart_data(partner)
+
     return SynastryResult(
         id=req.id,
         aspects=_aspects_to_schema(raw["aspects"]),
@@ -468,10 +481,10 @@ async def accept_request(
         initiator_name=initiator.tg_first_name,
         partner_name=partner.tg_first_name,
         is_initiator=False,
-        planets_a=_planets_from_chart(initiator.natal_chart.chart_data),
-        planets_b=_planets_from_chart(partner.natal_chart.chart_data),
-        houses_a=_houses_from_chart(initiator.natal_chart.chart_data),
-        houses_b=_houses_from_chart(partner.natal_chart.chart_data),
+        planets_a=_planets_from_chart(initiator_chart_data),
+        planets_b=_planets_from_chart(partner_chart_data),
+        houses_a=_houses_from_chart(initiator_chart_data),
+        houses_b=_houses_from_chart(partner_chart_data),
         interpretations=_interp_to_schema(raw["aspects"], texts),
         summary_ru=summary,
         created_at=req.created_at,
@@ -627,6 +640,8 @@ async def manual_synastry(
         total=raw["total_aspects"],
     )
 
+    initiator_chart_data = _required_chart_data(initiator)
+
     return SynastryResult(
         id=req.id,
         aspects=_aspects_to_schema(raw["aspects"]),
@@ -635,9 +650,9 @@ async def manual_synastry(
         initiator_name=initiator.tg_first_name,
         partner_name=payload.partner_name,
         is_initiator=True,
-        planets_a=_planets_from_chart(initiator.natal_chart.chart_data),
+        planets_a=_planets_from_chart(initiator_chart_data),
         planets_b=_planets_from_chart(partner_chart_data) if partner_chart_data else [],
-        houses_a=_houses_from_chart(initiator.natal_chart.chart_data),
+        houses_a=_houses_from_chart(initiator_chart_data),
         houses_b=_houses_from_chart(partner_chart_data) if partner_chart_data else [],
         interpretations=_interp_to_schema(raw["aspects"], texts),
         summary_ru=summary,

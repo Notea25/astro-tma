@@ -7,74 +7,95 @@ import { useAppStore } from "@/stores/app";
 import { useStartParam, useTelegramReady } from "@/hooks/useTelegram";
 import { LoadingScreenFull } from "@/components/screens/LoadingScreen";
 
-const Onboarding = lazy(() =>
+const loadOnboarding = () =>
   import("@/components/screens/Onboarding").then((m) => ({
     default: m.Onboarding,
-  })),
-);
-const Home = lazy(() =>
-  import("@/components/screens/Home").then((m) => ({ default: m.Home })),
-);
-const Discover = lazy(() =>
+  }));
+const loadHome = () =>
+  import("@/components/screens/Home").then((m) => ({ default: m.Home }));
+const loadDiscover = () =>
   import("@/components/screens/Discover").then((m) => ({
     default: m.Discover,
-  })),
-);
-const Tarot = lazy(() =>
-  import("@/components/screens/Tarot").then((m) => ({ default: m.Tarot })),
-);
-const Compatibility = lazy(() =>
+  }));
+const loadTarot = () =>
+  import("@/components/screens/Tarot").then((m) => ({ default: m.Tarot }));
+const loadCompatibility = () =>
   import("@/components/screens/Compatibility").then((m) => ({
     default: m.Compatibility,
-  })),
-);
-const Moon = lazy(() =>
-  import("@/components/screens/Moon").then((m) => ({ default: m.Moon })),
-);
-const Natal = lazy(() =>
-  import("@/components/screens/Natal").then((m) => ({ default: m.Natal })),
-);
-const Mac = lazy(() =>
-  import("@/components/screens/Mac").then((m) => ({ default: m.Mac })),
-);
-const Profile = lazy(() =>
-  import("@/components/screens/Profile").then((m) => ({ default: m.Profile })),
-);
-const Transits = lazy(() =>
+  }));
+const loadMoon = () =>
+  import("@/components/screens/Moon").then((m) => ({ default: m.Moon }));
+const loadNatal = () =>
+  import("@/components/screens/Natal").then((m) => ({ default: m.Natal }));
+const loadMac = () =>
+  import("@/components/screens/Mac").then((m) => ({ default: m.Mac }));
+const loadProfile = () =>
+  import("@/components/screens/Profile").then((m) => ({ default: m.Profile }));
+const loadTransits = () =>
   import("@/components/screens/Transits").then((m) => ({
     default: m.Transits,
-  })),
-);
-const Synastry = lazy(() =>
+  }));
+const loadSynastry = () =>
   import("@/components/screens/Synastry").then((m) => ({
     default: m.Synastry,
-  })),
-);
-const SynastryInvite = lazy(() =>
+  }));
+const loadSynastryInvite = () =>
   import("@/components/screens/SynastryInvite").then((m) => ({
     default: m.SynastryInvite,
-  })),
-);
-const Glossary = lazy(() =>
+  }));
+const loadGlossary = () =>
   import("@/components/screens/Glossary").then((m) => ({
     default: m.Glossary,
-  })),
-);
-const GlossaryTerm = lazy(() =>
+  }));
+const loadGlossaryTerm = () =>
   import("@/components/screens/GlossaryTerm").then((m) => ({
     default: m.GlossaryTerm,
-  })),
-);
-const News = lazy(() =>
+  }));
+const loadNews = () =>
   import("@/components/screens/News").then((m) => ({
     default: m.News,
-  })),
-);
-const NewsDetail = lazy(() =>
+  }));
+const loadNewsDetail = () =>
   import("@/components/screens/NewsDetail").then((m) => ({
     default: m.NewsDetail,
-  })),
-);
+  }));
+
+const Onboarding = lazy(loadOnboarding);
+const Home = lazy(loadHome);
+const Discover = lazy(loadDiscover);
+const Tarot = lazy(loadTarot);
+const Compatibility = lazy(loadCompatibility);
+const Moon = lazy(loadMoon);
+const Natal = lazy(loadNatal);
+const Mac = lazy(loadMac);
+const Profile = lazy(loadProfile);
+const Transits = lazy(loadTransits);
+const Synastry = lazy(loadSynastry);
+const SynastryInvite = lazy(loadSynastryInvite);
+const Glossary = lazy(loadGlossary);
+const GlossaryTerm = lazy(loadGlossaryTerm);
+const News = lazy(loadNews);
+const NewsDetail = lazy(loadNewsDetail);
+
+const SCREEN_PRELOADERS = [
+  loadHome,
+  loadDiscover,
+  loadTarot,
+  loadCompatibility,
+  loadMoon,
+  loadNatal,
+  loadMac,
+  loadProfile,
+  loadTransits,
+  loadSynastry,
+  loadSynastryInvite,
+  loadGlossary,
+  loadGlossaryTerm,
+  loadNews,
+  loadNewsDetail,
+];
+
+const ONBOARDING_PRELOADERS = [loadHome, loadSynastryInvite];
 
 function SplashScreen() {
   return (
@@ -90,16 +111,14 @@ function SplashScreen() {
 }
 
 export default function App() {
-  const {
-    screen,
-    navDirection,
-    setScreen,
-    onboardingComplete,
-    setOnboardingComplete,
-    setUser,
-    pendingInviteToken,
-    setPendingInviteToken,
-  } = useAppStore();
+  const screen = useAppStore((s) => s.screen);
+  const navDirection = useAppStore((s) => s.navDirection);
+  const setScreen = useAppStore((s) => s.setScreen);
+  const onboardingComplete = useAppStore((s) => s.onboardingComplete);
+  const setOnboardingComplete = useAppStore((s) => s.setOnboardingComplete);
+  const setUser = useAppStore((s) => s.setUser);
+  const pendingInviteToken = useAppStore((s) => s.pendingInviteToken);
+  const setPendingInviteToken = useAppStore((s) => s.setPendingInviteToken);
   const [ready, setReady] = useState(false);
   const [synced, setSynced] = useState(false);
   useTelegramReady();
@@ -126,6 +145,25 @@ export default function App() {
     const timer = setTimeout(() => setReady(true), 3500);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (!ready || !synced) return;
+    const preloaders =
+      onboardingComplete || screen !== "onboarding"
+        ? SCREEN_PRELOADERS
+        : ONBOARDING_PRELOADERS;
+    const preload = () => {
+      preloaders.forEach((load) => void load());
+    };
+
+    if ("requestIdleCallback" in window) {
+      const id = window.requestIdleCallback(preload, { timeout: 2500 });
+      return () => window.cancelIdleCallback(id);
+    }
+
+    const id = globalThis.setTimeout(preload, 300);
+    return () => globalThis.clearTimeout(id);
+  }, [ready, synced, onboardingComplete, screen]);
 
   // Capture syn_<token> from start_param into the persisted store as soon as
   // we see it — before splash, before onboarding gate. The token survives a
