@@ -247,7 +247,7 @@ export function DrawSpreadFlow({
                     {!isPlaced || !card ? (
                       <div className={styles.placeholder}>
                         <span className={styles.placeholderSymbol}>
-                          {slot.symbol}
+                          {slot.slot}
                         </span>
                       </div>
                     ) : (
@@ -333,14 +333,6 @@ export function DrawSpreadFlow({
           onPick={handleFanPick}
           renderCard={() => <TarotCardBack />}
         />
-      )}
-
-      {(phase === 'reading' || phase === 'complete') && (
-        <div className={styles.remainingDeck} aria-hidden="true">
-          <span className={styles.remainingCard} />
-          <span className={styles.remainingCard} />
-          <span className={styles.remainingCard} />
-        </div>
       )}
 
       {flyCard && (

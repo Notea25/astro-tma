@@ -345,7 +345,6 @@ export function ThreeCardFlow() {
                   </motion.div>
                 ) : (
                   <div className="wheel-slot__empty">
-                    <span className="wheel-slot__spark">✦</span>
                     <span className="slot-number">{i + 1}</span>
                   </div>
                 )}
