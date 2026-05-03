@@ -250,17 +250,7 @@ export function DrawSpreadFlow({
                   >
                     {!isPlaced || !card ? (
                       <div className={styles.placeholder}>
-                        <span
-                          className={styles.placeholderSymbol}
-                          style={
-                            isCross
-                              ? {
-                                  display: 'inline-block',
-                                  transform: `rotate(${-slot.rotate!}deg)`,
-                                }
-                              : undefined
-                          }
-                        >
+                        <span className={styles.placeholderSymbol}>
                           {slot.slot}
                         </span>
                       </div>
