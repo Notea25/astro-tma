@@ -97,6 +97,8 @@ export default function App() {
     onboardingComplete,
     setOnboardingComplete,
     setUser,
+    pendingInviteToken,
+    setPendingInviteToken,
   } = useAppStore();
   const [ready, setReady] = useState(false);
   const [synced, setSynced] = useState(false);
@@ -125,21 +127,44 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  // After both splash timer and sync are done, navigate
+  // Capture syn_<token> from start_param into the persisted store as soon as
+  // we see it — before splash, before onboarding gate. The token survives a
+  // mid-onboarding reload that way.
   useEffect(() => {
-    if (ready && synced && onboardingComplete && screen === "onboarding") {
-      setScreen("home");
-    }
-  }, [ready, synced, onboardingComplete, screen, setScreen]);
-
-  // Handle deep-link start_param (e.g. "syn_<token>" for synastry invitations)
-  useEffect(() => {
-    if (inviteHandled || !ready || !synced) return;
     if (startParam?.startsWith("syn_")) {
+      const token = startParam.slice(4);
+      if (token && token !== pendingInviteToken) {
+        setPendingInviteToken(token);
+      }
+    }
+  }, [startParam, pendingInviteToken, setPendingInviteToken]);
+
+  // After both splash timer and sync are done, route the onboarded user.
+  // If they have a pending invite waiting, jump straight to the invite
+  // landing page; otherwise the usual home screen.
+  useEffect(() => {
+    if (!ready || !synced || !onboardingComplete) return;
+    if (screen !== "onboarding") return;
+    setScreen(pendingInviteToken ? "synastry_invite" : "home");
+  }, [ready, synced, onboardingComplete, screen, pendingInviteToken, setScreen]);
+
+  // Already-onboarded user opening a fresh invite link: jump to the invite
+  // page immediately. Non-onboarded users wait until onboarding finishes
+  // (the effect above handles that branch).
+  useEffect(() => {
+    if (inviteHandled || !ready || !synced || !onboardingComplete) return;
+    if (pendingInviteToken) {
       setScreen("synastry_invite");
       setInviteHandled(true);
     }
-  }, [startParam, ready, synced, inviteHandled, setScreen]);
+  }, [
+    pendingInviteToken,
+    ready,
+    synced,
+    onboardingComplete,
+    inviteHandled,
+    setScreen,
+  ]);
 
   const showSplash = !ready || !synced;
   const showNav = !showSplash && screen !== "onboarding";

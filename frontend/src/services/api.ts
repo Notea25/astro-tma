@@ -239,6 +239,11 @@ export const synastryApi = {
     request<import("@/types").SynastryRequestOut>("POST", "/synastry/request"),
   pending: () =>
     request<import("@/types").SynastryPending[]>("GET", "/synastry/pending"),
+  inviteInfo: (token: string) =>
+    request<import("@/types").SynastryInviteInfo>(
+      "GET",
+      `/synastry/invite/${token}`,
+    ),
   accept: (token: string) =>
     request<import("@/types").SynastryResult>(
       "POST",

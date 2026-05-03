@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useAppStore } from "@/stores/app";
 import { synastryApi, ApiError } from "@/services/api";
@@ -45,12 +45,29 @@ const SPHERE_LABELS: { key: keyof SynastryResult["scores"]; label: string }[] =
   ];
 
 export function SynastryInvite() {
-  const { setScreen, user } = useAppStore();
+  const { setScreen, user, pendingInviteToken, setPendingInviteToken } =
+    useAppStore();
   const { notification } = useHaptic();
   const startParam = useStartParam();
   const [result, setResult] = useState<SynastryResult | null>(null);
 
-  const token = startParam?.startsWith("syn_") ? startParam.slice(4) : null;
+  // Prefer the start_param if it's still in scope; otherwise fall back to the
+  // persisted token (the case where we're returning here after onboarding).
+  const tokenFromStart = startParam?.startsWith("syn_")
+    ? startParam.slice(4)
+    : null;
+  const token = tokenFromStart ?? pendingInviteToken;
+
+  // Pre-fetch the inviter's name so we can show "Вас пригласил <name>" while
+  // the user decides whether to accept.
+  const inviteInfoQuery = useQuery({
+    queryKey: ["synastry", "invite", token],
+    queryFn: () => synastryApi.inviteInfo(token!),
+    enabled: !!token,
+    staleTime: 5 * 60 * 1000,
+    retry: 0,
+  });
+  const inviterName = inviteInfoQuery.data?.initiator_name ?? null;
 
   const acceptMutation = useMutation({
     mutationFn: () => {
@@ -60,11 +77,15 @@ export function SynastryInvite() {
     onSuccess: (data) => {
       setResult(data);
       notification("success");
+      setPendingInviteToken(null);
     },
     onError: () => notification("error"),
   });
 
-  const goHome = () => setScreen("home", "back");
+  const goHome = () => {
+    setPendingInviteToken(null);
+    setScreen("home", "back");
+  };
 
   if (!token) {
     return (
@@ -209,7 +230,14 @@ export function SynastryInvite() {
           >
             <div style={{ fontSize: 48, marginBottom: 12 }}>💞</div>
             <p style={{ marginBottom: 16, fontSize: 15 }}>
-              Вас приглашают рассчитать совместимость.
+              {inviterName ? (
+                <>
+                  Вас пригласил <strong>{inviterName}</strong> рассчитать
+                  совместимость.
+                </>
+              ) : (
+                <>Вас приглашают рассчитать совместимость.</>
+              )}
             </p>
             <p
               style={{

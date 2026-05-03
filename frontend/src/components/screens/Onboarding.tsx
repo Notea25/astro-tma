@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   CityAutocomplete,
   type CityOption,
 } from "@/components/ui/CityAutocomplete";
-import { usersApi } from "@/services/api";
+import { synastryApi, usersApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
 
@@ -74,8 +74,25 @@ export function Onboarding() {
     city?: boolean;
   }>({});
 
-  const { setUser, setOnboardingComplete, setScreen } = useAppStore();
+  const { setUser, setOnboardingComplete, setScreen, pendingInviteToken } =
+    useAppStore();
   const { impact, notification } = useHaptic();
+
+  // If the user landed on onboarding via a syn_<token> invite link, look up
+  // the initiator's name so we can greet them — "Тебя пригласил <имя>".
+  const inviteInfoQuery = useQuery({
+    queryKey: ["synastry", "invite", pendingInviteToken],
+    queryFn: () => synastryApi.inviteInfo(pendingInviteToken!),
+    enabled: !!pendingInviteToken,
+    staleTime: 5 * 60 * 1000,
+    retry: 0,
+  });
+  const inviterName = inviteInfoQuery.data?.initiator_name ?? null;
+  const inviteUsable =
+    !!pendingInviteToken &&
+    !!inviteInfoQuery.data &&
+    !inviteInfoQuery.data.is_own &&
+    !inviteInfoQuery.data.is_expired;
 
   const upsertMutation = useMutation({
     mutationFn: usersApi.upsertMe,
@@ -94,7 +111,7 @@ export function Onboarding() {
       setUser(updated);
       notification("success");
       setOnboardingComplete(true);
-      setScreen("home");
+      setScreen(inviteUsable ? "synastry_invite" : "home");
     },
   });
 
@@ -198,7 +215,7 @@ export function Onboarding() {
         });
       } else {
         setOnboardingComplete(true);
-        setScreen("home");
+        setScreen(inviteUsable ? "synastry_invite" : "home");
       }
     } catch {
       // error shown via mutation.isError below
@@ -248,10 +265,27 @@ export function Onboarding() {
           </motion.div>
           <h1 className="onboarding__title">Astro</h1>
           <p className="onboarding__subtitle">Астрология & Гороскоп</p>
-          <p className="onboarding__desc">
-            Персональные гороскопы, таро и лунный календарь — всё написано в
-            звёздах
-          </p>
+          {inviteUsable ? (
+            <p className="onboarding__desc">
+              {inviterName ? (
+                <>
+                  Вас пригласил <strong>{inviterName}</strong> рассчитать
+                  совместимость. Заполните свои данные — и сразу увидите
+                  результат.
+                </>
+              ) : (
+                <>
+                  Вас пригласили рассчитать совместимость. Заполните свои
+                  данные — и сразу увидите результат.
+                </>
+              )}
+            </p>
+          ) : (
+            <p className="onboarding__desc">
+              Персональные гороскопы, таро и лунный календарь — всё написано в
+              звёздах
+            </p>
+          )}
           <motion.button
             className="btn-primary"
             onClick={() => {
@@ -260,7 +294,7 @@ export function Onboarding() {
             }}
             whileTap={{ scale: 0.97 }}
           >
-            Начать путешествие
+            {inviteUsable ? "Заполнить данные" : "Начать путешествие"}
           </motion.button>
         </motion.div>
       )}

@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.middleware.telegram_auth import get_tg_user
 from api.schemas.synastry import (
     SynastryAspectOut,
+    SynastryInviteInfo,
     SynastryManualInput,
     SynastryPending,
     SynastryRequestOut,
@@ -248,6 +249,34 @@ async def get_pending(
             expires_at=req.expires_at,
         ))
     return out
+
+
+@router.get("/invite/{token}", response_model=SynastryInviteInfo)
+async def get_invite_info(
+    token: str,
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Lookup invite by token without requiring a chart. Used by the link
+    landing page to greet the recipient with the initiator's name even
+    before they've finished onboarding."""
+    result = await db.execute(
+        select(SynastryRequest, User)
+        .join(User, User.id == SynastryRequest.initiator_user_id)
+        .where(SynastryRequest.token == token)
+    )
+    row = result.first()
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Приглашение не найдено")
+    req, initiator = row
+    now = datetime.now(UTC)
+    return SynastryInviteInfo(
+        initiator_name=initiator.tg_first_name,
+        status=req.status.value,
+        expires_at=req.expires_at,
+        is_own=(req.initiator_user_id == tg_user["id"]),
+        is_expired=req.expires_at <= now,
+    )
 
 
 @router.post("/accept/{token}", response_model=SynastryResult)

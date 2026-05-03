@@ -252,6 +252,14 @@ export interface SynastryPending {
   expires_at: string;
 }
 
+export interface SynastryInviteInfo {
+  initiator_name: string | null;
+  status: string;
+  expires_at: string;
+  is_own: boolean;
+  is_expired: boolean;
+}
+
 export interface TransitAspect {
   transit_planet: string;
   natal_planet: string;

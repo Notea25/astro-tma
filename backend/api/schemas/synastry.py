@@ -76,3 +76,13 @@ class SynastryPending(BaseModel):
     token: str
     initiator_name: str
     expires_at: datetime
+
+
+class SynastryInviteInfo(BaseModel):
+    """Lightweight invite lookup — no chart requirement, used by the link
+    landing page before the partner has finished onboarding."""
+    initiator_name: str | None
+    status: str
+    expires_at: datetime
+    is_own: bool
+    is_expired: bool

@@ -43,6 +43,9 @@ interface AppState {
 
   newsId: number | null;
   setNewsId: (id: number | null) => void;
+
+  pendingInviteToken: string | null;
+  setPendingInviteToken: (token: string | null) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -65,11 +68,16 @@ export const useAppStore = create<AppState>()(
 
       newsId: null,
       setNewsId: (newsId) => set({ newsId }),
+
+      pendingInviteToken: null,
+      setPendingInviteToken: (pendingInviteToken) =>
+        set({ pendingInviteToken }),
     }),
     {
       name: "astro-app-v1",
       partialize: (state) => ({
         onboardingComplete: state.onboardingComplete,
+        pendingInviteToken: state.pendingInviteToken,
       }),
     },
   ),
