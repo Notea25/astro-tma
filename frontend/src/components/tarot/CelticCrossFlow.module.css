@@ -99,6 +99,14 @@
   align-items: center;
   justify-content: center;
 }
+/* Cross slot: prevent the rotated "2" from overlapping the "1" of the slot
+ * directly underneath it. align-items: flex-start pushes the number to the
+ * top of the placeholder before rotation; after the rotor's 90deg rotation
+ * the number ends up at the side, clear of the underlying card's center. */
+.placeholderCross {
+  align-items: flex-start;
+  padding-top: 10px;
+}
 .placeholderSymbol {
   font-family: "Playfair Display", serif;
   font-size: 20px;
