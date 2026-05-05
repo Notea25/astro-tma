@@ -20,9 +20,13 @@ export function ZodiacRing({ ascendantDegree, variant = 'editorial' }: Props) {
   const isPoster = variant === 'zodiac-poster';
   const isReferenceWheel = variant === 'reference-wheel';
   const isSquareWheel = isPoster || isReferenceWheel;
-  const glyphR = isSquareWheel ? WHEEL.outerR - 68 : (WHEEL.outerR + WHEEL.middleR) / 2;
+  const glyphR = isReferenceWheel
+    ? (WHEEL.outerR + WHEEL.middleR) / 2
+    : isPoster
+      ? WHEEL.outerR - 68
+      : (WHEEL.outerR + WHEEL.middleR) / 2;
   const labelR = WHEEL.outerR + 44;
-  const dividerOuterR = isSquareWheel ? WHEEL.outerR + 58 : WHEEL.outerR;
+  const dividerOuterR = isPoster ? WHEEL.outerR + 58 : WHEEL.outerR;
 
   return (
     <g data-part="zodiac-ring">
@@ -76,9 +80,15 @@ export function ZodiacRing({ ascendantDegree, variant = 'editorial' }: Props) {
             y={pos.y}
             textAnchor="middle"
             dominantBaseline="central"
-            fontSize={isSquareWheel ? 58 : GLYPH_FONT_SIZE}
+            fontSize={isReferenceWheel ? 44 : isPoster ? 58 : GLYPH_FONT_SIZE}
             fill={isSquareWheel ? 'var(--natal-accent)' : 'var(--natal-primary)'}
-            className={isSquareWheel ? styles.posterGlyphText : styles.glyphText}
+            className={
+              isReferenceWheel
+                ? styles.referenceGlyphText
+                : isPoster
+                  ? styles.posterGlyphText
+                  : styles.glyphText
+            }
           >
             {ZODIAC_GLYPH[sign]}
           </text>

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { ChartVariant, NatalChartData, PlanetName } from '../types';
+import type { ChartBodyName, ChartVariant, NatalChartData, PlanetName } from '../types';
 import { WHEEL } from '../constants';
 import { positionToAbsoluteDegree } from '../utils/geometry';
 import { layOutPlanets } from '../utils/planetLayout';
@@ -31,6 +31,22 @@ export function ChartWheel({
   );
 
   const placed = useMemo(() => layOutPlanets(data.planets), [data.planets]);
+  const bodyDegrees = useMemo(() => {
+    const ascendantAbs = positionToAbsoluteDegree(data.ascendant);
+    const midheavenAbs = positionToAbsoluteDegree(data.midheaven);
+    const out = {
+      ascendant: ascendantAbs,
+      descendant: (ascendantAbs + 180) % 360,
+      midheaven: midheavenAbs,
+      imumCoeli: (midheavenAbs + 180) % 360,
+    } as Record<ChartBodyName, number>;
+
+    (Object.keys(data.planets) as PlanetName[]).forEach((name) => {
+      out[name] = positionToAbsoluteDegree(data.planets[name]);
+    });
+
+    return out;
+  }, [data.ascendant, data.midheaven, data.planets]);
   const isPoster = variant === 'zodiac-poster';
   const isReferenceWheel = variant === 'reference-wheel';
   const isSquareWheel = isPoster || isReferenceWheel;
@@ -88,15 +104,36 @@ export function ChartWheel({
         onHouseClick={onHouseClick}
       />
 
+      {isReferenceWheel && (
+        <g data-part="reference-aspect-field">
+          <circle
+            r={WHEEL.planetR - 36}
+            fill="rgba(4, 7, 26, 0.22)"
+            stroke="var(--natal-accent)"
+            strokeWidth={0.9}
+            opacity={0.34}
+          />
+          <circle
+            r={WHEEL.planetR - 82}
+            fill="none"
+            stroke="var(--natal-accent)"
+            strokeWidth={0.7}
+            opacity={0.24}
+          />
+        </g>
+      )}
+
       <AspectLines
         aspects={data.aspects}
-        planets={data.planets}
+        bodyDegrees={bodyDegrees}
         ascendantDegree={ascendantDegree}
+        variant={variant}
       />
 
       <PlanetLayer
         placed={placed}
         ascendantDegree={ascendantDegree}
+        variant={variant}
         onPlanetClick={onPlanetClick}
       />
 
@@ -104,7 +141,29 @@ export function ChartWheel({
         <DegreeLabels placed={placed} ascendantDegree={ascendantDegree} />
       )}
 
-      {isSquareWheel ? <PosterMandala /> : <CenterGlyph />}
+      {isPoster ? (
+        <PosterMandala />
+      ) : isReferenceWheel ? (
+        <g data-part="reference-center">
+          <circle
+            r={12}
+            fill="rgba(6, 9, 30, 0.72)"
+            stroke="var(--natal-accent)"
+            strokeWidth={1.5}
+            opacity={0.9}
+          />
+          <circle
+            r={38}
+            fill="none"
+            stroke="var(--natal-accent)"
+            strokeWidth={0.6}
+            strokeDasharray="1 7"
+            opacity={0.18}
+          />
+        </g>
+      ) : (
+        <CenterGlyph />
+      )}
     </g>
   );
 }

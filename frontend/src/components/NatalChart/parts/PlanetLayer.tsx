@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import type { PlacedPlanet } from '../utils/planetLayout';
-import type { PlanetName } from '../types';
+import type { ChartVariant, PlanetName } from '../types';
 import { PLANET_GLYPH, PLANET_LABEL, RETROGRADE_MARK, ZODIAC_LABEL } from '../constants';
 import { polar, zodiacToSvgAngle } from '../utils/geometry';
 import { formatDegreeMinute } from '../utils/formatting';
@@ -9,12 +9,20 @@ import styles from '../NatalChart.module.css';
 interface Props {
   placed: PlacedPlanet[];
   ascendantDegree: number;
+  variant?: ChartVariant;
   onPlanetClick?: (planet: PlanetName) => void;
 }
 
 const GLYPH_FONT_SIZE = 27;
 
-export function PlanetLayer({ placed, ascendantDegree, onPlanetClick }: Props) {
+export function PlanetLayer({
+  placed,
+  ascendantDegree,
+  variant = 'editorial',
+  onPlanetClick,
+}: Props) {
+  const isReferenceWheel = variant === 'reference-wheel';
+
   return (
     <g data-part="planet-layer">
       {placed.map(({ name, position, absDeg, radius }) => {
@@ -55,8 +63,8 @@ export function PlanetLayer({ placed, ascendantDegree, onPlanetClick }: Props) {
               y={pos.y}
               textAnchor="middle"
               dominantBaseline="central"
-              fontSize={GLYPH_FONT_SIZE}
-              fill="var(--natal-primary)"
+              fontSize={isReferenceWheel ? 24 : GLYPH_FONT_SIZE}
+              fill={isReferenceWheel ? 'var(--natal-accent)' : 'var(--natal-primary)'}
               className={styles.glyphText}
             >
               {PLANET_GLYPH[name]}{retroSuffix}
