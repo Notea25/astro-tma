@@ -623,6 +623,30 @@ const POINT_SYMBOLS: Record<string, string> = {
   chiron: "⚷",
 };
 
+const POINT_RU: Record<string, string> = {
+  ascendant: "Асцендент",
+  descendant: "Десцендент",
+  mediumcoeli: "Середина неба",
+  medium_coeli: "Середина неба",
+  midheaven: "Середина неба",
+  mc: "Середина неба",
+  imumcoeli: "Основание неба",
+  imum_coeli: "Основание неба",
+  ic: "Основание неба",
+  truenorthlunarnode: "Северный узел",
+  true_north_lunar_node: "Северный узел",
+  northnode: "Северный узел",
+  north_lunar_node: "Северный узел",
+  truesouthlunarnode: "Южный узел",
+  true_south_lunar_node: "Южный узел",
+  southnode: "Южный узел",
+  south_lunar_node: "Южный узел",
+  meanlilith: "Лилит",
+  mean_lilith: "Лилит",
+  lilith: "Лилит",
+  chiron: "Хирон",
+};
+
 const DATE_FORMATTER = new Intl.DateTimeFormat("ru-RU", {
   day: "numeric",
   month: "long",
@@ -750,14 +774,18 @@ function titleFromPoint(value: string): string {
     .join(" ");
 }
 
+function pointKey(value: string): string {
+  return value.replace(/[\s_-]/g, "").toLowerCase();
+}
+
 function pointSymbol(value: string): string {
   const key = value.toLowerCase();
-  return PLANET_SYMBOLS[key] ?? POINT_SYMBOLS[key] ?? "✦";
+  return PLANET_SYMBOLS[key] ?? POINT_SYMBOLS[key] ?? POINT_SYMBOLS[pointKey(value)] ?? "✦";
 }
 
 function aspectDisplayName(value: string): string {
   const key = value.toLowerCase();
-  return PLANET_RU[key] ?? titleFromPoint(value);
+  return PLANET_RU[key] ?? POINT_RU[key] ?? POINT_RU[pointKey(value)] ?? titleFromPoint(value);
 }
 
 function getPlanetData(
@@ -1545,12 +1573,12 @@ function NatalAspectsPanel({ full }: { full: NatalFullResponse }) {
                       className={styles.aspectRow}
                     >
                       <span className={styles.aspectPair}>
-                        <span>
+                        <span className={styles.aspectPoint}>
                           <i aria-hidden="true">{pointSymbol(aspect.p1)}</i>
                           {aspectDisplayName(aspect.p1)}
                         </span>
                         <b>{meta.symbol}</b>
-                        <span>
+                        <span className={styles.aspectPoint}>
                           <i aria-hidden="true">{pointSymbol(aspect.p2)}</i>
                           {aspectDisplayName(aspect.p2)}
                         </span>

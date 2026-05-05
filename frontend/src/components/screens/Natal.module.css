@@ -1558,8 +1558,8 @@
 
 .aspectsPage {
   display: grid;
-  gap: 22px;
-  padding: 36px 26px;
+  gap: 18px;
+  padding: 30px 24px;
 }
 
 .aspectsHeader {
@@ -1592,37 +1592,43 @@
 
 .aspectGroups {
   display: grid;
-  gap: 18px;
+  gap: 12px;
 }
 
 .aspectGroup {
   position: relative;
   display: grid;
-  grid-template-columns: 144px minmax(0, 1fr);
-  gap: 28px;
+  grid-template-columns: 124px minmax(0, 1fr);
+  align-items: center;
+  gap: 22px;
   min-width: 0;
   overflow: hidden;
-  padding: 28px 28px 24px;
+  min-height: 132px;
+  padding: 18px 22px 18px 24px;
   border: 1px solid rgba(255, 212, 118, 0.26);
-  border-radius: 22px;
+  border-radius: 18px;
   background:
-    radial-gradient(ellipse 36% 92% at 8% 50%, color-mix(in srgb, currentColor 22%, transparent), transparent 72%),
+    radial-gradient(ellipse 34% 86% at 7% 50%, color-mix(in srgb, currentColor 18%, transparent), transparent 74%),
+    radial-gradient(ellipse 32% 70% at 0% 100%, rgba(151, 71, 255, 0.1), transparent 70%),
     rgba(7, 11, 35, 0.78);
 }
 
 .aspectIcon {
   position: relative;
-  align-self: start;
+  align-self: center;
+  justify-self: center;
   display: grid;
-  width: 112px;
+  width: 88px;
   aspect-ratio: 1;
   place-items: center;
-  border: 1px solid color-mix(in srgb, currentColor 56%, transparent);
+  border: 1px solid color-mix(in srgb, currentColor 50%, transparent);
   border-radius: 999px;
+  background:
+    radial-gradient(circle, color-mix(in srgb, currentColor 12%, transparent), transparent 62%),
+    rgba(255, 255, 255, 0.01);
   font-family: var(--ref-font-symbol);
-  font-size: 3.1rem;
-  box-shadow: 0 0 32px color-mix(in srgb, currentColor 18%, transparent);
-  margin-top: 10px;
+  font-size: 2.45rem;
+  box-shadow: 0 0 24px color-mix(in srgb, currentColor 16%, transparent);
 }
 
 .aspectIcon::before,
@@ -1634,26 +1640,26 @@
 }
 
 .aspectIcon::before {
-  inset: -16px;
+  inset: -12px;
   border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
 }
 
 .aspectIcon::after {
-  inset: 18px;
-  border: 1px solid color-mix(in srgb, currentColor 42%, transparent);
+  inset: 13px;
+  border: 1px solid color-mix(in srgb, currentColor 36%, transparent);
 }
 
 .aspectContent {
   display: grid;
   min-width: 0;
-  gap: 14px;
+  gap: 8px;
 }
 
 .aspectContent h3 {
   margin: 0;
   color: var(--ref-gold);
   font-family: var(--ref-font-display);
-  font-size: 2rem;
+  font-size: 1.72rem;
   font-weight: 600;
   line-height: 1.1;
 }
@@ -1661,58 +1667,66 @@
 .aspectRows {
   display: grid;
   min-width: 0;
-  gap: 6px;
+  gap: 0;
 }
 
 .aspectRow {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
+  align-items: center;
   gap: 12px;
   min-width: 0;
-  padding-top: 10px;
-  border-top: 1px dashed rgba(255, 212, 118, 0.14);
+  min-height: 32px;
+  padding: 7px 0;
+  border-top: 1px dashed rgba(255, 212, 118, 0.11);
 }
 
 .aspectPair {
   display: flex;
   align-items: center;
   min-width: 0;
-  gap: 9px;
+  gap: 8px;
   color: var(--ref-text);
-  font-size: 1rem;
-  line-height: 1.35;
+  font-size: 0.94rem;
+  line-height: 1.24;
+  overflow: hidden;
 }
 
-.aspectPair span {
+.aspectPoint {
   display: inline-flex;
   align-items: center;
   min-width: 0;
-  gap: 6px;
-  overflow-wrap: anywhere;
+  gap: 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .aspectPair i {
+  flex: 0 0 auto;
   color: currentColor;
   font-family: var(--ref-font-symbol);
   font-style: normal;
 }
 
 .aspectPair b {
+  flex: 0 0 auto;
   color: currentColor;
   font-family: var(--ref-font-symbol);
-  font-size: 1rem;
+  font-size: 0.96rem;
   font-weight: 400;
 }
 
 .aspectOrbValue {
-  min-width: 74px;
+  min-width: 62px;
   justify-self: end;
-  padding: 7px 14px;
-  border: 1px solid rgba(255, 212, 118, 0.58);
+  padding: 5px 12px;
+  border: 1px solid rgba(255, 212, 118, 0.48);
   border-radius: 999px;
   color: var(--ref-gold);
   background: rgba(9, 12, 38, 0.52);
+  font-size: 0.9rem;
+  line-height: 1.1;
   text-align: center;
 }
 
@@ -2154,8 +2168,8 @@
   }
 
   .aspectsPage {
-    gap: 16px;
-    padding: 24px 14px;
+    gap: 14px;
+    padding: 22px 14px;
     border-radius: 22px;
   }
 
@@ -2176,46 +2190,48 @@
   }
 
   .aspectGroup {
-    grid-template-columns: 88px minmax(0, 1fr);
-    gap: 18px;
-    padding: 18px 14px 16px;
+    grid-template-columns: 74px minmax(0, 1fr);
+    gap: 14px;
+    min-height: 112px;
+    padding: 15px 13px 14px 15px;
     border-radius: 18px;
   }
 
   .aspectIcon {
-    width: 74px;
-    margin-top: 8px;
-    font-size: 2.2rem;
+    width: 58px;
+    font-size: 1.8rem;
   }
 
   .aspectIcon::before {
-    inset: -12px;
+    inset: -8px;
   }
 
   .aspectIcon::after {
-    inset: 12px;
+    inset: 9px;
   }
 
   .aspectContent h3 {
-    font-size: 1.45rem;
+    font-size: 1.34rem;
   }
 
   .aspectRow {
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 10px;
+    min-height: 30px;
+    gap: 8px;
+    padding: 6px 0;
   }
 
   .aspectPair {
-    flex-wrap: wrap;
-    gap: 6px;
-    font-size: 0.9rem;
+    flex-wrap: nowrap;
+    gap: 5px;
+    font-size: 0.78rem;
   }
 
   .aspectOrbValue {
     justify-self: end;
-    min-width: 62px;
-    padding: 5px 12px;
-    font-size: 0.86rem;
+    min-width: 52px;
+    padding: 4px 9px;
+    font-size: 0.78rem;
   }
 }
 
@@ -2496,12 +2512,8 @@
   }
 
   .aspectGroup {
-    grid-template-columns: 1fr;
-  }
-
-  .aspectIcon {
-    margin-top: 0;
-    justify-self: start;
+    grid-template-columns: 60px minmax(0, 1fr);
+    gap: 12px;
   }
 }
 
