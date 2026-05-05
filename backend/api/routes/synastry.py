@@ -1,5 +1,6 @@
 """Synastry endpoints — invite-based compatibility flow between two users."""
 
+import asyncio
 import secrets
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -10,8 +11,6 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.middleware.telegram_auth import get_tg_user
-import asyncio
-
 from api.schemas.synastry import (
     SynastryAspectInterp,
     SynastryAspectOut,
@@ -196,10 +195,11 @@ def _planets_from_chart(chart_data: dict) -> list[SynastryPlanetInfo]:
     for name, p in raw.items():
         if not isinstance(p, dict):
             continue
+        name_key = str(name or "")
         out.append(
             SynastryPlanetInfo(
-                name=name,
-                name_ru=_PLANET_RU.get(name, name),
+                name=name_key,
+                name_ru=_PLANET_RU.get(name_key, name_key),
                 sign=str(p.get("sign", "")),
                 sign_ru=str(p.get("sign_ru") or p.get("sign", "")),
                 degree=float(p.get("degree", 0) or 0),
@@ -368,6 +368,9 @@ async def accept_request(
 ):
     """Partner accepts the invitation. Both users must have natal charts."""
     partner = await _require_user_with_chart(db, tg_user["id"])
+    partner_chart = partner.natal_chart
+    if partner_chart is None:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Заполните данные рождения в профиле")
 
     now = datetime.now(UTC)
     result = await db.execute(
@@ -411,6 +414,9 @@ async def accept_request(
         )
 
     initiator = await _require_user_with_chart(db, req.initiator_user_id)
+    initiator_chart = initiator.natal_chart
+    if initiator_chart is None:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Заполните данные рождения в профиле")
 
     initiator_tz = await _resolve_synastry_timezone(
         initiator.birth_tz,
@@ -468,10 +474,10 @@ async def accept_request(
         initiator_name=initiator.tg_first_name,
         partner_name=partner.tg_first_name,
         is_initiator=False,
-        planets_a=_planets_from_chart(initiator.natal_chart.chart_data),
-        planets_b=_planets_from_chart(partner.natal_chart.chart_data),
-        houses_a=_houses_from_chart(initiator.natal_chart.chart_data),
-        houses_b=_houses_from_chart(partner.natal_chart.chart_data),
+        planets_a=_planets_from_chart(initiator_chart.chart_data),
+        planets_b=_planets_from_chart(partner_chart.chart_data),
+        houses_a=_houses_from_chart(initiator_chart.chart_data),
+        houses_b=_houses_from_chart(partner_chart.chart_data),
         interpretations=_interp_to_schema(raw["aspects"], texts),
         summary_ru=summary,
         created_at=req.created_at,
@@ -495,6 +501,9 @@ async def manual_synastry(
     from services.astro.natal import calculate_natal, chart_to_json
 
     initiator = await _require_user_with_chart(db, tg_user["id"])
+    initiator_chart = initiator.natal_chart
+    if initiator_chart is None:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Заполните данные рождения в профиле")
 
     if not await user_repo.has_purchased(db, initiator.id, "synastry"):
         raise HTTPException(status.HTTP_402_PAYMENT_REQUIRED, "Покупка Синастрии обязательна")
@@ -635,9 +644,9 @@ async def manual_synastry(
         initiator_name=initiator.tg_first_name,
         partner_name=payload.partner_name,
         is_initiator=True,
-        planets_a=_planets_from_chart(initiator.natal_chart.chart_data),
+        planets_a=_planets_from_chart(initiator_chart.chart_data),
         planets_b=_planets_from_chart(partner_chart_data) if partner_chart_data else [],
-        houses_a=_houses_from_chart(initiator.natal_chart.chart_data),
+        houses_a=_houses_from_chart(initiator_chart.chart_data),
         houses_b=_houses_from_chart(partner_chart_data) if partner_chart_data else [],
         interpretations=_interp_to_schema(raw["aspects"], texts),
         summary_ru=summary,
