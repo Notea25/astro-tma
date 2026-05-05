@@ -3,6 +3,14 @@ export type PlanetName =
   | 'jupiter' | 'saturn' | 'uranus' | 'neptune' | 'pluto'
   | 'northNode' | 'chiron';
 
+export type ChartPointName =
+  | 'ascendant'
+  | 'descendant'
+  | 'midheaven'
+  | 'imumCoeli';
+
+export type ChartBodyName = PlanetName | ChartPointName;
+
 export type ZodiacSign =
   | 'aries' | 'taurus' | 'gemini' | 'cancer' | 'leo' | 'virgo'
   | 'libra' | 'scorpio' | 'sagittarius' | 'capricorn' | 'aquarius' | 'pisces';
@@ -35,8 +43,8 @@ export interface HousePosition {
 }
 
 export interface Aspect {
-  planet1: PlanetName;
-  planet2: PlanetName;
+  planet1: ChartBodyName;
+  planet2: ChartBodyName;
   type: AspectType;
   orb: number;
 }

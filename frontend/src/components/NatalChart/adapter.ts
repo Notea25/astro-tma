@@ -1,6 +1,7 @@
 import type { NatalSummaryResponse } from '@/types'
 import type {
   NatalChartData,
+  ChartBodyName,
   PlanetName,
   PlanetPosition,
   ZodiacSign,
@@ -16,6 +17,30 @@ const VALID_PLANETS = new Set<string>([
   'jupiter', 'saturn', 'uranus', 'neptune', 'pluto',
   'northNode', 'chiron',
 ])
+
+const ASPECT_PLANET_ALIASES: Record<string, ChartBodyName> = {
+  sun: 'sun',
+  moon: 'moon',
+  mercury: 'mercury',
+  venus: 'venus',
+  mars: 'mars',
+  jupiter: 'jupiter',
+  saturn: 'saturn',
+  uranus: 'uranus',
+  neptune: 'neptune',
+  pluto: 'pluto',
+  chiron: 'chiron',
+  northnode: 'northNode',
+  truenorthnode: 'northNode',
+  northlunarnode: 'northNode',
+  ascendant: 'ascendant',
+  descendant: 'descendant',
+  mediumcoeli: 'midheaven',
+  midheaven: 'midheaven',
+  mc: 'midheaven',
+  imumcoeli: 'imumCoeli',
+  ic: 'imumCoeli',
+}
 
 function toSignLower(s: string): ZodiacSign {
   return s.toLowerCase() as ZodiacSign
@@ -41,6 +66,11 @@ function makePlanet(data: {
     house: data.house,
     retrograde: data.retrograde,
   }
+}
+
+function normalizeAspectPlanet(value: string): ChartBodyName | null {
+  const key = value.replace(/[\s_-]/g, '').toLowerCase()
+  return ASPECT_PLANET_ALIASES[key] ?? null
 }
 
 const FALLBACK_PLANET: PlanetPosition = {
@@ -91,17 +121,27 @@ export function toNatalChartData(
   }))
 
   const aspects = (summary.aspects ?? [])
-    .filter(a => VALID_ASPECT_TYPES.has(a.aspect) && VALID_PLANETS.has(a.p1) && VALID_PLANETS.has(a.p2))
     .map(a => ({
-      planet1: a.p1 as PlanetName,
-      planet2: a.p2 as PlanetName,
+      ...a,
+      p1: normalizeAspectPlanet(a.p1),
+      p2: normalizeAspectPlanet(a.p2),
+    }))
+    .filter(
+      (a): a is typeof a & { p1: ChartBodyName; p2: ChartBodyName } =>
+        VALID_ASPECT_TYPES.has(a.aspect) &&
+        a.p1 != null &&
+        a.p2 != null,
+    )
+    .map(a => ({
+      planet1: a.p1,
+      planet2: a.p2,
       type: a.aspect as AspectType,
       orb: a.orb,
     }))
 
   return {
     name: undefined,
-    birthDate: summary.birth_date ?? '2000-01-01',
+    birthDate: summary.birth_date?.split('T')[0] ?? '2000-01-01',
     birthTime: summary.birth_time ?? '12:00',
     birthLocation: {
       city: summary.birth_city ?? '',
