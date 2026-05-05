@@ -59,7 +59,11 @@ export function NatalChart(props: NatalChartProps) {
   const dateReadable = formatBirthDate(data.birthDate);
   const ariaLabel = `Натальная карта${subject}: рождение ${dateReadable} в ${data.birthTime}, ${data.birthLocation.city}, ${data.birthLocation.country}.`;
   const ariaDesc = `Солнце в знаке ${ZODIAC_LABEL[data.sun.sign]}, асцендент в знаке ${ZODIAC_LABEL[data.ascendant.sign]}, середина неба в знаке ${ZODIAC_LABEL[data.midheaven.sign]}.`;
-  const viewBox = isSquareWheel ? '0 0 1000 1000' : '0 0 1000 1400';
+  const viewBox = isReferenceWheel
+    ? '88 88 824 824'
+    : isSquareWheel
+      ? '0 0 1000 1000'
+      : '0 0 1000 1400';
   const aspectRatio = isSquareWheel ? '1 / 1' : '1000 / 1400';
 
   return (

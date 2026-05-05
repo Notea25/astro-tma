@@ -3,9 +3,9 @@
 
 .root {
   /* fonts (single source of truth) */
-  --natal-font-display:  "Cinzel", "Della Respira", Georgia, serif;
-  --natal-font-subtitle: "Cormorant Garamond", "Playfair Display", Georgia, serif;
-  --natal-font-body:     "Inter", "Helvetica Neue", Arial, sans-serif;
+  --natal-font-display:  "Cormorant Garamond", "Forum", "Playfair Display", Georgia, serif;
+  --natal-font-subtitle: "Cormorant Garamond", "Forum", "Playfair Display", Georgia, serif;
+  --natal-font-body:     "Manrope", "Inter", "Helvetica Neue", Arial, sans-serif;
 
   display: block;
   background: var(--natal-bg);
@@ -73,21 +73,21 @@
 .titleText {
   font-family: var(--natal-font-display);
   font-weight: 500;
-  letter-spacing: 0.15em;
+  letter-spacing: 0;
   fill: var(--natal-accent);
 }
 
 .subtitleText {
   font-family: var(--natal-font-subtitle);
-  font-weight: 300;
-  letter-spacing: 0.10em;
+  font-weight: 400;
+  letter-spacing: 0;
   fill: var(--natal-primary);
 }
 
 .bodyText {
   font-family: var(--natal-font-body);
   font-weight: 400;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
   fill: var(--natal-primary);
   font-variant: small-caps;
 }
@@ -107,10 +107,19 @@
   stroke-width: 1.2px;
 }
 
+.referenceGlyphText {
+  font-family: "Noto Sans Symbols 2", "DejaVu Sans", "Segoe UI Symbol", "Apple Symbols", Georgia, serif;
+  font-weight: 500;
+  fill: var(--natal-accent);
+  paint-order: stroke;
+  stroke: rgba(3, 7, 23, 0.22);
+  stroke-width: 0.7px;
+}
+
 .posterLabelText {
   font-family: var(--natal-font-display);
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
   fill: var(--natal-accent);
 }
 
