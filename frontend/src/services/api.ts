@@ -85,11 +85,15 @@ function triggerDownload(url: string, filename: string): void {
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
-  a.target = "_blank";
-  a.rel = "noopener";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+}
+
+function triggerBlobDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  triggerDownload(url, filename);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function canUseTelegramOpenLink(): boolean {
@@ -131,6 +135,31 @@ async function request<T>(
   }
 
   return response.json() as Promise<T>;
+}
+
+async function requestBlob(path: string): Promise<Blob> {
+  const response = await fetch(`${BASE_URL}${path}`, {
+    method: "GET",
+    headers: {
+      "X-Init-Data": WebApp.initData || "",
+    },
+  });
+
+  if (!response.ok) {
+    const payload = await response
+      .json()
+      .catch(() => ({ detail: "Unknown error" }));
+    const detail =
+      payload && typeof payload === "object" && "detail" in payload
+        ? (payload as { detail?: unknown }).detail
+        : undefined;
+    throw new ApiError(
+      response.status,
+      formatApiErrorDetail(detail, response.statusText),
+    );
+  }
+
+  return response.blob();
 }
 
 // ── Users ──────────────────────────────────────────────────────────────────────
@@ -179,6 +208,18 @@ export const natalApi = {
   getFull: () =>
     request<import("@/types").NatalFullResponse>("GET", "/natal/full"),
   downloadPdf: async () => {
+    const filename = "natal-chart.pdf";
+
+    try {
+      const blob = await requestBlob("/natal/pdf");
+      triggerBlobDownload(blob, filename);
+      return;
+    } catch (directDownloadError) {
+      if (!canUseTelegramOpenLink()) {
+        throw directDownloadError;
+      }
+    }
+
     const useTelegramOpenLink = canUseTelegramOpenLink();
     const popup = useTelegramOpenLink ? null : openDownloadWindow();
     try {
