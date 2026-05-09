@@ -73,9 +73,284 @@ const ZODIAC_TONES: Record<string, string> = {
   pisces: "aqua",
 };
 
+type ConstellationDefinition = {
+  stars: [number, number, number][];
+  lines: [number, number][];
+};
+
+const ZODIAC_CONSTELLATIONS: Record<string, ConstellationDefinition> = {
+  aries: {
+    stars: [
+      [160, 40, 1.4],
+      [120, 52, 1],
+      [88, 66, 0.95],
+      [68, 90, 0.9],
+    ],
+    lines: [
+      [0, 1],
+      [1, 2],
+      [2, 3],
+    ],
+  },
+  taurus: {
+    stars: [
+      [42, 30, 1],
+      [78, 58, 0.95],
+      [108, 78, 1.5],
+      [128, 100, 0.85],
+      [152, 70, 1],
+      [178, 36, 1],
+    ],
+    lines: [
+      [0, 1],
+      [1, 2],
+      [2, 3],
+      [3, 4],
+      [4, 5],
+      [2, 4],
+    ],
+  },
+  gemini: {
+    stars: [
+      [55, 28, 1.4],
+      [92, 38, 1.4],
+      [50, 60, 0.9],
+      [92, 70, 0.9],
+      [38, 92, 0.85],
+      [98, 100, 0.85],
+      [22, 118, 0.95],
+      [128, 118, 0.95],
+      [148, 78, 0.85],
+    ],
+    lines: [
+      [0, 2],
+      [2, 4],
+      [4, 6],
+      [1, 3],
+      [3, 5],
+      [5, 7],
+      [2, 3],
+      [3, 8],
+    ],
+  },
+  cancer: {
+    stars: [
+      [100, 78, 1.3],
+      [98, 42, 0.95],
+      [148, 70, 1],
+      [105, 118, 0.9],
+      [52, 80, 0.95],
+    ],
+    lines: [
+      [0, 1],
+      [0, 2],
+      [0, 3],
+      [0, 4],
+    ],
+  },
+  leo: {
+    stars: [
+      [62, 100, 1.5],
+      [62, 78, 0.85],
+      [78, 56, 1.05],
+      [70, 36, 0.9],
+      [50, 32, 0.85],
+      [38, 50, 0.9],
+      [128, 64, 1],
+      [122, 92, 0.95],
+      [172, 76, 1],
+    ],
+    lines: [
+      [0, 1],
+      [1, 2],
+      [2, 3],
+      [3, 4],
+      [4, 5],
+      [5, 1],
+      [0, 7],
+      [7, 6],
+      [6, 8],
+      [7, 8],
+      [2, 6],
+    ],
+  },
+  virgo: {
+    stars: [
+      [104, 122, 1.5],
+      [82, 96, 0.9],
+      [88, 72, 1],
+      [114, 56, 0.9],
+      [150, 40, 1],
+      [42, 60, 0.9],
+      [62, 86, 0.85],
+      [38, 28, 0.85],
+    ],
+    lines: [
+      [0, 1],
+      [1, 2],
+      [2, 3],
+      [3, 4],
+      [2, 6],
+      [6, 5],
+      [5, 7],
+    ],
+  },
+  libra: {
+    stars: [
+      [60, 100, 1.05],
+      [108, 50, 1.4],
+      [42, 50, 0.9],
+      [148, 100, 0.95],
+      [172, 78, 0.9],
+    ],
+    lines: [
+      [2, 1],
+      [1, 0],
+      [0, 3],
+      [3, 4],
+      [1, 3],
+      [1, 4],
+    ],
+  },
+  scorpio: {
+    stars: [
+      [22, 50, 0.95],
+      [50, 38, 0.9],
+      [80, 56, 1],
+      [105, 78, 1.55],
+      [120, 100, 0.9],
+      [134, 118, 0.9],
+      [156, 124, 0.95],
+      [176, 104, 0.95],
+      [184, 76, 0.95],
+      [168, 56, 1],
+    ],
+    lines: [
+      [0, 2],
+      [1, 2],
+      [2, 3],
+      [3, 4],
+      [4, 5],
+      [5, 6],
+      [6, 7],
+      [7, 8],
+      [8, 9],
+    ],
+  },
+  sagittarius: {
+    stars: [
+      [88, 38, 1.05],
+      [56, 56, 1.05],
+      [38, 76, 0.9],
+      [78, 78, 0.9],
+      [124, 56, 1.4],
+      [156, 70, 0.95],
+      [144, 96, 1.05],
+      [104, 102, 0.95],
+      [72, 96, 0.9],
+    ],
+    lines: [
+      [0, 1],
+      [1, 2],
+      [2, 3],
+      [3, 8],
+      [8, 7],
+      [7, 6],
+      [6, 5],
+      [5, 4],
+      [4, 0],
+      [1, 3],
+    ],
+  },
+  capricorn: {
+    stars: [
+      [44, 50, 1.4],
+      [62, 44, 0.95],
+      [104, 32, 0.9],
+      [148, 42, 0.95],
+      [172, 64, 1.05],
+      [134, 100, 0.9],
+      [98, 118, 0.95],
+      [62, 100, 0.9],
+    ],
+    lines: [
+      [0, 1],
+      [1, 2],
+      [2, 3],
+      [3, 4],
+      [4, 5],
+      [5, 6],
+      [6, 7],
+      [7, 0],
+    ],
+  },
+  aquarius: {
+    stars: [
+      [44, 44, 1],
+      [86, 38, 1.4],
+      [124, 50, 0.95],
+      [108, 70, 0.9],
+      [86, 78, 0.85],
+      [134, 84, 0.9],
+      [122, 104, 0.85],
+      [148, 116, 0.9],
+      [166, 96, 0.85],
+    ],
+    lines: [
+      [0, 1],
+      [1, 2],
+      [1, 3],
+      [3, 4],
+      [3, 5],
+      [5, 6],
+      [6, 7],
+      [7, 8],
+    ],
+  },
+  pisces: {
+    stars: [
+      [30, 38, 0.95],
+      [50, 28, 1.4],
+      [60, 48, 0.9],
+      [42, 56, 0.85],
+      [78, 64, 0.9],
+      [102, 78, 1],
+      [128, 88, 0.9],
+      [152, 100, 1],
+      [170, 86, 0.9],
+      [160, 70, 1],
+      [142, 80, 0.85],
+    ],
+    lines: [
+      [0, 1],
+      [1, 2],
+      [2, 3],
+      [3, 0],
+      [2, 4],
+      [4, 5],
+      [5, 6],
+      [6, 7],
+      [7, 8],
+      [8, 9],
+      [9, 10],
+      [10, 7],
+    ],
+  },
+};
+
+function cleanReadingMarkdown(text: string): string {
+  return text
+    .replace(/^[ \t]*#{1,6}[ \t]*/gm, "")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*\n]+)\*/g, "$1")
+    .replace(/^[ \t]*[-*][ \t]+/gm, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 // Split LLM reading by **Section** markers into reusable slide data.
 function parseReadingSections(text: string): ReadingSection[] {
-  // Remove leading # header line if present
   const cleaned = text.replace(/^#[^\n]*\n?/, "").trim();
   if (!cleaned) return [];
 
@@ -87,13 +362,13 @@ function parseReadingSections(text: string): ReadingSection[] {
 
   // If text starts before first **, treat as intro
   if (parts[0].trim()) {
-    blocks.push({ body: parts[0].trim() });
+    blocks.push({ body: cleanReadingMarkdown(parts[0]) });
   }
   i = 1;
 
   while (i < parts.length) {
-    const title = parts[i]?.trim();
-    const body = parts[i + 1]?.trim() ?? "";
+    const title = cleanReadingMarkdown(parts[i] ?? "");
+    const body = cleanReadingMarkdown(parts[i + 1] ?? "");
     if (title) blocks.push({ title, body });
     i += 2;
   }
@@ -133,6 +408,8 @@ function NatalInterpretationSlider({
 
   const activeSlide =
     slides[Math.min(activeIndex, slides.length - 1)] ?? slides[0];
+  const canGoPrevious = activeIndex > 0;
+  const canGoNext = activeIndex < slides.length - 1;
 
   const goToSlide = (index: number) => {
     setActiveIndex(Math.max(0, Math.min(slides.length - 1, index)));
@@ -176,8 +453,33 @@ function NatalInterpretationSlider({
       </div>
 
       <div className="natal-interpretation-progress">
-        <div className="natal-interpretation-progress__count">
-          {activeIndex + 1}/{slides.length}
+        <div
+          className="natal-interpretation-controls"
+          aria-label="Переключение слайдов интерпретации"
+        >
+          <button
+            type="button"
+            className="natal-interpretation-nav"
+            onClick={() => goToSlide(activeIndex - 1)}
+            disabled={!canGoPrevious}
+            aria-label="Предыдущий слайд"
+          >
+            <span aria-hidden="true">‹</span>
+            <span>Назад</span>
+          </button>
+          <div className="natal-interpretation-progress__count">
+            {activeIndex + 1}/{slides.length}
+          </div>
+          <button
+            type="button"
+            className="natal-interpretation-nav"
+            onClick={() => goToSlide(activeIndex + 1)}
+            disabled={!canGoNext}
+            aria-label="Следующий слайд"
+          >
+            <span>Далее</span>
+            <span aria-hidden="true">›</span>
+          </button>
         </div>
         <div className="natal-interpretation-dots">
           {slides.map((slide, index) => {
@@ -933,10 +1235,13 @@ function NatalTopBar() {
       <div className={styles.titleBlock}>
         <h1 className={styles.title}>Натальная карта</h1>
         <div className={styles.titleDivider} aria-hidden="true">
-          <span />
-          <b>✦</b>
-          <span />
+          <svg viewBox="0 0 12 12" fill="currentColor">
+            <path d="M6 0 L7.4 4.6 L12 6 L7.4 7.4 L6 12 L4.6 7.4 L0 6 L4.6 4.6 Z" />
+          </svg>
         </div>
+      </div>
+      <div className={styles.headerMoon} aria-label="Луна">
+        <span className={styles.headerMoonSurface} aria-hidden="true" />
       </div>
 
     </header>
@@ -968,105 +1273,113 @@ function NatalTabBar({
   );
 }
 
-function NatalConstellation() {
-  const stars = [
-    { x: 21, y: 78, r: 3.4, glow: 8 },
-    { x: 51, y: 35, r: 2.6, glow: 6 },
-    { x: 86, y: 55, r: 2.9, glow: 7 },
-    { x: 121, y: 21, r: 4.2, glow: 10 },
-    { x: 160, y: 78, r: 3.2, glow: 8 },
-    { x: 91, y: 86, r: 2.5, glow: 6 },
-    { x: 56, y: 105, r: 2.4, glow: 5 },
-    { x: 130, y: 108, r: 3.5, glow: 8 },
-    { x: 146, y: 43, r: 1.9, glow: 5 },
-  ];
-  const dust = [
-    [12, 44, 0.8],
-    [33, 22, 0.9],
-    [41, 94, 0.7],
-    [69, 16, 0.7],
-    [74, 70, 0.6],
-    [104, 38, 0.8],
-    [112, 91, 0.7],
-    [139, 19, 0.8],
-    [171, 53, 0.9],
-    [176, 96, 0.7],
-  ];
+function NatalConstellation({ sign }: { sign?: string | null }) {
+  const constellationKey = signKey(sign) || "sagittarius";
+  const definition =
+    ZODIAC_CONSTELLATIONS[constellationKey] ?? ZODIAC_CONSTELLATIONS.sagittarius;
+  const xs = definition.stars.map(([x]) => x);
+  const ys = definition.stars.map(([, y]) => y);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  const canvas = 200;
+  const padding = 36;
+  const scale = Math.min(
+    (canvas - padding * 2) / Math.max(maxX - minX, 1),
+    (canvas - padding * 2) / Math.max(maxY - minY, 1),
+  );
+  const offsetX = (canvas - (maxX - minX) * scale) / 2 - minX * scale;
+  const offsetY = (canvas - (maxY - minY) * scale) / 2 - minY * scale;
+  const tx = (x: number) => x * scale + offsetX;
+  const ty = (y: number) => y * scale + offsetY;
+  const dotGradientId = `natal-constellation-dot-${constellationKey}`;
+  const heroGradientId = `natal-constellation-hero-${constellationKey}`;
+  const starGradientId = `natal-constellation-star-${constellationKey}`;
 
   return (
     <svg
       className={styles.constellation}
-      viewBox="0 0 190 128"
+      viewBox="0 0 200 200"
       fill="none"
       aria-hidden="true"
     >
       <defs>
-        <radialGradient id="natalConstellationMist" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="currentColor" stopOpacity="0.24" />
-          <stop offset="58%" stopColor="currentColor" stopOpacity="0.08" />
-          <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+        <radialGradient id={dotGradientId} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#fff5cc" stopOpacity="0.85" />
+          <stop offset="40%" stopColor="#e8b860" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="#c98a30" stopOpacity="0" />
         </radialGradient>
-        <filter id="natalConstellationGlow" x="-40%" y="-45%" width="180%" height="190%">
-          <feGaussianBlur stdDeviation="2.2" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
+        <radialGradient id={heroGradientId} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#fff8d8" stopOpacity="1" />
+          <stop offset="14%" stopColor="#ffd97a" stopOpacity="0.85" />
+          <stop offset="40%" stopColor="#e0a850" stopOpacity="0.4" />
+          <stop offset="80%" stopColor="#c98a30" stopOpacity="0.08" />
+          <stop offset="100%" stopColor="#c98a30" stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id={starGradientId} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="1" />
+          <stop offset="55%" stopColor="#fff5cc" stopOpacity="1" />
+          <stop offset="100%" stopColor="#f8d878" stopOpacity="1" />
+        </radialGradient>
       </defs>
-      <ellipse
-        cx="96"
-        cy="65"
-        rx="84"
-        ry="46"
-        fill="url(#natalConstellationMist)"
-      />
-      <path
-        d="M21 78 51 35l35 20 35-34 25 22 14 35-30 30-39-22-35 19-35-27Z"
-        stroke="currentColor"
-        strokeWidth="1.18"
-        opacity="0.72"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        filter="url(#natalConstellationGlow)"
-      />
-      <path
-        d="m51 35 40 51 30-65M86 55l5 31 69-8M56 105 86 55m0 0 60-12m-55 43 55-43m-16 65 16-65"
-        stroke="currentColor"
-        strokeWidth="0.78"
-        opacity="0.38"
-        strokeLinecap="round"
-      />
-      {dust.map(([x, y, r]) => (
-        <circle
-          key={`${x}-${y}`}
-          cx={x}
-          cy={y}
-          r={r}
-          fill="currentColor"
-          opacity="0.5"
-        />
-      ))}
-      {stars.map((star) => (
-        <g key={`${star.x}-${star.y}`} filter="url(#natalConstellationGlow)">
-          <circle
-            cx={star.x}
-            cy={star.y}
-            r={star.glow}
-            fill="currentColor"
-            opacity="0.08"
-          />
-          <path
-            d={`M${star.x - star.r * 2.3} ${star.y}H${star.x + star.r * 2.3}M${star.x} ${star.y - star.r * 2.3}V${star.y + star.r * 2.3}`}
-            stroke="currentColor"
-            strokeWidth="0.55"
-            opacity="0.56"
-            strokeLinecap="round"
-          />
-          <circle cx={star.x} cy={star.y} r={star.r} fill="currentColor" />
-          <circle cx={star.x - star.r * 0.42} cy={star.y - star.r * 0.42} r={star.r * 0.28} fill="#fff6cf" opacity="0.72" />
-        </g>
-      ))}
+      <g className={styles.constellationLines}>
+        {definition.lines.map(([from, to], index) => {
+          const start = definition.stars[from];
+          const end = definition.stars[to];
+          if (!start || !end) return null;
+
+          return (
+            <line
+              key={`${from}-${to}-${index}`}
+              x1={tx(start[0])}
+              y1={ty(start[1])}
+              x2={tx(end[0])}
+              y2={ty(end[1])}
+            />
+          );
+        })}
+      </g>
+      <g className={styles.constellationStars}>
+        {definition.stars.map(([x, y, brightness]) => {
+          const cx = tx(x);
+          const cy = ty(y);
+          const isHero = brightness >= 1.25;
+          const haloRadius = (isHero ? 8 : 5.5) * brightness;
+          const coreRadius = (isHero ? 1.8 : 1.4) * brightness;
+          const spikeLength = 9 * brightness;
+          const spikeWidth = 0.55;
+
+          return (
+            <g key={`${x}-${y}-${brightness}`} transform={`translate(${cx}, ${cy})`}>
+              <circle
+                r={haloRadius}
+                fill={`url(#${isHero ? heroGradientId : dotGradientId})`}
+                opacity={isHero ? 0.75 : 1}
+              />
+              {isHero && (
+                <>
+                  <path
+                    d={`M-${spikeLength},0 L0,-${spikeWidth} L${spikeLength},0 L0,${spikeWidth} Z`}
+                    fill="#f8d878"
+                    opacity="0.55"
+                  />
+                  <path
+                    d={`M0,-${spikeLength} L${spikeWidth},0 L0,${spikeLength} L-${spikeWidth},0 Z`}
+                    fill="#f8d878"
+                    opacity="0.55"
+                  />
+                </>
+              )}
+              <circle
+                r={coreRadius}
+                fill={isHero ? `url(#${starGradientId})` : "#fff3c8"}
+              />
+              <circle r={coreRadius * 0.42} fill="#ffffff" opacity="0.9" />
+            </g>
+          );
+        })}
+      </g>
     </svg>
   );
 }
@@ -1179,7 +1492,7 @@ function NatalHeroCard({
   return (
     <section className={styles.heroCard} aria-label="Основная натальная карта">
       <div className={styles.heroAura} aria-hidden="true" />
-      <NatalConstellation />
+      <NatalConstellation sign={subtitleSign} />
 
       <div className={styles.heroCopy}>
         <div className={styles.heroKicker}>
@@ -1312,7 +1625,7 @@ function NatalNoChartCard({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
     >
-      <div className={styles.sectionKicker}>✦ Базовый портрет</div>
+      <div className={styles.sectionKicker}>Базовый портрет</div>
       <div className={styles.basicSignRow}>
         <span>{userSign?.emoji ?? "☉"}</span>
         <div>
@@ -1356,7 +1669,7 @@ function NatalElementsPanel({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
     >
-      <div className={styles.sectionKicker}>✦ Баланс стихий</div>
+      <div className={styles.sectionKicker}>Баланс стихий</div>
       <div className={styles.elementGrid}>
         {ELEMENT_ORDER.map((key) => {
           const element = ELEMENTS[key];
@@ -1466,9 +1779,6 @@ function NatalPlanetsPanel({ full }: { full: NatalFullResponse }) {
                 <h3>{row.name}</h3>
                 <b>{signText}</b>
                 <p>{row.desc}</p>
-              </span>
-              <span className={styles.cardArrow} aria-hidden="true">
-                ›
               </span>
             </article>
           );
