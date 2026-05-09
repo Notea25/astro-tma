@@ -16,13 +16,13 @@
 
 ### Color Palette
 
-| Role | Hex | CSS Variable |
-|------|-----|--------------|
-| Primary | `#1C1917` | `--color-primary` |
-| Secondary | `#44403C` | `--color-secondary` |
-| CTA/Accent | `#CA8A04` | `--color-cta` |
+| Role       | Hex         | CSS Variable           |
+| ---------- | ----------- | ---------------------- |
+| Primary    | `#1C1917` | `--color-primary`    |
+| Secondary  | `#44403C` | `--color-secondary`  |
+| CTA/Accent | `#CA8A04` | `--color-cta`        |
 | Background | `#FAFAF9` | `--color-background` |
-| Text | `#0C0A09` | `--color-text` |
+| Text       | `#0C0A09` | `--color-text`       |
 
 **Color Notes:** Premium dark + gold accent
 
@@ -34,29 +34,30 @@
 - **Google Fonts:** [Cormorant + Montserrat](https://fonts.google.com/share?selection.family=Cormorant:wght@400;500;600;700|Montserrat:wght@300;400;500;600;700)
 
 **CSS Import:**
+
 ```css
 @import url('https://fonts.googleapis.com/css2?family=Cormorant:wght@400;500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap');
 ```
 
 ### Spacing Variables
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--space-xs` | `4px` / `0.25rem` | Tight gaps |
-| `--space-sm` | `8px` / `0.5rem` | Icon gaps, inline spacing |
-| `--space-md` | `16px` / `1rem` | Standard padding |
-| `--space-lg` | `24px` / `1.5rem` | Section padding |
-| `--space-xl` | `32px` / `2rem` | Large gaps |
-| `--space-2xl` | `48px` / `3rem` | Section margins |
-| `--space-3xl` | `64px` / `4rem` | Hero padding |
+| Token           | Value                 | Usage                     |
+| --------------- | --------------------- | ------------------------- |
+| `--space-xs`  | `4px` / `0.25rem` | Tight gaps                |
+| `--space-sm`  | `8px` / `0.5rem`  | Icon gaps, inline spacing |
+| `--space-md`  | `16px` / `1rem`   | Standard padding          |
+| `--space-lg`  | `24px` / `1.5rem` | Section padding           |
+| `--space-xl`  | `32px` / `2rem`   | Large gaps                |
+| `--space-2xl` | `48px` / `3rem`   | Section margins           |
+| `--space-3xl` | `64px` / `4rem`   | Hero padding              |
 
 ### Shadow Depths
 
-| Level | Value | Usage |
-|-------|-------|-------|
-| `--shadow-sm` | `0 1px 2px rgba(0,0,0,0.05)` | Subtle lift |
-| `--shadow-md` | `0 4px 6px rgba(0,0,0,0.1)` | Cards, buttons |
-| `--shadow-lg` | `0 10px 15px rgba(0,0,0,0.1)` | Modals, dropdowns |
+| Level           | Value                            | Usage                       |
+| --------------- | -------------------------------- | --------------------------- |
+| `--shadow-sm` | `0 1px 2px rgba(0,0,0,0.05)`   | Subtle lift                 |
+| `--shadow-md` | `0 4px 6px rgba(0,0,0,0.1)`    | Cards, buttons              |
+| `--shadow-lg` | `0 10px 15px rgba(0,0,0,0.1)`  | Modals, dropdowns           |
 | `--shadow-xl` | `0 20px 25px rgba(0,0,0,0.15)` | Hero images, featured cards |
 
 ---
