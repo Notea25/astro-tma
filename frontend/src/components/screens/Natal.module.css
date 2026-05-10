@@ -2711,35 +2711,39 @@
   }
 
   .elementGrid {
-    grid-template-columns: 1fr;
-    gap: 14px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 12px;
   }
 
   .elementCard {
-    grid-template-columns: 168px minmax(0, 1fr);
-    min-height: 196px;
-    padding: 18px 18px;
-    gap: 14px;
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    text-align: center;
+    min-height: 244px;
+    padding: 14px 12px 16px;
+    gap: 6px;
     border-radius: 18px;
   }
 
   .elementCard::before {
-    left: 10px;
-    bottom: 8px;
-    width: 196px;
-    height: 90px;
+    left: 50%;
+    bottom: 10px;
+    width: 70%;
+    height: 50px;
+    transform: translateX(-50%);
   }
 
   .elementIcon {
-    width: 160px;
+    width: 100%;
+    max-width: 150px;
   }
 
   .elementIcon::before {
-    inset: 16px;
+    inset: 14px;
   }
 
   .elementIcon::after {
-    inset: 16px;
+    inset: 14px;
   }
 
   .elementIcon svg {
@@ -2748,24 +2752,26 @@
   }
 
   .elementText {
-    gap: 7px;
+    gap: 4px;
+    justify-items: center;
+    align-content: end;
   }
 
   .elementText b {
-    font-size: 1.85rem;
+    font-size: 1.32rem;
   }
 
   .elementText small {
-    font-size: 1rem;
-    line-height: 1.2;
+    font-size: 0.78rem;
+    line-height: 1.18;
   }
 
   .elementText strong {
-    font-size: 2.7rem;
+    font-size: 1.85rem;
   }
 
   .elementText strong span {
-    font-size: 1.2rem;
+    font-size: 0.9rem;
   }
 
   .traitCloud {
