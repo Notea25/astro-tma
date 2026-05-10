@@ -2309,49 +2309,49 @@
 
   .elementGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 13px 12px;
+    gap: 14px 14px;
   }
 
   .elementCard {
-    grid-template-columns: 70px minmax(0, 1fr);
+    grid-template-columns: 92px minmax(0, 1fr);
     justify-items: stretch;
-    min-height: 116px;
-    padding: 12px 12px;
-    gap: 8px;
+    min-height: 144px;
+    padding: 16px 16px;
+    gap: 10px;
     text-align: left;
   }
 
   .elementCard::before {
-    left: 5px;
-    bottom: 5px;
-    width: 92px;
-    height: 46px;
+    left: 8px;
+    bottom: 6px;
+    width: 116px;
+    height: 58px;
   }
 
   .elementIcon {
-    width: 64px;
+    width: 84px;
   }
 
   .elementText {
     justify-items: start;
-    gap: 4px;
+    gap: 5px;
   }
 
   .elementText b {
-    font-size: 1.28rem;
+    font-size: 1.55rem;
   }
 
   .elementText small {
-    font-size: 0.72rem;
-    line-height: 1.16;
+    font-size: 0.86rem;
+    line-height: 1.18;
   }
 
   .elementText strong {
-    font-size: 1.72rem;
+    font-size: 2.15rem;
   }
 
   .elementText strong span {
-    font-size: 0.82rem;
+    font-size: 1rem;
   }
 
   .traitCloud {
@@ -2711,46 +2711,46 @@
   }
 
   .elementCard {
-    grid-template-columns: 58px minmax(0, 1fr);
-    min-height: 104px;
-    padding: 10px 9px;
-    gap: 7px;
-    border-radius: 13px;
+    grid-template-columns: 80px minmax(0, 1fr);
+    min-height: 132px;
+    padding: 14px 12px;
+    gap: 9px;
+    border-radius: 14px;
   }
 
   .elementCard::before {
-    left: 3px;
-    width: 78px;
-    height: 40px;
+    left: 5px;
+    width: 100px;
+    height: 50px;
   }
 
   .elementIcon {
-    width: 54px;
+    width: 74px;
   }
 
   .elementIcon::before {
-    inset: 7px;
+    inset: 9px;
   }
 
   .elementIcon::after {
-    inset: 7px;
+    inset: 9px;
   }
 
   .elementIcon svg {
-    width: 26px;
-    height: 26px;
+    width: 36px;
+    height: 36px;
   }
 
   .elementText b {
-    font-size: 1.12rem;
+    font-size: 1.4rem;
   }
 
   .elementText small {
-    font-size: 0.66rem;
+    font-size: 0.8rem;
   }
 
   .elementText strong {
-    font-size: 1.48rem;
+    font-size: 1.9rem;
   }
 
   .traitCloud {
