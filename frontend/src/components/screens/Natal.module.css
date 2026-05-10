@@ -1062,10 +1062,10 @@
 .elementCard {
   position: relative;
   display: grid;
-  grid-template-columns: 146px minmax(0, 1fr);
+  grid-template-columns: 180px minmax(0, 1fr);
   align-items: center;
   min-width: 0;
-  min-height: 166px;
+  min-height: 196px;
   overflow: hidden;
   padding: 18px 24px;
   border: 1px solid color-mix(in srgb, currentColor 42%, transparent);
@@ -1147,7 +1147,7 @@
 .elementIcon {
   position: relative;
   display: grid;
-  width: 124px;
+  width: 160px;
   place-items: center;
   overflow: visible;
 }
@@ -2313,9 +2313,9 @@
   }
 
   .elementCard {
-    grid-template-columns: 92px minmax(0, 1fr);
+    grid-template-columns: 130px minmax(0, 1fr);
     justify-items: stretch;
-    min-height: 144px;
+    min-height: 168px;
     padding: 16px 16px;
     gap: 10px;
     text-align: left;
@@ -2324,12 +2324,12 @@
   .elementCard::before {
     left: 8px;
     bottom: 6px;
-    width: 116px;
-    height: 58px;
+    width: 150px;
+    height: 72px;
   }
 
   .elementIcon {
-    width: 84px;
+    width: 124px;
   }
 
   .elementText {
@@ -2710,47 +2710,62 @@
     font-size: 0.68rem;
   }
 
+  .elementGrid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
   .elementCard {
-    grid-template-columns: 80px minmax(0, 1fr);
-    min-height: 132px;
-    padding: 14px 12px;
-    gap: 9px;
-    border-radius: 14px;
+    grid-template-columns: 168px minmax(0, 1fr);
+    min-height: 196px;
+    padding: 18px 18px;
+    gap: 14px;
+    border-radius: 18px;
   }
 
   .elementCard::before {
-    left: 5px;
-    width: 100px;
-    height: 50px;
+    left: 10px;
+    bottom: 8px;
+    width: 196px;
+    height: 90px;
   }
 
   .elementIcon {
-    width: 74px;
+    width: 160px;
   }
 
   .elementIcon::before {
-    inset: 9px;
+    inset: 16px;
   }
 
   .elementIcon::after {
-    inset: 9px;
+    inset: 16px;
   }
 
   .elementIcon svg {
-    width: 36px;
-    height: 36px;
+    width: 100%;
+    height: auto;
+  }
+
+  .elementText {
+    gap: 7px;
   }
 
   .elementText b {
-    font-size: 1.4rem;
+    font-size: 1.85rem;
   }
 
   .elementText small {
-    font-size: 0.8rem;
+    font-size: 1rem;
+    line-height: 1.2;
   }
 
   .elementText strong {
-    font-size: 1.9rem;
+    font-size: 2.7rem;
+  }
+
+  .elementText strong span {
+    font-size: 1.2rem;
   }
 
   .traitCloud {
