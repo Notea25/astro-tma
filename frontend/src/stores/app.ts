@@ -13,7 +13,6 @@ export type Screen =
   | "home"
   | "discover"
   | "tarot"
-  | "compatibility"
   | "moon"
   | "natal"
   | "mac"
