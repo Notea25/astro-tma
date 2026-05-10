@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from kerykeion import AstrologicalSubjectFactory, NatalAspects
+from kerykeion import AstrologicalSubjectFactory
 
 from core.logging import get_logger
 
@@ -85,6 +85,29 @@ _PLANET_ATTRS = [
     "jupiter", "saturn", "uranus", "neptune", "pluto",
 ]
 
+_PLANET_DISPLAY_NAMES: dict[str, str] = {
+    "sun": "Sun",
+    "moon": "Moon",
+    "mercury": "Mercury",
+    "venus": "Venus",
+    "mars": "Mars",
+    "jupiter": "Jupiter",
+    "saturn": "Saturn",
+    "uranus": "Uranus",
+    "neptune": "Neptune",
+    "pluto": "Pluto",
+}
+
+_MAJOR_ASPECTS: tuple[tuple[str, float], ...] = (
+    ("conjunction", 0.0),
+    ("sextile", 60.0),
+    ("square", 90.0),
+    ("trine", 120.0),
+    ("opposition", 180.0),
+)
+
+_MAJOR_ASPECT_ORB = 8.0
+
 # Kerykeion v5 returns house as string; map to int 1–12
 _HOUSE_STR_TO_INT: dict[str, int] = {
     "First_House": 1, "Second_House": 2, "Third_House": 3,
@@ -106,6 +129,44 @@ def _parse_house(point) -> int:
         if isinstance(val, str):
             return _HOUSE_STR_TO_INT.get(val, 1)
     return 1
+
+
+def _angular_distance(left: float, right: float) -> float:
+    distance = abs(left - right) % 360
+    return min(distance, 360 - distance)
+
+
+def _calculate_major_planet_aspects(
+    planets: dict[str, PlanetPosition],
+) -> list[AspectData]:
+    """Calculate visible natal aspects in the same planet-only style as astro-online.
+
+    Kerykeion's default list includes additional points like nodes and Lilith and
+    uses different orb cutoffs. For the user-facing natal report we keep the
+    classic 10 planets and the 5 major aspects with an 8-degree orb, matching
+    the external reference site much more closely.
+    """
+    aspects: list[AspectData] = []
+
+    for left_index, left_key in enumerate(_PLANET_ATTRS):
+        left = planets[left_key]
+        for right_key in _PLANET_ATTRS[left_index + 1:]:
+            right = planets[right_key]
+            distance = _angular_distance(left.degree, right.degree)
+
+            for aspect_name, target_angle in _MAJOR_ASPECTS:
+                orb = abs(distance - target_angle)
+                if orb <= _MAJOR_ASPECT_ORB:
+                    aspects.append(AspectData(
+                        p1=_PLANET_DISPLAY_NAMES[left_key],
+                        p2=_PLANET_DISPLAY_NAMES[right_key],
+                        aspect=aspect_name,
+                        orb=round(orb, 2),
+                        applying=False,
+                    ))
+                    break
+
+    return aspects
 
 
 def calculate_natal(
@@ -175,21 +236,7 @@ def calculate_natal(
                     "degree": round(h.abs_pos or 0.0, 4),
                 })
 
-    # Aspects — v5 uses .aspect (str, already lowercase) and .aspect_movement
-    natal_aspects = NatalAspects(subject)
-    aspects: list[AspectData] = []
-    for a in natal_aspects.all_aspects:
-        # v5: aspect attr is "sextile" etc.; v4 used aspect_name
-        aspect_name = getattr(a, "aspect", None) or getattr(a, "aspect_name", "")
-        if callable(aspect_name):
-            aspect_name = aspect_name()
-        aspects.append(AspectData(
-            p1=a.p1_name,
-            p2=a.p2_name,
-            aspect=str(aspect_name).lower(),
-            orb=round(a.orbit, 2),
-            applying=str(getattr(a, "aspect_movement", "")).lower() == "applying",
-        ))
+    aspects = _calculate_major_planet_aspects(planets)
 
     # Ascendant / MC — attribute names differ between kerykeion versions
     asc = getattr(subject, "ascendant", None) or getattr(subject, "first_house", None)

@@ -18,7 +18,6 @@ from starlette.middleware.sessions import SessionMiddleware
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from api.routes import (
-    compatibility,
     glossary,
     horoscope,
     mac,
@@ -155,7 +154,6 @@ async def log_requests(request: Request, call_next):
 app.include_router(users.router,         prefix="/api")
 app.include_router(horoscope.router,     prefix="/api")
 app.include_router(tarot.router,         prefix="/api")
-app.include_router(compatibility.router, prefix="/api")
 app.include_router(natal.router,         prefix="/api")
 app.include_router(payments.router,      prefix="/api")
 app.include_router(mac.router,           prefix="/api")

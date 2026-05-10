@@ -82,6 +82,66 @@ def _deg_str(deg: float) -> str:
     return f"{d}°{m:02d}'"
 
 
+def _wrap_paragraph(c, text: str, x: int, y: int, max_chars: int, line_h: int,
+                    bottom: int, w, h) -> int:
+    """Render a wrapped paragraph and return the new y. Page-breaks if needed."""
+    words = text.split()
+    line = ""
+    for word in words:
+        test = f"{line} {word}".strip()
+        if len(test) > max_chars:
+            c.drawString(x, y, line)
+            y -= line_h
+            line = word
+            if y < bottom:
+                c.showPage()
+                c.setFillColor(BG)
+                c.rect(0, 0, w, h, fill=1, stroke=0)
+                y = h - 50
+                c.setFillColor(TEXT)
+                c.setFont("DejaVu", 10)
+        else:
+            line = test
+    if line:
+        c.drawString(x, y, line)
+        y -= line_h
+    return y
+
+
+def _render_descriptions_section(c, w, h, title: str, items: list[tuple[str, str]]) -> None:
+    """Render a full-paragraph descriptions section on its own page(s)."""
+    c.setFillColor(BG)
+    c.rect(0, 0, w, h, fill=1, stroke=0)
+
+    c.setFillColor(GOLD)
+    c.setFont("DejaVu-Bold", 20)
+    c.drawString(40, h - 50, title)
+
+    y = h - 90
+
+    for header, paragraph in items:
+        if not paragraph:
+            continue
+
+        if y < 140:
+            c.showPage()
+            c.setFillColor(BG)
+            c.rect(0, 0, w, h, fill=1, stroke=0)
+            y = h - 50
+
+        c.setFillColor(GOLD)
+        c.setFont("DejaVu-Bold", 12)
+        c.drawString(40, y, header)
+        y -= 18
+
+        c.setFillColor(TEXT)
+        c.setFont("DejaVu", 10)
+        y = _wrap_paragraph(c, paragraph, 40, y, 95, 14, 60, w, h)
+        y -= 10
+
+    c.showPage()
+
+
 def generate_natal_pdf(
     user_name: str,
     birth_date: str,
@@ -94,6 +154,7 @@ def generate_natal_pdf(
     houses: list,
     aspects: list,
     reading: str | None = None,
+    descriptions: dict | None = None,
 ) -> bytes:
     """Generate a natal chart PDF and return as bytes."""
     _register_fonts()
@@ -178,6 +239,27 @@ def generate_natal_pdf(
 
     c.showPage()
 
+    # ── Planet descriptions (full paragraphs) ────────────────────────
+    desc_planets = (descriptions or {}).get("planets") or {}
+    if desc_planets:
+        items: list[tuple[str, str]] = []
+        for name in ['sun','moon','mercury','venus','mars','jupiter','saturn','uranus','neptune','pluto']:
+            entry = desc_planets.get(name)
+            if not isinstance(entry, dict):
+                continue
+            paragraph = entry.get("full") or entry.get("short") or ""
+            if not paragraph:
+                continue
+            p = planets.get(name, {})
+            sign = p.get('sign', '')
+            sign_ru = SIGN_RU.get(sign, sign)
+            sym = PLANET_SYMBOLS.get(name, '')
+            ru = PLANET_RU.get(name, name)
+            header = f"{sym} {ru} в {sign_ru}" if sign_ru else f"{sym} {ru}"
+            items.append((header, paragraph))
+        if items:
+            _render_descriptions_section(c, w, h, "Планеты — подробно", items)
+
     # ── Page 3: House Cusps ──────────────────────────────────────────
     c.setFillColor(BG)
     c.rect(0, 0, w, h, fill=1, stroke=0)
@@ -212,6 +294,27 @@ def generate_natal_pdf(
         y -= 20
 
     c.showPage()
+
+    # ── House descriptions (full paragraphs) ─────────────────────────
+    desc_houses = (descriptions or {}).get("houses") or {}
+    if desc_houses:
+        items = []
+        for house in houses:
+            num = house.get('number')
+            if not num:
+                continue
+            entry = desc_houses.get(str(num))
+            if not isinstance(entry, dict):
+                continue
+            paragraph = entry.get("full") or entry.get("short") or ""
+            if not paragraph:
+                continue
+            sign = house.get('sign', '')
+            sign_ru = SIGN_RU.get(sign, sign)
+            header = f"Дом {num} — {sign_ru}" if sign_ru else f"Дом {num}"
+            items.append((header, paragraph))
+        if items:
+            _render_descriptions_section(c, w, h, "Дома — подробно", items)
 
     # ── Page 4: Aspects ──────────────────────────────────────────────
     c.setFillColor(BG)
@@ -255,6 +358,28 @@ def generate_natal_pdf(
             y = h - 50
 
     c.showPage()
+
+    # ── Aspect descriptions (full paragraphs) ────────────────────────
+    desc_aspects = (descriptions or {}).get("aspects") or []
+    if desc_aspects:
+        items = []
+        for entry in desc_aspects:
+            if not isinstance(entry, dict):
+                continue
+            paragraph = entry.get("full") or entry.get("short") or ""
+            if not paragraph:
+                continue
+            p1 = entry.get("p1", "")
+            p2 = entry.get("p2", "")
+            atype = entry.get("type", "")
+            sym = ASPECT_SYMBOLS.get(atype, '')
+            ru1 = PLANET_RU.get(p1, p1)
+            ru2 = PLANET_RU.get(p2, p2)
+            asp_ru = ASPECT_RU.get(atype, atype)
+            header = f"{ru1} {sym} {ru2} — {asp_ru}"
+            items.append((header, paragraph))
+        if items:
+            _render_descriptions_section(c, w, h, "Аспекты — подробно", items)
 
     # ── Page 5: LLM Reading (if available) ───────────────────────────
     if reading:
