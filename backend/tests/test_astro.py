@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from services.astro.compatibility import calculate_compatibility
 from services.astro.moon import get_moon_phase
 from services.astro.natal import calculate_natal, chart_to_json
 from services.astro.synastry import calculate_synastry
@@ -46,22 +45,22 @@ def test_chart_to_json_serialisable():
     json.dumps(data)  # must not raise
 
 
-def test_compatibility_trine():
-    result = calculate_compatibility("aries", "leo")
-    assert result.overall >= 80
-    assert result.tier == "high"
+def test_natal_aspects_match_reference_planet_only_style():
+    chart = calculate_natal(
+        name="Dev",
+        birth_dt=datetime(2000, 10, 20, 12, 0),
+        lat=53.9023,
+        lng=27.5619,
+        tz_str="Europe/Minsk",
+    )
 
-
-def test_compatibility_square():
-    result = calculate_compatibility("aries", "cancer")
-    assert result.overall < 75
-
-
-def test_compatibility_normalised_key():
-    """(a, b) and (b, a) should return same result."""
-    ab = calculate_compatibility("cancer", "scorpio")
-    ba = calculate_compatibility("scorpio", "cancer")
-    assert ab.overall == ba.overall
+    aspects = {(a.aspect, a.p1, a.p2): a.orb for a in chart.aspects}
+    assert ("square", "Sun", "Moon") in aspects
+    assert ("square", "Sun", "Neptune") in aspects
+    assert ("sextile", "Moon", "Mars") in aspects
+    assert ("trine", "Jupiter", "Uranus") in aspects
+    assert all("Node" not in a.p1 + a.p2 for a in chart.aspects)
+    assert all("Lilith" not in a.p1 + a.p2 for a in chart.aspects)
 
 
 def test_synastry_manual_like_calculation():

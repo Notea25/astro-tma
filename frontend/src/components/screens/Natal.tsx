@@ -1,4 +1,10 @@
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, type PanInfo } from "framer-motion";
 import { PremiumGate } from "@/components/ui/PremiumGate";
@@ -7,12 +13,34 @@ import { useAppStore } from "@/stores/app";
 import { ApiError, natalApi } from "@/services/api";
 import {
   ZODIAC_SIGNS,
+  type NatalDescriptionsResponse,
   type NatalFullResponse,
   type NatalSummaryResponse,
 } from "@/types";
 import { NatalChart, type NatalChartData } from "@/components/NatalChart";
 import { toNatalChartData } from "@/components/NatalChart/adapter";
+import { PlanetOrb } from "@/components/NatalChart/PlanetOrb";
+import { AspectOrb } from "@/components/NatalChart/AspectOrb";
+import {
+  CosmicElementOrb,
+  type ElementId,
+} from "@/components/NatalChart/CosmicElementOrb";
+import { NatalDescriptionSheet } from "./NatalDescriptionSheet";
+import {
+  ASPECT_FALLBACK_DESC,
+  ASPECT_PAIR_FALLBACK_HINT,
+  HOUSE_FALLBACK_DESC,
+  PLANET_FALLBACK_DESC,
+} from "@/utils/natalFallbacks";
 import styles from "./Natal.module.css";
+
+type NatalDescSelection = {
+  title: string;
+  subtitle?: string;
+  symbol?: string;
+  body: string | null;
+  accent?: string;
+};
 
 type NatalTab = "circle" | "elements" | "planets" | "houses" | "aspects";
 type ReadingSection = { title?: string; body: string };
@@ -24,7 +52,7 @@ type NatalInterpretationSlide = {
 };
 
 const NATAL_TABS: { key: NatalTab; label: string }[] = [
-  { key: "circle", label: "Круг" },
+  { key: "circle", label: "Карта" },
   { key: "elements", label: "Стихии" },
   { key: "planets", label: "Планеты" },
   { key: "houses", label: "Дома" },
@@ -34,7 +62,11 @@ const NATAL_TABS: { key: NatalTab; label: string }[] = [
 const SWIPE_OFFSET_THRESHOLD = 60;
 const SWIPE_VELOCITY_THRESHOLD = 500;
 
-type HouseAxisLabel = "Асцендент" | "Основание" | "Десцендент" | "Середина неба";
+type HouseAxisLabel =
+  | "Асцендент"
+  | "Основание"
+  | "Десцендент"
+  | "Середина неба";
 
 const HOUSE_AXIS_LABELS: Record<number, HouseAxisLabel> = {
   1: "Асцендент",
@@ -415,7 +447,10 @@ function NatalInterpretationSlider({
     setActiveIndex(Math.max(0, Math.min(slides.length - 1, index)));
   };
 
-  const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+  const handleDragEnd = (
+    _: MouseEvent | TouchEvent | PointerEvent,
+    info: PanInfo,
+  ) => {
     const shouldGoNext =
       info.offset.x < -SWIPE_OFFSET_THRESHOLD ||
       info.velocity.x < -SWIPE_VELOCITY_THRESHOLD;
@@ -566,89 +601,6 @@ function getPdfDownloadError(error: unknown): string {
   return "Не удалось скачать PDF. Попробуйте ещё раз.";
 }
 
-// SVG icons for elements (celestial style)
-function IconFire() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 2c0 4-4 6-4 10a4 4 0 0 0 8 0c0-4-4-6-4-10z" />
-      <path
-        d="M12 18a2 2 0 0 0 2-2c0-2-2-3-2-5-0 2-2 3-2 5a2 2 0 0 0 2 2z"
-        opacity="0.5"
-      />
-    </svg>
-  );
-}
-function IconEarth() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 21V8" />
-      <path d="M12 8c-4.2.7-6.8 3.4-7.2 7.4 3.8.1 6.5-2.1 7.2-7.4Z" />
-      <path d="M12 8c4.2.7 6.8 3.4 7.2 7.4-3.8.1-6.5-2.1-7.2-7.4Z" />
-      <path d="M12 8c-.2-3 1.2-5.1 4.3-6.2.4 3.1-.9 5.2-4.3 6.2Z" opacity="0.72" />
-      <path d="M8 18h8" opacity="0.56" />
-    </svg>
-  );
-}
-function IconAir() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M9.59 4.59A2 2 0 1 1 11 8H2" />
-      <path d="M12.59 19.41A2 2 0 1 0 14 16H2" />
-      <path d="M17.73 7.73A2.5 2.5 0 1 1 19.5 12H2" opacity="0.7" />
-    </svg>
-  );
-}
-function IconWater() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 2c0 0-6 7-6 11a6 6 0 0 0 12 0c0-4-6-11-6-11z" />
-      <path d="M8 16a4 4 0 0 0 4 4" opacity="0.5" />
-    </svg>
-  );
-}
-
-const ELEMENT_ICONS: Record<string, () => JSX.Element> = {
-  fire: IconFire,
-  earth: IconEarth,
-  air: IconAir,
-  water: IconWater,
-};
 const ELEMENT_COLORS: Record<string, string> = {
   fire: "#ff6b6b",
   earth: "#3dd68c",
@@ -690,8 +642,6 @@ const ELEMENT_META: Record<
     accent: "#67c9ff",
   },
 };
-
-const TRAIT_ICONS = ["♧", "♒︎", "◉", "✧", "↺", "☄"];
 
 const SIGN_TRAITS: Record<string, string[]> = {
   Aries: [
@@ -811,50 +761,64 @@ const PLANET_ROWS = [
     key: "sun",
     name: "Солнце",
     symbol: "☉",
-    desc: "Ядро личности, творческая сила",
+    desc: "Ядро личности, творческая сила, воля и жизненная энергия.",
     tone: "sun",
+    rgb: "255, 178, 76",
+    color: "#ffb24c",
   },
   {
     key: "moon",
     name: "Луна",
     symbol: "☽",
-    desc: "Эмоции, интуиция, подсознание",
+    desc: "Эмоции, интуиция, потребность в безопасности и душевный ритм.",
     tone: "moon",
+    rgb: "170, 150, 240",
+    color: "#aa96f0",
   },
   {
     key: "mercury",
     name: "Меркурий",
     symbol: "☿",
-    desc: "Мышление, коммуникация",
+    desc: "Мышление, коммуникация, способность к обучению и анализу.",
     tone: "mercury",
+    rgb: "124, 214, 245",
+    color: "#7cd6f5",
   },
   {
     key: "venus",
     name: "Венера",
     symbol: "♀",
-    desc: "Любовь, ценности, красота",
+    desc: "Любовь, ценности, вкус, притяжение и гармония в отношениях.",
     tone: "venus",
+    rgb: "236, 134, 196",
+    color: "#ec86c4",
   },
   {
     key: "mars",
     name: "Марс",
     symbol: "♂",
-    desc: "Энергия, действие, желание",
+    desc: "Энергия, действия, амбиции и стремление к достижению целей.",
     tone: "mars",
+    rgb: "236, 92, 70",
+    color: "#ec5c46",
   },
   {
     key: "jupiter",
     name: "Юпитер",
     symbol: "♃",
-    desc: "Удача, рост, философия",
+    desc: "Рост, мудрость, удача и широкий взгляд на смысл жизни.",
     tone: "jupiter",
+    rgb: "230, 182, 110",
+    color: "#e6b66e",
   },
   {
     key: "saturn",
     name: "Сатурн",
     symbol: "♄",
-    desc: "Дисциплина, уроки, структура",
+    desc: "Дисциплина, структура, уроки времени и зрелая ответственность.",
     tone: "saturn",
+    rgb: "160, 134, 230",
+    color: "#a086e6",
   },
 ];
 
@@ -883,7 +847,20 @@ const PLANET_ACCENTS: Record<string, string> = {
 
 const PLANET_HERO_SYMBOLS = ["♄", "♆", "♃", "♇", "♀", "☉", "☿", "☽"];
 
-const HOUSE_HERO_SYMBOLS = ["♑︎", "♓︎", "♈", "♏︎", "♎", "♐︎", "♉", "♊", "♋", "♌", "♍", "♎"];
+const HOUSE_HERO_SYMBOLS = [
+  "♑︎",
+  "♓︎",
+  "♈",
+  "♏︎",
+  "♎",
+  "♐︎",
+  "♉",
+  "♊",
+  "♋",
+  "♌",
+  "♍",
+  "♎",
+];
 
 const CATEGORY_RU: Record<string, string> = {
   personality: "Личность",
@@ -1082,19 +1059,40 @@ function pointKey(value: string): string {
 
 function pointSymbol(value: string): string {
   const key = value.toLowerCase();
-  return PLANET_SYMBOLS[key] ?? POINT_SYMBOLS[key] ?? POINT_SYMBOLS[pointKey(value)] ?? "✦";
+  return (
+    PLANET_SYMBOLS[key] ??
+    POINT_SYMBOLS[key] ??
+    POINT_SYMBOLS[pointKey(value)] ??
+    "✦"
+  );
 }
 
 function aspectDisplayName(value: string): string {
   const key = value.toLowerCase();
-  return PLANET_RU[key] ?? POINT_RU[key] ?? POINT_RU[pointKey(value)] ?? titleFromPoint(value);
+  return (
+    PLANET_RU[key] ??
+    POINT_RU[key] ??
+    POINT_RU[pointKey(value)] ??
+    titleFromPoint(value)
+  );
+}
+
+function pluralizeAspects(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return "аспект";
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14))
+    return "аспекта";
+  return "аспектов";
 }
 
 function getPlanetData(
   summary: NatalSummaryResponse | undefined,
   full: NatalFullResponse | undefined,
   planet: string,
-): { sign?: string | null; sign_ru?: string; sign_degree?: number } | undefined {
+):
+  | { sign?: string | null; sign_ru?: string; sign_degree?: number }
+  | undefined {
   return full?.planets?.[planet] ?? summary?.planets?.[planet];
 }
 
@@ -1105,11 +1103,7 @@ function getElementSummary(summary: NatalSummaryResponse | undefined): {
   description: string;
   color: string;
 } {
-  const signs = [
-    summary?.sun_sign,
-    summary?.moon_sign,
-    summary?.ascendant_sign,
-  ]
+  const signs = [summary?.sun_sign, summary?.moon_sign, summary?.ascendant_sign]
     .map(normalizeSign)
     .filter(Boolean);
 
@@ -1161,8 +1155,21 @@ function IconDownload() {
 function IconCalendarSmall() {
   return (
     <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
-      <rect x="4" y="5" width="16" height="15" rx="2" stroke="currentColor" strokeWidth="1.7" />
-      <path d="M8 3v4M16 3v4M4 10h16" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      <rect
+        x="4"
+        y="5"
+        width="16"
+        height="15"
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="1.7"
+      />
+      <path
+        d="M8 3v4M16 3v4M4 10h16"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -1171,7 +1178,13 @@ function IconClockSmall() {
   return (
     <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
       <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.7" />
-      <path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M12 7v5l3 2"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -1243,7 +1256,6 @@ function NatalTopBar() {
       <div className={styles.headerMoon} aria-label="Луна">
         <span className={styles.headerMoonSurface} aria-hidden="true" />
       </div>
-
     </header>
   );
 }
@@ -1256,7 +1268,11 @@ function NatalTabBar({
   onChange: (next: NatalTab) => void;
 }) {
   return (
-    <div className={styles.tabBar} role="tablist" aria-label="Разделы натальной карты">
+    <div
+      className={styles.tabBar}
+      role="tablist"
+      aria-label="Разделы натальной карты"
+    >
       {NATAL_TABS.map((item) => (
         <button
           key={item.key}
@@ -1276,7 +1292,8 @@ function NatalTabBar({
 function NatalConstellation({ sign }: { sign?: string | null }) {
   const constellationKey = signKey(sign) || "sagittarius";
   const definition =
-    ZODIAC_CONSTELLATIONS[constellationKey] ?? ZODIAC_CONSTELLATIONS.sagittarius;
+    ZODIAC_CONSTELLATIONS[constellationKey] ??
+    ZODIAC_CONSTELLATIONS.sagittarius;
   const xs = definition.stars.map(([x]) => x);
   const ys = definition.stars.map(([, y]) => y);
   const minX = Math.min(...xs);
@@ -1351,7 +1368,10 @@ function NatalConstellation({ sign }: { sign?: string | null }) {
           const spikeWidth = 0.55;
 
           return (
-            <g key={`${x}-${y}-${brightness}`} transform={`translate(${cx}, ${cy})`}>
+            <g
+              key={`${x}-${y}-${brightness}`}
+              transform={`translate(${cx}, ${cy})`}
+            >
               <circle
                 r={haloRadius}
                 fill={`url(#${isHero ? heroGradientId : dotGradientId})`}
@@ -1398,12 +1418,16 @@ function DecorativeOrbit({
       }`}
       aria-hidden="true"
     >
-      <div className={styles.orbitCore}>✦</div>
+      <div className={styles.orbitCore} />
       {symbols.map((symbol, index) => (
         <span
           key={`${symbol}-${index}`}
           className={styles.orbitGlyph}
-          style={{ "--orbit-angle": `${index * (360 / symbols.length)}deg` } as CSSProperties}
+          style={
+            {
+              "--orbit-angle": `${index * (360 / symbols.length)}deg`,
+            } as CSSProperties
+          }
         >
           {symbol}
         </span>
@@ -1425,7 +1449,10 @@ function NatalKeyChips({
   const moon = getPlanetData(summary, full, "moon");
   const ascendantDegree =
     chartData.ascendant.degree != null
-      ? formatDegreeFromParts(chartData.ascendant.degree, chartData.ascendant.minute)
+      ? formatDegreeFromParts(
+          chartData.ascendant.degree,
+          chartData.ascendant.minute,
+        )
       : "—";
 
   const chips = [
@@ -1502,7 +1529,9 @@ function NatalHeroCard({
         </div>
         <h2 className={styles.personName}>{displayName}</h2>
         <div className={styles.ascLine}>
-          <span aria-hidden="true">{ZODIAC_GLYPHS[signKey(subtitleSign)] ?? "☉"}</span>
+          <span aria-hidden="true">
+            {ZODIAC_GLYPHS[signKey(subtitleSign)] ?? "☉"}
+          </span>
           <span>{subtitle}</span>
         </div>
         <p className={styles.quote}>«Рождённый звёздами»</p>
@@ -1532,10 +1561,14 @@ function NatalBirthDetails({
   const ascendant = summary?.ascendant_sign
     ? `Восходящий ${toRu(summary.ascendant_sign)}`
     : "Асцендент уточняется";
-  const focus = FOCUS_PHRASES[normalizeSign(summary?.sun_sign)] ?? "Фокус на личной силе";
+  const focus =
+    FOCUS_PHRASES[normalizeSign(summary?.sun_sign)] ?? "Фокус на личной силе";
 
   return (
-    <section className={styles.detailsCard} aria-label="Данные рождения и ключевые акценты">
+    <section
+      className={styles.detailsCard}
+      aria-label="Данные рождения и ключевые акценты"
+    >
       <div className={styles.birthRows}>
         <div className={styles.birthRow}>
           <IconCalendarSmall />
@@ -1543,7 +1576,9 @@ function NatalBirthDetails({
         </div>
         <div className={styles.birthRow}>
           <IconClockSmall />
-          <span>{formatBirthTime(summary?.birth_time, summary?.birth_time_known)}</span>
+          <span>
+            {formatBirthTime(summary?.birth_time, summary?.birth_time_known)}
+          </span>
         </div>
         <div className={styles.birthRow}>
           <IconPinSmall />
@@ -1551,7 +1586,9 @@ function NatalBirthDetails({
         </div>
         <div className={styles.birthRow}>
           <IconGlobeSmall />
-          <span>{formatCoordinates(summary?.birth_lat, summary?.birth_lng)}</span>
+          <span>
+            {formatCoordinates(summary?.birth_lat, summary?.birth_lng)}
+          </span>
         </div>
         <div className={styles.timezone}>
           Часовой пояс: {summary?.birth_tz || "не указан"}
@@ -1563,7 +1600,9 @@ function NatalBirthDetails({
       <div className={styles.highlights}>
         <h3>Ключевые акценты</h3>
         <div className={styles.highlightRow}>
-          <span aria-hidden="true">{ZODIAC_GLYPHS[signKey(summary?.ascendant_sign)] ?? "AC"}</span>
+          <span aria-hidden="true">
+            {ZODIAC_GLYPHS[signKey(summary?.ascendant_sign)] ?? "AC"}
+          </span>
           <p>{ascendant}</p>
         </div>
         <div className={styles.highlightRow} style={{ color: element.color }}>
@@ -1603,7 +1642,9 @@ function NatalPdfCard({
         whileTap={{ scale: isDownloading ? 1 : 0.98 }}
       >
         <IconDownload />
-        <span>{isDownloading ? "Готовим PDF..." : "Скачать полный отчёт (PDF)"}</span>
+        <span>
+          {isDownloading ? "Готовим PDF..." : "Скачать полный отчёт (PDF)"}
+        </span>
       </motion.button>
       {error && <p className={styles.downloadError}>{error}</p>}
     </section>
@@ -1676,7 +1717,6 @@ function NatalElementsPanel({
           const count = planets.filter((planet) =>
             element.signs.includes(planet),
           ).length;
-          const Icon = ELEMENT_ICONS[key];
           const tone = ELEMENT_TONE[key];
           const meta = ELEMENT_META[key];
 
@@ -1684,10 +1724,12 @@ function NatalElementsPanel({
             <article
               key={key}
               className={`${styles.elementCard} ${styles[`elementCard${meta.toneClass.charAt(0).toUpperCase()}${meta.toneClass.slice(1)}`]}`}
-              style={{ color: meta?.accent ?? tone?.color ?? ELEMENT_COLORS[key] }}
+              style={{
+                color: meta?.accent ?? tone?.color ?? ELEMENT_COLORS[key],
+              }}
             >
               <span className={styles.elementIcon} aria-hidden="true">
-                <Icon />
+                <CosmicElementOrb element={key as ElementId} size={132} />
               </span>
               <span className={styles.elementText}>
                 <b>{element.label}</b>
@@ -1703,11 +1745,8 @@ function NatalElementsPanel({
 
       {summary?.sun_sign && SIGN_TRAITS[normalizeSign(summary.sun_sign)] && (
         <div className={styles.traitCloud}>
-          {SIGN_TRAITS[normalizeSign(summary.sun_sign)].map((trait, index) => (
-            <span key={trait}>
-              <b aria-hidden="true">{TRAIT_ICONS[index % TRAIT_ICONS.length]}</b>
-              {trait}
-            </span>
+          {SIGN_TRAITS[normalizeSign(summary.sun_sign)].map((trait) => (
+            <span key={trait}>{trait}</span>
           ))}
         </div>
       )}
@@ -1736,7 +1775,15 @@ function NatalInterpretationPanel({
   );
 }
 
-function NatalPlanetsPanel({ full }: { full: NatalFullResponse }) {
+function NatalPlanetsPanel({
+  full,
+  descriptions,
+  onSelect,
+}: {
+  full: NatalFullResponse;
+  descriptions: NatalDescriptionsResponse | undefined;
+  onSelect: (selection: NatalDescSelection) => void;
+}) {
   const visibleRows = PLANET_ROWS.filter((row) => full.planets?.[row.key]);
 
   return (
@@ -1761,26 +1808,69 @@ function NatalPlanetsPanel({ full }: { full: NatalFullResponse }) {
       <div className={styles.planetList}>
         {visibleRows.map((row) => {
           const planet = full.planets[row.key];
-          const accent = PLANET_ACCENTS[row.key] ?? "#ffd476";
-          const signText = `${planet.sign_ru} ${formatDegreeShort(
-            planet.sign_degree,
-          )}${planet.retrograde ? " ℞" : ""} · Дом ${planet.house}`;
+          const accent = row.color ?? PLANET_ACCENTS[row.key] ?? "#ffd476";
+          const degText = `${formatDegreeShort(planet.sign_degree)}${
+            planet.retrograde ? " ℞" : ""
+          }`;
+          const desc = descriptions?.planets?.[row.key];
+          const subtitle = `${planet.sign_ru} · ${degText} · Дом ${planet.house}`;
 
           return (
-            <article
+            <button
+              type="button"
               key={row.key}
-              className={styles.planetCard}
-              style={{ color: accent }}
+              className={`${styles.planetCard} ${styles.planetCardButton}`}
+              style={
+                {
+                  color: accent,
+                  "--planet-rgb": row.rgb,
+                } as CSSProperties
+              }
+              onClick={() =>
+                onSelect({
+                  title: `${row.name} в ${planet.sign_ru}`,
+                  subtitle,
+                  symbol: row.symbol,
+                  body:
+                    desc?.short ?? PLANET_FALLBACK_DESC[row.key] ?? row.desc,
+                  accent,
+                })
+              }
             >
               <span className={styles.planetOrb} aria-hidden="true">
-                <span>{row.symbol}</span>
+                <PlanetOrb id={row.key} size={88} showGlyph={false} />
               </span>
               <span className={styles.planetCopy}>
                 <h3>{row.name}</h3>
-                <b>{signText}</b>
+                <span className={styles.planetMeta}>
+                  <span className={styles.planetMetaSign}>
+                    {planet.sign_ru}
+                  </span>
+                  <span
+                    className={styles.planetMetaDeg}
+                    style={{ color: accent }}
+                  >
+                    {degText}
+                  </span>
+                  <span className={styles.planetMetaDot} aria-hidden="true" />
+                  <span className={styles.planetMetaHouse}>
+                    Дом {planet.house}
+                  </span>
+                </span>
                 <p>{row.desc}</p>
               </span>
-            </article>
+              <span className={styles.planetChev} aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path
+                    d="M5 3 L 10 7 L 5 11"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+            </button>
           );
         })}
       </div>
@@ -1788,7 +1878,15 @@ function NatalPlanetsPanel({ full }: { full: NatalFullResponse }) {
   );
 }
 
-function NatalHousesPanel({ full }: { full: NatalFullResponse }) {
+function NatalHousesPanel({
+  full,
+  descriptions,
+  onSelect,
+}: {
+  full: NatalFullResponse;
+  descriptions: NatalDescriptionsResponse | undefined;
+  onSelect: (selection: NatalDescSelection) => void;
+}) {
   return (
     <motion.div
       className={styles.housesPage}
@@ -1814,12 +1912,29 @@ function NatalHousesPanel({ full }: { full: NatalFullResponse }) {
           const axisLabel = HOUSE_AXIS_LABELS[house.number];
           const glyph = ZODIAC_GLYPHS[houseSignKey] ?? "✦";
           const tone = ZODIAC_TONES[houseSignKey] ?? "gold";
+          const desc = descriptions?.houses?.[String(house.number)];
+          const subtitleParts = [signRu, formatDegree(house.degree)];
+          if (axisLabel) subtitleParts.push(axisLabel);
 
           return (
-            <article
+            <button
+              type="button"
               key={house.number}
-              className={`${styles.houseCard} ${axisLabel ? styles.houseCardAxis : ""}`}
+              className={`${styles.houseCard} ${styles.houseCardButton} ${
+                axisLabel ? styles.houseCardAxis : ""
+              }`}
               data-tone={tone}
+              onClick={() =>
+                onSelect({
+                  title: `Дом ${house.number} — ${signRu}`,
+                  subtitle: subtitleParts.join(" · "),
+                  symbol: glyph,
+                  body:
+                    desc?.short ??
+                    HOUSE_FALLBACK_DESC[String(house.number)] ??
+                    null,
+                })
+              }
             >
               <span className={styles.houseNumber}>{house.number}</span>
               <span className={styles.houseGlyph} aria-hidden="true">
@@ -1830,7 +1945,18 @@ function NatalHousesPanel({ full }: { full: NatalFullResponse }) {
                 <small>{formatDegree(house.degree)}</small>
                 {axisLabel && <em>{axisLabel}</em>}
               </span>
-            </article>
+              <span className={styles.houseChev} aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path
+                    d="M5 3 L 10 7 L 5 11"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+            </button>
           );
         })}
       </div>
@@ -1838,7 +1964,15 @@ function NatalHousesPanel({ full }: { full: NatalFullResponse }) {
   );
 }
 
-function NatalAspectsPanel({ full }: { full: NatalFullResponse }) {
+function NatalAspectsPanel({
+  full,
+  descriptions,
+  onSelect,
+}: {
+  full: NatalFullResponse;
+  descriptions: NatalDescriptionsResponse | undefined;
+  onSelect: (selection: NatalDescSelection) => void;
+}) {
   return (
     <motion.section
       className={styles.aspectsPage}
@@ -1865,42 +1999,106 @@ function NatalAspectsPanel({ full }: { full: NatalFullResponse }) {
           const meta = ASPECT_META[type];
           if (!meta || group.length === 0) return null;
 
+          const buildAspectsBody = () => {
+            const intro = ASPECT_FALLBACK_DESC[type] ?? "";
+            const blocks: string[] = [];
+            if (intro) blocks.push(intro);
+
+            for (const aspect of group) {
+              const p1 = aspect.p1.toLowerCase();
+              const p2 = aspect.p2.toLowerCase();
+              const desc = descriptions?.aspects?.find(
+                (a) =>
+                  a.type === aspect.aspect &&
+                  ((a.p1 === p1 && a.p2 === p2) ||
+                    (a.p1 === p2 && a.p2 === p1)),
+              );
+              const name1 = aspectDisplayName(aspect.p1);
+              const name2 = aspectDisplayName(aspect.p2);
+              const heading = `${name1} ${meta.symbol} ${name2} · орб ${aspect.orb.toFixed(1)}°`;
+              const hint =
+                ASPECT_PAIR_FALLBACK_HINT[type] ??
+                "взаимодействуют между собой";
+              const fallback = `${name1} и ${name2} ${hint}. Подробнее эта пара раскроется в полном PDF-отчёте.`;
+              const text = desc?.short ?? fallback;
+              blocks.push(`${heading}\n${text}`);
+            }
+
+            return blocks.join("\n\n").trim() || null;
+          };
+
+          const subtitle = `${group.length} ${pluralizeAspects(group.length)}`;
+
           return (
-            <article
+            <button
+              type="button"
               key={type}
-              className={styles.aspectGroup}
+              className={`${styles.aspectGroup} ${styles.aspectGroupButton}`}
               style={{ color: meta.accent }}
+              onClick={() =>
+                onSelect({
+                  title: meta.name,
+                  subtitle,
+                  symbol: meta.symbol,
+                  body: buildAspectsBody(),
+                  accent: meta.accent,
+                })
+              }
             >
+              <span className={styles.aspectGroupSparkle} aria-hidden="true">
+                ✦
+              </span>
               <span className={styles.aspectIcon} aria-hidden="true">
-                {meta.symbol}
+                <AspectOrb
+                  type={type}
+                  symbol={meta.symbol}
+                  color={meta.accent}
+                  size={92}
+                />
               </span>
               <span className={styles.aspectContent}>
                 <h3>{meta.name}</h3>
                 <span className={styles.aspectRows}>
-                  {group.map((aspect, index) => (
-                    <span
-                      key={`${aspect.p1}-${aspect.p2}-${index}`}
-                      className={styles.aspectRow}
-                    >
-                      <span className={styles.aspectPair}>
-                        <span className={styles.aspectPoint}>
-                          <i aria-hidden="true">{pointSymbol(aspect.p1)}</i>
-                          {aspectDisplayName(aspect.p1)}
+                  {group.map((aspect, index) => {
+                    const name1 = aspectDisplayName(aspect.p1);
+                    const name2 = aspectDisplayName(aspect.p2);
+                    return (
+                      <span
+                        key={`${aspect.p1}-${aspect.p2}-${index}`}
+                        className={styles.aspectRow}
+                        style={{ color: meta.accent }}
+                      >
+                        <span className={styles.aspectPair}>
+                          <span className={styles.aspectPoint}>
+                            <i aria-hidden="true">{pointSymbol(aspect.p1)}</i>
+                            {name1}
+                          </span>
+                          <b>{meta.symbol}</b>
+                          <span className={styles.aspectPoint}>
+                            <i aria-hidden="true">{pointSymbol(aspect.p2)}</i>
+                            {name2}
+                          </span>
                         </span>
-                        <b>{meta.symbol}</b>
-                        <span className={styles.aspectPoint}>
-                          <i aria-hidden="true">{pointSymbol(aspect.p2)}</i>
-                          {aspectDisplayName(aspect.p2)}
+                        <span className={styles.aspectOrbValue}>
+                          {aspect.orb.toFixed(1)}°
                         </span>
                       </span>
-                      <span className={styles.aspectOrbValue}>
-                        {aspect.orb.toFixed(1)}°
-                      </span>
-                    </span>
-                  ))}
+                    );
+                  })}
                 </span>
               </span>
-            </article>
+              <span className={styles.aspectGroupChev} aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path
+                    d="M5 3 L 10 7 L 5 11"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+            </button>
           );
         })}
       </div>
@@ -1929,6 +2127,19 @@ export function Natal() {
     staleTime: 1000 * 60 * 60,
   });
 
+  const isFullPanel =
+    tab === "planets" || tab === "houses" || tab === "aspects";
+  const { data: descriptions, isLoading: descriptionsLoading } = useQuery({
+    queryKey: ["natal-descriptions"],
+    queryFn: natalApi.getDescriptions,
+    enabled: hasBirthData && (summary?.has_chart ?? false) && isFullPanel,
+    staleTime: 1000 * 60 * 60 * 24,
+  });
+
+  const [selectedDesc, setSelectedDesc] = useState<NatalDescSelection | null>(
+    null,
+  );
+
   const sunSign = summary?.sun_sign ?? user?.sun_sign;
   const userSign = ZODIAC_SIGNS.find((s) => s.value === sunSign);
   const chartData = useMemo(
@@ -1938,18 +2149,17 @@ export function Natal() {
   const interpretationSlides = useMemo<NatalInterpretationSlide[]>(() => {
     if (!full) return [];
 
-    const readingSlides =
-      full.reading
-        ? parseReadingSections(full.reading).map((section, index) => {
-            const title = section.title || "Вступление";
-            return {
-              id: `reading-${index}`,
-              label: title,
-              title,
-              body: section.body,
-            };
-          })
-        : [];
+    const readingSlides = full.reading
+      ? parseReadingSections(full.reading).map((section, index) => {
+          const title = section.title || "Вступление";
+          return {
+            id: `reading-${index}`,
+            label: title,
+            title,
+            body: section.body,
+          };
+        })
+      : [];
 
     const planetSlides =
       full.interpretations?.map((interp, index) => {
@@ -2020,9 +2230,27 @@ export function Natal() {
         stars={150}
       >
         <>
-          {tab === "planets" && <NatalPlanetsPanel full={full} />}
-          {tab === "houses" && <NatalHousesPanel full={full} />}
-          {tab === "aspects" && <NatalAspectsPanel full={full} />}
+          {tab === "planets" && (
+            <NatalPlanetsPanel
+              full={full}
+              descriptions={descriptions}
+              onSelect={setSelectedDesc}
+            />
+          )}
+          {tab === "houses" && (
+            <NatalHousesPanel
+              full={full}
+              descriptions={descriptions}
+              onSelect={setSelectedDesc}
+            />
+          )}
+          {tab === "aspects" && (
+            <NatalAspectsPanel
+              full={full}
+              descriptions={descriptions}
+              onSelect={setSelectedDesc}
+            />
+          )}
         </>
       </PremiumGate>
     );
@@ -2074,7 +2302,15 @@ export function Natal() {
 
     if (tab === "elements") {
       return (
-        <NatalElementsPanel summary={summary} slides={interpretationSlides} />
+        <>
+          <NatalElementsPanel summary={summary} slides={interpretationSlides} />
+          <NatalPdfCard
+            full={full}
+            isDownloading={isPdfDownloading}
+            error={pdfDownloadError}
+            onDownload={handlePdfDownload}
+          />
+        </>
       );
     }
 
@@ -2123,12 +2359,23 @@ export function Natal() {
         ) : (
           <>
             <NatalTabBar tab={tab} onChange={setTab} />
-            <div className={styles.tabContent}>
-              {renderTabContent()}
-            </div>
+            <div className={styles.tabContent}>{renderTabContent()}</div>
           </>
         )}
       </div>
+
+      <NatalDescriptionSheet
+        open={selectedDesc !== null}
+        title={selectedDesc?.title ?? ""}
+        subtitle={selectedDesc?.subtitle}
+        symbol={selectedDesc?.symbol}
+        body={selectedDesc?.body ?? null}
+        accent={selectedDesc?.accent}
+        isLoading={
+          selectedDesc !== null && !selectedDesc.body && descriptionsLoading
+        }
+        onClose={() => setSelectedDesc(null)}
+      />
     </div>
   );
 }

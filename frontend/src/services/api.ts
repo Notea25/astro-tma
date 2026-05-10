@@ -207,6 +207,11 @@ export const natalApi = {
     request<import("@/types").NatalSummaryResponse>("GET", "/natal/summary"),
   getFull: () =>
     request<import("@/types").NatalFullResponse>("GET", "/natal/full"),
+  getDescriptions: () =>
+    request<import("@/types").NatalDescriptionsResponse>(
+      "GET",
+      "/natal/descriptions",
+    ),
   downloadPdf: async () => {
     const filename = "natal-chart.pdf";
 
@@ -223,7 +228,10 @@ export const natalApi = {
     const useTelegramOpenLink = canUseTelegramOpenLink();
     const popup = useTelegramOpenLink ? null : openDownloadWindow();
     try {
-      const link = await request<NatalPdfLinkResponse>("POST", "/natal/pdf-link");
+      const link = await request<NatalPdfLinkResponse>(
+        "POST",
+        "/natal/pdf-link",
+      );
       const downloadUrl = apiUrl(link.download_url);
 
       if (useTelegramOpenLink) {
@@ -260,10 +268,7 @@ function localTarotImage(remoteUrl: string | null | undefined): string | null {
   if (!m) return remoteUrl; // fallback to original
   const [, num, namePart] = m;
   const folder = parseInt(num, 10) < 22 ? "majors" : "minors";
-  const slug = namePart
-    .toLowerCase()
-    .replace(/^the_/, "")
-    .replace(/_/g, "-");
+  const slug = namePart.toLowerCase().replace(/^the_/, "").replace(/_/g, "-");
   return `/tarot/${folder}/card-${num}-${slug}.svg`;
 }
 
@@ -294,15 +299,6 @@ export const tarotApi = {
       "GET",
       `/tarot/readings/${reading_id}`,
     ).then(rewriteSpread),
-};
-
-// ── Compatibility ──────────────────────────────────────────────────────────────
-export const compatibilityApi = {
-  get: (sign_a: string, sign_b: string) =>
-    request<import("@/types").CompatibilityResponse>("POST", "/compatibility", {
-      sign_a,
-      sign_b,
-    }),
 };
 
 // ── News ───────────────────────────────────────────────────────────────────────
@@ -382,8 +378,7 @@ export const transitsApi = {
 export const macApi = {
   draw: () =>
     request<import("@/types").MacReadingResponse>("POST", "/mac/draw"),
-  today: () =>
-    request<import("@/types").MacTodayResponse>("GET", "/mac/today"),
+  today: () => request<import("@/types").MacTodayResponse>("GET", "/mac/today"),
   // 48-card deck flow — log a pick (card content stays client-side)
   pick: (body: { card_number: number; card_name: string; category: string }) =>
     request<import("@/types").MacPickResponse>("POST", "/mac/pick", body),

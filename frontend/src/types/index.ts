@@ -94,21 +94,6 @@ export interface TarotHistoryItem {
   created_at: string;
 }
 
-export interface CompatibilityResponse {
-  sign_a: string;
-  sign_b: string;
-  overall: number;
-  love: number;
-  communication: number;
-  trust: number;
-  passion: number;
-  tier: string;
-  description_ru: string;
-  strengths_ru: string[];
-  challenges_ru: string[];
-  is_deep_analysis: boolean;
-}
-
 export interface NatalPlanetData {
   degree: number; // absolute 0–360
   sign_degree: number; // within-sign 0–30
@@ -173,6 +158,25 @@ export interface NatalFullResponse {
   }[];
   interpretations: { planet: string; category: string; text: string }[];
   reading: string | null;
+}
+
+export interface NatalDescriptionEntry {
+  short: string;
+  full: string;
+}
+
+export interface NatalAspectDescription {
+  p1: string;
+  p2: string;
+  type: string;
+  short: string;
+  full: string;
+}
+
+export interface NatalDescriptionsResponse {
+  planets: Record<string, NatalDescriptionEntry>;
+  houses: Record<string, NatalDescriptionEntry>;
+  aspects: NatalAspectDescription[];
 }
 
 export interface NewsPreview {

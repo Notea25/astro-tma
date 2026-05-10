@@ -7,38 +7,25 @@ import {
   type CityOption,
 } from "@/components/ui/CityAutocomplete";
 import { useAppStore } from "@/stores/app";
-import { compatibilityApi, synastryApi, ApiError } from "@/services/api";
+import { synastryApi, ApiError } from "@/services/api";
 import { useHaptic } from "@/hooks/useTelegram";
 import { SynastryReport } from "@/components/synastry/SynastryReport";
 import type {
-  CompatibilityResponse,
   SynastryHistoryItem,
   SynastryResult,
   SynastryManualInput,
-  ZodiacSign,
 } from "@/types";
 
-const SPHERE_LABELS: { key: keyof SynastryResult["scores"]; label: string }[] =
-  [
-    { key: "overall", label: "Общая" },
-    { key: "love", label: "Любовь" },
-    { key: "communication", label: "Общение" },
-    { key: "trust", label: "Доверие" },
-    { key: "passion", label: "Страсть" },
-  ];
-
 type Mode = "pick" | "invite" | "manual";
-type SynastryDisplayResult = SynastryResult & {
-  fallbackCompatibility?: CompatibilityResponse;
-};
 
 const MIN_SYNASTRY_AGE = 14;
 
-const TELEGRAM_BOT_USERNAME =
-  ((import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined) ??
-    "astrologiyatut_bot")
-    .trim()
-    .replace(/^@/, "");
+const TELEGRAM_BOT_USERNAME = (
+  (import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined) ??
+  "astrologiyatut_bot"
+)
+  .trim()
+  .replace(/^@/, "");
 
 const INVALID_INVITE_BOT_USERNAMES = new Set([
   "astro_bot",
@@ -136,54 +123,6 @@ function validatePartnerBirthDate(value: string): {
   return { normalizedDate, message: null };
 }
 
-function getZodiacSignFromDate(isoDate: string): ZodiacSign {
-  const [, monthRaw, dayRaw] = isoDate.split("-").map(Number);
-  const mmdd = monthRaw * 100 + dayRaw;
-
-  if (mmdd >= 321 && mmdd <= 419) return "aries";
-  if (mmdd >= 420 && mmdd <= 520) return "taurus";
-  if (mmdd >= 521 && mmdd <= 620) return "gemini";
-  if (mmdd >= 621 && mmdd <= 722) return "cancer";
-  if (mmdd >= 723 && mmdd <= 822) return "leo";
-  if (mmdd >= 823 && mmdd <= 922) return "virgo";
-  if (mmdd >= 923 && mmdd <= 1022) return "libra";
-  if (mmdd >= 1023 && mmdd <= 1121) return "scorpio";
-  if (mmdd >= 1122 && mmdd <= 1221) return "sagittarius";
-  if (mmdd >= 1222 || mmdd <= 119) return "capricorn";
-  if (mmdd >= 120 && mmdd <= 218) return "aquarius";
-  return "pisces";
-}
-
-function compatibilityToSynastryResult(
-  result: CompatibilityResponse,
-  initiatorName: string | null,
-  partnerName: string,
-): SynastryDisplayResult {
-  return {
-    id: null,
-    aspects: [],
-    scores: {
-      love: result.love,
-      communication: result.communication,
-      trust: result.trust,
-      passion: result.passion,
-      overall: result.overall,
-    },
-    total_aspects: 0,
-    initiator_name: initiatorName,
-    partner_name: partnerName,
-    is_initiator: true,
-    planets_a: [],
-    planets_b: [],
-    houses_a: [],
-    houses_b: [],
-    interpretations: [],
-    summary_ru: null,
-    created_at: null,
-    fallbackCompatibility: result,
-  };
-}
-
 function getManualSynastryErrorMessage(error: unknown): string | null {
   if (!error) return null;
 
@@ -212,9 +151,7 @@ export function Synastry() {
   const { setScreen, user } = useAppStore();
   const { impact, notification } = useHaptic();
   const queryClient = useQueryClient();
-  const [localResult, setLocalResult] = useState<SynastryDisplayResult | null>(
-    null,
-  );
+  const [localResult, setLocalResult] = useState<SynastryResult | null>(null);
   const [mode, setMode] = useState<Mode>("pick");
   const [openingHistoryId, setOpeningHistoryId] = useState<number | null>(null);
 
@@ -471,7 +408,7 @@ export function Synastry() {
                         ? "Сначала купите Синастрию."
                         : requestMutation.error.status === 500
                           ? requestMutation.error.message
-                        : "Не удалось создать приглашение."}
+                          : "Не удалось создать приглашение."}
                   </p>
                 )}
               </div>
@@ -510,9 +447,8 @@ export function Synastry() {
 function ManualPartnerForm({
   onResult,
 }: {
-  onResult: (r: SynastryDisplayResult) => void;
+  onResult: (r: SynastryResult) => void;
 }) {
-  const { user } = useAppStore();
   const [name, setName] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("12:00");
@@ -522,34 +458,7 @@ function ManualPartnerForm({
   const [localError, setLocalError] = useState<string | null>(null);
 
   const manualMutation = useMutation({
-    mutationFn: async (payload: SynastryManualInput) => {
-      try {
-        return await synastryApi.manual(payload);
-      } catch (error) {
-        if (!(error instanceof ApiError) || error.status !== 404) {
-          throw error;
-        }
-
-        if (!user?.sun_sign) {
-          throw new ApiError(
-            422,
-            "Заполните свои данные рождения в профиле, чтобы рассчитать совместимость.",
-          );
-        }
-
-        const partnerSign = getZodiacSignFromDate(payload.birth_date);
-        const compatibility = await compatibilityApi.get(
-          user.sun_sign,
-          partnerSign,
-        );
-
-        return compatibilityToSynastryResult(
-          compatibility,
-          user.name,
-          payload.partner_name,
-        );
-      }
-    },
+    mutationFn: (payload: SynastryManualInput) => synastryApi.manual(payload),
     onSuccess: (result) => onResult(result),
   });
 
@@ -581,7 +490,8 @@ function ManualPartnerForm({
     });
   };
 
-  const errMsg = localError ?? getManualSynastryErrorMessage(manualMutation.error);
+  const errMsg =
+    localError ?? getManualSynastryErrorMessage(manualMutation.error);
 
   return (
     <div className="horoscope-card">
@@ -688,82 +598,12 @@ function SynastryResultView({
   result,
   onReset,
 }: {
-  result: SynastryDisplayResult;
+  result: SynastryResult;
   onReset: () => void;
 }) {
-  const fallback = result.fallbackCompatibility;
-
   return (
     <>
-      {fallback ? (
-        <>
-          <div className="horoscope-card">
-            <div
-              className="horoscope-card__period"
-              style={{ marginBottom: 8 }}
-            >
-              {result.initiator_name}{" "}
-              {result.partner_name ? `× ${result.partner_name}` : ""}
-            </div>
-            <div className="energy-bars">
-              {SPHERE_LABELS.map(({ key, label }) => (
-                <div key={key} className="energy-row">
-                  <span className="energy-label">{label}</span>
-                  <div className="energy-track">
-                    <motion.div
-                      className="energy-fill"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${result.scores[key]}%` }}
-                      transition={{
-                        duration: 0.8,
-                        ease: "easeOut",
-                        delay: 0.1,
-                      }}
-                    />
-                  </div>
-                  <span className="energy-val">{result.scores[key]}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="horoscope-card">
-            <div className="horoscope-card__period" style={{ marginBottom: 12 }}>
-              Базовая совместимость
-            </div>
-            <p className="compat-description" style={{ marginTop: 0 }}>
-              {fallback.description_ru}
-            </p>
-            {fallback.strengths_ru.length > 0 && (
-              <div className="compat-list compat-list--strengths">
-                <div className="compat-list__title">
-                  <span className="compat-list__dot compat-list__dot--green" />
-                  Сильные стороны
-                </div>
-                {fallback.strengths_ru.map((item, idx) => (
-                  <div key={idx} className="compat-list__item">
-                    • {item}
-                  </div>
-                ))}
-              </div>
-            )}
-            {fallback.challenges_ru.length > 0 && (
-              <div className="compat-list compat-list--challenges">
-                <div className="compat-list__title">
-                  <span className="compat-list__dot compat-list__dot--amber" />
-                  Вызовы
-                </div>
-                {fallback.challenges_ru.map((item, idx) => (
-                  <div key={idx} className="compat-list__item">
-                    • {item}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </>
-      ) : (
-        <SynastryReport result={result} />
-      )}
+      <SynastryReport result={result} />
 
       <button
         className="btn-primary"
@@ -866,9 +706,7 @@ function SynastryHistorySection({
               {formatHistoryDate(item.created_at)}
             </div>
           </div>
-          <div className="syn-history-row__score">
-            {item.scores.overall}%
-          </div>
+          <div className="syn-history-row__score">{item.scores.overall}%</div>
           <button
             type="button"
             className="syn-history-row__delete"
