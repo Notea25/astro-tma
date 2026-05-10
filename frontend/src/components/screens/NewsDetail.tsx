@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "@/stores/app";
 import { newsApi } from "@/services/api";
+import { cleanMarkdownText } from "@/utils/text";
 
 const CATEGORY_LABEL: Record<string, string> = {
   aspect: "Аспект",
@@ -80,7 +81,7 @@ export function NewsDetail() {
               {formatDate(data.date)}
             </div>
             <h3 style={{ fontSize: 18, marginBottom: 12, lineHeight: 1.3 }}>
-              {data.title_ru}
+              {cleanMarkdownText(data.title_ru)}
             </h3>
             <div
               style={{
@@ -90,7 +91,7 @@ export function NewsDetail() {
                 color: "var(--text-soft)",
               }}
             >
-              {data.body_md}
+              {cleanMarkdownText(data.body_md)}
             </div>
           </div>
         )}

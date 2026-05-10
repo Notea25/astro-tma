@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useAppStore } from "@/stores/app";
 import { newsApi } from "@/services/api";
+import { cleanMarkdownText } from "@/utils/text";
 
 const CATEGORY_EMOJI: Record<string, string> = {
   aspect: "✦",
@@ -145,8 +146,12 @@ export function News() {
             <div className="news-card__date">
               {CATEGORY_EMOJI[item.category] ?? "✦"} {formatDate(item.date)}
             </div>
-            <div className="news-card__title">{item.title_ru}</div>
-            <div className="news-card__body">{item.preview}</div>
+            <div className="news-card__title">
+              {cleanMarkdownText(item.title_ru)}
+            </div>
+            <div className="news-card__body">
+              {cleanMarkdownText(item.preview)}
+            </div>
           </motion.button>
         ))}
       </div>

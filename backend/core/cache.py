@@ -57,11 +57,6 @@ def key_natal_pdf_download(token: str) -> str:
 def key_moon(date: str) -> str:
     return f"moon:{date}"
 
-def key_compatibility(sign_a: str, sign_b: str) -> str:
-    # Normalise order so (aries, taurus) == (taurus, aries)
-    a, b = sorted([sign_a, sign_b])
-    return f"compat:{a}:{b}"
-
 def key_user_premium(user_id: int) -> str:
     return f"user:premium:{user_id}"
 

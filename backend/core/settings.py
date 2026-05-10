@@ -37,7 +37,6 @@ class Settings(BaseSettings):
     CACHE_TTL_HOROSCOPE: int = 86400    # 24h
     CACHE_TTL_MOON: int = 3600          # 1h
     CACHE_TTL_NATAL: int = 604800       # 7d — natal never changes
-    CACHE_TTL_COMPATIBILITY: int = 86400
     CACHE_TTL_TAROT_INTERPRET: int = 2592000  # 30d — readings are immutable
 
     # Admin panel

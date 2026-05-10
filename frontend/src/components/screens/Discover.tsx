@@ -76,29 +76,6 @@ const SECTIONS: { title: string; cards: PracticeCard[] }[] = [
     title: "Отношения",
     cards: [
       {
-        label: "Совместимость",
-        desc: "Астрологический союз",
-        screen: "compatibility",
-        gradient:
-          "linear-gradient(135deg, rgba(197,184,240,0.12) 0%, rgba(197,184,240,0.03) 100%)",
-        iconColor: "#c5b8f0",
-        icon: (
-          <svg
-            width="28"
-            height="28"
-            viewBox="0 0 28 28"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.1"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="10" cy="14" r="7" />
-            <circle cx="18" cy="14" r="7" />
-          </svg>
-        ),
-      },
-      {
         label: "Синастрия",
         desc: "Карта отношений двоих",
         screen: "synastry",

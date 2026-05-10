@@ -23,11 +23,6 @@ const Discover = lazy(() =>
 const Tarot = lazy(() =>
   import("@/components/screens/Tarot").then((m) => ({ default: m.Tarot })),
 );
-const Compatibility = lazy(() =>
-  import("@/components/screens/Compatibility").then((m) => ({
-    default: m.Compatibility,
-  })),
-);
 const Moon = lazy(() =>
   import("@/components/screens/Moon").then((m) => ({ default: m.Moon })),
 );
@@ -146,7 +141,14 @@ export default function App() {
     if (!ready || !synced || !onboardingComplete) return;
     if (screen !== "onboarding") return;
     setScreen(pendingInviteToken ? "synastry_invite" : "home");
-  }, [ready, synced, onboardingComplete, screen, pendingInviteToken, setScreen]);
+  }, [
+    ready,
+    synced,
+    onboardingComplete,
+    screen,
+    pendingInviteToken,
+    setScreen,
+  ]);
 
   // Already-onboarded user opening a fresh invite link: jump to the invite
   // page immediately. Non-onboarded users wait until onboarding finishes
@@ -196,7 +198,6 @@ export default function App() {
               {screen === "home" && <Home />}
               {screen === "discover" && <Discover />}
               {screen === "tarot" && <Tarot />}
-              {screen === "compatibility" && <Compatibility />}
               {screen === "moon" && <Moon />}
               {screen === "natal" && <Natal />}
               {screen === "mac" && <Mac />}

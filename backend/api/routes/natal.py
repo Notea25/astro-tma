@@ -1,6 +1,7 @@
 """Natal chart endpoints — full chart retrieval and SVG generation."""
 
 from secrets import token_urlsafe
+from typing import Any
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -14,12 +15,74 @@ from core.settings import settings
 from db.database import get_db
 from services.astro.interpreter import get_natal_interpretation
 from services.astro.llm_interpreter import generate_natal_reading
+from services.astro.natal_descriptions import generate_natal_descriptions
 from services.users import repository as user_repo
 
 log = get_logger(__name__)
 
 router = APIRouter(prefix="/natal", tags=["natal"])
 _PDF_DOWNLOAD_TTL_SECONDS = 300
+
+
+def _empty_descriptions() -> dict[str, Any]:
+    return {"planets": {}, "houses": {}, "aspects": []}
+
+
+def _has_any(descriptions: dict[str, Any]) -> bool:
+    return bool(
+        descriptions.get("planets")
+        or descriptions.get("houses")
+        or descriptions.get("aspects")
+    )
+
+
+async def _get_or_generate_descriptions(
+    db: AsyncSession,
+    user,
+) -> dict[str, Any]:
+    """
+    Persistent (DB-backed) descriptions for the user's chart.
+
+    Stored inside ``user.natal_chart.chart_data["descriptions"]`` so that
+    they live alongside the chart itself: when birth data changes, the
+    whole chart_data is replaced via ``save_natal_chart`` and descriptions
+    are naturally invalidated, triggering a fresh LLM generation.
+    """
+    if not user.natal_chart:
+        return _empty_descriptions()
+
+    chart = user.natal_chart
+    chart_data = chart.chart_data or {}
+    stored = chart_data.get("descriptions")
+    if isinstance(stored, dict) and _has_any(stored):
+        return stored
+
+    if not settings.ANTHROPIC_API_KEY:
+        return _empty_descriptions()
+
+    planets = chart_data.get("planets", {})
+    houses = chart_data.get("houses", [])
+    aspects = chart_data.get("aspects", [])
+
+    try:
+        result = await generate_natal_descriptions(
+            planets=planets,
+            houses=houses,
+            aspects=aspects,
+            api_key=settings.ANTHROPIC_API_KEY,
+        )
+    except Exception as e:
+        log.error("natal.descriptions_failed", user_id=user.id, error=str(e))
+        return _empty_descriptions()
+
+    if _has_any(result):
+        # Reassign the whole dict so SQLAlchemy detects the change (default
+        # JSON columns don't track mutations to nested keys).
+        chart.chart_data = {**chart_data, "descriptions": result}
+        await db.commit()
+        log.info("natal.descriptions_persisted", user_id=user.id)
+
+    return result
 
 
 async def _get_pdf_user_or_error(db: AsyncSession, user_id: int):
@@ -43,7 +106,7 @@ def _natal_pdf_filename(user) -> str:
     return f"natal_{safe_name}.pdf"
 
 
-async def _build_natal_pdf_response(user) -> Response:
+async def _build_natal_pdf_response(db: AsyncSession, user) -> Response:
     from services.natal_pdf import generate_natal_pdf
 
     chart = user.natal_chart
@@ -58,6 +121,8 @@ async def _build_natal_pdf_response(user) -> Response:
     cache_key = key_natal(user.id)
     cached = await cache_get(cache_key)
     reading = cached.get("reading") if isinstance(cached, dict) else None
+
+    descriptions = await _get_or_generate_descriptions(db, user)
 
     pdf_bytes = generate_natal_pdf(
         user_name=user.tg_first_name or "User",
@@ -75,6 +140,7 @@ async def _build_natal_pdf_response(user) -> Response:
         houses=houses,
         aspects=aspects,
         reading=reading,
+        descriptions=descriptions,
     )
 
     filename = _natal_pdf_filename(user)
@@ -234,6 +300,26 @@ async def get_natal_full(
     return result
 
 
+@router.get("/descriptions")
+async def get_natal_descriptions(
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Personal short+full descriptions for every planet, house and aspect.
+    Persisted in the natal chart row — regenerated only when the user
+    updates their birth data (which replaces the whole chart_data blob).
+    """
+    user = await user_repo.get_by_id(db, tg_user["id"])
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+
+    if not user.natal_chart:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "No birth data")
+
+    return await _get_or_generate_descriptions(db, user)
+
+
 @router.get("/pdf")
 async def get_natal_pdf(
     tg_user: dict = Depends(get_tg_user),
@@ -241,7 +327,7 @@ async def get_natal_pdf(
 ):
     """Generate and return natal chart PDF report."""
     user = await _get_pdf_user_or_error(db, tg_user["id"])
-    return await _build_natal_pdf_response(user)
+    return await _build_natal_pdf_response(db, user)
 
 
 @router.post("/pdf-link")
@@ -275,4 +361,4 @@ async def get_natal_pdf_by_token(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Download link expired")
 
     user = await _get_pdf_user_or_error(db, int(payload["user_id"]))
-    return await _build_natal_pdf_response(user)
+    return await _build_natal_pdf_response(db, user)
