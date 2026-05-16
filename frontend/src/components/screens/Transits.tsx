@@ -54,7 +54,8 @@ const ZODIAC_SYMBOL: Record<string, string> = {
 
 // Fast planets drive daily mood; slow planets drive long-term processes.
 const FAST_PLANETS = new Set(["moon", "mercury", "venus", "mars", "sun"]);
-// Neutral guidance about an aspect archetype
+// Generic aspect summary (used only as a fallback when the server has not
+// yet generated/cached a planet-pair-specific text for this transit).
 const ASPECT_HINT: Record<string, string> = {
   conjunction: "Слияние энергий — темы объединяются в одну.",
   trine: "Гармония и поддержка. Естественный поток.",
@@ -126,8 +127,11 @@ function TransitCard({
               <strong style={{ color }}>
                 {aspect.transit_planet_ru} {aspect.aspect_ru}{" "}
                 {aspect.natal_planet_ru}
-              </strong>{" "}
-              — {ASPECT_HINT[aspect.aspect] ?? "Значимая конфигурация."}
+              </strong>
+              {" — "}
+              {aspect.text_ru ||
+                ASPECT_HINT[aspect.aspect] ||
+                "Значимая конфигурация."}
             </p>
             {applying === true && (
               <p style={{ marginTop: 6, fontSize: 12, opacity: 0.85 }}>
@@ -232,6 +236,18 @@ export function Transits() {
                 формируют настроение дня. <strong>Медленные</strong> (Юпитер,
                 Сатурн и дальше) — долгие жизненные процессы, длящиеся месяцы и
                 годы.
+              </p>
+              <p>
+                <strong style={{ color: ASPECT_COLOR.trine }}>
+                  Гармоничные
+                </strong>{" "}
+                аспекты — трин (△), секстиль (⚹) и соединение (☌) — дают
+                поддержку и поток.{" "}
+                <strong style={{ color: ASPECT_COLOR.square }}>
+                  Напряжённые
+                </strong>{" "}
+                — квадрат (□) и оппозиция (☍) — это точки роста через
+                сопротивление и осознание противоположностей.
               </p>
             </motion.div>
           )}

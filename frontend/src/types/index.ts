@@ -322,6 +322,7 @@ export interface TransitAspect {
   aspect_ru: string;
   transit_retrograde?: boolean;
   applying?: boolean | null;
+  text_ru?: string | null;
 }
 
 export interface SynastryManualInput {

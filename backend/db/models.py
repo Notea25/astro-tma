@@ -264,6 +264,19 @@ class SynastryInterpretation(TimestampMixin, Base):
     text_ru: Mapped[str] = mapped_column(Text, nullable=False)
 
 
+class TransitInterpretation(TimestampMixin, Base):
+    """Cached LLM-generated text for a (transit_planet, natal_planet, aspect)
+    triple — "right now Saturn squares your Mercury" style. Separate from
+    synastry_interpretations because the prompt is framed differently."""
+    __tablename__ = "transit_interpretations"
+    __table_args__ = (UniqueConstraint("transit_planet", "natal_planet", "aspect"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    transit_planet: Mapped[str] = mapped_column(String(20), nullable=False)
+    natal_planet: Mapped[str] = mapped_column(String(20), nullable=False)
+    aspect: Mapped[str] = mapped_column(String(20), nullable=False)
+    text_ru: Mapped[str] = mapped_column(Text, nullable=False)
+
+
 class SynastryPairSummary(TimestampMixin, Base):
     """Cached LLM-generated pair portrait. Keyed by sha256 of the prompt-
     determining inputs (aspects + scores + names), so repeated requests

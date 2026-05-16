@@ -14,6 +14,7 @@ class TransitAspect(BaseModel):
     aspect_ru: str
     transit_retrograde: bool = False
     applying: bool | None = None  # True = сходящийся (усиливается), False = расходящийся, None = неизвестно
+    text_ru: str | None = None  # LLM-cached interpretation of this transit-planet pair
 
 
 class EnergyScores(BaseModel):
