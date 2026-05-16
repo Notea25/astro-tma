@@ -302,7 +302,12 @@ async def generate_natal_descriptions(
                     if isinstance(v, dict)
                 }
         except Exception as e:
-            log.error("natal_descriptions.planets_parse_failed", error=str(e))
+            log.error(
+                "natal_descriptions.planets_parse_failed",
+                error=str(e),
+                sample=planets_raw[:300],
+                length=len(planets_raw),
+            )
     elif isinstance(planets_raw, BaseException):
         log.error("natal_descriptions.planets_call_failed", error=str(planets_raw))
 
@@ -316,7 +321,12 @@ async def generate_natal_descriptions(
                     if isinstance(v, dict)
                 }
         except Exception as e:
-            log.error("natal_descriptions.houses_parse_failed", error=str(e))
+            log.error(
+                "natal_descriptions.houses_parse_failed",
+                error=str(e),
+                sample=houses_raw[:300],
+                length=len(houses_raw),
+            )
     elif isinstance(houses_raw, BaseException):
         log.error("natal_descriptions.houses_call_failed", error=str(houses_raw))
 
