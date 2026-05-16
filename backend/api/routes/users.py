@@ -228,10 +228,60 @@ async def _get_timezone(lat: float, lng: float) -> str:
         return "UTC"
 
 
+_GEOCODE_PLACE_PRIORITY = {
+    # First match wins — prefer real inhabited places over admin areas
+    "city": 5,
+    "town": 5,
+    "village": 4,
+    "hamlet": 3,
+    "suburb": 2,
+    "municipality": 1,
+    "administrative": 0,
+}
+
+
+def _place_score(result: dict) -> int:
+    """Higher score = more likely to be the actual settlement the user
+    typed in, rather than an enclosing admin region."""
+    pclass = (result.get("class") or "").lower()
+    ptype = (result.get("type") or "").lower()
+
+    addr = result.get("address", {}) or {}
+    if addr.get("city"):
+        return _GEOCODE_PLACE_PRIORITY["city"]
+    if addr.get("town"):
+        return _GEOCODE_PLACE_PRIORITY["town"]
+    if addr.get("village"):
+        return _GEOCODE_PLACE_PRIORITY["village"]
+    if addr.get("hamlet"):
+        return _GEOCODE_PLACE_PRIORITY["hamlet"]
+    if pclass == "place" and ptype in _GEOCODE_PLACE_PRIORITY:
+        return _GEOCODE_PLACE_PRIORITY[ptype]
+    if pclass == "boundary" or ptype == "administrative":
+        return _GEOCODE_PLACE_PRIORITY["administrative"]
+    return 0
+
+
+def _place_name(result: dict, fallback: str) -> str:
+    addr = result.get("address", {}) or {}
+    return (
+        addr.get("city")
+        or addr.get("town")
+        or addr.get("village")
+        or addr.get("hamlet")
+        or addr.get("municipality")
+        or result.get("name")
+        or fallback
+    )
+
+
 async def _geocode_city(city: str) -> GeoResult:
     """
     Resolve city name to lat/lng/tz via Nominatim (OpenStreetMap).
-    Free, no API key required. Falls back to Moscow on failure.
+    Asks for several candidates and picks the one that's actually a
+    settlement (city/town/village), not an administrative area — fixes
+    cases like "Марьина Горка" silently resolving to the surrounding
+    rural soviet boundary instead of the town itself.
     """
     try:
         async with httpx.AsyncClient(timeout=8.0) as client:
@@ -240,25 +290,29 @@ async def _geocode_city(city: str) -> GeoResult:
                 params={
                     "q": city,
                     "format": "json",
-                    "limit": 1,
+                    "limit": 5,
                     "addressdetails": 1,
+                    "accept-language": "ru",
                 },
                 headers={"User-Agent": "astro-tma/1.0"},
             )
         data = resp.json()
         if data:
-            place = data[0]
+            ranked = sorted(data, key=_place_score, reverse=True)
+            place = ranked[0]
             lat = float(place["lat"])
             lng = float(place["lon"])
-            name = (
-                place.get("address", {}).get("city")
-                or place.get("address", {}).get("town")
-                or place.get("address", {}).get("village")
-                or place.get("name")
-                or city
-            )
+            name = _place_name(place, city)
             tz = await _get_timezone(lat, lng)
-            log.info("geocode.ok", city=name, lat=lat, lng=lng, tz=tz)
+            log.info(
+                "geocode.ok",
+                city=name,
+                lat=lat,
+                lng=lng,
+                tz=tz,
+                candidates=len(data),
+                score=_place_score(place),
+            )
             return {"city": name, "lat": lat, "lng": lng, "tz": tz}
     except Exception as e:
         log.warning("geocode.failed", city=city, error=str(e))
