@@ -243,7 +243,92 @@ def _build_aspects_prompt(aspects: list[dict[str, Any]]) -> str:
 
 # ── LLM call ──────────────────────────────────────────────────────────────────
 
+
+def _entry_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "short": {"type": "string"},
+            "full": {"type": "string"},
+        },
+        "required": ["short", "full"],
+    }
+
+
+def _planets_tool_schema(planets: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    """Force the model to return entries only for the planets we actually
+    have. Each value is an object with required `short`+`full` strings."""
+    keys = [k for k in _PLANET_ORDER if k in planets]
+    if not keys:
+        keys = list(planets.keys())
+    return {
+        "type": "object",
+        "properties": {k: _entry_schema() for k in keys},
+        "required": keys,
+    }
+
+
+def _houses_tool_schema(houses: list[dict[str, Any]]) -> dict[str, Any]:
+    nums = [str(h.get("number")) for h in houses if h.get("number")]
+    return {
+        "type": "object",
+        "properties": {n: _entry_schema() for n in nums},
+        "required": nums,
+    }
+
+
+def _aspects_tool_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "string"},
+                        "short": {"type": "string"},
+                        "full": {"type": "string"},
+                    },
+                    "required": ["id", "short", "full"],
+                },
+            }
+        },
+        "required": ["items"],
+    }
+
+
+async def _call_tool(
+    client: Any,
+    prompt: str,
+    tool_name: str,
+    input_schema: dict[str, Any],
+    max_tokens: int,
+) -> dict[str, Any] | None:
+    """Invoke the model with a forced tool call — the response's tool_use
+    block carries an already-parsed dict matching `input_schema`. No JSON
+    string handling needed on our side."""
+    message = await client.messages.create(
+        model=_MODEL,
+        max_tokens=max_tokens,
+        tools=[
+            {
+                "name": tool_name,
+                "description": "Submit the requested descriptions.",
+                "input_schema": input_schema,
+            }
+        ],
+        tool_choice={"type": "tool", "name": tool_name},
+        messages=[{"role": "user", "content": prompt}],
+    )
+    for block in message.content:
+        if getattr(block, "type", None) == "tool_use":
+            return getattr(block, "input", None)
+    return None
+
+
 async def _call_llm(client: Any, prompt: str, max_tokens: int) -> str:
+    """Legacy plain-text call — kept for any future free-form prompt."""
     message = await client.messages.create(
         model=_MODEL,
         max_tokens=max_tokens,
@@ -261,6 +346,11 @@ async def generate_natal_descriptions(
     """
     Generate short+full descriptions for every planet, house and aspect.
 
+    Uses Anthropic tool_use to force structured output — the model can't
+    return free-form text, it has to call our "submit_*" tool with a dict
+    that matches the declared schema. Eliminates the long-standing JSON
+    parsing issues we used to recover from with regex.
+
     Returns a dict shaped like:
         {
             "planets": {"sun": {"short": "...", "full": "..."}, ...},
@@ -268,8 +358,6 @@ async def generate_natal_descriptions(
             "aspects": [{"p1": "sun", "p2": "moon", "type": "trine",
                          "short": "...", "full": "..."}, ...],
         }
-
-    Raises on transport / parsing errors — caller decides on fallback.
     """
     import anthropic
 
@@ -280,83 +368,85 @@ async def generate_natal_descriptions(
     aspects_prompt = _build_aspects_prompt(aspects)
 
     tasks: list[Any] = [
-        _call_llm(client, planets_prompt, 4096),
-        _call_llm(client, houses_prompt, 4096),
+        _call_tool(
+            client,
+            planets_prompt,
+            "submit_planet_descriptions",
+            _planets_tool_schema(planets),
+            4096,
+        ),
+        _call_tool(
+            client,
+            houses_prompt,
+            "submit_house_descriptions",
+            _houses_tool_schema(houses),
+            4096,
+        ),
     ]
     if aspects_prompt:
-        tasks.append(_call_llm(client, aspects_prompt, 6144))
+        tasks.append(
+            _call_tool(
+                client,
+                aspects_prompt,
+                "submit_aspect_descriptions",
+                _aspects_tool_schema(),
+                6144,
+            )
+        )
 
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    planets_raw = results[0]
-    houses_raw = results[1]
-    aspects_raw = results[2] if len(results) > 2 else None
+    planets_input = results[0]
+    houses_input = results[1]
+    aspects_input = results[2] if len(results) > 2 else None
 
     out: dict[str, Any] = {"planets": {}, "houses": {}, "aspects": []}
 
-    if isinstance(planets_raw, str):
-        try:
-            parsed = _safe_load_json(planets_raw)
-            if isinstance(parsed, dict):
-                out["planets"] = {
-                    k: {"short": str(v.get("short", "")), "full": str(v.get("full", ""))}
-                    for k, v in parsed.items()
-                    if isinstance(v, dict)
-                }
-        except Exception as e:
-            log.error(
-                "natal_descriptions.planets_parse_failed",
-                error=str(e),
-                sample=planets_raw[:300],
-                length=len(planets_raw),
-            )
-    elif isinstance(planets_raw, BaseException):
-        log.error("natal_descriptions.planets_call_failed", error=str(planets_raw))
+    if isinstance(planets_input, dict):
+        out["planets"] = {
+            k: {"short": str(v.get("short", "")), "full": str(v.get("full", ""))}
+            for k, v in planets_input.items()
+            if isinstance(v, dict)
+        }
+    elif isinstance(planets_input, BaseException):
+        log.error("natal_descriptions.planets_call_failed", error=str(planets_input))
+    else:
+        log.error("natal_descriptions.planets_no_tool_use")
 
-    if isinstance(houses_raw, str):
-        try:
-            parsed = _safe_load_json(houses_raw)
-            if isinstance(parsed, dict):
-                out["houses"] = {
-                    str(k): {"short": str(v.get("short", "")), "full": str(v.get("full", ""))}
-                    for k, v in parsed.items()
-                    if isinstance(v, dict)
-                }
-        except Exception as e:
-            log.error(
-                "natal_descriptions.houses_parse_failed",
-                error=str(e),
-                sample=houses_raw[:300],
-                length=len(houses_raw),
-            )
-    elif isinstance(houses_raw, BaseException):
-        log.error("natal_descriptions.houses_call_failed", error=str(houses_raw))
+    if isinstance(houses_input, dict):
+        out["houses"] = {
+            str(k): {"short": str(v.get("short", "")), "full": str(v.get("full", ""))}
+            for k, v in houses_input.items()
+            if isinstance(v, dict)
+        }
+    elif isinstance(houses_input, BaseException):
+        log.error("natal_descriptions.houses_call_failed", error=str(houses_input))
+    else:
+        log.error("natal_descriptions.houses_no_tool_use")
 
-    if isinstance(aspects_raw, str):
-        try:
-            parsed = _safe_load_json(aspects_raw)
-            if isinstance(parsed, list):
-                items: list[dict[str, str]] = []
-                for entry in parsed:
-                    if not isinstance(entry, dict):
-                        continue
-                    raw_id = str(entry.get("id", ""))
-                    parts = raw_id.split("_")
-                    if len(parts) != 3:
-                        continue
-                    p1, p2, atype = parts
-                    items.append({
-                        "p1": p1,
-                        "p2": p2,
-                        "type": atype,
-                        "short": str(entry.get("short", "")),
-                        "full": str(entry.get("full", "")),
-                    })
-                out["aspects"] = items
-        except Exception as e:
-            log.error("natal_descriptions.aspects_parse_failed", error=str(e))
-    elif isinstance(aspects_raw, BaseException):
-        log.error("natal_descriptions.aspects_call_failed", error=str(aspects_raw))
+    if isinstance(aspects_input, dict):
+        items_raw = aspects_input.get("items") or []
+        items: list[dict[str, str]] = []
+        for entry in items_raw:
+            if not isinstance(entry, dict):
+                continue
+            raw_id = str(entry.get("id", ""))
+            parts = raw_id.split("_")
+            if len(parts) != 3:
+                continue
+            p1, p2, atype = parts
+            items.append(
+                {
+                    "p1": p1,
+                    "p2": p2,
+                    "type": atype,
+                    "short": str(entry.get("short", "")),
+                    "full": str(entry.get("full", "")),
+                }
+            )
+        out["aspects"] = items
+    elif isinstance(aspects_input, BaseException):
+        log.error("natal_descriptions.aspects_call_failed", error=str(aspects_input))
 
     log.info(
         "natal_descriptions.done",
