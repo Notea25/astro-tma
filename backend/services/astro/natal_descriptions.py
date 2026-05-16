@@ -53,12 +53,14 @@ def _normalise_sign(sign: str | None) -> str:
 
 
 def _strip_code_fence(text: str) -> str:
-    """Claude often wraps JSON in ```json fences — strip them."""
+    """Strip any leading/trailing ```/```json fence the model emits.
+    Handles both balanced (both fences present) and unbalanced output."""
     text = text.strip()
-    fence = re.match(r"^```(?:json)?\s*(.*?)\s*```$", text, re.DOTALL)
-    if fence:
-        return fence.group(1).strip()
-    return text
+    # Leading fence
+    text = re.sub(r"^```(?:json)?\s*\n?", "", text)
+    # Trailing fence
+    text = re.sub(r"\n?\s*```\s*$", "", text)
+    return text.strip()
 
 
 def _escape_unescaped_newlines_in_strings(raw: str) -> str:
