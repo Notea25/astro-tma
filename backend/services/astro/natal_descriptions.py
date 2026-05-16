@@ -408,10 +408,18 @@ async def generate_natal_descriptions(
             for k, v in planets_input.items()
             if isinstance(v, dict)
         }
+        log.info(
+            "natal_descriptions.planets_ok",
+            received=list(planets_input.keys()),
+            kept=list(out["planets"].keys()),
+        )
     elif isinstance(planets_input, BaseException):
         log.error("natal_descriptions.planets_call_failed", error=str(planets_input))
     else:
-        log.error("natal_descriptions.planets_no_tool_use")
+        log.error(
+            "natal_descriptions.planets_no_tool_use",
+            value_type=type(planets_input).__name__,
+        )
 
     if isinstance(houses_input, dict):
         out["houses"] = {
@@ -424,6 +432,13 @@ async def generate_natal_descriptions(
     else:
         log.error("natal_descriptions.houses_no_tool_use")
 
+    log.info(
+        "natal_descriptions.aspects_debug",
+        had_prompt=bool(aspects_prompt),
+        result_type=type(aspects_input).__name__,
+        keys=list(aspects_input.keys()) if isinstance(aspects_input, dict) else None,
+        items_count=len(aspects_input.get("items", [])) if isinstance(aspects_input, dict) else None,
+    )
     if isinstance(aspects_input, dict):
         items_raw = aspects_input.get("items") or []
         items: list[dict[str, str]] = []
