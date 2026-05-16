@@ -351,24 +351,39 @@ def _aspect_one_prompt(p1: str, p2: str, atype: str) -> str:
 
 
 async def _one_entry(
-    client: Any, prompt: str, max_tokens: int = 2048
+    client: Any,
+    prompt: str,
+    sem: asyncio.Semaphore,
+    max_tokens: int = 2048,
 ) -> dict[str, str]:
-    """Single LLM call → dict with {short, full}. Empty strings on failure."""
-    try:
-        result = await _call_tool(
-            client,
-            prompt,
-            "submit_entry",
-            _single_entry_schema(),
-            max_tokens,
-        )
-        if isinstance(result, dict):
-            return {
-                "short": str(result.get("short", "")),
-                "full": str(result.get("full", "")),
-            }
-    except Exception as e:  # noqa: BLE001
-        log.warning("natal_descriptions.entry_failed", error=str(e))
+    """Single LLM call → dict with {short, full}. Semaphore-limited and
+    auto-retries once on a 429 rate-limit response. Returns empty strings
+    on permanent failure."""
+    for attempt in range(2):
+        async with sem:
+            try:
+                result = await _call_tool(
+                    client,
+                    prompt,
+                    "submit_entry",
+                    _single_entry_schema(),
+                    max_tokens,
+                )
+                if isinstance(result, dict):
+                    return {
+                        "short": str(result.get("short", "")),
+                        "full": str(result.get("full", "")),
+                    }
+                return {"short": "", "full": ""}
+            except Exception as e:  # noqa: BLE001
+                msg = str(e)
+                is_rate_limit = "429" in msg or "rate_limit" in msg.lower()
+                if is_rate_limit and attempt == 0:
+                    log.info("natal_descriptions.rate_limit_retry")
+                    await asyncio.sleep(20)
+                    continue
+                log.warning("natal_descriptions.entry_failed", error=msg[:200])
+                return {"short": "", "full": ""}
     return {"short": "", "full": ""}
 
 
@@ -385,9 +400,12 @@ async def generate_natal_descriptions(
     import anthropic
 
     client = anthropic.AsyncAnthropic(api_key=api_key)
+    # Anthropic free-tier rate limit is 50 RPM with low concurrent-conn cap.
+    # 5 in flight keeps us comfortably under both.
+    sem = asyncio.Semaphore(5)
 
     planet_items = [(k, p) for k in _PLANET_ORDER if (p := planets.get(k))]
-    planet_tasks = [_one_entry(client, _planet_one_prompt(k, p)) for k, p in planet_items]
+    planet_tasks = [_one_entry(client, _planet_one_prompt(k, p), sem) for k, p in planet_items]
 
     house_items: list[tuple[int, str]] = []
     for h in houses:
@@ -396,7 +414,7 @@ async def generate_natal_descriptions(
             continue
         sign_ru = _normalise_sign(h.get("sign_ru") or h.get("sign"))
         house_items.append((int(num), sign_ru))
-    house_tasks = [_one_entry(client, _house_one_prompt(n, s)) for n, s in house_items]
+    house_tasks = [_one_entry(client, _house_one_prompt(n, s), sem) for n, s in house_items]
 
     aspect_items: list[tuple[str, str, str]] = []
     for a in aspects:
@@ -409,7 +427,7 @@ async def generate_natal_descriptions(
             and atype in _ASPECT_RU
         ):
             aspect_items.append((p1, p2, atype))
-    aspect_tasks = [_one_entry(client, _aspect_one_prompt(p1, p2, t)) for p1, p2, t in aspect_items]
+    aspect_tasks = [_one_entry(client, _aspect_one_prompt(p1, p2, t), sem) for p1, p2, t in aspect_items]
 
     all_tasks = planet_tasks + house_tasks + aspect_tasks
     results = await asyncio.gather(*all_tasks, return_exceptions=False)
