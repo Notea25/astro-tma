@@ -3,130 +3,118 @@ import type { Screen } from "@/stores/app";
 import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
 
-// Which tab should be "active" for a given screen
-const SCREEN_TO_TAB: Partial<Record<Screen, string>> = {
+/**
+ * Bottom navigation — 5 entries with a centered FAB-style "Practices"
+ * compass-rose button. Mapping below decides which tab is highlighted
+ * for any given screen, including nested screens (e.g. tarot, moon and
+ * mac all live under the Practices tab).
+ */
+const SCREEN_TO_TAB: Partial<Record<Screen, NavId>> = {
   home: "home",
+  horoscopes: "horoscopes",
   discover: "discover",
   tarot: "discover",
   moon: "discover",
   mac: "discover",
-  natal: "natal",
+  natal: "discover",
+  transits: "discover",
+  synastry: "discover",
+  synastry_invite: "discover",
+  glossary: "discover",
+  glossary_term: "discover",
+  news: "discover",
+  news_detail: "discover",
+  premium: "premium",
   profile: "profile",
 };
 
-const NAV_ITEMS = [
+type NavId = "home" | "horoscopes" | "discover" | "premium" | "profile";
+
+interface NavItem {
+  id: NavId;
+  screen: Screen;
+  label: string;
+  icon: JSX.Element;
+  fab?: boolean;
+}
+
+const NAV_ITEMS: NavItem[] = [
   {
-    id: "home" as Screen,
-    label: "Сегодня",
-    icon: (
-      <svg
-        width="20"
-        height="20"
-        viewBox="0 0 20 20"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <circle cx="10" cy="10" r="4" />
-        <line x1="10" y1="1" x2="10" y2="3" />
-        <line x1="10" y1="17" x2="10" y2="19" />
-        <line x1="1" y1="10" x2="3" y2="10" />
-        <line x1="17" y1="10" x2="19" y2="10" />
-        <line x1="3.22" y1="3.22" x2="4.64" y2="4.64" />
-        <line x1="15.36" y1="15.36" x2="16.78" y2="16.78" />
-        <line x1="3.22" y1="16.78" x2="4.64" y2="15.36" />
-        <line x1="15.36" y1="4.64" x2="16.78" y2="3.22" />
-      </svg>
-    ),
+    id: "home",
+    screen: "home",
+    label: "Главная",
+    icon: <HomeIcon />,
   },
   {
-    id: "discover" as Screen,
+    id: "horoscopes",
+    screen: "horoscopes",
+    label: "Гороскопы",
+    icon: <PlanetIcon />,
+  },
+  {
+    id: "discover",
+    screen: "discover",
     label: "Практики",
-    icon: (
-      <svg
-        width="20"
-        height="20"
-        viewBox="0 0 20 20"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <circle cx="10" cy="10" r="8.5" />
-        <polygon points="13.5,6.5 8,9 6.5,13.5 12,11" />
-        <circle cx="10" cy="10" r="1" fill="currentColor" stroke="none" />
-      </svg>
-    ),
+    icon: <CompassRoseIcon />,
+    fab: true,
   },
   {
-    id: "natal" as Screen,
-    label: "Моя карта",
-    icon: (
-      <svg
-        width="20"
-        height="20"
-        viewBox="0 0 20 20"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <circle cx="10" cy="10" r="8.5" />
-        <circle cx="10" cy="10" r="5" />
-        <circle cx="10" cy="10" r="1.5" />
-        <line x1="10" y1="1.5" x2="10" y2="5" />
-        <line x1="10" y1="15" x2="10" y2="18.5" />
-        <line x1="1.5" y1="10" x2="5" y2="10" />
-        <line x1="15" y1="10" x2="18.5" y2="10" />
-      </svg>
-    ),
+    id: "premium",
+    screen: "premium",
+    label: "Звёзды",
+    icon: <StarIcon />,
   },
   {
-    id: "profile" as Screen,
+    id: "profile",
+    screen: "profile",
     label: "Профиль",
-    icon: (
-      <svg
-        width="20"
-        height="20"
-        viewBox="0 0 20 20"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <circle cx="10" cy="7" r="3.5" />
-        <path d="M2.5 18c0-4.142 3.358-7 7.5-7s7.5 2.858 7.5 7" />
-      </svg>
-    ),
+    icon: <UserIcon />,
   },
 ];
 
 export function BottomNav() {
   const { screen, setScreen } = useAppStore();
   const { selection } = useHaptic();
-
   const activeTab = SCREEN_TO_TAB[screen] ?? "home";
 
-  const handleNav = (id: Screen) => {
-    if (id === screen) return;
+  const handleNav = (item: NavItem) => {
+    if (item.screen === screen) return;
     selection();
-    setScreen(id);
+    setScreen(item.screen);
   };
 
   return (
-    <nav className="bottom-nav">
+    <nav className="bottom-nav bottom-nav--fab">
       {NAV_ITEMS.map((item) => {
         const active = activeTab === item.id;
+        if (item.fab) {
+          return (
+            <button
+              key={item.id}
+              className={`nav-fab-item ${active ? "active" : ""}`}
+              onClick={() => handleNav(item)}
+              aria-label={item.label}
+              aria-current={active ? "page" : undefined}
+            >
+              <span className={`nav-fab ${active ? "active" : ""}`}>
+                {item.icon}
+              </span>
+              <span className="nav-label">{item.label}</span>
+              {active && (
+                <motion.div
+                  className="nav-fab-dot"
+                  layoutId="nav-fab-dot"
+                  transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                />
+              )}
+            </button>
+          );
+        }
         return (
           <button
             key={item.id}
             className={`nav-item ${active ? "active" : ""}`}
-            onClick={() => handleNav(item.id)}
+            onClick={() => handleNav(item)}
             aria-label={item.label}
             aria-current={active ? "page" : undefined}
           >
@@ -143,5 +131,53 @@ export function BottomNav() {
         );
       })}
     </nav>
+  );
+}
+
+/* ── Icons ───────────────────────────────────────────────────────────────── */
+
+function HomeIcon() {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true">
+      <path d="M3 9.5L10 3l7 6.5V17a1 1 0 0 1-1 1h-3v-5h-6v5H4a1 1 0 0 1-1-1V9.5z" />
+    </svg>
+  );
+}
+
+function PlanetIcon() {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true">
+      <circle cx="10" cy="10" r="5" />
+      <ellipse cx="10" cy="10" rx="9" ry="2.6" transform="rotate(-22 10 10)" />
+    </svg>
+  );
+}
+
+function CompassRoseIcon() {
+  // Compass rose used for the central FAB
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <polygon points="12,3 13.5,11 12,21 10.5,11" />
+      <polygon points="3,12 11,10.5 21,12 11,13.5" />
+      <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function StarIcon() {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true">
+      <polygon points="10 1.7 12.6 7.5 18.8 8.2 14.1 12.5 15.4 18.6 10 15.4 4.6 18.6 5.9 12.5 1.2 8.2 7.4 7.5" />
+    </svg>
+  );
+}
+
+function UserIcon() {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true">
+      <circle cx="10" cy="7" r="3.5" />
+      <path d="M2.5 18c0-4.142 3.358-7 7.5-7s7.5 2.858 7.5 7" />
+    </svg>
   );
 }

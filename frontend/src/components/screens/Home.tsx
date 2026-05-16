@@ -234,6 +234,100 @@ export function Home() {
           </motion.div>
         )}
 
+        {/* Zodiac signs — horizontal scroll */}
+        {period === "today" && (
+          <section className="home-zodiac-section">
+            <div className="home-zodiac-section__head">
+              <h2 className="section-title">Знаки зодиака</h2>
+              <button
+                className="home-zodiac-section__more"
+                onClick={() => {
+                  impact("light");
+                  setScreen("horoscopes");
+                }}
+              >
+                Смотреть все
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 2l4 4-4 4" />
+                </svg>
+              </button>
+            </div>
+            <div className="zodiac-scroll">
+              {ZODIAC_SIGNS.map((s) => (
+                <button
+                  key={s.value}
+                  className={`zodiac-scroll__card ${user?.sun_sign === s.value ? "active" : ""}`}
+                  onClick={() => {
+                    impact("light");
+                    setScreen("horoscopes");
+                  }}
+                >
+                  <span className="zodiac-scroll__symbol">{s.emoji}</span>
+                  <span className="zodiac-scroll__constellation" aria-hidden="true">
+                    ✦ &nbsp;✦&nbsp; ✧ &nbsp;✦
+                  </span>
+                  <span className="zodiac-scroll__name">{s.label}</span>
+                  <span className="zodiac-scroll__dates">{s.dates}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Quick tiles — links to main practice screens */}
+        {period === "today" && (
+          <section className="home-tiles">
+            <button
+              className="home-tile"
+              onClick={() => {
+                impact("light");
+                setScreen("moon");
+              }}
+            >
+              <span className="home-tile__emoji" aria-hidden="true">🌙</span>
+              <span className="home-tile__title">Лунный календарь</span>
+              <span className="home-tile__desc">Фазы Луны и влияние дней</span>
+              <span className="home-tile__arrow" aria-hidden="true">›</span>
+            </button>
+            <button
+              className="home-tile"
+              onClick={() => {
+                impact("light");
+                setScreen("natal");
+              }}
+            >
+              <span className="home-tile__emoji" aria-hidden="true">✦</span>
+              <span className="home-tile__title">Натальная карта</span>
+              <span className="home-tile__desc">Расшифровка вашей карты рождения</span>
+              <span className="home-tile__arrow" aria-hidden="true">›</span>
+            </button>
+            <button
+              className="home-tile"
+              onClick={() => {
+                impact("light");
+                setScreen("synastry_invite");
+              }}
+            >
+              <span className="home-tile__emoji" aria-hidden="true">♥</span>
+              <span className="home-tile__title">Совместимость</span>
+              <span className="home-tile__desc">Сравните два знака</span>
+              <span className="home-tile__arrow" aria-hidden="true">›</span>
+            </button>
+            <button
+              className="home-tile"
+              onClick={() => {
+                impact("light");
+                setScreen("tarot");
+              }}
+            >
+              <span className="home-tile__emoji" aria-hidden="true">🎴</span>
+              <span className="home-tile__title">Таро</span>
+              <span className="home-tile__desc">Расклады и совет дня</span>
+              <span className="home-tile__arrow" aria-hidden="true">›</span>
+            </button>
+          </section>
+        )}
+
         {/* Tarot card of the day */}
         {period === "today" && (
         <motion.div

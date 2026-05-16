@@ -6700,3 +6700,608 @@ body::before {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+
+/* ── Bottom Nav with central FAB (Practices) ───────────────────────────── */
+.bottom-nav.bottom-nav--fab {
+  height: calc(var(--nav-height) + var(--safe-bottom) + 8px);
+  align-items: stretch;
+  overflow: visible;
+}
+
+.bottom-nav.bottom-nav--fab .nav-item {
+  flex: 1;
+  position: relative;
+}
+
+/* Central FAB tab — wraps the FAB button + label */
+.nav-fab-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 4px 4px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+}
+.nav-fab-item.active {
+  color: var(--gold);
+}
+.nav-fab-item:active {
+  transform: scale(0.95);
+}
+
+/* The actual round FAB element */
+.nav-fab {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(
+      circle at 50% 35%,
+      rgba(212, 178, 84, 0.18),
+      rgba(14, 11, 32, 0.92) 70%
+    ),
+    var(--bg-deep);
+  border: 1px solid rgba(212, 178, 84, 0.45);
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.55),
+    0 0 0 4px rgba(7, 6, 15, 0.92),
+    inset 0 0 0 1px rgba(212, 178, 84, 0.12);
+  color: var(--gold);
+  transform: translateY(-18px);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+.nav-fab.active {
+  border-color: var(--gold);
+  box-shadow:
+    0 10px 26px rgba(0, 0, 0, 0.6),
+    0 0 0 4px rgba(7, 6, 15, 0.92),
+    0 0 18px rgba(212, 178, 84, 0.32),
+    inset 0 0 0 1px rgba(240, 212, 138, 0.22);
+}
+.nav-fab svg {
+  width: 24px;
+  height: 24px;
+  stroke: currentColor;
+  stroke-width: 1.3;
+  fill: none;
+}
+
+.nav-fab-item .nav-label {
+  margin-top: -10px;
+}
+
+.nav-fab-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 6px var(--gold-glow);
+  margin-top: 2px;
+}
+
+/* Filled icon variants for non-FAB items */
+.bottom-nav.bottom-nav--fab .nav-icon svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* When active in horoscopes/premium, slightly fill the icon */
+.bottom-nav.bottom-nav--fab .nav-item.active .nav-icon svg {
+  fill: rgba(212, 178, 84, 0.16);
+}
+
+
+/* ── Horoscopes — Zodiac picker grid ───────────────────────────────────── */
+.horoscopes-screen .zodiac-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: var(--space-md);
+}
+
+.zodiac-grid__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 6px;
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: var(--text-soft);
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+}
+.zodiac-grid__item:active {
+  transform: scale(0.95);
+}
+.zodiac-grid__item.active {
+  border-color: var(--gold);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(212, 178, 84, 0.16),
+      rgba(212, 178, 84, 0.04)
+    ),
+    var(--glass);
+  color: var(--gold);
+  box-shadow: 0 0 0 1px var(--gold-glow), 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+.zodiac-grid__emoji {
+  font-size: 22px;
+  line-height: 1;
+}
+.zodiac-grid__label {
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  font-weight: 500;
+}
+
+/* ── Premium / Stars screen ─────────────────────────────────────────────── */
+.premium-screen .premium-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: 22px 20px 24px;
+  margin-bottom: var(--space-lg);
+}
+.premium-hero__icon {
+  font-family: "Playfair Display", serif;
+  font-size: 36px;
+  color: var(--gold);
+  line-height: 1;
+  text-shadow: 0 0 16px var(--gold-glow);
+  margin-bottom: 4px;
+}
+.premium-hero__title {
+  font-family: "Playfair Display", serif;
+  font-size: var(--fs-h1);
+  background: linear-gradient(180deg, #f0d48a, #d4b254 60%, #c49530);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.premium-hero__desc {
+  color: var(--text-soft);
+  font-size: var(--fs-small);
+  line-height: 1.5;
+  max-width: 320px;
+}
+.premium-hero__cta {
+  margin-top: 10px;
+}
+
+/* List of unlockable products */
+.premium-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: var(--space-xl);
+}
+.premium-list__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--card-radius);
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease;
+}
+.premium-list__item:active {
+  transform: scale(0.99);
+}
+.premium-list__item:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.premium-list__main {
+  flex: 1;
+  min-width: 0;
+}
+.premium-list__name {
+  font-family: "Playfair Display", serif;
+  font-size: var(--fs-h3);
+  color: var(--gold-light);
+  margin-bottom: 2px;
+}
+.premium-list__desc {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+.premium-list__price {
+  font-weight: 600;
+  font-size: var(--fs-small);
+  color: var(--gold);
+  white-space: nowrap;
+  padding: 6px 12px;
+  border: 1px solid var(--gold-border);
+  border-radius: 999px;
+  background: rgba(212, 178, 84, 0.08);
+}
+
+.premium-list-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: var(--space-xl);
+}
+.premium-list-skeleton .skeleton-card {
+  height: 72px;
+}
+
+
+/* ── Home — Zodiac horizontal scroll ───────────────────────────────────── */
+.home-zodiac-section {
+  margin-top: var(--space-lg);
+}
+.home-zodiac-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.home-zodiac-section__head .section-title {
+  margin: 0;
+}
+.home-zodiac-section__more {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  color: var(--gold);
+  font-size: var(--fs-small);
+  cursor: pointer;
+  padding: 4px;
+}
+
+.zodiac-scroll {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  margin-left: calc(var(--content-px) * -1);
+  margin-right: calc(var(--content-px) * -1);
+  padding: 4px var(--content-px) 16px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.zodiac-scroll::-webkit-scrollbar {
+  display: none;
+}
+.zodiac-scroll__card {
+  flex: 0 0 144px;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 12px 14px;
+  min-height: 168px;
+  border: 1px solid var(--gold-border);
+  border-radius: var(--card-radius);
+  background:
+    radial-gradient(
+      ellipse at 50% 30%,
+      rgba(212, 178, 84, 0.08),
+      transparent 70%
+    ),
+    var(--glass);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.zodiac-scroll__card:active {
+  transform: scale(0.97);
+}
+.zodiac-scroll__card.active {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px var(--gold-glow), 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+.zodiac-scroll__symbol {
+  font-size: 22px;
+  color: var(--gold);
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--gold-border);
+  border-radius: 50%;
+}
+.zodiac-scroll__constellation {
+  color: var(--gold-dim);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  margin-top: 6px;
+}
+.zodiac-scroll__name {
+  font-family: "Playfair Display", serif;
+  font-size: var(--fs-h3);
+  margin-top: auto;
+}
+.zodiac-scroll__dates {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+}
+
+/* ── Home — Quick tiles (2x2 grid) ──────────────────────────────────────── */
+.home-tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+.home-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 16px 16px 18px;
+  border: 1px solid var(--gold-border);
+  border-radius: var(--card-radius);
+  background:
+    radial-gradient(
+      ellipse at 30% 0%,
+      rgba(139, 106, 208, 0.16),
+      transparent 60%
+    ),
+    var(--glass);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease;
+  min-height: 110px;
+}
+.home-tile:active {
+  transform: scale(0.98);
+}
+.home-tile__emoji {
+  font-size: 28px;
+  filter: drop-shadow(0 0 10px rgba(212, 178, 84, 0.35));
+  margin-bottom: 2px;
+}
+.home-tile__title {
+  font-family: "Playfair Display", serif;
+  font-size: var(--fs-h3);
+  color: var(--gold-light);
+  line-height: 1.15;
+}
+.home-tile__desc {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  line-height: 1.35;
+}
+.home-tile__arrow {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  color: var(--gold);
+  font-size: 20px;
+  line-height: 1;
+}
+
+
+/* ── Profile screen — refined to match the new design ──────────────────── */
+.screen-title-ornament {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  justify-content: center;
+}
+.screen-title-ornament .screen-title {
+  font-style: italic;
+  background: linear-gradient(180deg, #f0d48a, #d4b254 60%, #c49530);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  letter-spacing: 0.02em;
+}
+.screen-title-ornament__leaf {
+  color: var(--gold-dim);
+  font-size: 14px;
+  letter-spacing: 0.4em;
+}
+
+/* Profile main card — ornate variant */
+.profile-card--ornate {
+  position: relative;
+  border-radius: var(--card-radius);
+  border: 1px solid var(--gold-border);
+  background:
+    radial-gradient(
+      ellipse at 30% 0%,
+      rgba(139, 106, 208, 0.16),
+      transparent 60%
+    ),
+    var(--glass);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  padding: 18px 18px 20px;
+}
+.profile-card--ornate .profile-avatar {
+  box-shadow:
+    0 0 0 2px rgba(212, 178, 84, 0.15),
+    0 0 22px rgba(212, 178, 84, 0.32);
+  border-color: var(--gold);
+}
+.profile-name--script {
+  font-family: "Playfair Display", serif;
+  font-style: italic;
+  font-size: var(--fs-h1);
+  background: linear-gradient(180deg, #f7e0a4, #d4b254 70%, #b8902f);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.profile-gender {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-soft);
+  font-size: var(--fs-small);
+}
+.profile-gender__symbol {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--gold-border);
+  border-radius: 50%;
+  color: var(--gold);
+  font-size: 12px;
+}
+
+/* Sign chips (Sun / Moon / Ascendant) */
+.profile-signs-triple--chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.sign-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
+  border: 1px solid var(--gold-border);
+  border-radius: 999px;
+  background: rgba(212, 178, 84, 0.08);
+  color: var(--gold-light);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+}
+.sign-chip__icon {
+  color: var(--gold);
+  font-size: 13px;
+}
+
+/* Edit pencil in the corner of the user card */
+.profile-card__edit {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--gold-border);
+  background: rgba(7, 6, 15, 0.7);
+  color: var(--gold);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease;
+}
+.profile-card__edit:active {
+  transform: scale(0.92);
+  border-color: var(--gold);
+}
+
+/* Premium status callout below user card */
+.premium-status-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  margin-top: var(--space-md);
+  padding: 14px 16px;
+  border-radius: var(--card-radius);
+  border: 1px solid var(--gold-border);
+  background:
+    linear-gradient(
+      135deg,
+      rgba(212, 178, 84, 0.12),
+      rgba(139, 106, 208, 0.08)
+    ),
+    var(--glass);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.premium-status-card:active {
+  transform: scale(0.99);
+}
+.premium-status-card__star {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--gold-border);
+  border-radius: 50%;
+  color: var(--gold);
+  font-size: 18px;
+  background: rgba(212, 178, 84, 0.08);
+}
+.premium-status-card__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.premium-status-card__title {
+  font-family: "Playfair Display", serif;
+  font-size: var(--fs-h3);
+  color: var(--gold-light);
+}
+.premium-status-card__desc {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+}
+.premium-status-card__arrow {
+  color: var(--gold);
+  font-size: 22px;
+}
