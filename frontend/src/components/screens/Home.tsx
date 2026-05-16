@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { EnergyBars } from "@/components/ui/EnergyBars";
 import { PremiumGate } from "@/components/ui/PremiumGate";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
@@ -90,9 +90,20 @@ export function Home() {
     staleTime: 1000 * 60 * 60 * 12,
   });
 
+  // Re-tick the clock every minute so the greeting flips at 5/12/17/23
+  // even if the user keeps the home screen open across boundaries.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
   const greeting = (() => {
-    const h = new Date().getHours();
-    return h < 12 ? "Доброе утро" : h < 18 ? "Добрый день" : "Добрый вечер";
+    const h = now.getHours();
+    if (h < 5) return "Доброй ночи";
+    if (h < 12) return "Доброе утро";
+    if (h < 17) return "Добрый день";
+    if (h < 23) return "Добрый вечер";
+    return "Доброй ночи";
   })();
 
   const today = new Date().toLocaleDateString("ru-RU", {
