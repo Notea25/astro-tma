@@ -264,6 +264,16 @@ class SynastryInterpretation(TimestampMixin, Base):
     text_ru: Mapped[str] = mapped_column(Text, nullable=False)
 
 
+class SynastryPairSummary(TimestampMixin, Base):
+    """Cached LLM-generated pair portrait. Keyed by sha256 of the prompt-
+    determining inputs (aspects + scores + names), so repeated requests
+    for the same pair return the same text instead of new LLM-randomness."""
+    __tablename__ = "synastry_pair_summaries"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    key_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    summary_ru: Mapped[str] = mapped_column(Text, nullable=False)
+
+
 # ── Notifications ─────────────────────────────────────────────────────────────
 class NotificationLog(TimestampMixin, Base):
     __tablename__ = "notification_logs"
