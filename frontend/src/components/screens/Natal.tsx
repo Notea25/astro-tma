@@ -29,8 +29,10 @@ import { NatalDescriptionSheet } from "./NatalDescriptionSheet";
 import {
   ASPECT_FALLBACK_DESC,
   ASPECT_PAIR_FALLBACK_HINT,
+  ELEMENT_FALLBACK_DESC,
   HOUSE_FALLBACK_DESC,
   PLANET_FALLBACK_DESC,
+  TRAIT_FALLBACK_DESC,
 } from "@/utils/natalFallbacks";
 import styles from "./Natal.module.css";
 
@@ -1691,9 +1693,11 @@ function NatalNoChartCard({
 function NatalElementsPanel({
   summary,
   slides,
+  onSelect,
 }: {
   summary: NatalSummaryResponse | undefined;
   slides: NatalInterpretationSlide[];
+  onSelect: (selection: NatalDescSelection) => void;
 }) {
   const planets = [
     summary?.sun_sign,
@@ -1703,6 +1707,16 @@ function NatalElementsPanel({
     .map(normalizeSign)
     .filter(Boolean);
   const total = Math.max(planets.length, 1);
+
+  const elementCountMap = ELEMENT_ORDER.reduce<Record<string, number>>(
+    (acc, key) => {
+      acc[key] = planets.filter((p) =>
+        ELEMENTS[key].signs.includes(p),
+      ).length;
+      return acc;
+    },
+    {},
+  );
 
   return (
     <motion.div
@@ -1714,19 +1728,28 @@ function NatalElementsPanel({
       <div className={styles.elementGrid}>
         {ELEMENT_ORDER.map((key) => {
           const element = ELEMENTS[key];
-          const count = planets.filter((planet) =>
-            element.signs.includes(planet),
-          ).length;
+          const count = elementCountMap[key];
           const tone = ELEMENT_TONE[key];
           const meta = ELEMENT_META[key];
+          const accent =
+            meta?.accent ?? tone?.color ?? ELEMENT_COLORS[key];
 
           return (
-            <article
+            <button
+              type="button"
               key={key}
-              className={`${styles.elementCard} ${styles[`elementCard${meta.toneClass.charAt(0).toUpperCase()}${meta.toneClass.slice(1)}`]}`}
-              style={{
-                color: meta?.accent ?? tone?.color ?? ELEMENT_COLORS[key],
-              }}
+              className={`${styles.elementCard} ${styles[`elementCard${meta.toneClass.charAt(0).toUpperCase()}${meta.toneClass.slice(1)}`]} ${styles.elementCardButton ?? ""}`}
+              style={{ color: accent }}
+              onClick={() =>
+                onSelect({
+                  title: element.label,
+                  subtitle: `${meta?.subtitle ?? ""} · ${count} из ${total} в этой стихии`,
+                  body:
+                    ELEMENT_FALLBACK_DESC[key] ??
+                    "Информации об этой стихии пока нет.",
+                  accent,
+                })
+              }
             >
               <span className={styles.elementIcon} aria-hidden="true">
                 <CosmicElementOrb element={key as ElementId} size={132} />
@@ -1738,7 +1761,7 @@ function NatalElementsPanel({
                   {count} <span>/ {total}</span>
                 </strong>
               </span>
-            </article>
+            </button>
           );
         })}
       </div>
@@ -1746,7 +1769,26 @@ function NatalElementsPanel({
       {summary?.sun_sign && SIGN_TRAITS[normalizeSign(summary.sun_sign)] && (
         <div className={styles.traitCloud}>
           {SIGN_TRAITS[normalizeSign(summary.sun_sign)].map((trait) => (
-            <span key={trait}>{trait}</span>
+            <button
+              type="button"
+              key={trait}
+              className={styles.traitChip ?? ""}
+              onClick={() =>
+                onSelect({
+                  title: trait,
+                  subtitle: `Качество знака ${
+                    summary.sun_sign
+                      ? normalizeSign(summary.sun_sign)
+                      : ""
+                  }`,
+                  body:
+                    TRAIT_FALLBACK_DESC[trait] ??
+                    "Это качество — типичная черта вашего знака Солнца.",
+                })
+              }
+            >
+              {trait}
+            </button>
           ))}
         </div>
       )}
@@ -2303,7 +2345,11 @@ export function Natal() {
     if (tab === "elements") {
       return (
         <>
-          <NatalElementsPanel summary={summary} slides={interpretationSlides} />
+          <NatalElementsPanel
+            summary={summary}
+            slides={interpretationSlides}
+            onSelect={setSelectedDesc}
+          />
           <NatalPdfCard
             full={full}
             isDownloading={isPdfDownloading}
