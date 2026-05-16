@@ -21,8 +21,16 @@ export function CityAutocomplete({ value, onChange, onSelect, placeholder }: Pro
   const [loading, setLoading] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const selectedDisplayNameRef = useRef<string | null>(null)
 
   useEffect(() => {
+    if (value === selectedDisplayNameRef.current) {
+      setOptions([])
+      setOpen(false)
+      setLoading(false)
+      return
+    }
+
     if (value.length < 2) {
       setOptions([])
       setOpen(false)
@@ -81,6 +89,7 @@ export function CityAutocomplete({ value, onChange, onSelect, placeholder }: Pro
   }, [])
 
   const handleSelect = (opt: CityOption) => {
+    selectedDisplayNameRef.current = opt.displayName
     onChange(opt.displayName)
     onSelect(opt)
     setOpen(false)
@@ -95,7 +104,10 @@ export function CityAutocomplete({ value, onChange, onSelect, placeholder }: Pro
           className="form-input"
           placeholder={placeholder ?? 'Москва, Лондон, Нью-Йорк...'}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => {
+            selectedDisplayNameRef.current = null
+            onChange(e.target.value)
+          }}
           onFocus={() => options.length > 0 && setOpen(true)}
           autoComplete="off"
         />
