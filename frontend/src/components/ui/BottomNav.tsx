@@ -16,7 +16,7 @@ const SCREEN_TO_TAB: Partial<Record<Screen, NavId>> = {
   tarot: "discover",
   moon: "discover",
   mac: "discover",
-  natal: "discover",
+  natal: "natal",
   transits: "discover",
   synastry: "discover",
   synastry_invite: "discover",
@@ -24,11 +24,14 @@ const SCREEN_TO_TAB: Partial<Record<Screen, NavId>> = {
   glossary_term: "discover",
   news: "discover",
   news_detail: "discover",
-  premium: "premium",
+  // Premium screen opens from Profile's status card now; the dedicated tab
+  // was reclaimed for Natal. Highlight Profile while Premium is visible
+  // so the user has a clear "back to profile" hint.
+  premium: "profile",
   profile: "profile",
 };
 
-type NavId = "home" | "horoscopes" | "discover" | "premium" | "profile";
+type NavId = "home" | "horoscopes" | "discover" | "natal" | "profile";
 
 interface NavItem {
   id: NavId;
@@ -59,10 +62,10 @@ const NAV_ITEMS: NavItem[] = [
     fab: true,
   },
   {
-    id: "premium",
-    screen: "premium",
-    label: "Звёзды",
-    icon: <StarIcon />,
+    id: "natal",
+    screen: "natal",
+    label: "Моя карта",
+    icon: <NatalWheelIcon />,
   },
   {
     id: "profile",
@@ -165,10 +168,17 @@ function CompassRoseIcon() {
   );
 }
 
-function StarIcon() {
+function NatalWheelIcon() {
+  // Astrology wheel — concentric circles with a four-quadrant cross
   return (
     <svg viewBox="0 0 20 20" aria-hidden="true">
-      <polygon points="10 1.7 12.6 7.5 18.8 8.2 14.1 12.5 15.4 18.6 10 15.4 4.6 18.6 5.9 12.5 1.2 8.2 7.4 7.5" />
+      <circle cx="10" cy="10" r="8.5" />
+      <circle cx="10" cy="10" r="5" />
+      <circle cx="10" cy="10" r="1.5" />
+      <line x1="10" y1="1.5" x2="10" y2="5" />
+      <line x1="10" y1="15" x2="10" y2="18.5" />
+      <line x1="1.5" y1="10" x2="5" y2="10" />
+      <line x1="15" y1="10" x2="18.5" y2="10" />
     </svg>
   );
 }
