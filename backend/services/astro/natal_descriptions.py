@@ -300,125 +300,141 @@ async def _call_llm(client: Any, prompt: str, max_tokens: int) -> str:
     return first_text_block(message.content)
 
 
+def _single_entry_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "short": {"type": "string"},
+            "full": {"type": "string"},
+        },
+        "required": ["short", "full"],
+    }
+
+
+def _planet_one_prompt(key: str, planet: dict[str, Any]) -> str:
+    sign_ru = _normalise_sign(planet.get("sign_ru") or planet.get("sign"))
+    house = planet.get("house", "?")
+    retro = " (ретроградный)" if planet.get("retrograde") else ""
+    return f"""Ты — астролог. Напиши персональную интерпретацию положения планеты в натальной карте на русском языке.
+
+Планета: {_PLANET_RU.get(key, key)} в знаке {sign_ru}, {house}-й дом{retro}.
+
+Вызови инструмент submit_entry с двумя полями:
+- "short" (4-5 предложений, ~80-120 слов): что эта планета в данном знаке и доме означает — характер, проявления в жизни, на что обратить внимание.
+- "full" (6-9 предложений, ~150-220 слов): характер, мотивации, сильные стороны, потенциальные сложности; разверни тему дома — на какую сферу жизни это влияет.
+
+Пиши тепло, от второго лица («вы»). Без markdown, без списков."""
+
+
+def _house_one_prompt(num: int, sign_ru: str) -> str:
+    return f"""Ты — астролог. Напиши персональную интерпретацию положения дома натальной карты на русском языке.
+
+Дом: {num}-й, знак на куспиде — {sign_ru}.
+
+Вызови инструмент submit_entry с двумя полями:
+- "short" (4-5 предложений, ~80-120 слов): какую сферу жизни описывает этот дом, как знак на куспиде окрашивает её, ключевые проявления.
+- "full" (6-9 предложений, ~150-220 слов): тема дома, что говорит знак о подходе к этой сфере, проявления в характере, сильные стороны, на что обратить внимание.
+
+Пиши тепло, от второго лица («вы»). Без markdown, без списков."""
+
+
+def _aspect_one_prompt(p1: str, p2: str, atype: str) -> str:
+    return f"""Ты — астролог. Напиши персональную интерпретацию аспекта между двумя планетами в натальной карте на русском языке.
+
+Аспект: {_PLANET_RU.get(p1, p1)} — {_ASPECT_RU.get(atype, atype)} — {_PLANET_RU.get(p2, p2)}.
+
+Вызови инструмент submit_entry с двумя полями:
+- "short" (4-5 предложений, ~80-120 слов): как эти две планеты взаимодействуют в этом аспекте, что человеку даёт или с чем приходится работать.
+- "full" (6-9 предложений, ~150-220 слов): как именно эти планеты сочетаются, гармония это или напряжение, какие сферы жизни затронуты, как проявляется в характере, сильные стороны и зоны роста.
+
+Пиши тепло, от второго лица («вы»). Без markdown, без списков."""
+
+
+async def _one_entry(
+    client: Any, prompt: str, max_tokens: int = 2048
+) -> dict[str, str]:
+    """Single LLM call → dict with {short, full}. Empty strings on failure."""
+    try:
+        result = await _call_tool(
+            client,
+            prompt,
+            "submit_entry",
+            _single_entry_schema(),
+            max_tokens,
+        )
+        if isinstance(result, dict):
+            return {
+                "short": str(result.get("short", "")),
+                "full": str(result.get("full", "")),
+            }
+    except Exception as e:  # noqa: BLE001
+        log.warning("natal_descriptions.entry_failed", error=str(e))
+    return {"short": "", "full": ""}
+
+
 async def generate_natal_descriptions(
     planets: dict[str, dict[str, Any]],
     houses: list[dict[str, Any]],
     aspects: list[dict[str, Any]],
     api_key: str,
 ) -> dict[str, Any]:
-    """
-    Generate short+full descriptions for every planet, house and aspect.
-
-    Uses Anthropic tool_use to force structured output — the model can't
-    return free-form text, it has to call our "submit_*" tool with a dict
-    that matches the declared schema. Eliminates the long-standing JSON
-    parsing issues we used to recover from with regex.
-
-    Returns a dict shaped like:
-        {
-            "planets": {"sun": {"short": "...", "full": "..."}, ...},
-            "houses":  {"1":   {"short": "...", "full": "..."}, ...},
-            "aspects": [{"p1": "sun", "p2": "moon", "type": "trine",
-                         "short": "...", "full": "..."}, ...],
-        }
-    """
+    """Per-item LLM generation — one tool call per planet/house/aspect, all
+    fired in parallel. Reliable (Haiku follows a small schema correctly),
+    cached forever per chart so the cost is paid once. Total ~30 calls for
+    a typical chart, ~30s in wall time when run in parallel."""
     import anthropic
 
     client = anthropic.AsyncAnthropic(api_key=api_key)
 
-    planets_prompt = _build_planets_prompt(planets)
-    houses_prompt = _build_houses_prompt(houses)
-    aspects_prompt, aspect_ids = _build_aspects_prompt(aspects)
+    planet_items = [(k, p) for k in _PLANET_ORDER if (p := planets.get(k))]
+    planet_tasks = [_one_entry(client, _planet_one_prompt(k, p)) for k, p in planet_items]
 
-    # 10 planets × (short ~120w + full ~220w) ≈ 5–7k tokens output. Houses
-    # similar. Aspects can grow with how many we feed in. Use 8192 — the
-    # Claude Haiku 4.5 cap — so the model isn't truncated mid-tool-call.
-    tasks: list[Any] = [
-        _call_tool(
-            client,
-            planets_prompt,
-            "submit_planet_descriptions",
-            _planets_tool_schema(planets),
-            8192,
-        ),
-        _call_tool(
-            client,
-            houses_prompt,
-            "submit_house_descriptions",
-            _houses_tool_schema(houses),
-            8192,
-        ),
-    ]
-    if aspects_prompt and aspect_ids:
-        tasks.append(
-            _call_tool(
-                client,
-                aspects_prompt,
-                "submit_aspect_descriptions",
-                _aspects_tool_schema(aspect_ids),
-                8192,
-            )
-        )
+    house_items: list[tuple[int, str]] = []
+    for h in houses:
+        num = h.get("number")
+        if not num:
+            continue
+        sign_ru = _normalise_sign(h.get("sign_ru") or h.get("sign"))
+        house_items.append((int(num), sign_ru))
+    house_tasks = [_one_entry(client, _house_one_prompt(n, s)) for n, s in house_items]
 
-    results = await asyncio.gather(*tasks, return_exceptions=True)
+    aspect_items: list[tuple[str, str, str]] = []
+    for a in aspects:
+        p1 = (a.get("p1") or "").lower()
+        p2 = (a.get("p2") or "").lower()
+        atype = (a.get("aspect") or "").lower()
+        if (
+            p1 and p2 and atype
+            and p1 in _PLANET_RU and p2 in _PLANET_RU
+            and atype in _ASPECT_RU
+        ):
+            aspect_items.append((p1, p2, atype))
+    aspect_tasks = [_one_entry(client, _aspect_one_prompt(p1, p2, t)) for p1, p2, t in aspect_items]
 
-    planets_input = results[0]
-    houses_input = results[1]
-    aspects_input = results[2] if len(results) > 2 else None
+    all_tasks = planet_tasks + house_tasks + aspect_tasks
+    results = await asyncio.gather(*all_tasks, return_exceptions=False)
+
+    p_count = len(planet_tasks)
+    h_count = len(house_tasks)
+    planet_results = results[:p_count]
+    house_results = results[p_count : p_count + h_count]
+    aspect_results = results[p_count + h_count :]
 
     out: dict[str, Any] = {"planets": {}, "houses": {}, "aspects": []}
 
-    if isinstance(planets_input, dict):
-        out["planets"] = {
-            k: {"short": str(v.get("short", "")), "full": str(v.get("full", ""))}
-            for k, v in planets_input.items()
-            if isinstance(v, dict)
-        }
-        log.info(
-            "natal_descriptions.planets_ok",
-            received=list(planets_input.keys()),
-            kept=list(out["planets"].keys()),
-        )
-    elif isinstance(planets_input, BaseException):
-        log.error("natal_descriptions.planets_call_failed", error=str(planets_input))
-    else:
-        log.error(
-            "natal_descriptions.planets_no_tool_use",
-            value_type=type(planets_input).__name__,
-        )
+    for (key, _), entry in zip(planet_items, planet_results):
+        if entry.get("short") or entry.get("full"):
+            out["planets"][key] = entry
 
-    if isinstance(houses_input, dict):
-        out["houses"] = {
-            str(k): {"short": str(v.get("short", "")), "full": str(v.get("full", ""))}
-            for k, v in houses_input.items()
-            if isinstance(v, dict)
-        }
-    elif isinstance(houses_input, BaseException):
-        log.error("natal_descriptions.houses_call_failed", error=str(houses_input))
-    else:
-        log.error("natal_descriptions.houses_no_tool_use")
+    for (num, _), entry in zip(house_items, house_results):
+        if entry.get("short") or entry.get("full"):
+            out["houses"][str(num)] = entry
 
-    if isinstance(aspects_input, dict):
-        items: list[dict[str, str]] = []
-        for raw_id, entry in aspects_input.items():
-            if not isinstance(entry, dict):
-                continue
-            parts = raw_id.split("_")
-            if len(parts) != 3:
-                continue
-            p1, p2, atype = parts
-            items.append(
-                {
-                    "p1": p1,
-                    "p2": p2,
-                    "type": atype,
-                    "short": str(entry.get("short", "")),
-                    "full": str(entry.get("full", "")),
-                }
+    for (p1, p2, atype), entry in zip(aspect_items, aspect_results):
+        if entry.get("short") or entry.get("full"):
+            out["aspects"].append(
+                {"p1": p1, "p2": p2, "type": atype, **entry}
             )
-        out["aspects"] = items
-    elif isinstance(aspects_input, BaseException):
-        log.error("natal_descriptions.aspects_call_failed", error=str(aspects_input))
 
     log.info(
         "natal_descriptions.done",
