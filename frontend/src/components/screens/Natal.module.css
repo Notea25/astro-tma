@@ -46,6 +46,12 @@
   font-family: var(--ref-font-body);
 }
 
+.screen *,
+.screen *::before,
+.screen *::after {
+  box-sizing: border-box;
+}
+
 .sky {
   position: fixed;
   inset: 0;
@@ -1056,18 +1062,23 @@
 .elementGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px 20px;
+  justify-content: stretch;
+  justify-self: center;
+  width: 100%;
+  gap: clamp(10px, 1.8vw, 18px);
 }
 
 .elementCard {
   position: relative;
   display: grid;
-  grid-template-columns: 180px minmax(0, 1fr);
+  grid-template-columns: clamp(118px, 30%, 150px) minmax(0, 1fr);
   align-items: center;
+  aspect-ratio: 2.35 / 1;
   min-width: 0;
-  min-height: 196px;
+  min-height: unset;
   overflow: hidden;
-  padding: 18px 24px;
+  gap: clamp(10px, 1.4vw, 16px);
+  padding: clamp(12px, 1.4vw, 14px) clamp(14px, 1.6vw, 16px);
   border: 1px solid color-mix(in srgb, currentColor 42%, transparent);
   border-radius: 16px;
   background:
@@ -1147,7 +1158,7 @@
 .elementIcon {
   position: relative;
   display: grid;
-  width: 160px;
+  width: clamp(86px, 74%, 108px);
   place-items: center;
   overflow: visible;
 }
@@ -1161,37 +1172,44 @@
 .elementText {
   display: grid;
   min-width: 0;
+  max-width: 100%;
   gap: 8px;
   align-content: center;
 }
 
 .elementText b {
+  max-width: 100%;
   color: currentColor;
   font-family: var(--ref-font-display);
-  font-size: 2.05rem;
+  font-size: 1.48rem;
   font-weight: 600;
   line-height: 1;
+  overflow-wrap: anywhere;
 }
 
 .elementText small {
+  max-width: 100%;
   color: var(--ref-soft);
   font-family: var(--ref-font-display);
-  font-size: 1.18rem;
+  font-size: 0.9rem;
   font-weight: 300;
   line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .elementText strong {
+  max-width: 100%;
   color: currentColor;
   font-family: var(--ref-font-display);
-  font-size: 3.25rem;
+  font-size: 2.35rem;
   font-weight: 600;
   line-height: 1;
+  overflow-wrap: anywhere;
 }
 
 .elementText strong span {
   color: var(--ref-soft);
-  font-size: 1.45rem;
+  font-size: 1.04rem;
   font-weight: 300;
 }
 
@@ -1773,6 +1791,7 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
+  min-width: 0;
   gap: 7px;
   margin-top: 2px;
   font-size: 13.5px;
@@ -1806,6 +1825,7 @@
   color: var(--text-dim, #9d97b4);
   font-size: 12.5px;
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .planetChev {
@@ -2061,13 +2081,14 @@
   color: var(--ref-text);
   font-size: 0.94rem;
   line-height: 1.24;
-  overflow: hidden;
+  overflow-wrap: anywhere;
 }
 
 .aspectPoint {
   display: inline-flex;
   align-items: center;
   min-width: 0;
+  max-width: 100%;
   gap: 5px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2309,49 +2330,54 @@
 
   .elementGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px 14px;
+    justify-content: stretch;
+    width: 100%;
+    gap: 8px;
   }
 
   .elementCard {
-    grid-template-columns: 130px minmax(0, 1fr);
+    grid-template-columns: clamp(58px, 35%, 68px) minmax(0, 1fr);
     justify-items: stretch;
-    min-height: 168px;
-    padding: 16px 16px;
-    gap: 10px;
+    aspect-ratio: 1.85 / 1;
+    min-height: unset;
+    padding: 9px 8px;
+    gap: 8px;
     text-align: left;
   }
 
   .elementCard::before {
-    left: 8px;
-    bottom: 6px;
-    width: 150px;
-    height: 72px;
+    left: 4px;
+    bottom: 4px;
+    width: 70px;
+    height: 38px;
+    transform: none;
   }
 
   .elementIcon {
-    width: 124px;
+    width: 48px;
+    max-width: none;
   }
 
   .elementText {
     justify-items: start;
-    gap: 5px;
+    gap: 3px;
   }
 
   .elementText b {
-    font-size: 1.55rem;
+    font-size: 0.98rem;
   }
 
   .elementText small {
-    font-size: 0.86rem;
+    font-size: 0.58rem;
     line-height: 1.18;
   }
 
   .elementText strong {
-    font-size: 2.15rem;
+    font-size: 1.18rem;
   }
 
   .elementText strong span {
-    font-size: 1rem;
+    font-size: 0.62rem;
   }
 
   .traitCloud {
@@ -2492,6 +2518,7 @@
 
   .planetCard {
     grid-template-columns: 84px minmax(0, 1fr) 20px;
+    min-width: 0;
     gap: 12px;
     padding: 14px 14px 14px 10px;
     border-radius: 18px;
@@ -2577,9 +2604,14 @@
   }
 
   .aspectPair {
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: 5px;
     font-size: 0.78rem;
+    overflow: visible;
+  }
+
+  .aspectPoint {
+    white-space: normal;
   }
 
   .aspectOrbValue {
@@ -2712,38 +2744,39 @@
 
   .elementGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px 12px;
+    gap: 8px;
   }
 
   .elementCard {
-    grid-template-columns: minmax(0, 1fr);
-    justify-items: center;
-    text-align: center;
-    min-height: 244px;
-    padding: 14px 12px 16px;
-    gap: 6px;
-    border-radius: 18px;
+    grid-template-columns: clamp(54px, 34%, 62px) minmax(0, 1fr);
+    justify-items: stretch;
+    text-align: left;
+    aspect-ratio: 1.82 / 1;
+    min-height: unset;
+    padding: 8px 7px;
+    gap: 7px;
+    border-radius: 15px;
   }
 
   .elementCard::before {
-    left: 50%;
-    bottom: 10px;
-    width: 70%;
-    height: 50px;
-    transform: translateX(-50%);
+    left: 4px;
+    bottom: 4px;
+    width: 62px;
+    height: 34px;
+    transform: none;
   }
 
   .elementIcon {
-    width: 100%;
-    max-width: 150px;
+    width: 44px;
+    max-width: none;
   }
 
   .elementIcon::before {
-    inset: 14px;
+    inset: 10px;
   }
 
   .elementIcon::after {
-    inset: 14px;
+    inset: 10px;
   }
 
   .elementIcon svg {
@@ -2753,25 +2786,25 @@
 
   .elementText {
     gap: 4px;
-    justify-items: center;
-    align-content: end;
+    justify-items: start;
+    align-content: center;
   }
 
   .elementText b {
-    font-size: 1.32rem;
+    font-size: 0.98rem;
   }
 
   .elementText small {
-    font-size: 0.78rem;
+    font-size: 0.56rem;
     line-height: 1.18;
   }
 
   .elementText strong {
-    font-size: 1.85rem;
+    font-size: 1.15rem;
   }
 
   .elementText strong span {
-    font-size: 0.9rem;
+    font-size: 0.58rem;
   }
 
   .traitCloud {
@@ -2918,7 +2951,8 @@
   }
 
   .elementGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-content: stretch;
   }
 
   .traitCloud,
@@ -2952,6 +2986,56 @@
   .aspectIcon {
     width: 68px;
     height: 68px;
+  }
+}
+
+@media (max-width: 340px) {
+  .elementGrid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 9px;
+  }
+
+  .elementCard {
+    grid-template-columns: 62px minmax(0, 1fr);
+    aspect-ratio: 3.25 / 1;
+    padding: 9px 12px;
+    gap: 10px;
+  }
+
+  .elementCard::before {
+    left: 6px;
+    bottom: 5px;
+    width: 76px;
+    height: 38px;
+  }
+
+  .elementCard::after {
+    top: 12px;
+    right: 14px;
+  }
+
+  .elementIcon {
+    width: 52px;
+  }
+
+  .elementText {
+    gap: 3px;
+  }
+
+  .elementText b {
+    font-size: 1.08rem;
+  }
+
+  .elementText small {
+    font-size: 0.68rem;
+  }
+
+  .elementText strong {
+    font-size: 1.22rem;
+  }
+
+  .elementText strong span {
+    font-size: 0.66rem;
   }
 }
 
