@@ -1,6 +1,5 @@
 """Synastry endpoints — invite-based compatibility flow between two users."""
 
-import asyncio
 import secrets
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -447,17 +446,19 @@ async def accept_request(
             "Не удалось рассчитать совместимость. Проверьте данные рождения в профиле.",
         ) from exc
 
-    # Run aspect texts + pair summary in parallel — both are independent LLM
-    # calls and the per-aspect lookup hits the cache for most aspects anyway.
-    texts, summary = await asyncio.gather(
-        get_or_generate_aspect_texts(db, raw["aspects"], settings.ANTHROPIC_API_KEY),
-        generate_pair_summary(
-            initiator.tg_first_name,
-            partner.tg_first_name,
-            raw["aspects"],
-            raw["scores"],
-            settings.ANTHROPIC_API_KEY,
-        ),
+    # Aspect texts and pair summary are both cached now — aspect texts by
+    # (p1,p2,aspect) triple, summary by deterministic hash of inputs. Same
+    # pair recomputed twice yields the same prose.
+    texts = await get_or_generate_aspect_texts(
+        db, raw["aspects"], settings.ANTHROPIC_API_KEY
+    )
+    summary = await generate_pair_summary(
+        db,
+        initiator.tg_first_name,
+        partner.tg_first_name,
+        raw["aspects"],
+        raw["scores"],
+        settings.ANTHROPIC_API_KEY,
     )
 
     req.partner_user_id = partner.id
@@ -594,16 +595,18 @@ async def manual_synastry(
             error=str(exc),
         )
 
-    # Aspect texts + pair summary in parallel — same as the invite flow.
-    texts, summary = await asyncio.gather(
-        get_or_generate_aspect_texts(db, raw["aspects"], settings.ANTHROPIC_API_KEY),
-        generate_pair_summary(
-            initiator.tg_first_name,
-            payload.partner_name,
-            raw["aspects"],
-            raw["scores"],
-            settings.ANTHROPIC_API_KEY,
-        ),
+    # Aspect texts and pair summary — both cached by (p1,p2,aspect) /
+    # input-hash respectively. Same partner data → same texts.
+    texts = await get_or_generate_aspect_texts(
+        db, raw["aspects"], settings.ANTHROPIC_API_KEY
+    )
+    summary = await generate_pair_summary(
+        db,
+        initiator.tg_first_name,
+        payload.partner_name,
+        raw["aspects"],
+        raw["scores"],
+        settings.ANTHROPIC_API_KEY,
     )
 
     # Persist as a SynastryRequest with no partner_user_id — this is the

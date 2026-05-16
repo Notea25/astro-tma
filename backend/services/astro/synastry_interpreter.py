@@ -11,6 +11,7 @@ Both functions return Russian text. They never raise on LLM failure — the
 caller gets either real text or a generic fallback.
 """
 
+import hashlib
 import json
 from typing import Any
 
@@ -18,7 +19,7 @@ from sqlalchemy import select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.logging import get_logger
-from db.models import SynastryInterpretation
+from db.models import SynastryInterpretation, SynastryPairSummary
 from services.llm_utils import first_text_block
 
 log = get_logger(__name__)
@@ -166,16 +167,60 @@ async def get_or_generate_aspect_texts(
     return cached
 
 
-async def generate_pair_summary(
+def _pair_summary_key(
+    initiator_name: str | None,
+    partner_name: str | None,
+    aspects: list[dict[str, Any]],
+    scores: dict[str, int],
+) -> str:
+    """Deterministic hash of every input that shapes the prompt — used as
+    the cache key so the same conceptual pair returns the same text."""
+    payload = {
+        "i": (initiator_name or "").strip().lower(),
+        "p": (partner_name or "").strip().lower(),
+        # Sort aspects so reordering doesn't bust the cache.
+        "a": sorted(
+            (
+                a["p1_name"].lower(),
+                a["p2_name"].lower(),
+                a["aspect"],
+                round(float(a["orb"]), 1),
+            )
+            for a in aspects[:10]
+        ),
+        "s": {k: int(v) for k, v in scores.items()},
+    }
+    blob = json.dumps(payload, sort_keys=True, ensure_ascii=False)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
+async def get_or_generate_pair_summary(
+    db: AsyncSession,
     initiator_name: str | None,
     partner_name: str | None,
     aspects: list[dict[str, Any]],
     scores: dict[str, int],
     api_key: str | None,
 ) -> str | None:
-    """One LLM call producing a short Russian portrait of the relationship.
-    Returns None on failure or missing API key — caller can hide the block."""
-    if not api_key or not aspects:
+    """LLM-generated pair portrait, cached in synastry_pair_summaries by a
+    deterministic hash of (names, aspects, scores). Same inputs always
+    return the same text — eliminates the "two recalculations give two
+    different summaries" bug. Returns None if no API key and no cache hit."""
+    if not aspects:
+        return None
+
+    key = _pair_summary_key(initiator_name, partner_name, aspects, scores)
+
+    cached = await db.execute(
+        select(SynastryPairSummary.summary_ru).where(
+            SynastryPairSummary.key_hash == key
+        )
+    )
+    row = cached.scalar_one_or_none()
+    if row:
+        return row
+
+    if not api_key:
         return None
 
     import anthropic
@@ -220,8 +265,23 @@ async def generate_pair_summary(
             messages=[{"role": "user", "content": prompt}],
         )
         text = first_text_block(message.content).strip()
-        log.info("synastry_summary.done", chars=len(text))
-        return text
     except Exception as e:  # noqa: BLE001
         log.error("synastry_summary.failed", error=str(e))
         return None
+
+    if not text:
+        return None
+
+    db.add(SynastryPairSummary(key_hash=key, summary_ru=text))
+    try:
+        await db.flush()
+    except Exception as e:  # noqa: BLE001
+        # Race: another concurrent request may have inserted the same key.
+        log.warning("synastry_summary.cache_collision", error=str(e))
+    log.info("synastry_summary.done", chars=len(text), cached=False)
+    return text
+
+
+# Backward-compat alias — existing call sites pass the same args; the new
+# function additionally needs a db session, which the callers already have.
+generate_pair_summary = get_or_generate_pair_summary
