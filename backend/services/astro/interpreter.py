@@ -16,7 +16,7 @@ This module is the CONTENT layer — it doesn't do astronomical calculations.
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.logging import get_logger
@@ -133,7 +133,10 @@ async def get_natal_interpretation(
             ))
 
     # ── Layer 3: aspects (top 4 by tightest orb) ──────────────────────────
-    # Aspects are bidirectional — DB may store the pair in either order.
+    # The seed stores aspect rows as (planet, sign) where `sign` actually
+    # holds the second planet — e.g. planet="sun", sign="moon",
+    # aspect="trine" means "Sun trine Moon". The pair can be saved in
+    # either order, so the lookup tries both.
     if aspects:
         ranked = sorted(
             (a for a in aspects if a.get("p1") and a.get("p2") and a.get("aspect")),
@@ -147,9 +150,17 @@ async def get_natal_interpretation(
                 select(Interpretation).where(
                     and_(
                         Interpretation.aspect == atype,
-                        Interpretation.sign.is_(None),
                         Interpretation.house.is_(None),
-                        Interpretation.planet.in_([p1, p2, f"{p1}_{p2}", f"{p2}_{p1}"]),
+                        or_(
+                            and_(
+                                Interpretation.planet == p1,
+                                Interpretation.sign == p2,
+                            ),
+                            and_(
+                                Interpretation.planet == p2,
+                                Interpretation.sign == p1,
+                            ),
+                        ),
                     )
                 ).limit(1)
             )
