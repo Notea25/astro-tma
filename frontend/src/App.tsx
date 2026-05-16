@@ -195,12 +195,7 @@ export default function App() {
     <MotionConfig reducedMotion="user">
       <div className="app">
         <Suspense fallback={null}>
-          {/* mode="popLayout" lets the new screen mount immediately and the
-             old one fade out underneath, instead of "wait" which can stall
-             when the outgoing screen has slow-resolving children (natal's
-             SVG chart + in-flight LLM queries used to leave the next page
-             invisible until the old exit settled). */}
-          <AnimatePresence mode="popLayout">
+          <AnimatePresence mode="wait">
             <motion.div
               key={screen}
               className="screen-container"
