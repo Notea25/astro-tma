@@ -47,14 +47,25 @@ export function CityAutocomplete({ value, onChange, onSelect, placeholder }: Pro
           { headers: { 'Accept-Language': 'ru,en' } }
         )
         const data = await resp.json()
-        const results: CityOption[] = data
-          .filter((p: any) => p.type !== 'administrative' || p.addresstype === 'city')
+        // Rank: settlements (city/town/village) come first, admin areas last.
+        const scoreOf = (p: any): number => {
+          const addr = p.address || {}
+          if (addr.city) return 5
+          if (addr.town) return 5
+          if (addr.village) return 4
+          if (addr.hamlet) return 3
+          if (p.class === 'place' && ['city','town','village','hamlet'].includes(p.type)) return 4
+          if (p.class === 'boundary' || p.type === 'administrative') return 0
+          return 1
+        }
+        const ranked = [...data].sort((a, b) => scoreOf(b) - scoreOf(a))
+        const results: CityOption[] = ranked
           .slice(0, 5)
           .map((p: any) => {
             const addr = p.address || {}
             const cityName =
-              addr.city || addr.town || addr.village || addr.municipality ||
-              addr.county || p.name || value
+              addr.city || addr.town || addr.village || addr.hamlet ||
+              addr.municipality || addr.county || p.name || value
             const country = addr.country || ''
             const state = addr.state || ''
             const parts = [cityName, state !== cityName ? state : '', country]

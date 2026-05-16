@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usersApi, natalApi } from "@/services/api";
@@ -9,6 +9,100 @@ import {
   CityAutocomplete,
   type CityOption,
 } from "@/components/ui/CityAutocomplete";
+
+const MONTHS_RU = [
+  "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+  "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
+];
+
+/**
+ * Day / month / year selects for a birth date — mirrors Onboarding's flow
+ * so the year is freely scrollable on iOS (native <input type="date"> only
+ * pages through months in Telegram's WebView).
+ *
+ * `value` and `onChange` use ISO "YYYY-MM-DD"; selects update only when
+ * the user picks something, so partial input leaves the others untouched.
+ */
+function BirthDateInput({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  const [year, month, day] = useMemo(() => {
+    if (!value) return ["", "", ""];
+    const m = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return ["", "", ""];
+    return [m[1], m[2], m[3]];
+  }, [value]);
+
+  const currentYear = new Date().getFullYear();
+  const years = useMemo(() => {
+    const out: number[] = [];
+    for (let y = currentYear; y >= currentYear - 120; y -= 1) out.push(y);
+    return out;
+  }, [currentYear]);
+
+  const daysInMonth = useMemo(() => {
+    const y = parseInt(year || String(currentYear), 10);
+    const m = parseInt(month || "1", 10);
+    if (!m) return 31;
+    return new Date(y, m, 0).getDate();
+  }, [year, month, currentYear]);
+
+  const emit = (d: string, m: string, y: string) => {
+    if (!d || !m || !y) return;
+    onChange(`${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`);
+  };
+
+  return (
+    <div className="birth-date-row">
+      <select
+        className="form-input birth-date-row__select"
+        value={day}
+        onChange={(e) => emit(e.target.value, month, year)}
+        aria-label="День"
+      >
+        <option value="">День</option>
+        {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((d) => (
+          <option key={d} value={String(d).padStart(2, "0")}>
+            {d}
+          </option>
+        ))}
+      </select>
+      <select
+        className="form-input birth-date-row__select"
+        value={month}
+        onChange={(e) => emit(day, e.target.value, year)}
+        aria-label="Месяц"
+      >
+        <option value="">Месяц</option>
+        {MONTHS_RU.map((label, idx) => (
+          <option
+            key={label}
+            value={String(idx + 1).padStart(2, "0")}
+          >
+            {label}
+          </option>
+        ))}
+      </select>
+      <select
+        className="form-input birth-date-row__select"
+        value={year}
+        onChange={(e) => emit(day, month, e.target.value)}
+        aria-label="Год"
+      >
+        <option value="">Год</option>
+        {years.map((y) => (
+          <option key={y} value={String(y)}>
+            {y}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
 
 export function Profile() {
   const { user, setUser } = useAppStore();
@@ -261,13 +355,7 @@ export function Profile() {
 
               <div className="form-group">
                 <label className="form-label">Дата рождения</label>
-                <input
-                  type="date"
-                  className="form-input"
-                  value={birthDate}
-                  onChange={(e) => setBirthDate(e.target.value)}
-                  max={new Date().toISOString().split("T")[0]}
-                />
+                <BirthDateInput value={birthDate} onChange={setBirthDate} />
               </div>
 
               <div className="form-group">
