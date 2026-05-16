@@ -61,16 +61,59 @@ def _strip_code_fence(text: str) -> str:
     return text
 
 
+def _escape_unescaped_newlines_in_strings(raw: str) -> str:
+    """Walk the JSON char-by-char and replace bare \\n inside string values
+    with \\\\n. Handles the most common LLM mistake — emitting multi-line
+    Russian text inside a JSON string without escaping the newlines."""
+    out: list[str] = []
+    in_string = False
+    escape_next = False
+    for ch in raw:
+        if escape_next:
+            out.append(ch)
+            escape_next = False
+            continue
+        if ch == "\\":
+            out.append(ch)
+            escape_next = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            out.append(ch)
+            continue
+        if in_string and ch == "\n":
+            out.append("\\n")
+            continue
+        if in_string and ch == "\r":
+            out.append("\\r")
+            continue
+        if in_string and ch == "\t":
+            out.append("\\t")
+            continue
+        out.append(ch)
+    return "".join(out)
+
+
 def _safe_load_json(raw: str) -> Any:
     cleaned = _strip_code_fence(raw)
     try:
         return json.loads(cleaned)
     except json.JSONDecodeError:
-        # Try to extract the first JSON object/array embedded in prose
-        match = re.search(r"(\{.*\}|\[.*\])", cleaned, re.DOTALL)
-        if not match:
-            raise
-        return json.loads(match.group(1))
+        pass
+    # Try escaping bare newlines inside strings — the most common LLM failure.
+    try:
+        return json.loads(_escape_unescaped_newlines_in_strings(cleaned))
+    except json.JSONDecodeError:
+        pass
+    # Fall back to extracting the first JSON object/array embedded in prose
+    match = re.search(r"(\{.*\}|\[.*\])", cleaned, re.DOTALL)
+    if not match:
+        raise json.JSONDecodeError("no json-like content found", cleaned, 0)
+    inner = match.group(1)
+    try:
+        return json.loads(inner)
+    except json.JSONDecodeError:
+        return json.loads(_escape_unescaped_newlines_in_strings(inner))
 
 
 # ── Prompts ───────────────────────────────────────────────────────────────────
@@ -98,6 +141,8 @@ def _build_planets_prompt(planets: dict[str, dict[str, Any]]) -> str:
 - "full" — полное описание (6-9 предложений, ~150-220 слов) в стиле классических астрологических справочников: характер, мотивации, сильные стороны, потенциальные сложности; разверни тему дома — на какую сферу жизни это влияет, как именно проявляется.
 
 Пиши тепло, конкретно, от второго лица («вы»). Без markdown, без заголовков, без списков. Только обычные предложения.
+
+ВАЖНО: внутри значений "short" и "full" не используй переносы строк (\n) и табуляции — пиши весь абзац одной логической строкой через обычные пробелы. Это критически важно для разбора JSON.
 
 Верни СТРОГО JSON-объект без всяких комментариев, без блоков кода:
 {{
@@ -135,6 +180,8 @@ def _build_houses_prompt(houses: list[dict[str, Any]]) -> str:
 - "full" — полное описание (6-9 предложений, ~150-220 слов): тема дома, что говорит знак на куспиде о вашем подходе к этой сфере, проявления в характере и жизненных ситуациях, сильные стороны, на что обратить внимание.
 
 Пиши тепло, конкретно, от второго лица («вы»). Без markdown, без заголовков, без списков. Только обычные предложения.
+
+ВАЖНО: внутри значений "short" и "full" не используй переносы строк (\n) и табуляции — пиши весь абзац одной логической строкой через обычные пробелы. Это критически важно для разбора JSON.
 
 Верни СТРОГО JSON-объект без всяких комментариев и блоков кода. Ключи — номера домов как строки:
 {{
@@ -180,6 +227,8 @@ def _build_aspects_prompt(aspects: list[dict[str, Any]]) -> str:
 - "full" — полное описание (6-9 предложений, ~150-220 слов): как именно эти две планеты взаимодействуют, гармония это или напряжение, какие сферы жизни затронуты, как проявляется в характере и ситуациях, сильные стороны и зоны роста.
 
 Пиши тепло, конкретно, от второго лица («вы»). Без markdown, без заголовков, без списков. Только обычные предложения.
+
+ВАЖНО: внутри значений "short" и "full" не используй переносы строк (\n) и табуляции — пиши весь абзац одной логической строкой через обычные пробелы. Это критически важно для разбора JSON.
 
 Верни СТРОГО JSON-массив без комментариев и блоков кода. Идентификатор каждого аспекта — строка вида "<планета1>_<планета2>_<аспект>" (как в списке выше):
 [
