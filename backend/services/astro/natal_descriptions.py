@@ -172,7 +172,9 @@ def _build_houses_prompt(houses: list[dict[str, Any]]) -> str:
 Вызови инструмент submit_house_descriptions РОВНО ОДИН РАЗ, передав в одном вызове short и full для ВСЕХ {count} домов. Ключи — номера домов как строки («1», «2», …, «{count}»). Не пропускай ни один дом."""
 
 
-def _build_aspects_prompt(aspects: list[dict[str, Any]]) -> str:
+def _build_aspects_prompt(aspects: list[dict[str, Any]]) -> tuple[str, list[str]]:
+    """Returns (prompt, list_of_aspect_ids). Empty prompt + empty list if
+    nothing was usable."""
     rows: list[str] = []
     aspect_keys: list[tuple[str, str, str]] = []
     for a in aspects:
@@ -193,10 +195,11 @@ def _build_aspects_prompt(aspects: list[dict[str, Any]]) -> str:
         aspect_keys.append((p1, p2, atype))
 
     if not rows:
-        return ""
+        return "", []
 
+    aspect_ids = [f"{p1}_{p2}_{atype}" for p1, p2, atype in aspect_keys]
     count = len(rows)
-    return f"""Ты — опытный астролог, пишешь персональные интерпретации натальной карты на русском языке.
+    prompt = f"""Ты — опытный астролог, пишешь персональные интерпретации натальной карты на русском языке.
 
 Аспекты между планетами ({count} штук):
 {chr(10).join(rows)}
@@ -207,7 +210,8 @@ def _build_aspects_prompt(aspects: list[dict[str, Any]]) -> str:
 
 Пиши тепло, конкретно, от второго лица («вы»). Без markdown, без заголовков, без списков. Только обычные предложения.
 
-Вызови инструмент submit_aspect_descriptions РОВНО ОДИН РАЗ. В поле items передай ВСЕ {count} аспектов из списка — каждый как объект с полями id, short, full. id формируется как "<планета1>_<планета2>_<аспект>", точно как в списке выше. Не пропускай ни один аспект."""
+Вызови инструмент submit_aspect_descriptions РОВНО ОДИН РАЗ, передав в одном вызове short и full для ВСЕХ {count} аспектов. Ключи — id аспектов из списка выше («{aspect_ids[0]}», и так далее)."""
+    return prompt, aspect_ids
 
 
 # ── LLM call ──────────────────────────────────────────────────────────────────
@@ -246,24 +250,14 @@ def _houses_tool_schema(houses: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def _aspects_tool_schema() -> dict[str, Any]:
+def _aspects_tool_schema(aspect_ids: list[str]) -> dict[str, Any]:
+    """Flat object keyed by aspect_id (e.g. "sun_moon_trine"). Matches the
+    structure planets/houses already use, which the model handles better
+    than nested arrays."""
     return {
         "type": "object",
-        "properties": {
-            "items": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "id": {"type": "string"},
-                        "short": {"type": "string"},
-                        "full": {"type": "string"},
-                    },
-                    "required": ["id", "short", "full"],
-                },
-            }
-        },
-        "required": ["items"],
+        "properties": {aid: _entry_schema() for aid in aspect_ids},
+        "required": aspect_ids,
     }
 
 
@@ -334,7 +328,7 @@ async def generate_natal_descriptions(
 
     planets_prompt = _build_planets_prompt(planets)
     houses_prompt = _build_houses_prompt(houses)
-    aspects_prompt = _build_aspects_prompt(aspects)
+    aspects_prompt, aspect_ids = _build_aspects_prompt(aspects)
 
     # 10 planets × (short ~120w + full ~220w) ≈ 5–7k tokens output. Houses
     # similar. Aspects can grow with how many we feed in. Use 8192 — the
@@ -355,13 +349,13 @@ async def generate_natal_descriptions(
             8192,
         ),
     ]
-    if aspects_prompt:
+    if aspects_prompt and aspect_ids:
         tasks.append(
             _call_tool(
                 client,
                 aspects_prompt,
                 "submit_aspect_descriptions",
-                _aspects_tool_schema(),
+                _aspects_tool_schema(aspect_ids),
                 8192,
             )
         )
@@ -404,20 +398,11 @@ async def generate_natal_descriptions(
     else:
         log.error("natal_descriptions.houses_no_tool_use")
 
-    log.info(
-        "natal_descriptions.aspects_debug",
-        had_prompt=bool(aspects_prompt),
-        result_type=type(aspects_input).__name__,
-        keys=list(aspects_input.keys()) if isinstance(aspects_input, dict) else None,
-        items_count=len(aspects_input.get("items", [])) if isinstance(aspects_input, dict) else None,
-    )
     if isinstance(aspects_input, dict):
-        items_raw = aspects_input.get("items") or []
         items: list[dict[str, str]] = []
-        for entry in items_raw:
+        for raw_id, entry in aspects_input.items():
             if not isinstance(entry, dict):
                 continue
-            raw_id = str(entry.get("id", ""))
             parts = raw_id.split("_")
             if len(parts) != 3:
                 continue
