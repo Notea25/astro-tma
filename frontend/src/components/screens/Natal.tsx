@@ -870,6 +870,10 @@ const CATEGORY_RU: Record<string, string> = {
   communication: "Общение",
   love: "Любовь",
   career: "Действие",
+  growth: "Рост и удача",
+  discipline: "Дисциплина",
+  house: "Дом",
+  aspect: "Аспект",
 };
 
 const ASPECT_ORDER = [

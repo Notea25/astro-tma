@@ -251,12 +251,19 @@ async def get_natal_full(
 
     chart = user.natal_chart
     planets = chart.chart_data.get("planets", {})
+    aspects = chart.chart_data.get("aspects", [])
 
-    # Fetch interpretations for each planet
+    # Build the three lookup dictionaries the interpreter needs:
+    # planet → sign, planet → house, and the raw aspects list.
     planet_signs = {
         planet: data["sign"].lower()
         for planet, data in planets.items()
         if planet not in ("sun", "moon")
+    }
+    planet_houses = {
+        planet: int(data["house"])
+        for planet, data in planets.items()
+        if data.get("house")
     }
 
     interp_blocks = await get_natal_interpretation(
@@ -265,6 +272,8 @@ async def get_natal_full(
         moon_sign=chart.moon_sign.lower(),
         asc_sign=chart.ascendant_sign.lower() if chart.ascendant_sign else None,
         planet_signs=planet_signs,
+        planet_houses=planet_houses,
+        aspects=aspects,
     )
 
     # Generate LLM interpretation if API key is set
