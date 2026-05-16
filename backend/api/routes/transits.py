@@ -14,7 +14,9 @@ from api.schemas.transits import (
 )
 from core.cache import cache_get, cache_set
 from core.logging import get_logger
+from core.settings import settings
 from db.database import get_db
+from services.astro.transit_interpreter import get_or_generate_transit_texts
 from services.astro.transits import (
     build_energy_scores,
     calculate_transits,
@@ -64,25 +66,42 @@ def _normalize_sign(raw: str) -> str:
     return raw.lower()
 
 
-def _build_response(raw_transits: list[dict], sign: str) -> TransitsResponse:
+async def _build_response(
+    db: AsyncSession,
+    raw_transits: list[dict],
+    sign: str,
+    response_date: date | None = None,
+) -> TransitsResponse:
     scores = build_energy_scores(raw_transits, sign)
     sky_raw = get_current_sky()
 
-    aspects = [
-        TransitAspect(
-            transit_planet=t["transit_planet"],
-            natal_planet=t["natal_planet"],
-            aspect=t["aspect"],
-            orb=t["orb"],
-            weight=t["weight"],
-            transit_planet_ru=_PLANET_RU.get(t["transit_planet"].lower(), t["transit_planet"]),
-            natal_planet_ru=_PLANET_RU.get(t["natal_planet"].lower(), t["natal_planet"]),
-            aspect_ru=_ASPECT_RU.get(t["aspect"], t["aspect"]),
-            transit_retrograde=t.get("transit_retrograde", False),
-            applying=t.get("applying"),
+    # Per-pair interpretations — cached in transit_interpretations by
+    # (transit_planet, natal_planet, aspect). Replaces the old static
+    # ASPECT_HINT that gave one text for every trine, every square, etc.
+    texts = await get_or_generate_transit_texts(
+        db, raw_transits, settings.ANTHROPIC_API_KEY
+    )
+
+    aspects = []
+    for t in raw_transits:
+        tp = t["transit_planet"].lower()
+        np = t["natal_planet"].lower()
+        ap = t["aspect"]
+        aspects.append(
+            TransitAspect(
+                transit_planet=t["transit_planet"],
+                natal_planet=t["natal_planet"],
+                aspect=ap,
+                orb=t["orb"],
+                weight=t["weight"],
+                transit_planet_ru=_PLANET_RU.get(tp, t["transit_planet"]),
+                natal_planet_ru=_PLANET_RU.get(np, t["natal_planet"]),
+                aspect_ru=_ASPECT_RU.get(ap, ap),
+                transit_retrograde=t.get("transit_retrograde", False),
+                applying=t.get("applying"),
+                text_ru=texts.get((tp, np, ap)) or None,
+            )
         )
-        for t in raw_transits
-    ]
 
     sky: dict[str, SkyPosition] = {}
     for planet, data in sky_raw.items():
@@ -95,7 +114,7 @@ def _build_response(raw_transits: list[dict], sign: str) -> TransitsResponse:
         )
 
     return TransitsResponse(
-        date=date.today(),
+        date=response_date or date.today(),
         aspects=aspects,
         energy=EnergyScores(**scores),
         sky=sky,
@@ -132,7 +151,7 @@ async def get_current_transits(
     )
 
     sign = user.sun_sign.value if user.sun_sign else "aries"
-    response = _build_response(raw_transits, sign)
+    response = await _build_response(db, raw_transits, sign)
 
     await cache_set(cache_key, response.model_dump(mode="json"), _TRANSITS_TTL)
     return response
@@ -174,8 +193,7 @@ async def get_transits_by_date(
     )
 
     sign = user.sun_sign.value if user.sun_sign else "aries"
-    response = _build_response(raw_transits, sign)
-    response = response.model_copy(update={"date": target.date()})
+    response = await _build_response(db, raw_transits, sign, response_date=target.date())
 
     await cache_set(cache_key, response.model_dump(mode="json"), _TRANSITS_TTL)
     return response
