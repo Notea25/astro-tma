@@ -1219,7 +1219,8 @@
   gap: 12px 16px;
 }
 
-.traitCloud span {
+.traitCloud span,
+.traitCloud .traitChip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1242,6 +1243,34 @@
   font-size: var(--natal-trait-font-size);
   line-height: 1.1;
   overflow-wrap: anywhere;
+}
+.traitCloud .traitChip {
+  cursor: pointer;
+  font-family: inherit;
+  text-align: center;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease;
+}
+.traitCloud .traitChip:hover {
+  border-color: rgba(255, 212, 118, 0.6);
+}
+.traitCloud .traitChip:active {
+  transform: scale(0.97);
+}
+
+.elementCardButton {
+  appearance: none;
+  background: inherit;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.18s ease;
+}
+.elementCardButton:active {
+  transform: scale(0.985);
 }
 
 .elementCardFire,
