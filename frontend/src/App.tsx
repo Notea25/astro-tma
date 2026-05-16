@@ -20,6 +20,16 @@ const Discover = lazy(() =>
     default: m.Discover,
   })),
 );
+const Horoscopes = lazy(() =>
+  import("@/components/screens/Horoscopes").then((m) => ({
+    default: m.Horoscopes,
+  })),
+);
+const Premium = lazy(() =>
+  import("@/components/screens/Premium").then((m) => ({
+    default: m.Premium,
+  })),
+);
 const Tarot = lazy(() =>
   import("@/components/screens/Tarot").then((m) => ({ default: m.Tarot })),
 );
@@ -196,7 +206,9 @@ export default function App() {
             >
               {screen === "onboarding" && <Onboarding />}
               {screen === "home" && <Home />}
+              {screen === "horoscopes" && <Horoscopes />}
               {screen === "discover" && <Discover />}
+              {screen === "premium" && <Premium />}
               {screen === "tarot" && <Tarot />}
               {screen === "moon" && <Moon />}
               {screen === "natal" && <Natal />}

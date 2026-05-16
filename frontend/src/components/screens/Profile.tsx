@@ -206,13 +206,17 @@ export function Profile() {
   return (
     <div className="screen profile-screen">
       <div className="screen-header">
-        <h2 className="screen-title">Профиль</h2>
+        <div className="screen-title-ornament" aria-hidden="true">
+          <span className="screen-title-ornament__leaf">✧</span>
+          <h2 className="screen-title">Профиль</h2>
+          <span className="screen-title-ornament__leaf">✧</span>
+        </div>
       </div>
 
       <div className="screen-content">
         {/* User card */}
         <motion.div
-          className="profile-card"
+          className="profile-card profile-card--ornate"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
         >
@@ -230,32 +234,78 @@ export function Profile() {
             )}
           </div>
           <div className="profile-info">
-            <div className="profile-name">{user?.name ?? "Пользователь"}</div>
+            <div className="profile-name profile-name--script">{user?.name ?? "Пользователь"}</div>
             <div className="profile-meta">
               {user?.gender && (
-                <span>{user.gender === "male" ? "Мужской" : "Женский"}</span>
+                <span className="profile-gender">
+                  <span className="profile-gender__symbol" aria-hidden="true">
+                    {user.gender === "male" ? "♂" : "♀"}
+                  </span>
+                  {user.gender === "male" ? "Мужской" : "Женский"}
+                </span>
               )}
-              {userSign && <span>{userSign.label}</span>}
             </div>
-            {natalSummary?.moon_sign && (
-              <div className="profile-signs-triple">
-                <span>
-                  ☉{" "}
-                  {(natalSummary.sun_sign && SIGN_RU[natalSummary.sun_sign]) ??
+            {(natalSummary?.moon_sign || userSign) && (
+              <div className="profile-signs-triple profile-signs-triple--chips">
+                <span className="sign-chip">
+                  <span className="sign-chip__icon">☉</span>
+                  {(natalSummary?.sun_sign && SIGN_RU[natalSummary.sun_sign]) ??
                     userSign?.label}
                 </span>
-                <span>·</span>
-                <span>☽ {SIGN_RU[natalSummary.moon_sign]}</span>
-                {natalSummary.ascendant_sign && (
-                  <>
-                    <span>·</span>
-                    <span>↑ {SIGN_RU[natalSummary.ascendant_sign]}</span>
-                  </>
+                {natalSummary?.moon_sign && (
+                  <span className="sign-chip">
+                    <span className="sign-chip__icon">☽</span>
+                    {SIGN_RU[natalSummary.moon_sign]}
+                  </span>
+                )}
+                {natalSummary?.ascendant_sign && (
+                  <span className="sign-chip">
+                    <span className="sign-chip__icon">↑</span>
+                    {SIGN_RU[natalSummary.ascendant_sign]}
+                  </span>
                 )}
               </div>
             )}
           </div>
+          {!editing && (
+            <button
+              type="button"
+              className="profile-card__edit"
+              onClick={() => {
+                impact("light");
+                setBirthCity(displayCity ?? "");
+                setEditing(true);
+              }}
+              aria-label="Редактировать"
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z" />
+              </svg>
+            </button>
+          )}
         </motion.div>
+
+        {/* Premium status card */}
+        {user?.is_premium && (
+          <motion.button
+            type="button"
+            className="premium-status-card"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            onClick={() => {
+              impact("light");
+              useAppStore.getState().setScreen("premium");
+            }}
+          >
+            <span className="premium-status-card__star" aria-hidden="true">★</span>
+            <span className="premium-status-card__main">
+              <span className="premium-status-card__title">Премиум-доступ</span>
+              <span className="premium-status-card__desc">Активен</span>
+            </span>
+            <span className="premium-status-card__arrow" aria-hidden="true">›</span>
+          </motion.button>
+        )}
 
         {/* Birth data section */}
         <motion.div

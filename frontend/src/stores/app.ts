@@ -11,7 +11,9 @@ import type { UserProfile } from "@/types";
 export type Screen =
   | "onboarding"
   | "home"
+  | "horoscopes"
   | "discover"
+  | "premium"
   | "tarot"
   | "moon"
   | "natal"
