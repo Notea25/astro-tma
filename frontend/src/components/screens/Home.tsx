@@ -195,9 +195,11 @@ export function Home() {
           </PremiumGate>
         )}
 
-        {/* Moon card */}
-        {moonLoading && <MoonCardSkeleton />}
-        {moon && (
+        {/* Moon card + Tarot daily — only on "today" tab. For tomorrow/week/month
+            these blocks would show stale data (the backend has no period-aware
+            moon/daily-card endpoints), so we hide them there. */}
+        {period === "today" && moonLoading && <MoonCardSkeleton />}
+        {period === "today" && moon && (
           <motion.div
             className="moon-card glass-purp"
             onClick={() => {
@@ -233,6 +235,7 @@ export function Home() {
         )}
 
         {/* Tarot card of the day */}
+        {period === "today" && (
         <motion.div
           className="tarot-day-card"
           initial={{ opacity: 0, y: 12 }}
@@ -345,6 +348,7 @@ export function Home() {
             </motion.div>
           </div>
         </motion.div>
+        )}
       </div>
     </div>
   );
