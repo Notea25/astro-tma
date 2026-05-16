@@ -29,9 +29,24 @@ log = get_logger(__name__)
 class InterpretationBlock:
     """A single interpreted piece of the horoscope."""
     planet: str
-    category: str    # "personality" | "emotion" | "communication" | "love" | "career"
+    category: str    # "personality" | "emotion" | "communication" | "love" | "career" | "house" | "aspect"
     text: str
     weight: int      # higher = more important, shown first
+
+
+# Per-planet config for natal slide generation.
+# weight  — sort priority (higher = first slide)
+# category — UI label group on the frontend (CATEGORY_RU)
+_PLANET_NATAL_CONFIG: dict[str, tuple[str, int]] = {
+    "sun":       ("personality",   10),
+    "moon":      ("emotion",        9),
+    "ascendant": ("personality",    8),
+    "mercury":   ("communication",  7),
+    "venus":     ("love",           7),
+    "mars":      ("career",         6),
+    "jupiter":   ("growth",         5),
+    "saturn":    ("discipline",     5),
+}
 
 
 async def get_natal_interpretation(
@@ -39,29 +54,37 @@ async def get_natal_interpretation(
     sun_sign: str,
     moon_sign: str,
     asc_sign: str | None,
-    planet_signs: dict[str, str],  # {"mercury": "scorpio", ...}
+    planet_signs: dict[str, str],            # {"mercury": "scorpio", ...}
+    planet_houses: dict[str, int] | None = None,   # {"sun": 5, ...}
+    aspects: list[dict[str, Any]] | None = None,   # [{p1, p2, aspect, orb}, ...]
 ) -> list[InterpretationBlock]:
     """
-    Fetch natal interpretations for the core placements.
+    Fetch natal interpretations for the user's chart.
+
+    Three layers of content, all returned as InterpretationBlock objects:
+      1. planet × sign  — "Sun in Aries means..." (8 placements when full)
+      2. planet × house — "Sun in 10th house means..." (up to 8)
+      3. aspect rows    — "Sun trine Moon means..." (top 4 by orb)
+
     Returns blocks sorted by weight (most significant first).
     """
-    # Build queries for the most important placements
-    queries = [
-        ("sun",     sun_sign,  None, None, "personality", 10),
-        ("moon",    moon_sign, None, None, "emotion",     9),
-    ]
-    if asc_sign:
-        queries.append(("ascendant", asc_sign, None, None, "personality", 8))
-
-    for planet, sign in planet_signs.items():
-        if planet in ("mercury", "venus", "mars"):
-            weight = {"mercury": 7, "venus": 7, "mars": 6}[planet]
-            category = {"mercury": "communication", "venus": "love", "mars": "career"}[planet]
-            queries.append((planet, sign, None, None, category, weight))
-
     blocks: list[InterpretationBlock] = []
 
-    for planet, sign, house, aspect, category, weight in queries:
+    # ── Layer 1: planet × sign ────────────────────────────────────────────
+    sign_queries: list[tuple[str, str, str, int]] = [
+        ("sun",  sun_sign,  "personality", 10),
+        ("moon", moon_sign, "emotion",      9),
+    ]
+    if asc_sign:
+        sign_queries.append(("ascendant", asc_sign, "personality", 8))
+
+    for planet, sign in (planet_signs or {}).items():
+        if planet not in _PLANET_NATAL_CONFIG or planet in ("sun", "moon", "ascendant"):
+            continue
+        category, weight = _PLANET_NATAL_CONFIG[planet]
+        sign_queries.append((planet, sign, category, weight))
+
+    for planet, sign, category, weight in sign_queries:
         result = await db.execute(
             select(Interpretation).where(
                 and_(
@@ -81,7 +104,63 @@ async def get_natal_interpretation(
                 weight=weight,
             ))
         else:
-            log.debug("interpreter.no_text", planet=planet, sign=sign)
+            log.debug("interpreter.no_sign_text", planet=planet, sign=sign)
+
+    # ── Layer 2: planet × house ───────────────────────────────────────────
+    # House placements add colour ("Sun in 10th house" — public success).
+    # Slightly lower weight than the same planet's sign block.
+    for planet, house in (planet_houses or {}).items():
+        if planet not in _PLANET_NATAL_CONFIG or not house:
+            continue
+        result = await db.execute(
+            select(Interpretation).where(
+                and_(
+                    Interpretation.planet == planet,
+                    Interpretation.house == int(house),
+                    Interpretation.sign.is_(None),
+                    Interpretation.aspect.is_(None),
+                )
+            ).limit(1)
+        )
+        interp = result.scalar_one_or_none()
+        if interp:
+            _, base_weight = _PLANET_NATAL_CONFIG[planet]
+            blocks.append(InterpretationBlock(
+                planet=planet,
+                category="house",
+                text=interp.text_ru,
+                weight=base_weight - 2,
+            ))
+
+    # ── Layer 3: aspects (top 4 by tightest orb) ──────────────────────────
+    # Aspects are bidirectional — DB may store the pair in either order.
+    if aspects:
+        ranked = sorted(
+            (a for a in aspects if a.get("p1") and a.get("p2") and a.get("aspect")),
+            key=lambda a: a.get("orb", 99),
+        )[:4]
+        for a in ranked:
+            p1 = str(a["p1"]).lower()
+            p2 = str(a["p2"]).lower()
+            atype = str(a["aspect"]).lower()
+            result = await db.execute(
+                select(Interpretation).where(
+                    and_(
+                        Interpretation.aspect == atype,
+                        Interpretation.sign.is_(None),
+                        Interpretation.house.is_(None),
+                        Interpretation.planet.in_([p1, p2, f"{p1}_{p2}", f"{p2}_{p1}"]),
+                    )
+                ).limit(1)
+            )
+            interp = result.scalar_one_or_none()
+            if interp:
+                blocks.append(InterpretationBlock(
+                    planet=f"{p1}_{p2}",
+                    category="aspect",
+                    text=interp.text_ru,
+                    weight=4,
+                ))
 
     blocks.sort(key=lambda b: b.weight, reverse=True)
     return blocks
