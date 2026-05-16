@@ -100,6 +100,23 @@ function canUseTelegramOpenLink(): boolean {
   return Boolean(WebApp.initData) && typeof WebApp.openLink === "function";
 }
 
+async function openTemporaryPdfLink(filename: string): Promise<void> {
+  const link = await request<NatalPdfLinkResponse>("POST", "/natal/pdf-link");
+  const downloadUrl = apiUrl(link.download_url);
+  const absoluteDownloadUrl = absoluteUrl(downloadUrl);
+
+  if (canUseTelegramOpenLink()) {
+    try {
+      WebApp.openLink(absoluteDownloadUrl);
+      return;
+    } catch {
+      // Fall through to a browser-style download if Telegram rejects the link.
+    }
+  }
+
+  triggerDownload(downloadUrl, link.filename || filename);
+}
+
 async function request<T>(
   method: string,
   path: string,
@@ -215,45 +232,37 @@ export const natalApi = {
   downloadPdf: async () => {
     const filename = "natal-chart.pdf";
 
+    if (canUseTelegramOpenLink()) {
+      await openTemporaryPdfLink(filename);
+      return;
+    }
+
     try {
       const blob = await requestBlob("/natal/pdf");
       triggerBlobDownload(blob, filename);
       return;
     } catch (directDownloadError) {
-      if (!canUseTelegramOpenLink()) {
+      const popup = openDownloadWindow();
+
+      try {
+        const link = await request<NatalPdfLinkResponse>(
+          "POST",
+          "/natal/pdf-link",
+        );
+        const downloadUrl = apiUrl(link.download_url);
+
+        if (popup && !popup.closed) {
+          popup.location.href = downloadUrl;
+          return;
+        }
+
+        triggerDownload(downloadUrl, link.filename || filename);
+      } catch {
+        if (popup && !popup.closed) {
+          popup.close();
+        }
         throw directDownloadError;
       }
-    }
-
-    const useTelegramOpenLink = canUseTelegramOpenLink();
-    const popup = useTelegramOpenLink ? null : openDownloadWindow();
-    try {
-      const link = await request<NatalPdfLinkResponse>(
-        "POST",
-        "/natal/pdf-link",
-      );
-      const downloadUrl = apiUrl(link.download_url);
-
-      if (useTelegramOpenLink) {
-        try {
-          WebApp.openLink(absoluteUrl(downloadUrl));
-          return;
-        } catch {
-          // Fall through to a regular browser download if Telegram rejects it.
-        }
-      }
-
-      if (popup && !popup.closed) {
-        popup.location.href = downloadUrl;
-        return;
-      }
-
-      triggerDownload(downloadUrl, link.filename || "natal-chart.pdf");
-    } catch (error) {
-      if (popup && !popup.closed) {
-        popup.close();
-      }
-      throw error;
     }
   },
 };
