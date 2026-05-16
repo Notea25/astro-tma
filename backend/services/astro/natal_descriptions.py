@@ -367,20 +367,23 @@ async def generate_natal_descriptions(
     houses_prompt = _build_houses_prompt(houses)
     aspects_prompt = _build_aspects_prompt(aspects)
 
+    # 10 planets × (short ~120w + full ~220w) ≈ 5–7k tokens output. Houses
+    # similar. Aspects can grow with how many we feed in. Use 8192 — the
+    # Claude Haiku 4.5 cap — so the model isn't truncated mid-tool-call.
     tasks: list[Any] = [
         _call_tool(
             client,
             planets_prompt,
             "submit_planet_descriptions",
             _planets_tool_schema(planets),
-            4096,
+            8192,
         ),
         _call_tool(
             client,
             houses_prompt,
             "submit_house_descriptions",
             _houses_tool_schema(houses),
-            4096,
+            8192,
         ),
     ]
     if aspects_prompt:
@@ -390,7 +393,7 @@ async def generate_natal_descriptions(
                 aspects_prompt,
                 "submit_aspect_descriptions",
                 _aspects_tool_schema(),
-                6144,
+                8192,
             )
         )
 
