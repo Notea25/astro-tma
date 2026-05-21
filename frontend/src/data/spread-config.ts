@@ -179,7 +179,7 @@ export const SPREAD_CONFIG: Record<SpreadKey, SpreadConfig> = {
 
   week: {
     key: "week",
-    title: "Карта на каждый день",
+    title: "Карты на неделю",
     intro:
       "Семь карт показывают энергетический рисунок ближайших семи дней через планетные архетипы: эмоции, действие, мысли, рост, отношения, ответственность и итоговый фокус. Используйте как карту маршрута на неделю.",
     sections: [
@@ -242,7 +242,7 @@ export const SPREAD_CONFIG: Record<SpreadKey, SpreadConfig> = {
 
   relationship: {
     key: "relationship",
-    title: "Расклад на отношения",
+    title: "Отношения",
     intro:
       "Пять карт — зеркало партнёрства. <strong>Вы</strong> и <strong>Партнёр</strong> показывают каждого в отдельности, <strong>Связь</strong> раскрывает динамику между вами, а <strong>Вызов</strong> и <strong>Потенциал</strong> — то, через что растёт ваша пара.",
     sections: [
