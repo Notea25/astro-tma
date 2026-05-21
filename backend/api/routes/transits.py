@@ -16,7 +16,7 @@ from api.schemas.transits import (
     TransitDetailsResponse,
     TransitsResponse,
 )
-from core.cache import cache_get, cache_set
+from core.cache import cache_delete, cache_get, cache_set
 from core.logging import get_logger
 from core.settings import settings
 from db.database import get_db
@@ -102,7 +102,8 @@ def _classify_transit(transit_planet: str, natal_planet: str, aspect: str) -> Tr
     return "neutral"
 
 
-_TRANSITS_TTL = 21600  # 6h
+_TRANSITS_TTL = 21600  # 6h — full response with all LLM texts populated
+_TRANSITS_PARTIAL_TTL = 60  # 1 min — when LLM is still generating in background
 
 
 def _key(user_id: int, d: str) -> str:
@@ -122,15 +123,28 @@ async def _build_response(
     raw_transits: list[dict],
     sign: str,
     response_date: date | None = None,
-) -> TransitsResponse:
+    *,
+    cache_key_to_invalidate: str | None = None,
+) -> tuple[TransitsResponse, int]:
     scores = build_energy_scores(raw_transits, sign)
     sky_raw = get_current_sky()
 
     # Per-pair interpretations — cached in transit_interpretations by
-    # (transit_planet, natal_planet, aspect). Replaces the old static
-    # ASPECT_HINT that gave one text for every trine, every square, etc.
-    texts = await get_or_generate_transit_texts(
-        db, raw_transits, settings.ANTHROPIC_API_KEY
+    # (transit_planet, natal_planet, aspect). On a cold cache we DON'T
+    # block the response on the LLM call — that took 10-15s and reverse-
+    # proxy timeouts made the first request fail. Instead we return with
+    # the static fallback immediately and fill the cache in the background;
+    # the next request (1 min Redis TTL) gets the real text.
+    async def _invalidate() -> None:
+        if cache_key_to_invalidate:
+            await cache_delete(cache_key_to_invalidate)
+
+    texts, missing_count = await get_or_generate_transit_texts(
+        db,
+        raw_transits,
+        settings.ANTHROPIC_API_KEY,
+        blocking=False,
+        on_background_complete=_invalidate,
     )
 
     aspects = []
@@ -177,12 +191,15 @@ async def _build_response(
                 )
             )
 
-    return TransitsResponse(
-        date=response_date or date.today(),
-        aspects=aspects,
-        energy=EnergyScores(**scores),
-        sky=sky,
-        retrogrades=retrogrades,
+    return (
+        TransitsResponse(
+            date=response_date or date.today(),
+            aspects=aspects,
+            energy=EnergyScores(**scores),
+            sky=sky,
+            retrogrades=retrogrades,
+        ),
+        missing_count,
     )
 
 
@@ -216,9 +233,12 @@ async def get_current_transits(
     )
 
     sign = user.sun_sign.value if user.sun_sign else "aries"
-    response = await _build_response(db, raw_transits, sign)
+    response, missing_count = await _build_response(
+        db, raw_transits, sign, cache_key_to_invalidate=cache_key,
+    )
 
-    await cache_set(cache_key, response.model_dump(mode="json"), _TRANSITS_TTL)
+    ttl = _TRANSITS_PARTIAL_TTL if missing_count > 0 else _TRANSITS_TTL
+    await cache_set(cache_key, response.model_dump(mode="json"), ttl)
     return response
 
 
@@ -258,9 +278,16 @@ async def get_transits_by_date(
     )
 
     sign = user.sun_sign.value if user.sun_sign else "aries"
-    response = await _build_response(db, raw_transits, sign, response_date=target.date())
+    response, missing_count = await _build_response(
+        db,
+        raw_transits,
+        sign,
+        response_date=target.date(),
+        cache_key_to_invalidate=cache_key,
+    )
 
-    await cache_set(cache_key, response.model_dump(mode="json"), _TRANSITS_TTL)
+    ttl = _TRANSITS_PARTIAL_TTL if missing_count > 0 else _TRANSITS_TTL
+    await cache_set(cache_key, response.model_dump(mode="json"), ttl)
     return response
 
 

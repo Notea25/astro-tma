@@ -456,8 +456,11 @@ export function Transits() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["transits-current"],
     queryFn: transitsApi.getCurrent,
-    staleTime: 1000 * 60 * 60 * 6,
-    retry: false,
+    // 5 min in memory so revisits feel instant, but a returning user later
+    // in the day still picks up the LLM-generated interpretations once the
+    // backend has filled them in the background.
+    staleTime: 1000 * 60 * 5,
+    retry: 1,
   });
 
   const noBirthData = error instanceof ApiError && error.status === 422;
