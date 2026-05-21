@@ -17,29 +17,7 @@ from services.llm_utils import first_text_block
 
 log = get_logger(__name__)
 
-_PLANET_RU: dict[str, str] = {
-    "sun": "Солнце", "moon": "Луна", "mercury": "Меркурий",
-    "venus": "Венера", "mars": "Марс", "jupiter": "Юпитер",
-    "saturn": "Сатурн", "uranus": "Уран", "neptune": "Нептун",
-    "pluto": "Плутон", "chiron": "Хирон",
-    "ascendant": "Асцендент",
-    "descendant": "Десцендент",
-    "medium_coeli": "Середина неба",
-    "imum_coeli": "Глубина неба",
-    "mean_node": "Северный узел",
-    "true_node": "Северный узел",
-    "mean_lunar_node": "Северный узел",
-    "true_lunar_node": "Северный узел",
-    "mean_north_lunar_node": "Северный узел",
-    "true_north_lunar_node": "Северный узел",
-    "mean_south_node": "Южный узел",
-    "true_south_node": "Южный узел",
-    "mean_south_lunar_node": "Южный узел",
-    "true_south_lunar_node": "Южный узел",
-    "mean_lilith": "Лилит",
-    "true_lilith": "Лилит",
-    "black_moon_lilith": "Лилит",
-}
+from services.astro.planet_names import PLANET_RU as _PLANET_RU  # noqa: E402
 
 _ASPECT_RU: dict[str, str] = {
     "conjunction": "соединение", "trine": "трин",

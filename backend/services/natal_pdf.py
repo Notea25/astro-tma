@@ -35,16 +35,15 @@ SIGN_RU = {
     "sagittarius": "Стрелец", "capricorn": "Козерог",
     "aquarius": "Водолей", "pisces": "Рыбы",
 }
-PLANET_SYMBOLS = {
-    "sun": "☉", "moon": "☽", "mercury": "☿", "venus": "♀", "mars": "♂",
-    "jupiter": "♃", "saturn": "♄", "uranus": "♅", "neptune": "♆", "pluto": "♇",
-}
-PLANET_RU = {
-    "sun": "Солнце", "moon": "Луна", "mercury": "Меркурий", "venus": "Венера",
-    "mars": "Марс", "jupiter": "Юпитер", "saturn": "Сатурн",
-    "uranus": "Уран", "neptune": "Нептун", "pluto": "Плутон",
-}
-PLANET_ORDER = tuple(PLANET_RU.keys())
+from services.astro.planet_names import PLANET_GLYPH as PLANET_SYMBOLS  # noqa: E402
+from services.astro.planet_names import PLANET_RU  # noqa: E402
+
+# Iteration order for the PDF planet table — only the 10 classical points so
+# the page layout stays predictable. Lookups still use the full shared dict.
+PLANET_ORDER = (
+    "sun", "moon", "mercury", "venus", "mars",
+    "jupiter", "saturn", "uranus", "neptune", "pluto",
+)
 ASPECT_SYMBOLS = {
     "conjunction": "☌", "trine": "△", "sextile": "⚹",
     "square": "□", "opposition": "☍", "quincunx": "⚻",

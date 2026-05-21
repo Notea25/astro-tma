@@ -27,11 +27,7 @@ _SIGN_RU = {
     "Capricorn": "Козерог", "Aquarius": "Водолей", "Pisces": "Рыбы",
 }
 
-_PLANET_RU = {
-    "sun": "Солнце", "moon": "Луна", "mercury": "Меркурий", "venus": "Венера",
-    "mars": "Марс", "jupiter": "Юпитер", "saturn": "Сатурн",
-    "uranus": "Уран", "neptune": "Нептун", "pluto": "Плутон",
-}
+from services.astro.planet_names import PLANET_RU as _PLANET_RU  # noqa: E402
 
 
 def _sky_snapshot(dt: datetime) -> dict[str, dict[str, Any]]:
