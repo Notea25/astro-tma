@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_USERNAME: str = ""
     TELEGRAM_WEBHOOK_SECRET: str
     TELEGRAM_WEBHOOK_URL: str
+    # URL the Mini App is served from — used in push notifications' inline
+    # "Открыть в приложении" button (web_app field). Must be HTTPS and
+    # configured as the bot's WebApp URL in @BotFather.
+    TELEGRAM_WEBAPP_URL: str = "https://astro-tma.vercel.app/"
 
     # Push scheduling
     PUSH_DAILY_HOUR: int = 9

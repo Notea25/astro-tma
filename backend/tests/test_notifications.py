@@ -3,7 +3,7 @@
 from datetime import date
 
 from db.models import User
-from services.notifications.push import build_daily_message
+from services.notifications.push import build_daily_message, build_open_app_markup
 
 
 def _user() -> User:
@@ -46,3 +46,21 @@ def test_daily_message_changes_by_date_even_with_same_horoscope():
     assert today != tomorrow
     assert "16 мая" in today
     assert "17 мая" in tomorrow
+
+
+def test_open_app_markup_returns_webapp_button(monkeypatch):
+    from core.settings import settings
+    monkeypatch.setattr(settings, "TELEGRAM_WEBAPP_URL", "https://example.com/")
+
+    markup = build_open_app_markup("Открыть")
+
+    assert markup is not None
+    assert markup["inline_keyboard"][0][0]["text"] == "Открыть"
+    assert markup["inline_keyboard"][0][0]["web_app"]["url"] == "https://example.com/"
+
+
+def test_open_app_markup_returns_none_when_url_missing(monkeypatch):
+    from core.settings import settings
+    monkeypatch.setattr(settings, "TELEGRAM_WEBAPP_URL", "")
+
+    assert build_open_app_markup() is None
