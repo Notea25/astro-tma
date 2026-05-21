@@ -367,6 +367,14 @@ export interface TransitsResponse {
   retrogrades: RetrogradeInfo[];
 }
 
+export interface TransitDetails {
+  text_ru: string;
+  advice_do: string | null;
+  advice_avoid: string | null;
+  affected_house: number | null;
+  affected_house_topic: string | null;
+}
+
 export interface MacCardResponse {
   id: number;
   name_ru: string;

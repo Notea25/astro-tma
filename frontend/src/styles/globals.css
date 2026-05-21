@@ -7540,3 +7540,66 @@ body::before {
   color: var(--text-soft);
   line-height: 1.45;
 }
+
+.deep-dive {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 10px;
+}
+.deep-dive__tone {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  font-style: italic;
+}
+.deep-dive__loading {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 8px 0;
+}
+.deep-dive__block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.deep-dive__title {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.deep-dive__title--do {
+  color: #8bc89b;
+}
+.deep-dive__title--avoid {
+  color: #e88b8b;
+}
+.deep-dive__body {
+  font-size: var(--fs-small);
+  color: var(--text);
+  line-height: 1.5;
+}
+.deep-dive__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.deep-dive__list li {
+  position: relative;
+  padding-left: 14px;
+  font-size: var(--fs-small);
+  color: var(--text);
+  line-height: 1.5;
+}
+.deep-dive__list li::before {
+  content: "—";
+  position: absolute;
+  left: 0;
+  color: var(--gold);
+}

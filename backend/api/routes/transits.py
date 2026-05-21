@@ -12,13 +12,18 @@ from api.schemas.transits import (
     SkyPosition,
     TransitAspect,
     TransitCategory,
+    TransitDetailsRequest,
+    TransitDetailsResponse,
     TransitsResponse,
 )
 from core.cache import cache_get, cache_set
 from core.logging import get_logger
 from core.settings import settings
 from db.database import get_db
-from services.astro.transit_interpreter import get_or_generate_transit_texts
+from services.astro.transit_interpreter import (
+    get_or_generate_transit_texts,
+    get_transit_details,
+)
 from services.astro.transits import (
     build_energy_scores,
     calculate_transits,
@@ -295,3 +300,31 @@ async def get_transits_by_date(
 
     await cache_set(cache_key, response.model_dump(mode="json"), _TRANSITS_TTL)
     return response
+
+
+@router.post("/details", response_model=TransitDetailsResponse)
+async def get_transit_details_endpoint(
+    payload: TransitDetailsRequest,
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Deep-dive for the "What does this mean for me" CTA on the Transits hero.
+    Returns the cached blurb plus practical do/avoid advice and the life-sphere
+    (natal house) that the transit activates. Advice is lazy-generated and
+    cached per (transit_planet, natal_planet, aspect) triple.
+    """
+    user = await user_repo.get_by_id(db, tg_user["id"])
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+
+    chart = user.natal_chart.chart_data if user.natal_chart else None
+
+    details = await get_transit_details(
+        db,
+        transit_planet=payload.transit_planet,
+        natal_planet=payload.natal_planet,
+        aspect=payload.aspect,
+        natal_chart=chart,
+        api_key=settings.ANTHROPIC_API_KEY,
+    )
+    return TransitDetailsResponse(**details)
