@@ -6784,15 +6784,6 @@ body::before {
   margin-top: -10px;
 }
 
-.nav-fab-dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--gold);
-  box-shadow: 0 0 6px var(--gold-glow);
-  margin-top: 2px;
-}
-
 /* Filled icon variants for non-FAB items */
 .bottom-nav.bottom-nav--fab .nav-icon svg {
   fill: none;

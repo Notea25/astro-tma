@@ -103,13 +103,6 @@ export function BottomNav() {
                 {item.icon}
               </span>
               <span className="nav-label">{item.label}</span>
-              {active && (
-                <motion.div
-                  className="nav-fab-dot"
-                  layoutId="nav-fab-dot"
-                  transition={{ type: "spring", stiffness: 500, damping: 40 }}
-                />
-              )}
             </button>
           );
         }
