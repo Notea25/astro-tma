@@ -9,6 +9,7 @@ import { useHaptic } from "@/hooks/useTelegram";
 import { transitsApi } from "@/services/api";
 import { ApiError } from "@/services/api";
 import type {
+  PeriodEvent,
   RetrogradeInfo,
   TransitAspect,
   TransitCategory,
@@ -410,6 +411,116 @@ function TransitCardV2({
   );
 }
 
+const MONTHS_RU_GENITIVE = [
+  "января", "февраля", "марта", "апреля", "мая", "июня",
+  "июля", "августа", "сентября", "октября", "ноября", "декабря",
+];
+
+const WEEKDAYS_RU = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
+
+function formatEventDate(iso: string): string {
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return iso;
+  const year = parseInt(m[1], 10);
+  const month = parseInt(m[2], 10);
+  const day = parseInt(m[3], 10);
+  const wd = WEEKDAYS_RU[new Date(year, month - 1, day).getDay()];
+  return `${wd}, ${day} ${MONTHS_RU_GENITIVE[month - 1]}`;
+}
+
+function PeriodEventCard({ event, idx }: { event: PeriodEvent; idx: number }) {
+  const [open, setOpen] = useState(false);
+  const meta = CATEGORY_META[event.category];
+  const glyph =
+    PLANET_GLYPH[(event.transit_planet ?? event.planet ?? "").toLowerCase()] ??
+    "✦";
+
+  return (
+    <motion.button
+      type="button"
+      className="period-event-card"
+      style={{ borderLeftColor: meta.color }}
+      onClick={() => setOpen((v) => !v)}
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(idx * 0.03, 0.4), duration: 0.25 }}
+      aria-expanded={open}
+    >
+      <div className="period-event-card__top">
+        <CategoryBadge category={event.category} />
+        <span className="period-event-card__glyph" style={{ color: meta.color }}>
+          {glyph}
+        </span>
+      </div>
+      <div className="period-event-card__title">{event.title_ru}</div>
+      <div className="period-event-card__meta">
+        {event.kind === "aspect"
+          ? `Аспект · орб ${event.orb?.toFixed(1) ?? "0.0"}°`
+          : "Ингресс в новый знак"}
+      </div>
+      <AnimatePresence initial={false}>
+        {open && event.text_ru && (
+          <motion.div
+            className="period-event-card__body"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.25 }}
+          >
+            <p>{event.text_ru}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.button>
+  );
+}
+
+function PeriodEventsList({ events }: { events: PeriodEvent[] }) {
+  // Group by date string for the day-headers.
+  const groups = useMemo(() => {
+    const map = new Map<string, PeriodEvent[]>();
+    for (const e of events) {
+      if (!map.has(e.date)) map.set(e.date, []);
+      map.get(e.date)!.push(e);
+    }
+    return Array.from(map.entries());
+  }, [events]);
+
+  if (events.length === 0) {
+    return (
+      <p style={{ color: "var(--text-dim)", fontSize: 13, textAlign: "center", padding: "8px 0" }}>
+        В этот период значимых событий не предвидится.
+      </p>
+    );
+  }
+
+  let cursor = 0;
+  return (
+    <div className="period-events">
+      {groups.map(([dateIso, items]) => {
+        const block = (
+          <div key={dateIso} className="period-events__group">
+            <div className="period-events__date">{formatEventDate(dateIso)}</div>
+            <div className="period-events__list">
+              {items.map((e) => {
+                const idx = cursor++;
+                return (
+                  <PeriodEventCard
+                    key={`${e.date}-${e.kind}-${e.transit_planet ?? e.planet}-${e.natal_planet ?? ""}-${e.aspect ?? e.to_sign}`}
+                    event={e}
+                    idx={idx}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        );
+        return block;
+      })}
+    </div>
+  );
+}
+
 function RetrogradesBlock({ items }: { items: RetrogradeInfo[] }) {
   if (!items || items.length === 0) return null;
   return (
@@ -460,6 +571,22 @@ export function Transits() {
     // in the day still picks up the LLM-generated interpretations once the
     // backend has filled them in the background.
     staleTime: 1000 * 60 * 5,
+    retry: 1,
+  });
+
+  const { data: weekData, isLoading: weekLoading } = useQuery({
+    queryKey: ["transits-week"],
+    queryFn: transitsApi.getWeek,
+    enabled: period === "week" && !!data,
+    staleTime: 1000 * 60 * 30,
+    retry: 1,
+  });
+
+  const { data: monthData, isLoading: monthLoading } = useQuery({
+    queryKey: ["transits-month"],
+    queryFn: transitsApi.getMonth,
+    enabled: period === "month" && !!data,
+    staleTime: 1000 * 60 * 60,
     retry: 1,
   });
 
@@ -650,21 +777,34 @@ export function Transits() {
                 <div className="horoscope-card">
                   <div
                     className="horoscope-card__period"
-                    style={{ marginBottom: 8 }}
+                    style={{ marginBottom: 4 }}
                   >
-                    {period === "week" ? "Что ждёт на неделе" : "Что ждёт в этом месяце"}
+                    {period === "week"
+                      ? "Что ждёт на неделе"
+                      : "Что ждёт в этом месяце"}
                   </div>
                   <p
                     style={{
+                      fontSize: 12,
                       color: "var(--text-dim)",
-                      fontSize: 13,
-                      lineHeight: 1.6,
+                      marginBottom: 14,
                     }}
                   >
                     {period === "week"
-                      ? "Готовим разбор главных событий следующих 7 дней — какие дни принесут поток, а какие потребуют осторожности. Совсем скоро."
-                      : "Готовим карту месяца — большие сдвиги, ретрограды, новолуния. Уже на подходе."}
+                      ? "Главные аспекты и ингрессы следующих 7 дней"
+                      : "Главные аспекты и ингрессы следующих 30 дней"}
                   </p>
+                  {(period === "week" ? weekLoading : monthLoading) && (
+                    <p style={{ color: "var(--text-dim)", fontSize: 13, textAlign: "center" }}>
+                      Считаем главные события…
+                    </p>
+                  )}
+                  {period === "week" && weekData && (
+                    <PeriodEventsList events={weekData.events} />
+                  )}
+                  {period === "month" && monthData && (
+                    <PeriodEventsList events={monthData.events} />
+                  )}
                 </div>
               </PremiumGate>
             )}
