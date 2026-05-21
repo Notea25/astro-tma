@@ -1,19 +1,21 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { EnergyBars } from "@/components/ui/EnergyBars";
+import { PremiumGate } from "@/components/ui/PremiumGate";
 import { HoroscopeSkeleton } from "@/components/ui/Skeleton";
 import { useAppStore } from "@/stores/app";
+import { useHaptic } from "@/hooks/useTelegram";
 import { transitsApi } from "@/services/api";
 import { ApiError } from "@/services/api";
-import type { TransitAspect } from "@/types";
+import type { RetrogradeInfo, TransitAspect, TransitCategory } from "@/types";
 
-const ASPECT_COLOR: Record<string, string> = {
-  conjunction: "#e8c97e",
-  trine: "#8bc89b",
-  sextile: "#7ec8e3",
-  square: "#e88b8b",
-  opposition: "#c58be8",
+type Period = "today" | "week" | "month";
+
+const PERIOD_LABELS: Record<Period, string> = {
+  today: "Сегодня",
+  week: "Неделя",
+  month: "Месяц",
 };
 
 const ASPECT_SYMBOL: Record<string, string> = {
@@ -52,10 +54,46 @@ const ZODIAC_SYMBOL: Record<string, string> = {
   pisces: "♓",
 };
 
-// Fast planets drive daily mood; slow planets drive long-term processes.
-const FAST_PLANETS = new Set(["moon", "mercury", "venus", "mars", "sun"]);
-// Generic aspect summary (used only as a fallback when the server has not
-// yet generated/cached a planet-pair-specific text for this transit).
+const CATEGORY_META: Record<
+  TransitCategory,
+  { label: string; color: string; bg: string }
+> = {
+  support: {
+    label: "Поддержка",
+    color: "#8bc89b",
+    bg: "rgba(139, 200, 155, 0.12)",
+  },
+  tension: {
+    label: "Напряжение",
+    color: "#e88b8b",
+    bg: "rgba(232, 139, 139, 0.12)",
+  },
+  transformation: {
+    label: "Трансформация",
+    color: "#c58be8",
+    bg: "rgba(197, 139, 232, 0.12)",
+  },
+  neutral: {
+    label: "Нейтрально",
+    color: "#9e9ab5",
+    bg: "rgba(158, 154, 181, 0.10)",
+  },
+};
+
+// Personal planets get priority in sorting (the spec calls these "personal transits").
+const PLANET_PRIORITY: Record<string, number> = {
+  sun: 1,
+  moon: 1,
+  mercury: 1,
+  venus: 1,
+  mars: 1,
+  jupiter: 2,
+  saturn: 2,
+  uranus: 3,
+  neptune: 3,
+  pluto: 3,
+};
+
 const ASPECT_HINT: Record<string, string> = {
   conjunction: "Слияние энергий — темы объединяются в одну.",
   trine: "Гармония и поддержка. Естественный поток.",
@@ -64,88 +102,189 @@ const ASPECT_HINT: Record<string, string> = {
   opposition: "Полярность. Баланс между двумя силами.",
 };
 
-function splitAspects(aspects: TransitAspect[]) {
-  const fast: TransitAspect[] = [];
-  const slow: TransitAspect[] = [];
-  for (const a of aspects) {
-    if (FAST_PLANETS.has(a.transit_planet.toLowerCase())) fast.push(a);
-    else slow.push(a);
-  }
-  return { fast, slow };
+const FREE_LIMIT = 3;
+
+function sortTransits(aspects: TransitAspect[]): TransitAspect[] {
+  return [...aspects].sort((a, b) => {
+    const pa = PLANET_PRIORITY[a.transit_planet.toLowerCase()] ?? 4;
+    const pb = PLANET_PRIORITY[b.transit_planet.toLowerCase()] ?? 4;
+    if (pa !== pb) return pa - pb;
+    return (b.weight ?? 0) - (a.weight ?? 0);
+  });
 }
 
-function TransitCard({
-  aspect,
-  idx,
-  retrograde,
-}: {
-  aspect: TransitAspect;
-  idx: number;
-  retrograde?: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const color = ASPECT_COLOR[aspect.aspect] ?? "var(--text-dim)";
-  // Prefer server data; fall back to caller-supplied sky retrograde.
-  const isRetro = aspect.transit_retrograde ?? retrograde ?? false;
-  const applying = aspect.applying;
+function pickHeadline(aspects: TransitAspect[]): TransitAspect | null {
+  if (aspects.length === 0) return null;
+  // Tight orb + personal planet preferred.
+  const tight = aspects.filter((a) => a.orb < 3);
+  const pool = tight.length > 0 ? tight : aspects;
+  const personal = pool.filter(
+    (a) => (PLANET_PRIORITY[a.transit_planet.toLowerCase()] ?? 4) === 1,
+  );
+  const candidate = (personal.length > 0 ? personal : pool)[0];
+  return candidate ?? null;
+}
+
+function CategoryBadge({ category }: { category: TransitCategory }) {
+  const meta = CATEGORY_META[category];
+  return (
+    <span
+      className="transit-badge"
+      style={{ color: meta.color, background: meta.bg, borderColor: meta.color }}
+    >
+      {meta.label}
+    </span>
+  );
+}
+
+function HeroCard({ aspect }: { aspect: TransitAspect | null }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!aspect) {
+    return (
+      <motion.div
+        className="transit-hero transit-hero--calm"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <div className="transit-hero__eyebrow">Хэдлайн дня</div>
+        <h3 className="transit-hero__title">Спокойный день</h3>
+        <p className="transit-hero__text">
+          Сегодня нет острых аспектов. Хороший день для рутины и завершения
+          начатого.
+        </p>
+      </motion.div>
+    );
+  }
+
+  const meta = CATEGORY_META[aspect.category];
+  const glyph =
+    PLANET_GLYPH[aspect.transit_planet.toLowerCase()] ??
+    PLANET_GLYPH[aspect.natal_planet.toLowerCase()] ??
+    "✦";
 
   return (
-    <motion.button
-      type="button"
-      className="transit-card"
-      onClick={() => setOpen((v) => !v)}
+    <motion.div
+      className="transit-hero"
+      style={{ borderColor: meta.color }}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: idx * 0.04, duration: 0.3 }}
-      aria-expanded={open}
+      transition={{ duration: 0.4 }}
     >
-      <div className="transit-card__head">
-        <span className="transit-card__planet">
-          {PLANET_GLYPH[aspect.transit_planet.toLowerCase()] ?? "●"}
-          {isRetro ? " ℞" : ""} {aspect.transit_planet_ru}
+      <div className="transit-hero__row">
+        <div className="transit-hero__col">
+          <div className="transit-hero__eyebrow">Хэдлайн дня</div>
+          <CategoryBadge category={aspect.category} />
+        </div>
+        <span className="transit-hero__glyph" style={{ color: meta.color }}>
+          {glyph}
         </span>
-        <span className="transit-card__aspect" style={{ color }}>
-          {ASPECT_SYMBOL[aspect.aspect] ?? aspect.aspect_ru}
-        </span>
-        <span className="transit-card__planet">
-          {PLANET_GLYPH[aspect.natal_planet.toLowerCase()] ?? "●"}{" "}
-          {aspect.natal_planet_ru}
-        </span>
-        <span className="transit-card__orb">{aspect.orb.toFixed(1)}°</span>
       </div>
-
+      <h3 className="transit-hero__title">
+        {aspect.transit_planet_ru} {aspect.aspect_ru.toLowerCase()}{" "}
+        {aspect.natal_planet_ru}
+      </h3>
+      <p className="transit-hero__text">
+        {aspect.text_ru || ASPECT_HINT[aspect.aspect] || "Значимая конфигурация."}
+      </p>
       <AnimatePresence initial={false}>
-        {open && (
+        {expanded && (
           <motion.div
-            className="transit-card__body"
+            className="transit-hero__extra"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.25 }}
           >
             <p>
-              <strong style={{ color }}>
-                {aspect.transit_planet_ru} {aspect.aspect_ru}{" "}
-                {aspect.natal_planet_ru}
-              </strong>
-              {" — "}
+              Орб {aspect.orb.toFixed(1)}°.{" "}
+              {aspect.applying === true
+                ? "Аспект сходится — энергия нарастает."
+                : aspect.applying === false
+                  ? "Аспект расходится — пик пройден."
+                  : "Аспект активен."}
+              {aspect.transit_retrograde
+                ? " Транзитная планета ретроградна — эффект направлен внутрь."
+                : ""}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <button
+        type="button"
+        className="transit-hero__cta"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        {expanded ? "Свернуть" : "Что это значит подробнее →"}
+      </button>
+    </motion.div>
+  );
+}
+
+function TransitCardV2({
+  aspect,
+  idx,
+}: {
+  aspect: TransitAspect;
+  idx: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const meta = CATEGORY_META[aspect.category];
+  const glyph =
+    PLANET_GLYPH[aspect.transit_planet.toLowerCase()] ?? "●";
+  const symbol = ASPECT_SYMBOL[aspect.aspect] ?? "·";
+
+  return (
+    <motion.button
+      type="button"
+      className="transit-card-v2"
+      style={{ borderLeftColor: meta.color }}
+      onClick={() => setOpen((v) => !v)}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: idx * 0.04, duration: 0.3 }}
+      aria-expanded={open}
+    >
+      <div className="transit-card-v2__top">
+        <CategoryBadge category={aspect.category} />
+        <span className="transit-card-v2__glyph" style={{ color: meta.color }}>
+          {glyph}
+        </span>
+      </div>
+      <div className="transit-card-v2__title">
+        {aspect.transit_planet_ru}
+        {aspect.transit_retrograde ? " ℞" : ""}{" "}
+        <span style={{ color: meta.color }}>{symbol}</span>{" "}
+        {aspect.natal_planet_ru}
+      </div>
+      <div className="transit-card-v2__meta">
+        <span>{aspect.aspect_ru}</span>
+        <span>·</span>
+        <span>{aspect.orb.toFixed(1)}°</span>
+        {aspect.applying === true && (
+          <>
+            <span>·</span>
+            <span style={{ color: meta.color }}>сходится</span>
+          </>
+        )}
+      </div>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            className="transit-card-v2__body"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.25 }}
+          >
+            <p>
               {aspect.text_ru ||
                 ASPECT_HINT[aspect.aspect] ||
                 "Значимая конфигурация."}
             </p>
-            {applying === true && (
-              <p style={{ marginTop: 6, fontSize: 12, opacity: 0.85 }}>
-                Аспект сходится — энергия нарастает, эффект будет усиливаться.
-              </p>
-            )}
-            {applying === false && (
-              <p style={{ marginTop: 6, fontSize: 12, opacity: 0.85 }}>
-                Аспект расходится — пик пройден, энергия постепенно ослабевает.
-              </p>
-            )}
-            {isRetro && (
-              <p style={{ marginTop: 6, fontSize: 12, opacity: 0.8 }}>
-                Планета ретроградна: эффект направлен внутрь — переосмысление,
+            {aspect.transit_retrograde && (
+              <p className="transit-card-v2__sub">
+                Планета ретроградна: эффект направлен внутрь — переосмысление и
                 возврат к прошлым темам.
               </p>
             )}
@@ -156,9 +295,47 @@ function TransitCard({
   );
 }
 
+function RetrogradesBlock({ items }: { items: RetrogradeInfo[] }) {
+  if (!items || items.length === 0) return null;
+  return (
+    <div className="horoscope-card">
+      <div className="horoscope-card__period" style={{ marginBottom: 4 }}>
+        Ретрограды сейчас
+      </div>
+      <p
+        style={{
+          fontSize: 12,
+          color: "var(--text-dim)",
+          marginBottom: 12,
+        }}
+      >
+        Планеты, идущие сейчас в обратном движении
+      </p>
+      <div className="retro-list">
+        {items.map((r) => (
+          <div key={r.planet} className="retro-row">
+            <span className="retro-row__glyph">{r.glyph}</span>
+            <div className="retro-row__col">
+              <div className="retro-row__title">
+                {r.planet_ru} <span className="retro-row__tag">℞ Retro</span>
+              </div>
+              <div className="retro-row__sub">{r.description_ru}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function Transits() {
   const { setScreen } = useAppStore();
+  const { user } = useAppStore();
+  const { impact } = useHaptic();
   const [introOpen, setIntroOpen] = useState(false);
+  const [skyOpen, setSkyOpen] = useState(false);
+  const [period, setPeriod] = useState<Period>("today");
+  const [showAll, setShowAll] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["transits-current"],
@@ -169,12 +346,15 @@ export function Transits() {
 
   const noBirthData = error instanceof ApiError && error.status === 422;
 
-  const split = data ? splitAspects(data.aspects) : null;
-  const retroMap = new Set(
-    Object.entries(data?.sky ?? {})
-      .filter(([, p]) => p.retrograde)
-      .map(([name]) => name.toLowerCase()),
+  const sortedAspects = useMemo(
+    () => (data ? sortTransits(data.aspects) : []),
+    [data],
   );
+  const headline = useMemo(() => pickHeadline(sortedAspects), [sortedAspects]);
+  const isPremium = user?.is_premium ?? false;
+  const visibleAspects =
+    isPremium || showAll ? sortedAspects : sortedAspects.slice(0, FREE_LIMIT);
+  const hiddenCount = Math.max(sortedAspects.length - FREE_LIMIT, 0);
 
   return (
     <div className="screen transits-screen">
@@ -201,58 +381,6 @@ export function Transits() {
       </div>
 
       <div className="screen-content">
-        {/* ── Explainer — collapsible ── */}
-        <motion.button
-          type="button"
-          className="transit-intro"
-          onClick={() => setIntroOpen((v) => !v)}
-          aria-expanded={introOpen}
-          initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25 }}
-        >
-          <span className="transit-intro__chevron">
-            {introOpen ? "▾" : "▸"}
-          </span>
-          <span className="transit-intro__title">Что такое транзиты?</span>
-        </motion.button>
-        <AnimatePresence initial={false}>
-          {introOpen && (
-            <motion.div
-              className="transit-intro__body"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.25 }}
-            >
-              <p>
-                Транзиты — это движение планет прямо сейчас относительно вашей
-                натальной карты. Они показывают, какие темы разворачиваются в
-                вашей жизни: где энергия поддерживает, где встречаете
-                сопротивление, когда открыто окно возможностей.
-              </p>
-              <p>
-                <strong>Быстрые</strong> транзиты (Луна, Меркурий, Венера, Марс)
-                формируют настроение дня. <strong>Медленные</strong> (Юпитер,
-                Сатурн и дальше) — долгие жизненные процессы, длящиеся месяцы и
-                годы.
-              </p>
-              <p>
-                <strong style={{ color: ASPECT_COLOR.trine }}>
-                  Гармоничные
-                </strong>{" "}
-                аспекты — трин (△), секстиль (⚹) и соединение (☌) — дают
-                поддержку и поток.{" "}
-                <strong style={{ color: ASPECT_COLOR.square }}>
-                  Напряжённые
-                </strong>{" "}
-                — квадрат (□) и оппозиция (☍) — это точки роста через
-                сопротивление и осознание противоположностей.
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {isLoading && <HoroscopeSkeleton />}
 
         {noBirthData && (
@@ -284,8 +412,10 @@ export function Transits() {
           </p>
         )}
 
-        {data && split && (
+        {data && (
           <>
+            <HeroCard aspect={headline} />
+
             <div className="horoscope-card">
               <div
                 className="horoscope-card__period"
@@ -296,97 +426,211 @@ export function Transits() {
               <EnergyBars scores={data.energy} />
             </div>
 
-            <div className="horoscope-card">
-              <div
-                className="horoscope-card__period"
-                style={{ marginBottom: 4 }}
-              >
-                Сегодня
-              </div>
-              <p
-                style={{
-                  fontSize: 12,
-                  color: "var(--text-dim)",
-                  marginBottom: 12,
-                }}
-              >
-                Быстрые транзиты — настроение дня
-              </p>
-              {split.fast.length === 0 ? (
-                <p style={{ color: "var(--text-dim)", fontSize: 13 }}>
-                  Значимых быстрых аспектов сейчас нет.
-                </p>
-              ) : (
-                <div className="transits-list">
-                  {split.fast.map((a, idx) => (
-                    <TransitCard
-                      key={`${a.transit_planet}-${a.natal_planet}-${a.aspect}-${idx}`}
-                      aspect={a}
-                      idx={idx}
-                      retrograde={retroMap.has(a.transit_planet.toLowerCase())}
-                    />
-                  ))}
-                </div>
-              )}
+            <div className="period-tabs">
+              {(["today", "week", "month"] as Period[]).map((p) => (
+                <button
+                  key={p}
+                  className={`period-tab ${period === p ? "active" : ""}`}
+                  onClick={() => {
+                    impact("light");
+                    setPeriod(p);
+                  }}
+                >
+                  {PERIOD_LABELS[p]}
+                  {p !== "today" && !isPremium && (
+                    <svg
+                      className="period-tab__lock"
+                      width="10"
+                      height="10"
+                      viewBox="0 0 10 10"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <rect x="1.5" y="4.5" width="7" height="5" rx="1" />
+                      <path d="M3 4.5V3a2 2 0 0 1 4 0v1.5" />
+                    </svg>
+                  )}
+                </button>
+              ))}
             </div>
 
-            <div className="horoscope-card">
-              <div
-                className="horoscope-card__period"
-                style={{ marginBottom: 4 }}
-              >
-                Этот период
-              </div>
-              <p
-                style={{
-                  fontSize: 12,
-                  color: "var(--text-dim)",
-                  marginBottom: 12,
-                }}
-              >
-                Медленные транзиты — долгие жизненные процессы
-              </p>
-              {split.slow.length === 0 ? (
-                <p style={{ color: "var(--text-dim)", fontSize: 13 }}>
-                  Значимых медленных аспектов сейчас нет.
-                </p>
-              ) : (
-                <div className="transits-list">
-                  {split.slow.map((a, idx) => (
-                    <TransitCard
-                      key={`${a.transit_planet}-${a.natal_planet}-${a.aspect}-${idx}`}
-                      aspect={a}
-                      idx={idx}
-                      retrograde={retroMap.has(a.transit_planet.toLowerCase())}
-                    />
-                  ))}
+            {period === "today" ? (
+              <div className="horoscope-card">
+                <div
+                  className="horoscope-card__period"
+                  style={{ marginBottom: 4 }}
+                >
+                  Активные транзиты
                 </div>
-              )}
-            </div>
-
-            <div className="horoscope-card">
-              <div
-                className="horoscope-card__period"
-                style={{ marginBottom: 12 }}
-              >
-                Небо сейчас
-              </div>
-              <div className="sky-grid">
-                {Object.entries(data.sky).map(([planet, pos]) => (
-                  <div key={planet} className="sky-cell">
-                    <span className="sky-cell__glyph">
-                      {PLANET_GLYPH[planet] ?? "●"}
-                    </span>
-                    <span className="sky-cell__sign">
-                      {ZODIAC_SYMBOL[pos.sign] ?? ""} {pos.sign_ru}
-                      {pos.retrograde && (
-                        <span className="sky-cell__retro"> ℞</span>
-                      )}
-                    </span>
+                <p
+                  style={{
+                    fontSize: 12,
+                    color: "var(--text-dim)",
+                    marginBottom: 14,
+                  }}
+                >
+                  Тапните по карточке — раскроется подробная интерпретация
+                </p>
+                {visibleAspects.length === 0 ? (
+                  <p style={{ color: "var(--text-dim)", fontSize: 13 }}>
+                    Сейчас нет значимых аспектов.
+                  </p>
+                ) : (
+                  <div className="transits-v2-list">
+                    {visibleAspects.map((a, idx) => (
+                      <TransitCardV2
+                        key={`${a.transit_planet}-${a.natal_planet}-${a.aspect}-${idx}`}
+                        aspect={a}
+                        idx={idx}
+                      />
+                    ))}
                   </div>
-                ))}
+                )}
+                {!isPremium && hiddenCount > 0 && (
+                  <div className="transits-locked-cta">
+                    <div className="transits-locked-cta__title">
+                      🔒 Ещё {hiddenCount} транзит
+                      {hiddenCount > 1 ? "ов" : ""} в Premium
+                    </div>
+                    <p>
+                      Полная картина активных аспектов, текст-интерпретация на
+                      каждый, и прогноз на неделю и месяц.
+                    </p>
+                    <button
+                      className="btn-stars"
+                      onClick={() => setScreen("premium")}
+                    >
+                      Открыть Premium
+                    </button>
+                  </div>
+                )}
+                {isPremium && sortedAspects.length > FREE_LIMIT && !showAll && (
+                  <button
+                    type="button"
+                    className="transits-show-all"
+                    onClick={() => setShowAll(true)}
+                  >
+                    Показать все ({sortedAspects.length})
+                  </button>
+                )}
               </div>
-            </div>
+            ) : (
+              <PremiumGate
+                locked={!isPremium}
+                productId={
+                  period === "week"
+                    ? "transits_week_preview"
+                    : "transits_month_preview"
+                }
+                productName={`Транзиты — ${PERIOD_LABELS[period]}`}
+                stars={period === "week" ? 50 : 100}
+              >
+                <div className="horoscope-card">
+                  <div
+                    className="horoscope-card__period"
+                    style={{ marginBottom: 8 }}
+                  >
+                    Транзиты — {PERIOD_LABELS[period]}
+                  </div>
+                  <p
+                    style={{
+                      color: "var(--text-dim)",
+                      fontSize: 13,
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    Расширенный прогноз{" "}
+                    {period === "week"
+                      ? "на ближайшие 7 дней"
+                      : "на ближайший месяц"}{" "}
+                    готовится. Скоро здесь появятся ключевые аспекты, ингрессы и
+                    лунные фазы.
+                  </p>
+                </div>
+              </PremiumGate>
+            )}
+
+            <RetrogradesBlock items={data.retrogrades} />
+
+            <button
+              type="button"
+              className="transit-intro"
+              onClick={() => setIntroOpen((v) => !v)}
+              aria-expanded={introOpen}
+            >
+              <span className="transit-intro__chevron">
+                {introOpen ? "▾" : "▸"}
+              </span>
+              <span className="transit-intro__title">Что такое транзиты?</span>
+            </button>
+            <AnimatePresence initial={false}>
+              {introOpen && (
+                <motion.div
+                  className="transit-intro__body"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <p>
+                    Транзиты — это движение планет прямо сейчас относительно
+                    вашей натальной карты. Они показывают, какие темы
+                    разворачиваются в вашей жизни: где энергия поддерживает, где
+                    встречаете сопротивление, когда открыто окно возможностей.
+                  </p>
+                  <p>
+                    <strong>Быстрые</strong> транзиты (Луна, Меркурий, Венера,
+                    Марс) формируют настроение дня. <strong>Медленные</strong>{" "}
+                    (Юпитер, Сатурн и дальше) — долгие жизненные процессы,
+                    длящиеся месяцы и годы.
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <button
+              type="button"
+              className="transit-intro"
+              onClick={() => setSkyOpen((v) => !v)}
+              aria-expanded={skyOpen}
+            >
+              <span className="transit-intro__chevron">
+                {skyOpen ? "▾" : "▸"}
+              </span>
+              <span className="transit-intro__title">Карта неба сейчас</span>
+            </button>
+            <AnimatePresence initial={false}>
+              {skyOpen && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.25 }}
+                  style={{ overflow: "hidden" }}
+                >
+                  <div className="horoscope-card" style={{ marginTop: 8 }}>
+                    <div className="sky-grid">
+                      {Object.entries(data.sky).map(([planet, pos]) => (
+                        <div key={planet} className="sky-cell">
+                          <span className="sky-cell__glyph">
+                            {PLANET_GLYPH[planet] ?? "●"}
+                          </span>
+                          <span className="sky-cell__sign">
+                            {ZODIAC_SYMBOL[pos.sign] ?? ""} {pos.sign_ru}
+                            {pos.retrograde && (
+                              <span className="sky-cell__retro"> ℞</span>
+                            )}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </>
         )}
       </div>

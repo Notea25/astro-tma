@@ -311,6 +311,12 @@ export interface SynastryInviteInfo {
   is_expired: boolean;
 }
 
+export type TransitCategory =
+  | "support"
+  | "tension"
+  | "transformation"
+  | "neutral";
+
 export interface TransitAspect {
   transit_planet: string;
   natal_planet: string;
@@ -323,6 +329,16 @@ export interface TransitAspect {
   transit_retrograde?: boolean;
   applying?: boolean | null;
   text_ru?: string | null;
+  category: TransitCategory;
+}
+
+export interface RetrogradeInfo {
+  planet: string;
+  planet_ru: string;
+  glyph: string;
+  sign: string;
+  sign_ru: string;
+  description_ru: string;
 }
 
 export interface SynastryManualInput {
@@ -348,6 +364,7 @@ export interface TransitsResponse {
   aspects: TransitAspect[];
   energy: EnergyScores;
   sky: Record<string, SkyPosition>;
+  retrogrades: RetrogradeInfo[];
 }
 
 export interface MacCardResponse {

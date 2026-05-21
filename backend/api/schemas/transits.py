@@ -1,6 +1,9 @@
 from datetime import date
+from typing import Literal
 
 from pydantic import BaseModel
+
+TransitCategory = Literal["support", "tension", "transformation", "neutral"]
 
 
 class TransitAspect(BaseModel):
@@ -15,6 +18,7 @@ class TransitAspect(BaseModel):
     transit_retrograde: bool = False
     applying: bool | None = None  # True = сходящийся (усиливается), False = расходящийся, None = неизвестно
     text_ru: str | None = None  # LLM-cached interpretation of this transit-planet pair
+    category: TransitCategory = "neutral"
 
 
 class EnergyScores(BaseModel):
@@ -31,8 +35,18 @@ class SkyPosition(BaseModel):
     retrograde: bool
 
 
+class RetrogradeInfo(BaseModel):
+    planet: str
+    planet_ru: str
+    glyph: str
+    sign: str
+    sign_ru: str
+    description_ru: str
+
+
 class TransitsResponse(BaseModel):
     date: date
     aspects: list[TransitAspect]
     energy: EnergyScores
     sky: dict[str, SkyPosition]
+    retrogrades: list[RetrogradeInfo] = []

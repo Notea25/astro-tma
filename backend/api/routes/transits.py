@@ -8,8 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.middleware.telegram_auth import get_tg_user
 from api.schemas.transits import (
     EnergyScores,
+    RetrogradeInfo,
     SkyPosition,
     TransitAspect,
+    TransitCategory,
     TransitsResponse,
 )
 from core.cache import cache_get, cache_set
@@ -50,6 +52,57 @@ _SIGN_ABBR: dict[str, str] = {
     "Leo": "leo",   "Vir": "virgo",  "Lib": "libra",  "Sco": "scorpio",
     "Sag": "sagittarius", "Cap": "capricorn", "Aqu": "aquarius", "Pis": "pisces",
 }
+
+_PLANET_GLYPH: dict[str, str] = {
+    "sun": "☉", "moon": "☽", "mercury": "☿", "venus": "♀", "mars": "♂",
+    "jupiter": "♃", "saturn": "♄", "uranus": "♅", "neptune": "♆", "pluto": "♇",
+}
+
+# Short, viral-friendly retrograde blurbs.
+_RETRO_BLURB: dict[str, str] = {
+    "mercury": "Перепроверяйте контракты, технику и сообщения — мысль возвращается к прошлому.",
+    "venus": "Время пересмотреть отношения и ценности — старые чувства и связи всплывают на поверхность.",
+    "mars": "Энергия направлена внутрь — притормозите с резкими решениями и физической нагрузкой.",
+    "jupiter": "Внутренний рост важнее внешней экспансии — пересмотрите убеждения и цели.",
+    "saturn": "Старые обязательства и структуры просят пересмотра — кропотливая работа над фундаментом.",
+    "uranus": "Внутренние перемены опережают внешние — внезапные инсайты и переосмысление свободы.",
+    "neptune": "Иллюзии истончаются — проверяйте интуицию и не торопитесь с обещаниями.",
+    "pluto": "Глубокая трансформация уходит в подсознание — работа со страхами и прошлым.",
+}
+
+_SUPPORT_PLANETS = {"venus", "jupiter"}
+_TENSION_PLANETS = {"mars", "saturn"}
+_TRANSFORMATION_PLANETS = {"pluto", "uranus", "neptune"}
+_SOFT_ASPECTS = {"trine", "sextile"}
+_HARD_ASPECTS = {"square", "opposition"}
+
+
+def _classify_transit(transit_planet: str, natal_planet: str, aspect: str) -> TransitCategory:
+    """Categorize transit per spec §6:
+    - Transformation — any aspect with outer planets (Pluto/Uranus/Neptune)
+    - Support — trine/sextile, OR conjunction with Venus/Jupiter
+    - Tension — square/opposition with Mars/Saturn/Moon
+    - Neutral — everything else
+    """
+    tp = transit_planet.lower()
+    np = natal_planet.lower()
+    ap = aspect.lower()
+
+    if tp in _TRANSFORMATION_PLANETS or np in _TRANSFORMATION_PLANETS:
+        return "transformation"
+
+    if ap in _SOFT_ASPECTS:
+        return "support"
+    if ap == "conjunction" and (tp in _SUPPORT_PLANETS or np in _SUPPORT_PLANETS):
+        return "support"
+
+    if ap in _HARD_ASPECTS and (
+        tp in _TENSION_PLANETS or np in _TENSION_PLANETS or tp == "moon" or np == "moon"
+    ):
+        return "tension"
+
+    return "neutral"
+
 
 _TRANSITS_TTL = 21600  # 6h
 
@@ -100,10 +153,12 @@ async def _build_response(
                 transit_retrograde=t.get("transit_retrograde", False),
                 applying=t.get("applying"),
                 text_ru=texts.get((tp, np, ap)) or None,
+                category=_classify_transit(tp, np, ap),
             )
         )
 
     sky: dict[str, SkyPosition] = {}
+    retrogrades: list[RetrogradeInfo] = []
     for planet, data in sky_raw.items():
         s = _normalize_sign(data["sign"])
         sky[planet] = SkyPosition(
@@ -112,12 +167,24 @@ async def _build_response(
             degree=data["degree"],
             retrograde=data["retrograde"],
         )
+        if data["retrograde"] and planet.lower() in _RETRO_BLURB:
+            retrogrades.append(
+                RetrogradeInfo(
+                    planet=planet,
+                    planet_ru=_PLANET_RU.get(planet.lower(), planet),
+                    glyph=_PLANET_GLYPH.get(planet.lower(), "●"),
+                    sign=s,
+                    sign_ru=_SIGN_RU.get(s, s),
+                    description_ru=_RETRO_BLURB[planet.lower()],
+                )
+            )
 
     return TransitsResponse(
         date=response_date or date.today(),
         aspects=aspects,
         energy=EnergyScores(**scores),
         sky=sky,
+        retrogrades=retrogrades,
     )
 
 
