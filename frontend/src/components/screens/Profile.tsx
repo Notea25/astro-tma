@@ -15,6 +15,21 @@ const MONTHS_RU = [
   "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
 ];
 
+const MONTHS_RU_GENITIVE = [
+  "января", "февраля", "марта", "апреля", "мая", "июня",
+  "июля", "августа", "сентября", "октября", "ноября", "декабря",
+];
+
+function formatBirthDateRu(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return null;
+  const year = m[1];
+  const month = parseInt(m[2], 10);
+  const day = parseInt(m[3], 10);
+  return `${day} ${MONTHS_RU_GENITIVE[month - 1]} ${year}`;
+}
+
 /**
  * Day / month / year selects for a birth date — mirrors Onboarding's flow
  * so the year is freely scrollable on iOS (native <input type="date"> only
@@ -133,6 +148,25 @@ export function Profile() {
     enabled: !!user?.birth_city,
     staleTime: 1000 * 60 * 10,
   });
+
+  const openEditor = () => {
+    impact("light");
+    setBirthCity(displayCity ?? "");
+    // Pre-fill date/time/gender from current data so the user sees what is
+    // already saved instead of empty selectors.
+    setBirthDate(natalSummary?.birth_date ?? "");
+    setBirthTimeKnown(
+      natalSummary?.birth_time_known ?? user?.birth_time_known ?? false,
+    );
+    setBirthTime(
+      natalSummary?.birth_time_known && natalSummary?.birth_time
+        ? natalSummary.birth_time
+        : "",
+    );
+    setGender(user?.gender ?? "");
+    setSelectedCoords(null);
+    setEditing(true);
+  };
 
   const SIGN_RU: Record<string, string> = {
     Aries: "Овен",
@@ -271,11 +305,7 @@ export function Profile() {
             <button
               type="button"
               className="profile-card__edit"
-              onClick={() => {
-                impact("light");
-                setBirthCity(displayCity ?? "");
-                setEditing(true);
-              }}
+              onClick={openEditor}
               aria-label="Редактировать"
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
@@ -339,6 +369,29 @@ export function Profile() {
                     </span>
                     <span className="natal-summary-value">{displayCity}</span>
                   </div>
+                  {natalSummary?.birth_date && (
+                    <div className="natal-summary-row">
+                      <span className="natal-summary-label">
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 14 14"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.4"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <rect x="2" y="3" width="10" height="9" rx="1.5" />
+                          <path d="M2 6h10M5 1.5v2M9 1.5v2" />
+                        </svg>
+                        Дата
+                      </span>
+                      <span className="natal-summary-value">
+                        {formatBirthDateRu(natalSummary.birth_date)}
+                      </span>
+                    </div>
+                  )}
                   <div className="natal-summary-row">
                     <span className="natal-summary-label">
                       <svg
@@ -357,9 +410,9 @@ export function Profile() {
                       Время
                     </span>
                     <span className="natal-summary-value">
-                      {user?.birth_time_known
-                        ? "Точное"
-                        : "Неизвестно (полдень)"}
+                      {user?.birth_time_known && natalSummary?.birth_time
+                        ? natalSummary.birth_time
+                        : "Неизвестно (взяли полдень)"}
                     </span>
                   </div>
                 </div>
@@ -372,11 +425,7 @@ export function Profile() {
               <button
                 className="btn-primary"
                 style={{ marginTop: "0.75rem" }}
-                onClick={() => {
-                  impact("light");
-                  setBirthCity(displayCity ?? "");
-                  setEditing(true);
-                }}
+                onClick={openEditor}
               >
                 {displayCity ? "Изменить" : "Добавить данные"}
               </button>
