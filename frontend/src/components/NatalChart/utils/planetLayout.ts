@@ -17,7 +17,7 @@ const CLUSTER_SPACING = 22;
 const CLUSTER_RADIAL_OFFSETS = [0, -20, 20, -42, 42, -64, 64, -86];
 const SIGN_SLOT_PADDING = 0;
 
-type LayoutMode = 'stacked' | 'zodiac-band';
+type LayoutMode = 'stacked' | 'zodiac-band' | 'equal-slots';
 
 /** Sort planets by absolute degree, then push stacked radii inward when
  *  successive planets fall within `COLLISION_GAP`. */
@@ -38,6 +38,20 @@ export function layOutPlanets(
   });
 
   placed.sort((a, b) => a.absDeg - b.absDeg);
+
+  if (mode === 'equal-slots') {
+    const ordered = PLANET_DRAW_ORDER.flatMap((name) => {
+      const planet = placed.find((item) => item.name === name);
+      return planet ? [planet] : [];
+    });
+    const step = 360 / ordered.length;
+    ordered.forEach((planet, slot) => {
+      planet.displayAbsDeg = slot * step + step / 2;
+      planet.radius = WHEEL.planetR;
+    });
+    return placed;
+  }
+
   if (mode === 'zodiac-band') {
     ZODIAC_ORDER.forEach((sign, signIndex) => {
       const inSign = placed

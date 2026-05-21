@@ -15,8 +15,11 @@ interface Props {
 }
 
 const GLYPH_FONT_SIZE = 27;
-const REFERENCE_GLYPH_FONT_SIZE = 21;
-const REFERENCE_PLANET_BASE_R = WHEEL.innerR - 27;
+const REFERENCE_PLANET_BAND_INNER_R = WHEEL.innerR - 84;
+const REFERENCE_PLANET_BAND_OUTER_R = WHEEL.innerR - 12;
+const REFERENCE_PLANET_BASE_R =
+  (REFERENCE_PLANET_BAND_INNER_R + REFERENCE_PLANET_BAND_OUTER_R) / 2;
+const REFERENCE_PLANET_ICON_SIZE = 30;
 
 export function PlanetLayer({
   placed,
@@ -61,46 +64,56 @@ export function PlanetLayer({
             role={interactive ? 'button' : undefined}
             aria-label={interactive ? srDescription : undefined}
           >
-            <circle
-              cx={pos.x}
-              cy={pos.y}
-              r={isReferenceWheel ? 8 : 15}
-              fill="rgba(5, 7, 24, 0.84)"
-              stroke="var(--natal-accent)"
-              strokeWidth={isReferenceWheel ? 0.35 : 0.6}
-              opacity={isReferenceWheel ? 0.2 : 0.62}
-            />
-            <text
-              x={pos.x}
-              y={pos.y}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontSize={isReferenceWheel ? REFERENCE_GLYPH_FONT_SIZE : GLYPH_FONT_SIZE}
-              fill={isReferenceWheel ? 'var(--natal-accent)' : 'var(--natal-primary)'}
-              className={styles.glyphText}
-            >
-              {isReferenceWheel ? '' : PLANET_GLYPH[name]}
-            </text>
-            {isReferenceWheel && (
-              <g
-                transform={`translate(${pos.x - 8.5} ${pos.y - 8.5})`}
-                className={styles.referencePlanetSymbol}
-              >
-                <PlanetSymbolIcon planet={name} size={17} strokeWidth={1.45} />
+            {isReferenceWheel ? (
+              <g transform={`translate(${pos.x} ${pos.y})`}>
+                <g
+                  transform={`translate(${-REFERENCE_PLANET_ICON_SIZE / 2} ${-REFERENCE_PLANET_ICON_SIZE / 2})`}
+                  className={styles.referencePlanetSymbol}
+                >
+                  <PlanetSymbolIcon
+                    planet={name}
+                    size={REFERENCE_PLANET_ICON_SIZE}
+                    strokeWidth={2}
+                  />
+                </g>
               </g>
-            )}
-            {position.retrograde && (
-              <text
-                x={pos.x + (isReferenceWheel ? 10 : 13)}
-                y={pos.y - (isReferenceWheel ? 10 : 12)}
-                textAnchor="middle"
-                dominantBaseline="central"
-                fontSize={isReferenceWheel ? 8 : 10}
-                fill="var(--natal-dim)"
-                className={styles.bodyText}
-              >
-                {RETROGRADE_MARK}
-              </text>
+            ) : (
+              <>
+                <circle
+                  cx={pos.x}
+                  cy={pos.y}
+                  r={15}
+                  fill="rgba(5, 7, 24, 0.84)"
+                  stroke="var(--natal-accent)"
+                  strokeWidth={0.6}
+                  opacity={0.62}
+                />
+                <text
+                  x={pos.x}
+                  y={pos.y}
+                  dy="0.05em"
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fontSize={GLYPH_FONT_SIZE}
+                  fill="var(--natal-primary)"
+                  className={styles.glyphText}
+                >
+                  {PLANET_GLYPH[name]}
+                </text>
+                {position.retrograde && (
+                  <text
+                    x={pos.x + 13}
+                    y={pos.y - 12}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fontSize={10}
+                    fill="var(--natal-dim)"
+                    className={styles.bodyText}
+                  >
+                    {RETROGRADE_MARK}
+                  </text>
+                )}
+              </>
             )}
           </g>
         );
