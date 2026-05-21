@@ -75,21 +75,28 @@ async def send_message(
     text: str,
     type_: NotificationType = NotificationType.DAILY_HOROSCOPE,
     parse_mode: str = "HTML",
+    reply_markup: dict | None = None,
 ) -> bool:
     """
     Send a message via Telegram Bot API. Logs result to NotificationLog.
     On 403 (user blocked bot) → sets user.push_enabled=False.
     Returns True if sent successfully.
+
+    `reply_markup` — optional Telegram reply_markup dict, e.g. an
+    inline_keyboard with a `web_app` button to deep-link into the Mini App.
     """
     url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload: dict = {
+        "chat_id": user.id,
+        "text": text,
+        "parse_mode": parse_mode,
+        "disable_web_page_preview": True,
+    }
+    if reply_markup is not None:
+        payload["reply_markup"] = reply_markup
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.post(url, json={
-                "chat_id": user.id,
-                "text": text,
-                "parse_mode": parse_mode,
-                "disable_web_page_preview": True,
-            })
+            resp = await client.post(url, json=payload)
         data = resp.json()
     except Exception as e:
         db.add(NotificationLog(
@@ -167,3 +174,17 @@ def build_daily_message(
         f"{teaser}\n\n"
         f"{closing}"
     )
+
+
+def build_open_app_markup(label: str = "✦ Читать далее") -> dict | None:
+    """Inline-keyboard with a single `web_app` button that opens the Mini App.
+    Returns None if the WebApp URL is not configured (so callers can pass
+    the result straight to send_message without conditionals)."""
+    url = (settings.TELEGRAM_WEBAPP_URL or "").strip()
+    if not url:
+        return None
+    return {
+        "inline_keyboard": [
+            [{"text": label, "web_app": {"url": url}}]
+        ]
+    }

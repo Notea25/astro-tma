@@ -11,7 +11,11 @@ from core.logging import get_logger
 from core.settings import settings
 from db.database import AsyncSessionLocal
 from db.models import NotificationLog, NotificationStatus, NotificationType, User
-from services.notifications.push import build_daily_message, send_message
+from services.notifications.push import (
+    build_daily_message,
+    build_open_app_markup,
+    send_message,
+)
 
 log = get_logger(__name__)
 
@@ -86,7 +90,13 @@ async def send_daily_pushes() -> None:
                 text_ru=cached.get("text_ru", ""),
                 energy=cached.get("energy", {}),
             )
-            ok = await send_message(db, user, text, type_=NotificationType.DAILY_HOROSCOPE)
+            ok = await send_message(
+                db,
+                user,
+                text,
+                type_=NotificationType.DAILY_HOROSCOPE,
+                reply_markup=build_open_app_markup("✦ Читать далее"),
+            )
             if ok:
                 sent += 1
             else:
