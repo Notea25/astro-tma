@@ -7,6 +7,7 @@ Pure formatting; no LLM, no DB access.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 from services.astro.dominants import ELEMENT_RU
@@ -58,7 +59,7 @@ def _plural_retro(n: int) -> str:
     return "ретроградных"
 
 
-def build_elements_hero(dominants: dict[str, Any]) -> dict[str, str]:
+def build_elements_hero(dominants: Mapping[str, Any]) -> dict[str, str]:
     el = dominants["elements"]
     total = el["fire"] + el["earth"] + el["air"] + el["water"]
     pct = int(round(el[el["dominant"]] / total * 100)) if total else 0
@@ -73,7 +74,7 @@ def build_elements_hero(dominants: dict[str, Any]) -> dict[str, str]:
 
 def build_planets_hero(
     planets: dict[str, Any],
-    dominants: dict[str, Any],
+    dominants: Mapping[str, Any],
 ) -> dict[str, str]:
     retro = dominants.get("retrograde_planets") or []
     n_retro = len(retro)
