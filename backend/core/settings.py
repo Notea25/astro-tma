@@ -61,6 +61,8 @@ class Settings(BaseSettings):
     PRICE_TAROT_WEEK: int = 40
     PRICE_NATAL_FULL: int = 150
     PRICE_SYNASTRY: int = 100
+    PRICE_TRANSITS_WEEK: int = 50
+    PRICE_TRANSITS_MONTH: int = 100
     PRICE_SUBSCRIPTION_MONTH: int = 299
     PRICE_SUBSCRIPTION_YEAR: int = 1990
 
