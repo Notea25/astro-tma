@@ -29,7 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.logging import get_logger
 from core.settings import settings
 from db.database import get_db
-from db.models import Purchase, Subscription, User
+from db.models import Purchase, Subscription
 
 log = get_logger(__name__)
 
