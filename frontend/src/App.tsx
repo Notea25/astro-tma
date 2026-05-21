@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { AnimatePresence, motion, MotionConfig } from "framer-motion";
 import { BottomNav } from "@/components/ui/BottomNav";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { usersApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
 import { useStartParam, useTelegramReady } from "@/hooks/useTelegram";
@@ -94,10 +95,19 @@ function SplashScreen() {
   );
 }
 
+function RouteFallback() {
+  return (
+    <div className="screen-container">
+      <div className="screen route-fallback-screen">
+        <LoadingSpinner message="Открываем раздел..." />
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const {
     screen,
-    navDirection,
     setScreen,
     onboardingComplete,
     setOnboardingComplete,
@@ -194,35 +204,32 @@ export default function App() {
   return (
     <MotionConfig reducedMotion="user">
       <div className="app">
-        <Suspense fallback={null}>
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={screen}
-              className="screen-container"
-              initial={{ opacity: 0, x: navDirection === "back" ? -20 : 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: navDirection === "back" ? 20 : -20 }}
-              transition={{ duration: 0.22, ease: "easeInOut" }}
-            >
-              {screen === "onboarding" && <Onboarding />}
-              {screen === "home" && <Home />}
-              {screen === "horoscopes" && <Horoscopes />}
-              {screen === "discover" && <Discover />}
-              {screen === "premium" && <Premium />}
-              {screen === "tarot" && <Tarot />}
-              {screen === "moon" && <Moon />}
-              {screen === "natal" && <Natal />}
-              {screen === "mac" && <Mac />}
-              {screen === "profile" && <Profile />}
-              {screen === "transits" && <Transits />}
-              {screen === "synastry" && <Synastry />}
-              {screen === "synastry_invite" && <SynastryInvite />}
-              {screen === "glossary" && <Glossary />}
-              {screen === "glossary_term" && <GlossaryTerm />}
-              {screen === "news" && <News />}
-              {screen === "news_detail" && <NewsDetail />}
-            </motion.div>
-          </AnimatePresence>
+        <Suspense fallback={<RouteFallback />}>
+          <motion.div
+            key={screen}
+            className="screen-container"
+            initial={false}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.16, ease: "easeOut" }}
+          >
+            {screen === "onboarding" && <Onboarding />}
+            {screen === "home" && <Home />}
+            {screen === "horoscopes" && <Horoscopes />}
+            {screen === "discover" && <Discover />}
+            {screen === "premium" && <Premium />}
+            {screen === "tarot" && <Tarot />}
+            {screen === "moon" && <Moon />}
+            {screen === "natal" && <Natal />}
+            {screen === "mac" && <Mac />}
+            {screen === "profile" && <Profile />}
+            {screen === "transits" && <Transits />}
+            {screen === "synastry" && <Synastry />}
+            {screen === "synastry_invite" && <SynastryInvite />}
+            {screen === "glossary" && <Glossary />}
+            {screen === "glossary_term" && <GlossaryTerm />}
+            {screen === "news" && <News />}
+            {screen === "news_detail" && <NewsDetail />}
+          </motion.div>
         </Suspense>
 
         {showNav && <BottomNav />}

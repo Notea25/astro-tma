@@ -11,8 +11,10 @@ interface Props {
   variant?: ChartVariant;
 }
 
-/** Small radial inset so lines don't kiss the inner circle stroke. */
+/** Keep aspect lines inside the planet glyph ring so they don't visually cross labels. */
 const EDGE_INSET = 4;
+const REFERENCE_ASPECT_R = 156;
+const REFERENCE_MAX_ASPECTS = 7;
 
 export function AspectLines({
   aspects,
@@ -32,11 +34,11 @@ export function AspectLines({
   const displayAspects = useMemo(
     () =>
       isReferenceWheel
-        ? [...aspects].sort((a, b) => b.orb - a.orb)
+        ? [...aspects].sort((a, b) => a.orb - b.orb).slice(0, REFERENCE_MAX_ASPECTS)
         : aspects,
     [aspects, isReferenceWheel],
   );
-  const r = isReferenceWheel ? WHEEL.planetR - 48 : WHEEL.innerR - EDGE_INSET;
+  const r = isReferenceWheel ? REFERENCE_ASPECT_R : WHEEL.innerR - EDGE_INSET;
 
   return (
     <g data-part="aspect-lines">
@@ -49,34 +51,28 @@ export function AspectLines({
         const p1 = polar(0, 0, r, a1);
         const p2 = polar(0, 0, r, a2);
         const s = getAspectStyle(asp.type);
-        const referenceOpacity = Math.max(0.24, Math.min(0.62, 0.72 - asp.orb * 0.06));
+        const referenceOpacity = Math.max(0.18, Math.min(0.46, 0.54 - asp.orb * 0.055));
 
         return isReferenceWheel ? (
           <g key={`${asp.planet1}-${asp.planet2}-${asp.type}-${i}`}>
-            <line
-              x1={p1.x}
-              y1={p1.y}
-              x2={p2.x}
-              y2={p2.y}
+            <polyline
+              points={`${p1.x},${p1.y} 0,0 ${p2.x},${p2.y}`}
+              fill="none"
               stroke="var(--natal-accent)"
-              strokeWidth={1.8}
+              strokeWidth={2.1}
               strokeLinecap="round"
+              strokeLinejoin="round"
               opacity={0.07}
             />
-            <line
-              x1={p1.x}
-              y1={p1.y}
-              x2={p2.x}
-              y2={p2.y}
+            <polyline
+              points={`${p1.x},${p1.y} 0,0 ${p2.x},${p2.y}`}
+              fill="none"
               stroke="var(--natal-accent)"
-              strokeWidth={0.78}
+              strokeWidth={0.65}
               strokeLinecap="round"
+              strokeLinejoin="round"
               opacity={referenceOpacity}
-            >
-              <title>
-                {`${asp.planet1} ${asp.type} ${asp.planet2} (orb ${asp.orb.toFixed(1)}°)`}
-              </title>
-            </line>
+            />
           </g>
         ) : (
           <line
@@ -89,11 +85,7 @@ export function AspectLines({
             strokeWidth={1}
             strokeDasharray={s.dasharray}
             opacity={s.opacity}
-          >
-            <title>
-              {`${asp.planet1} ${asp.type} ${asp.planet2} (orb ${asp.orb.toFixed(1)}°)`}
-            </title>
-          </line>
+          />
         );
       })}
     </g>

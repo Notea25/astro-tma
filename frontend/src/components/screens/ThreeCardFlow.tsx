@@ -235,7 +235,7 @@ export function ThreeCardFlow({ onProgressChange }: ThreeCardFlowProps = {}) {
 
   // Derived state for wheel appearance
   const isWheelSpinning = phase === "spinning" || phase === "fly-out";
-  const cardsVisible = isWheelSpinning;
+  const cardsVisible = isWheelSpinning || phase === "reading";
   const isFlying =
     phase === "fly-in" || phase === "revealed" || phase === "fly-out";
 
