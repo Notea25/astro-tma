@@ -36,9 +36,10 @@ export function ChartWheel({
   const isReferenceWheel = variant === 'reference-wheel';
   const isSquareWheel = isPoster || isReferenceWheel;
   const placed = useMemo(
-    () => layOutPlanets(data.planets, isReferenceWheel ? 'zodiac-band' : 'stacked'),
+    () => layOutPlanets(data.planets, isReferenceWheel ? 'equal-slots' : 'stacked'),
     [data.planets, isReferenceWheel],
   );
+  const referencePlanetSlotCount = Math.max(placed.length, 1);
   const bodyDegrees = useMemo(() => {
     const ascendantAbs = positionToAbsoluteDegree(data.ascendant);
     const midheavenAbs = positionToAbsoluteDegree(data.midheaven);
@@ -57,27 +58,15 @@ export function ChartWheel({
 
     return out;
   }, [data.ascendant, data.midheaven, data.planets]);
-  const aspectBodyDegrees = useMemo(() => {
-    if (!isReferenceWheel) return bodyDegrees;
-
+  const referenceAspectDegrees = useMemo(() => {
     const out = { ...bodyDegrees };
+    if (!isReferenceWheel) return out;
+
     placed.forEach((planet) => {
       out[planet.name] = planet.displayAbsDeg;
     });
     return out;
   }, [bodyDegrees, isReferenceWheel, placed]);
-  const centerRays = useMemo(
-    () =>
-      Array.from({ length: 60 }, (_, i) => {
-        const angle = i * 6 - 90;
-        const big = i % 5 === 0;
-        const p1 = polar(0, 0, 48, angle);
-        const p2 = polar(0, 0, big ? 61 : 56, angle);
-        return { ...p1, x2: p2.x, y2: p2.y, big };
-      }),
-    [],
-  );
-
   return (
     <g data-part="chart-wheel" transform={`translate(${WHEEL.cx} ${WHEEL.cy})`}>
       {isReferenceWheel && (
@@ -129,14 +118,6 @@ export function ChartWheel({
       <circle r={WHEEL.outerR}  fill="none" stroke="var(--natal-primary)" strokeWidth={1.5} opacity={0.9} />
       <circle r={WHEEL.middleR} fill="none" stroke="var(--natal-primary)" strokeWidth={1.5} opacity={0.9} />
       <circle r={WHEEL.innerR}  fill="none" stroke="var(--natal-primary)" strokeWidth={1.2} opacity={0.8} />
-      {isReferenceWheel && (
-        <>
-          <circle r={WHEEL.innerR - 12} fill="none" stroke="var(--natal-accent)" strokeWidth={0.8} opacity={0.28} />
-          <circle r={WHEEL.innerR - 42} fill="none" stroke="var(--natal-accent)" strokeWidth={0.75} opacity={0.24} />
-          <circle r={WHEEL.innerR - 54} fill="none" stroke="var(--natal-accent)" strokeWidth={0.7} opacity={0.2} />
-          <circle r={WHEEL.innerR - 104} fill="none" stroke="var(--natal-accent)" strokeWidth={0.7} opacity={0.17} />
-        </>
-      )}
 
       <TickMarks ascendantDegree={ascendantDegree} variant={variant} />
       <ZodiacRing ascendantDegree={ascendantDegree} variant={variant} />
@@ -149,9 +130,23 @@ export function ChartWheel({
 
       {isReferenceWheel && (
         <g data-part="reference-aspect-field">
-          {Array.from({ length: 12 }, (_, i) => {
-            const svgAng = zodiacToSvgAngle(i * 30, ascendantDegree);
-            const p1 = polar(0, 0, WHEEL.innerR - 54, svgAng);
+          <circle
+            r={WHEEL.innerR - 12}
+            fill="none"
+            stroke="var(--natal-accent)"
+            strokeWidth={0.7}
+            opacity={0.22}
+          />
+          <circle
+            r={WHEEL.innerR - 84}
+            fill="none"
+            stroke="var(--natal-accent)"
+            strokeWidth={0.7}
+            opacity={0.22}
+          />
+          {Array.from({ length: referencePlanetSlotCount }, (_, i) => {
+            const svgAng = zodiacToSvgAngle(i * (360 / referencePlanetSlotCount), ascendantDegree);
+            const p1 = polar(0, 0, WHEEL.innerR - 84, svgAng);
             const p2 = polar(0, 0, WHEEL.innerR - 12, svgAng);
             return (
               <line
@@ -166,26 +161,12 @@ export function ChartWheel({
               />
             );
           })}
-          <circle
-            r={WHEEL.planetR - 36}
-            fill="rgba(4, 7, 26, 0.22)"
-            stroke="var(--natal-accent)"
-            strokeWidth={0.9}
-            opacity={0.34}
-          />
-          <circle
-            r={WHEEL.planetR - 82}
-            fill="none"
-            stroke="var(--natal-accent)"
-            strokeWidth={0.7}
-            opacity={0.24}
-          />
         </g>
       )}
 
       <AspectLines
         aspects={data.aspects}
-        bodyDegrees={aspectBodyDegrees}
+        bodyDegrees={isReferenceWheel ? referenceAspectDegrees : bodyDegrees}
         ascendantDegree={ascendantDegree}
         variant={variant}
       />
@@ -205,18 +186,6 @@ export function ChartWheel({
         <PosterMandala />
       ) : isReferenceWheel ? (
         <g data-part="reference-center">
-          {centerRays.map((ray, i) => (
-            <line
-              key={i}
-              x1={ray.x}
-              y1={ray.y}
-              x2={ray.x2}
-              y2={ray.y2}
-              stroke="var(--natal-accent)"
-              strokeWidth={ray.big ? 0.85 : 0.45}
-              opacity={ray.big ? 0.5 : 0.2}
-            />
-          ))}
           <circle
             r={44}
             fill="rgba(5, 7, 24, 0.92)"
