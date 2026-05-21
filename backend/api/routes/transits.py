@@ -12,13 +12,18 @@ from api.schemas.transits import (
     SkyPosition,
     TransitAspect,
     TransitCategory,
+    TransitDetailsRequest,
+    TransitDetailsResponse,
     TransitsResponse,
 )
-from core.cache import cache_get, cache_set
+from core.cache import cache_delete, cache_get, cache_set
 from core.logging import get_logger
 from core.settings import settings
 from db.database import get_db
-from services.astro.transit_interpreter import get_or_generate_transit_texts
+from services.astro.transit_interpreter import (
+    get_or_generate_transit_texts,
+    get_transit_details,
+)
 from services.astro.transits import (
     build_energy_scores,
     calculate_transits,
@@ -29,33 +34,7 @@ from services.users import repository as user_repo
 log = get_logger(__name__)
 router = APIRouter(prefix="/transits", tags=["transits"])
 
-_PLANET_RU: dict[str, str] = {
-    "sun": "Солнце", "moon": "Луна", "mercury": "Меркурий", "venus": "Венера",
-    "mars": "Марс", "jupiter": "Юпитер", "saturn": "Сатурн",
-    "uranus": "Уран", "neptune": "Нептун", "pluto": "Плутон",
-    # Chart axes
-    "ascendant": "Асцендент",
-    "descendant": "Десцендент",
-    "medium_coeli": "Середина неба",
-    "imum_coeli": "Глубина неба",
-    # Lunar nodes (kerykeion uses several variants)
-    "mean_node": "Северный узел",
-    "true_node": "Северный узел",
-    "mean_lunar_node": "Северный узел",
-    "true_lunar_node": "Северный узел",
-    "mean_north_lunar_node": "Северный узел",
-    "true_north_lunar_node": "Северный узел",
-    "mean_south_node": "Южный узел",
-    "true_south_node": "Южный узел",
-    "mean_south_lunar_node": "Южный узел",
-    "true_south_lunar_node": "Южный узел",
-    # Lilith (Black Moon)
-    "mean_lilith": "Лилит",
-    "true_lilith": "Лилит",
-    "black_moon_lilith": "Лилит",
-    # Other points
-    "chiron": "Хирон",
-}
+from services.astro.planet_names import PLANET_RU as _PLANET_RU  # noqa: E402
 
 _ASPECT_RU: dict[str, str] = {
     "conjunction": "Соединение", "opposition": "Оппозиция", "square": "Квадрат",
@@ -75,19 +54,7 @@ _SIGN_ABBR: dict[str, str] = {
     "Sag": "sagittarius", "Cap": "capricorn", "Aqu": "aquarius", "Pis": "pisces",
 }
 
-_PLANET_GLYPH: dict[str, str] = {
-    "sun": "☉", "moon": "☽", "mercury": "☿", "venus": "♀", "mars": "♂",
-    "jupiter": "♃", "saturn": "♄", "uranus": "♅", "neptune": "♆", "pluto": "♇",
-    "ascendant": "Asc", "descendant": "Dsc",
-    "medium_coeli": "MC", "imum_coeli": "IC",
-    "mean_node": "☊", "true_node": "☊",
-    "mean_lunar_node": "☊", "true_lunar_node": "☊",
-    "mean_north_lunar_node": "☊", "true_north_lunar_node": "☊",
-    "mean_south_node": "☋", "true_south_node": "☋",
-    "mean_south_lunar_node": "☋", "true_south_lunar_node": "☋",
-    "mean_lilith": "⚸", "true_lilith": "⚸", "black_moon_lilith": "⚸",
-    "chiron": "⚷",
-}
+from services.astro.planet_names import PLANET_GLYPH as _PLANET_GLYPH  # noqa: E402
 
 # Short, viral-friendly retrograde blurbs — written for a general audience.
 _RETRO_BLURB: dict[str, str] = {
@@ -135,7 +102,8 @@ def _classify_transit(transit_planet: str, natal_planet: str, aspect: str) -> Tr
     return "neutral"
 
 
-_TRANSITS_TTL = 21600  # 6h
+_TRANSITS_TTL = 21600  # 6h — full response with all LLM texts populated
+_TRANSITS_PARTIAL_TTL = 60  # 1 min — when LLM is still generating in background
 
 
 def _key(user_id: int, d: str) -> str:
@@ -155,15 +123,28 @@ async def _build_response(
     raw_transits: list[dict],
     sign: str,
     response_date: date | None = None,
-) -> TransitsResponse:
+    *,
+    cache_key_to_invalidate: str | None = None,
+) -> tuple[TransitsResponse, int]:
     scores = build_energy_scores(raw_transits, sign)
     sky_raw = get_current_sky()
 
     # Per-pair interpretations — cached in transit_interpretations by
-    # (transit_planet, natal_planet, aspect). Replaces the old static
-    # ASPECT_HINT that gave one text for every trine, every square, etc.
-    texts = await get_or_generate_transit_texts(
-        db, raw_transits, settings.ANTHROPIC_API_KEY
+    # (transit_planet, natal_planet, aspect). On a cold cache we DON'T
+    # block the response on the LLM call — that took 10-15s and reverse-
+    # proxy timeouts made the first request fail. Instead we return with
+    # the static fallback immediately and fill the cache in the background;
+    # the next request (1 min Redis TTL) gets the real text.
+    async def _invalidate() -> None:
+        if cache_key_to_invalidate:
+            await cache_delete(cache_key_to_invalidate)
+
+    texts, missing_count = await get_or_generate_transit_texts(
+        db,
+        raw_transits,
+        settings.ANTHROPIC_API_KEY,
+        blocking=False,
+        on_background_complete=_invalidate,
     )
 
     aspects = []
@@ -210,12 +191,15 @@ async def _build_response(
                 )
             )
 
-    return TransitsResponse(
-        date=response_date or date.today(),
-        aspects=aspects,
-        energy=EnergyScores(**scores),
-        sky=sky,
-        retrogrades=retrogrades,
+    return (
+        TransitsResponse(
+            date=response_date or date.today(),
+            aspects=aspects,
+            energy=EnergyScores(**scores),
+            sky=sky,
+            retrogrades=retrogrades,
+        ),
+        missing_count,
     )
 
 
@@ -249,9 +233,12 @@ async def get_current_transits(
     )
 
     sign = user.sun_sign.value if user.sun_sign else "aries"
-    response = await _build_response(db, raw_transits, sign)
+    response, missing_count = await _build_response(
+        db, raw_transits, sign, cache_key_to_invalidate=cache_key,
+    )
 
-    await cache_set(cache_key, response.model_dump(mode="json"), _TRANSITS_TTL)
+    ttl = _TRANSITS_PARTIAL_TTL if missing_count > 0 else _TRANSITS_TTL
+    await cache_set(cache_key, response.model_dump(mode="json"), ttl)
     return response
 
 
@@ -291,7 +278,42 @@ async def get_transits_by_date(
     )
 
     sign = user.sun_sign.value if user.sun_sign else "aries"
-    response = await _build_response(db, raw_transits, sign, response_date=target.date())
+    response, missing_count = await _build_response(
+        db,
+        raw_transits,
+        sign,
+        response_date=target.date(),
+        cache_key_to_invalidate=cache_key,
+    )
 
-    await cache_set(cache_key, response.model_dump(mode="json"), _TRANSITS_TTL)
+    ttl = _TRANSITS_PARTIAL_TTL if missing_count > 0 else _TRANSITS_TTL
+    await cache_set(cache_key, response.model_dump(mode="json"), ttl)
     return response
+
+
+@router.post("/details", response_model=TransitDetailsResponse)
+async def get_transit_details_endpoint(
+    payload: TransitDetailsRequest,
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Deep-dive for the "What does this mean for me" CTA on the Transits hero.
+    Returns the cached blurb plus practical do/avoid advice and the life-sphere
+    (natal house) that the transit activates. Advice is lazy-generated and
+    cached per (transit_planet, natal_planet, aspect) triple.
+    """
+    user = await user_repo.get_by_id(db, tg_user["id"])
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+
+    chart = user.natal_chart.chart_data if user.natal_chart else None
+
+    details = await get_transit_details(
+        db,
+        transit_planet=payload.transit_planet,
+        natal_planet=payload.natal_planet,
+        aspect=payload.aspect,
+        natal_chart=chart,
+        api_key=settings.ANTHROPIC_API_KEY,
+    )
+    return TransitDetailsResponse(**details)

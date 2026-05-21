@@ -715,6 +715,16 @@ export const transitsApi = {
       "GET",
       `/transits/date?date=${date}`,
     ),
+  getDetails: (payload: {
+    transit_planet: string;
+    natal_planet: string;
+    aspect: string;
+  }) =>
+    request<import("@/types").TransitDetails>(
+      "POST",
+      "/transits/details",
+      payload,
+    ),
 };
 
 // ── Payments ───────────────────────────────────────────────────────────────────

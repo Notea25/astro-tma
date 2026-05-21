@@ -50,3 +50,17 @@ class TransitsResponse(BaseModel):
     energy: EnergyScores
     sky: dict[str, SkyPosition]
     retrogrades: list[RetrogradeInfo] = []
+
+
+class TransitDetailsRequest(BaseModel):
+    transit_planet: str
+    natal_planet: str
+    aspect: str
+
+
+class TransitDetailsResponse(BaseModel):
+    text_ru: str
+    advice_do: str | None = None
+    advice_avoid: str | None = None
+    affected_house: int | None = None
+    affected_house_topic: str | None = None
