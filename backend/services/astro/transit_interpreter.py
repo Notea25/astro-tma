@@ -5,13 +5,15 @@ prompt ("right now planet X is making this aspect to your natal Y").
 Cache lives in transit_interpretations (planet order matters here).
 """
 
+import asyncio
 import json
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 from sqlalchemy import select, tuple_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.logging import get_logger
+from db.database import AsyncSessionLocal
 from db.models import TransitInterpretation
 from services.llm_utils import first_text_block
 
@@ -110,16 +112,9 @@ async def _llm_batch(
         return {}
 
 
-async def get_or_generate_transit_texts(
-    db: AsyncSession,
+def _extract_triples(
     aspects: list[dict[str, Any]],
-    api_key: str | None,
-) -> dict[tuple[str, str, str], str]:
-    """For each transit in `aspects`, return text indexed by
-    (transit_planet, natal_planet, aspect). Cache → LLM → static fallback."""
-    if not aspects:
-        return {}
-
+) -> list[tuple[str, str, str]]:
     triples: list[tuple[str, str, str]] = []
     seen: set[tuple[str, str, str]] = set()
     for a in aspects:
@@ -133,10 +128,15 @@ async def get_or_generate_transit_texts(
             continue
         seen.add(triple)
         triples.append(triple)
+    return triples
 
+
+async def _lookup_cached(
+    db: AsyncSession,
+    triples: list[tuple[str, str, str]],
+) -> dict[tuple[str, str, str], str]:
     if not triples:
         return {}
-
     cached: dict[tuple[str, str, str], str] = {}
     result = await db.execute(
         select(
@@ -154,31 +154,100 @@ async def get_or_generate_transit_texts(
     )
     for row in result:
         cached[(row.transit_planet, row.natal_planet, row.aspect)] = row.text_ru
+    return cached
 
+
+async def _background_generate(
+    missing: list[tuple[str, str, str]],
+    api_key: str,
+    on_complete: Callable[[], Awaitable[None]] | None,
+) -> None:
+    """Fire-and-forget: generate LLM texts in a fresh DB session, then
+    optionally invoke `on_complete` so the route layer can invalidate the
+    Redis cache key it just populated with fallback text."""
+    try:
+        generated = await _llm_batch(missing, api_key)
+        if generated:
+            async with AsyncSessionLocal() as bg_db:
+                for triple, text in generated.items():
+                    bg_db.add(
+                        TransitInterpretation(
+                            transit_planet=triple[0],
+                            natal_planet=triple[1],
+                            aspect=triple[2],
+                            text_ru=text,
+                        )
+                    )
+                try:
+                    await bg_db.commit()
+                except Exception as e:  # noqa: BLE001
+                    log.warning("transit_bg.cache_collision", error=str(e))
+        if on_complete:
+            try:
+                await on_complete()
+            except Exception as e:  # noqa: BLE001
+                log.warning("transit_bg.on_complete_failed", error=str(e))
+    except Exception as e:  # noqa: BLE001
+        log.error("transit_bg.failed", error=str(e), count=len(missing))
+
+
+async def get_or_generate_transit_texts(
+    db: AsyncSession,
+    aspects: list[dict[str, Any]],
+    api_key: str | None,
+    *,
+    blocking: bool = True,
+    on_background_complete: Callable[[], Awaitable[None]] | None = None,
+) -> tuple[dict[tuple[str, str, str], str], int]:
+    """For each transit, return (texts_by_triple, missing_count).
+
+    With `blocking=True` (default), waits for the LLM call to populate any
+    missing entries before returning — used internally for non-user-facing
+    flows. With `blocking=False`, returns immediately with cache + fallback
+    and schedules an asyncio background task to fill the gap. The optional
+    `on_background_complete` lets the caller invalidate its Redis cache so
+    the next request gets the freshly generated text.
+    """
+    if not aspects:
+        return {}, 0
+
+    triples = _extract_triples(aspects)
+    if not triples:
+        return {}, 0
+
+    cached = await _lookup_cached(db, triples)
     missing = [t for t in triples if t not in cached]
 
     if missing and api_key:
-        generated = await _llm_batch(missing, api_key)
-        for triple, text in generated.items():
-            db.add(
-                TransitInterpretation(
-                    transit_planet=triple[0],
-                    natal_planet=triple[1],
-                    aspect=triple[2],
-                    text_ru=text,
+        if blocking:
+            generated = await _llm_batch(missing, api_key)
+            for triple, text in generated.items():
+                db.add(
+                    TransitInterpretation(
+                        transit_planet=triple[0],
+                        natal_planet=triple[1],
+                        aspect=triple[2],
+                        text_ru=text,
+                    )
                 )
+                cached[triple] = text
+            if generated:
+                try:
+                    await db.flush()
+                except Exception as e:  # noqa: BLE001
+                    log.warning("transit_interp.cache_collision", error=str(e))
+            missing = [t for t in triples if t not in cached]
+        else:
+            # Hand the LLM call to a background task. Use a copy so we
+            # don't capture a mutable reference.
+            asyncio.create_task(
+                _background_generate(list(missing), api_key, on_background_complete)
             )
-            cached[triple] = text
-        if generated:
-            try:
-                await db.flush()
-            except Exception as e:  # noqa: BLE001
-                log.warning("transit_interp.cache_collision", error=str(e))
 
     for triple in triples:
         cached.setdefault(triple, _FALLBACK.get(triple[2], ""))
 
-    return cached
+    return cached, len(missing)
 
 
 # ── Deep-dive ("What does this mean for me") ─────────────────────────────────
