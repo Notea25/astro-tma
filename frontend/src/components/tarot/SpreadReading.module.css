@@ -13,9 +13,10 @@
   gap: 12px;
   padding: 40px 16px;
   color: rgba(212, 178, 84, 0.85);
-  font-family: "Cormorant Garamond", "Playfair Display", serif;
-  font-size: 15px;
-  letter-spacing: 0.04em;
+  font-family: var(--tarot-font);
+  font-size: var(--tarot-small-size);
+  letter-spacing: 0;
+  line-height: 1.4;
 }
 .loader::before {
   content: "";
@@ -52,19 +53,20 @@
 
 /* Section header */
 .title {
-  font-family: "Playfair Display", serif;
-  font-size: 20px;
+  font-family: var(--tarot-font);
+  font-size: var(--tarot-title-size);
+  font-weight: 600;
   text-align: center;
   color: rgba(212, 178, 84, 0.95);
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
   margin: 0;
 }
 .subtitle {
-  font-family: "Cormorant Garamond", "Playfair Display", serif;
-  font-size: 14px;
+  font-family: var(--tarot-font);
+  font-size: var(--tarot-label-size);
   text-align: center;
   color: rgba(201, 168, 76, 0.7);
-  letter-spacing: 0.1em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   margin: -12px 0 4px;
 }
@@ -124,20 +126,21 @@
   gap: 6px;
 }
 .posLabel {
-  font-family: "Cinzel", "Playfair Display", serif;
-  font-size: 10px;
-  letter-spacing: 0.18em;
+  font-family: var(--tarot-font);
+  font-size: var(--tarot-label-size);
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: rgba(201, 168, 76, 0.65);
 }
 .posTitle {
-  font-family: "Playfair Display", serif;
-  font-size: 16px;
+  font-family: var(--tarot-font);
+  font-size: var(--tarot-body-size);
+  font-weight: 600;
   color: rgba(212, 178, 84, 0.95);
   margin: 0;
 }
 .cardName {
-  font-size: 13px;
+  font-size: var(--tarot-small-size);
   color: rgba(230, 220, 200, 0.8);
   font-style: italic;
 }
@@ -145,8 +148,8 @@
   color: rgba(255, 170, 170, 0.85);
 }
 .narrative {
-  font-size: 14px;
-  line-height: 1.55;
+  font-size: var(--tarot-body-size);
+  line-height: 1.58;
   color: rgba(230, 220, 200, 0.95);
   margin: 4px 0 0;
 }
@@ -165,16 +168,16 @@
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
 }
 .summaryTitle {
-  font-family: "Cinzel", "Playfair Display", serif;
-  font-size: 11px;
-  letter-spacing: 0.24em;
+  font-family: var(--tarot-font);
+  font-size: var(--tarot-label-size);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: rgba(212, 178, 84, 0.9);
   text-align: center;
   margin: 0 0 12px;
 }
 .summaryText {
-  font-size: 14.5px;
+  font-size: var(--tarot-body-size);
   line-height: 1.6;
   color: rgba(235, 225, 205, 0.95);
   margin: 0;
@@ -229,8 +232,8 @@
   left: 0;
   right: 0;
   text-align: center;
-  font-family: "Playfair Display", serif;
-  font-size: 14px;
+  font-family: var(--tarot-font);
+  font-size: var(--tarot-small-size);
   color: rgba(235, 225, 205, 0.95);
   pointer-events: none;
   padding: 0 24px;
