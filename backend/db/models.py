@@ -267,7 +267,13 @@ class SynastryInterpretation(TimestampMixin, Base):
 class TransitInterpretation(TimestampMixin, Base):
     """Cached LLM-generated text for a (transit_planet, natal_planet, aspect)
     triple — "right now Saturn squares your Mercury" style. Separate from
-    synastry_interpretations because the prompt is framed differently."""
+    synastry_interpretations because the prompt is framed differently.
+
+    `text_ru` is the short blurb shown on the transit card; `advice_do` /
+    `advice_avoid` back the "What does this mean for me" deep-dive on the
+    hero card. The advice columns are lazy-filled the first time a user
+    expands the hero details.
+    """
     __tablename__ = "transit_interpretations"
     __table_args__ = (UniqueConstraint("transit_planet", "natal_planet", "aspect"),)
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -275,6 +281,8 @@ class TransitInterpretation(TimestampMixin, Base):
     natal_planet: Mapped[str] = mapped_column(String(20), nullable=False)
     aspect: Mapped[str] = mapped_column(String(20), nullable=False)
     text_ru: Mapped[str] = mapped_column(Text, nullable=False)
+    advice_do: Mapped[str | None] = mapped_column(Text, nullable=True)
+    advice_avoid: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class SynastryPairSummary(TimestampMixin, Base):

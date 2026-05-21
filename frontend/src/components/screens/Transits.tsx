@@ -8,7 +8,12 @@ import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
 import { transitsApi } from "@/services/api";
 import { ApiError } from "@/services/api";
-import type { RetrogradeInfo, TransitAspect, TransitCategory } from "@/types";
+import type {
+  RetrogradeInfo,
+  TransitAspect,
+  TransitCategory,
+  TransitDetails,
+} from "@/types";
 
 type Period = "today" | "week" | "month";
 
@@ -159,8 +164,101 @@ function CategoryBadge({ category }: { category: TransitCategory }) {
   );
 }
 
+function splitLines(s: string | null | undefined): string[] {
+  if (!s) return [];
+  return s
+    .split(/\n|•|·|—\s/)
+    .map((l) => l.replace(/^[\s\d.)\-•·]+/, "").trim())
+    .filter(Boolean);
+}
+
+function DeepDive({
+  aspect,
+  details,
+  loading,
+}: {
+  aspect: TransitAspect;
+  details: TransitDetails | undefined;
+  loading: boolean;
+}) {
+  const doItems = splitLines(details?.advice_do);
+  const avoidItems = splitLines(details?.advice_avoid);
+  const tone =
+    aspect.applying === true
+      ? "Тема сейчас набирает силу — в ближайшие дни она будет ощущаться сильнее."
+      : aspect.applying === false
+        ? "Пик уже позади — тема постепенно отходит на второй план."
+        : "Тема активна прямо сейчас.";
+  return (
+    <div className="deep-dive">
+      <p className="deep-dive__tone">
+        {tone}
+        {aspect.transit_retrograde
+          ? " Планета идёт в обратную сторону — эффект скорее внутрь: больше размышлений, чем внешних действий."
+          : ""}
+      </p>
+
+      {details?.affected_house_topic && (
+        <div className="deep-dive__block">
+          <div className="deep-dive__title">Сфера, которую задевает</div>
+          <p className="deep-dive__body">
+            {details.affected_house_topic}
+            {details.affected_house ? ` · ${details.affected_house}-й дом` : ""}
+          </p>
+        </div>
+      )}
+
+      {loading && !details && (
+        <p className="deep-dive__loading">Подбираем советы для вас…</p>
+      )}
+
+      {doItems.length > 0 && (
+        <div className="deep-dive__block">
+          <div className="deep-dive__title deep-dive__title--do">
+            Что сделать сегодня
+          </div>
+          <ul className="deep-dive__list">
+            {doItems.map((line, i) => (
+              <li key={`do-${i}`}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {avoidItems.length > 0 && (
+        <div className="deep-dive__block">
+          <div className="deep-dive__title deep-dive__title--avoid">
+            Чего лучше избежать
+          </div>
+          <ul className="deep-dive__list">
+            {avoidItems.map((line, i) => (
+              <li key={`avoid-${i}`}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function HeroCard({ aspect }: { aspect: TransitAspect | null }) {
   const [expanded, setExpanded] = useState(false);
+  const { data: details, isLoading: detailsLoading } = useQuery({
+    queryKey: [
+      "transit-details",
+      aspect?.transit_planet,
+      aspect?.natal_planet,
+      aspect?.aspect,
+    ],
+    queryFn: () =>
+      transitsApi.getDetails({
+        transit_planet: aspect!.transit_planet,
+        natal_planet: aspect!.natal_planet,
+        aspect: aspect!.aspect,
+      }),
+    enabled: !!aspect && expanded,
+    staleTime: 1000 * 60 * 60 * 24,
+  });
   if (!aspect) {
     return (
       <motion.div
@@ -218,16 +316,11 @@ function HeroCard({ aspect }: { aspect: TransitAspect | null }) {
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.25 }}
           >
-            <p>
-              {aspect.applying === true
-                ? "Эта тема сейчас набирает обороты — в ближайшие дни она будет ощущаться сильнее."
-                : aspect.applying === false
-                  ? "Пик уже позади — тема постепенно отходит на второй план."
-                  : "Тема активна прямо сейчас."}
-              {aspect.transit_retrograde
-                ? " Планета идёт в обратную сторону — эффект будет направлен скорее внутрь: больше размышлений, чем внешних действий."
-                : ""}
-            </p>
+            <DeepDive
+              aspect={aspect}
+              details={details}
+              loading={detailsLoading}
+            />
           </motion.div>
         )}
       </AnimatePresence>
