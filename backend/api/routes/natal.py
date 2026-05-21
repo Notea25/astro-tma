@@ -30,10 +30,11 @@ log = get_logger(__name__)
 
 router = APIRouter(prefix="/natal", tags=["natal"])
 _PDF_DOWNLOAD_TTL_SECONDS = 300
+NATAL_DESCRIPTIONS_VERSION = 2
 
 
 def _empty_descriptions() -> dict[str, Any]:
-    return {"planets": {}, "houses": {}, "aspects": []}
+    return {"_version": NATAL_DESCRIPTIONS_VERSION, "planets": {}, "houses": {}, "aspects": []}
 
 
 def _has_any(descriptions: dict[str, Any]) -> bool:
@@ -62,7 +63,11 @@ async def _get_or_generate_descriptions(
     chart = user.natal_chart
     chart_data = chart.chart_data or {}
     stored = chart_data.get("descriptions")
-    if isinstance(stored, dict) and _has_any(stored):
+    if (
+        isinstance(stored, dict)
+        and stored.get("_version") == NATAL_DESCRIPTIONS_VERSION
+        and _has_any(stored)
+    ):
         return stored
 
     if not settings.ANTHROPIC_API_KEY:
@@ -84,6 +89,7 @@ async def _get_or_generate_descriptions(
         return _empty_descriptions()
 
     if _has_any(result):
+        result = {"_version": NATAL_DESCRIPTIONS_VERSION, **result}
         # Reassign the whole dict so SQLAlchemy detects the change (default
         # JSON columns don't track mutations to nested keys).
         chart.chart_data = {**chart_data, "descriptions": result}

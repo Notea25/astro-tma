@@ -6,6 +6,7 @@ import pytest
 from fastapi.responses import Response
 
 from services import natal_pdf
+from services.astro import natal_descriptions
 from services.natal_pdf import generate_natal_pdf
 
 
@@ -90,6 +91,51 @@ def test_generate_natal_pdf_does_not_require_dejavu_bold(monkeypatch):
     )
 
     assert pdf.startswith(b"%PDF-")
+
+
+def test_planet_description_prompt_prioritises_sign_over_house():
+    prompt = natal_descriptions._planet_one_prompt(
+        "sun",
+        {"sign": "Capricorn", "sign_ru": "Козерог", "house": 10, "retrograde": False},
+    )
+
+    assert "Планеты в знаках" in prompt
+    assert "центр разбора — связка планета + знак" in prompt
+    assert "full" in prompt
+    assert "6-9 предложений" not in prompt
+
+
+@pytest.mark.asyncio
+async def test_get_or_generate_descriptions_regenerates_stale_cached_text(monkeypatch):
+    from api.routes import natal
+
+    chart = SimpleNamespace(
+        chart_data={
+            "planets": {"sun": {"sign": "Capricorn", "house": 10}},
+            "houses": [],
+            "aspects": [],
+            "descriptions": {"planets": {"sun": {"full": "Старый короткий текст."}}},
+        }
+    )
+    user = SimpleNamespace(id=1001, natal_chart=chart)
+    db = SimpleNamespace(committed=False)
+
+    async def fake_commit():
+        db.committed = True
+
+    async def fake_generate_natal_descriptions(**_kwargs):
+        return {"planets": {"sun": {"full": "Новый полный справочный текст."}}, "houses": {}, "aspects": []}
+
+    db.commit = fake_commit
+    monkeypatch.setattr(natal.settings, "ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.setattr(natal, "generate_natal_descriptions", fake_generate_natal_descriptions)
+
+    descriptions = await natal._get_or_generate_descriptions(db, user)
+
+    assert descriptions["planets"]["sun"]["full"] == "Новый полный справочный текст."
+    assert descriptions["_version"] == natal.NATAL_DESCRIPTIONS_VERSION
+    assert chart.chart_data["descriptions"] == descriptions
+    assert db.committed is True
 
 
 @pytest.mark.asyncio
