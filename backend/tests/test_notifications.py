@@ -3,7 +3,7 @@
 from datetime import date
 
 from db.models import User
-from services.notifications.push import build_daily_message, build_open_app_markup
+from services.notifications.push import DAILY_OPEN_APP_LABEL, build_daily_message, build_open_app_markup
 
 
 def _user() -> User:
@@ -58,6 +58,18 @@ def test_open_app_markup_returns_webapp_button(monkeypatch):
     assert markup is not None
     assert markup["inline_keyboard"][0][0]["text"] == "Открыть"
     assert markup["inline_keyboard"][0][0]["web_app"]["url"] == "https://example.com/"
+
+
+def test_open_app_markup_default_label_invites_to_learn_more(monkeypatch):
+    from core.settings import settings
+
+    monkeypatch.setattr(settings, "TELEGRAM_WEBAPP_URL", "https://example.com/")
+
+    markup = build_open_app_markup()
+
+    assert DAILY_OPEN_APP_LABEL == "Узнать больше"
+    assert markup is not None
+    assert markup["inline_keyboard"][0][0]["text"] == "Узнать больше"
 
 
 def test_open_app_markup_returns_none_when_url_missing(monkeypatch):
