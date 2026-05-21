@@ -95,11 +95,15 @@ const PLANET_PRIORITY: Record<string, number> = {
 };
 
 const ASPECT_HINT: Record<string, string> = {
-  conjunction: "Слияние энергий — темы объединяются в одну.",
-  trine: "Гармония и поддержка. Естественный поток.",
-  sextile: "Возможность. Нужно сделать шаг, чтобы включить.",
-  square: "Напряжение и вызов. Точка роста через сопротивление.",
-  opposition: "Полярность. Баланс между двумя силами.",
+  conjunction:
+    "Две темы сливаются в одну сильную волну — то, что раньше казалось разным, сегодня работает вместе.",
+  trine:
+    "Сегодня всё складывается само — стоит сделать шаг, и поддержка найдётся.",
+  sextile: "Окно возможностей открыто, но само не зайдёт — нужен ваш ход.",
+  square:
+    "Что-то трётся и мешает. Это не катастрофа — это место, где вы реально вырастете.",
+  opposition:
+    "Внутри тянет в две стороны сразу. Не выбирайте крайность — попробуйте найти баланс.",
 };
 
 const FREE_LIMIT = 3;
@@ -147,11 +151,11 @@ function HeroCard({ aspect }: { aspect: TransitAspect | null }) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
       >
-        <div className="transit-hero__eyebrow">Хэдлайн дня</div>
-        <h3 className="transit-hero__title">Спокойный день</h3>
+        <div className="transit-hero__eyebrow">Что важно сегодня</div>
+        <h3 className="transit-hero__title">Тихий день</h3>
         <p className="transit-hero__text">
-          Сегодня нет острых аспектов. Хороший день для рутины и завершения
-          начатого.
+          Звёзды никуда не торопят. Хороший момент, чтобы спокойно заняться
+          рутиной и довести до конца то, что давно ждёт.
         </p>
       </motion.div>
     );
@@ -173,7 +177,7 @@ function HeroCard({ aspect }: { aspect: TransitAspect | null }) {
     >
       <div className="transit-hero__row">
         <div className="transit-hero__col">
-          <div className="transit-hero__eyebrow">Хэдлайн дня</div>
+          <div className="transit-hero__eyebrow">Что важно сегодня</div>
           <CategoryBadge category={aspect.category} />
         </div>
         <span className="transit-hero__glyph" style={{ color: meta.color }}>
@@ -197,14 +201,13 @@ function HeroCard({ aspect }: { aspect: TransitAspect | null }) {
             transition={{ duration: 0.25 }}
           >
             <p>
-              Орб {aspect.orb.toFixed(1)}°.{" "}
               {aspect.applying === true
-                ? "Аспект сходится — энергия нарастает."
+                ? "Эта тема сейчас набирает обороты — в ближайшие дни она будет ощущаться сильнее."
                 : aspect.applying === false
-                  ? "Аспект расходится — пик пройден."
-                  : "Аспект активен."}
+                  ? "Пик уже позади — тема постепенно отходит на второй план."
+                  : "Тема активна прямо сейчас."}
               {aspect.transit_retrograde
-                ? " Транзитная планета ретроградна — эффект направлен внутрь."
+                ? " Планета идёт в обратную сторону — эффект будет направлен скорее внутрь: больше размышлений, чем внешних действий."
                 : ""}
             </p>
           </motion.div>
@@ -215,7 +218,7 @@ function HeroCard({ aspect }: { aspect: TransitAspect | null }) {
         className="transit-hero__cta"
         onClick={() => setExpanded((v) => !v)}
       >
-        {expanded ? "Свернуть" : "Что это значит подробнее →"}
+        {expanded ? "Свернуть" : "Что это значит для меня →"}
       </button>
     </motion.div>
   );
@@ -264,7 +267,7 @@ function TransitCardV2({
         {aspect.applying === true && (
           <>
             <span>·</span>
-            <span style={{ color: meta.color }}>сходится</span>
+            <span style={{ color: meta.color }}>набирает силу</span>
           </>
         )}
       </div>
@@ -284,8 +287,9 @@ function TransitCardV2({
             </p>
             {aspect.transit_retrograde && (
               <p className="transit-card-v2__sub">
-                Планета ретроградна: эффект направлен внутрь — переосмысление и
-                возврат к прошлым темам.
+                Планета идёт в обратную сторону — тема, скорее всего,
+                вернётся к чему-то из прошлого: старые разговоры, давние
+                решения, забытые планы.
               </p>
             )}
           </motion.div>
@@ -309,7 +313,8 @@ function RetrogradesBlock({ items }: { items: RetrogradeInfo[] }) {
           marginBottom: 12,
         }}
       >
-        Планеты, идущие сейчас в обратном движении
+        Эти планеты идут в обратную сторону — не пугайтесь, просто включите
+        внимательность
       </p>
       <div className="retro-list">
         {items.map((r) => (
@@ -463,7 +468,7 @@ export function Transits() {
                   className="horoscope-card__period"
                   style={{ marginBottom: 4 }}
                 >
-                  Активные транзиты
+                  Что происходит сейчас
                 </div>
                 <p
                   style={{
@@ -472,11 +477,11 @@ export function Transits() {
                     marginBottom: 14,
                   }}
                 >
-                  Тапните по карточке — раскроется подробная интерпретация
+                  Нажмите на карточку — расскажем подробнее
                 </p>
                 {visibleAspects.length === 0 ? (
                   <p style={{ color: "var(--text-dim)", fontSize: 13 }}>
-                    Сейчас нет значимых аспектов.
+                    Сейчас всё спокойно — больших событий по звёздам нет.
                   </p>
                 ) : (
                   <div className="transits-v2-list">
@@ -492,12 +497,12 @@ export function Transits() {
                 {!isPremium && hiddenCount > 0 && (
                   <div className="transits-locked-cta">
                     <div className="transits-locked-cta__title">
-                      🔒 Ещё {hiddenCount} транзит
-                      {hiddenCount > 1 ? "ов" : ""} в Premium
+                      🔒 Ещё {hiddenCount} событи
+                      {hiddenCount === 1 ? "е" : "й"} в Premium
                     </div>
                     <p>
-                      Полная картина активных аспектов, текст-интерпретация на
-                      каждый, и прогноз на неделю и месяц.
+                      В Premium видна вся картина дня, разбор каждой темы и
+                      что ждёт на неделю и месяц вперёд.
                     </p>
                     <button
                       className="btn-stars"
@@ -533,7 +538,7 @@ export function Transits() {
                     className="horoscope-card__period"
                     style={{ marginBottom: 8 }}
                   >
-                    Транзиты — {PERIOD_LABELS[period]}
+                    {period === "week" ? "Что ждёт на неделе" : "Что ждёт в этом месяце"}
                   </div>
                   <p
                     style={{
@@ -542,12 +547,9 @@ export function Transits() {
                       lineHeight: 1.6,
                     }}
                   >
-                    Расширенный прогноз{" "}
                     {period === "week"
-                      ? "на ближайшие 7 дней"
-                      : "на ближайший месяц"}{" "}
-                    готовится. Скоро здесь появятся ключевые аспекты, ингрессы и
-                    лунные фазы.
+                      ? "Готовим разбор главных событий следующих 7 дней — какие дни принесут поток, а какие потребуют осторожности. Совсем скоро."
+                      : "Готовим карту месяца — большие сдвиги, ретрограды, новолуния. Уже на подходе."}
                   </p>
                 </div>
               </PremiumGate>
@@ -576,16 +578,16 @@ export function Transits() {
                   transition={{ duration: 0.25 }}
                 >
                   <p>
-                    Транзиты — это движение планет прямо сейчас относительно
-                    вашей натальной карты. Они показывают, какие темы
-                    разворачиваются в вашей жизни: где энергия поддерживает, где
-                    встречаете сопротивление, когда открыто окно возможностей.
+                    Простыми словами: планеты на небе двигаются, и каждый день
+                    они по-разному «общаются» с тем, как сложились звёзды в
+                    момент вашего рождения. Из этого складываются темы дня —
+                    где-то всё идёт легко, где-то приходится напрячься.
                   </p>
                   <p>
-                    <strong>Быстрые</strong> транзиты (Луна, Меркурий, Венера,
-                    Марс) формируют настроение дня. <strong>Медленные</strong>{" "}
-                    (Юпитер, Сатурн и дальше) — долгие жизненные процессы,
-                    длящиеся месяцы и годы.
+                    <strong>Быстрые</strong> планеты (Луна, Меркурий, Венера,
+                    Марс) отвечают за настроение и события дня.{" "}
+                    <strong>Медленные</strong> (Юпитер, Сатурн и дальше) — за
+                    большие жизненные сюжеты, которые тянутся месяцами и годами.
                   </p>
                 </motion.div>
               )}
