@@ -1,4 +1,9 @@
-import { useState } from "react";
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { motion } from "framer-motion";
 import {
   SPREAD_CONFIG,
@@ -21,6 +26,9 @@ const SCALE_BY_KEY: Record<SpreadKey, number> = {
 
 export function SpreadIntro({ spreadKey, onStart }: Props) {
   const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const [titleScale, setTitleScale] = useState(1);
+  const titleWrapRef = useRef<HTMLHeadingElement>(null);
+  const titleMeasureRef = useRef<HTMLSpanElement>(null);
   const config = SPREAD_CONFIG[spreadKey];
   const { layout, backVariant, previewSymbols, title } = config;
   const scale = SCALE_BY_KEY[spreadKey] ?? 0.55;
@@ -31,6 +39,48 @@ export function SpreadIntro({ spreadKey, onStart }: Props) {
   const cardH = CARD_H * scale;
   const symbolFontSize = Math.round(cardH * 0.32);
   const firstPosition = config.sections[0]?.positions[0];
+  const titleStyle = {
+    "--spread-title-scale": titleScale,
+  } as CSSProperties;
+
+  useLayoutEffect(() => {
+    const titleWrap = titleWrapRef.current;
+    const titleMeasure = titleMeasureRef.current;
+    if (!titleWrap || !titleMeasure) return;
+
+    let frame = 0;
+    const updateScale = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const availableWidth = titleWrap.clientWidth;
+        const naturalWidth = titleMeasure.scrollWidth;
+        const nextScale =
+          availableWidth > 0 && naturalWidth > 0
+            ? Math.min(1, availableWidth / naturalWidth)
+            : 1;
+
+        setTitleScale((current) =>
+          Math.abs(current - nextScale) > 0.005 ? nextScale : current,
+        );
+      });
+    };
+
+    updateScale();
+    window.addEventListener("resize", updateScale);
+
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(updateScale)
+        : null;
+    resizeObserver?.observe(titleWrap);
+    resizeObserver?.observe(titleMeasure);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("resize", updateScale);
+      resizeObserver?.disconnect();
+    };
+  }, [title]);
 
   return (
     <motion.div
@@ -41,7 +91,20 @@ export function SpreadIntro({ spreadKey, onStart }: Props) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <h1 className="spread-intro-v2__title">{title}</h1>
+      <h1
+        ref={titleWrapRef}
+        className="spread-intro-v2__title"
+        style={titleStyle}
+      >
+        <span className="spread-intro-v2__title-text">{title}</span>
+        <span
+          ref={titleMeasureRef}
+          className="spread-intro-v2__title-measure"
+          aria-hidden="true"
+        >
+          {title}
+        </span>
+      </h1>
 
       <div className="spread-intro-v2__preview">
         <div
@@ -168,7 +231,7 @@ export function SpreadIntro({ spreadKey, onStart }: Props) {
         onClick={onStart}
         whileTap={{ scale: 0.96 }}
       >
-        {spreadKey === "week" ? "ОТКРЫТЬ КАРТЫ ✦" : "Перейти к раскладу"}
+        {spreadKey === "week" ? "Открыть карты ✦" : "Перейти к раскладу"}
       </motion.button>
     </motion.div>
   );
