@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from typing import Any, TypedDict
 
-
 # Standard mass-market astrology weights. Asc is heaviest because it's the
 # personal axis; luminaries next; personals; socials; outers (least personal).
 PLANET_WEIGHTS: dict[str, float] = {
@@ -155,14 +154,19 @@ def compute_dominants(
 
     return {
         "elements": {
-            **elements,
+            "fire": elements["fire"],
+            "earth": elements["earth"],
+            "air": elements["air"],
+            "water": elements["water"],
             "dominant": dominant_el,
             "dominant_ru": ELEMENT_RU[dominant_el],
             "deficient": deficient_el,
             "deficient_ru": ELEMENT_RU.get(deficient_el) if deficient_el else None,
         },
         "modalities": {
-            **modalities,
+            "cardinal": modalities["cardinal"],
+            "fixed": modalities["fixed"],
+            "mutable": modalities["mutable"],
             "dominant": dominant_mod,
             "dominant_ru": MODALITY_RU[dominant_mod],
         },
