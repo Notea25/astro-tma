@@ -64,3 +64,33 @@ class TransitDetailsResponse(BaseModel):
     advice_avoid: str | None = None
     affected_house: int | None = None
     affected_house_topic: str | None = None
+
+
+class PeriodEvent(BaseModel):
+    date: date
+    kind: Literal["aspect", "ingress"]
+    title_ru: str
+    category: TransitCategory = "neutral"
+    weight: int = 0
+    # Aspect-specific
+    transit_planet: str | None = None
+    natal_planet: str | None = None
+    aspect: str | None = None
+    transit_planet_ru: str | None = None
+    natal_planet_ru: str | None = None
+    aspect_ru: str | None = None
+    orb: float | None = None
+    text_ru: str | None = None
+    # Ingress-specific
+    planet: str | None = None
+    planet_ru: str | None = None
+    from_sign: str | None = None
+    from_sign_ru: str | None = None
+    to_sign: str | None = None
+    to_sign_ru: str | None = None
+
+
+class PeriodEventsResponse(BaseModel):
+    start_date: date
+    end_date: date
+    events: list[PeriodEvent]

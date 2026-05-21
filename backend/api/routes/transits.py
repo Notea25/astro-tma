@@ -1,6 +1,6 @@
 """Transit endpoints — current planetary positions vs user's natal chart."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.middleware.telegram_auth import get_tg_user
 from api.schemas.transits import (
     EnergyScores,
+    PeriodEvent,
+    PeriodEventsResponse,
     RetrogradeInfo,
     SkyPosition,
     TransitAspect,
@@ -26,6 +28,7 @@ from services.astro.transit_interpreter import (
 )
 from services.astro.transits import (
     build_energy_scores,
+    calculate_period_events,
     calculate_transits,
     get_current_sky,
 )
@@ -317,3 +320,181 @@ async def get_transit_details_endpoint(
         api_key=settings.ANTHROPIC_API_KEY,
     )
     return TransitDetailsResponse(**details)
+
+
+_WEEK_TTL = 21600   # 6h
+_MONTH_TTL = 43200  # 12h
+_WEEK_TOP_N = 10
+_MONTH_TOP_N = 20
+
+
+def _ingress_title(planet_ru: str, sign_ru: str) -> str:
+    return f"{planet_ru} входит в знак {sign_ru}"
+
+
+def _aspect_title(transit_planet_ru: str, aspect_ru: str, natal_planet_ru: str) -> str:
+    return f"{transit_planet_ru} {aspect_ru.lower()} {natal_planet_ru}"
+
+
+async def _build_period_response(
+    db: AsyncSession,
+    raw_events: list[dict],
+    start: date,
+    end: date,
+    *,
+    cache_key_to_invalidate: str | None,
+) -> tuple[PeriodEventsResponse, int]:
+    """Turn a list of period-event dicts into the API response. Reuses the
+    transit-interpretations cache for aspect text; ingresses get a static
+    short description."""
+
+    aspect_events = [e for e in raw_events if e["kind"] == "aspect"]
+
+    async def _invalidate() -> None:
+        if cache_key_to_invalidate:
+            await cache_delete(cache_key_to_invalidate)
+
+    texts, missing_count = await get_or_generate_transit_texts(
+        db,
+        aspect_events,
+        settings.ANTHROPIC_API_KEY,
+        blocking=False,
+        on_background_complete=_invalidate,
+    )
+
+    events: list[PeriodEvent] = []
+    for e in raw_events:
+        if e["kind"] == "aspect":
+            tp = e["transit_planet"].lower()
+            np = e["natal_planet"].lower()
+            ap = e["aspect"]
+            tp_ru = _PLANET_RU.get(tp, e["transit_planet"])
+            np_ru = _PLANET_RU.get(np, e["natal_planet"])
+            ap_ru = _ASPECT_RU.get(ap, ap)
+            events.append(
+                PeriodEvent(
+                    date=e["date"],
+                    kind="aspect",
+                    title_ru=_aspect_title(tp_ru, ap_ru, np_ru),
+                    category=_classify_transit(tp, np, ap),
+                    weight=e.get("weight", 0),
+                    transit_planet=e["transit_planet"],
+                    natal_planet=e["natal_planet"],
+                    aspect=ap,
+                    transit_planet_ru=tp_ru,
+                    natal_planet_ru=np_ru,
+                    aspect_ru=ap_ru,
+                    orb=e.get("orb"),
+                    text_ru=texts.get((tp, np, ap)) or None,
+                )
+            )
+        elif e["kind"] == "ingress":
+            planet = e["planet"]
+            from_sign = _normalize_sign(e["from_sign"])
+            to_sign = _normalize_sign(e["to_sign"])
+            planet_ru = _PLANET_RU.get(planet.lower(), planet)
+            to_sign_ru = _SIGN_RU.get(to_sign, to_sign)
+            events.append(
+                PeriodEvent(
+                    date=e["date"],
+                    kind="ingress",
+                    title_ru=_ingress_title(planet_ru, to_sign_ru),
+                    category="neutral",
+                    weight=e.get("weight", 0),
+                    planet=planet,
+                    planet_ru=planet_ru,
+                    from_sign=from_sign,
+                    from_sign_ru=_SIGN_RU.get(from_sign, from_sign),
+                    to_sign=to_sign,
+                    to_sign_ru=to_sign_ru,
+                )
+            )
+
+    return (
+        PeriodEventsResponse(start_date=start, end_date=end, events=events),
+        missing_count,
+    )
+
+
+@router.get("/week", response_model=PeriodEventsResponse)
+async def get_week_events(
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Top transit events for the next 7 days — aspect peaks + sign ingresses."""
+    user = await user_repo.get_by_id(db, tg_user["id"])
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    if not user.natal_chart or not user.birth_date or not user.birth_tz:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "No birth data — complete profile first",
+        )
+
+    start = date.today()
+    end = start + timedelta(days=6)
+    cache_key = f"transits-week:{user.id}:{start.isoformat()}"
+    cached = await cache_get(cache_key)
+    if cached:
+        return PeriodEventsResponse(**cached)
+
+    raw_events = calculate_period_events(
+        birth_dt=user.birth_date,
+        lat=user.birth_lat or 0.0,
+        lng=user.birth_lng or 0.0,
+        tz_str=user.birth_tz,
+        start_date=start,
+        days=7,
+        birth_time_known=user.birth_time_known,
+        top_n=_WEEK_TOP_N,
+        include_moon_ingresses=False,
+    )
+
+    response, missing_count = await _build_period_response(
+        db, raw_events, start, end, cache_key_to_invalidate=cache_key,
+    )
+    ttl = _TRANSITS_PARTIAL_TTL if missing_count > 0 else _WEEK_TTL
+    await cache_set(cache_key, response.model_dump(mode="json"), ttl)
+    return response
+
+
+@router.get("/month", response_model=PeriodEventsResponse)
+async def get_month_events(
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Top transit events for the next 30 days — aspect peaks + ingresses."""
+    user = await user_repo.get_by_id(db, tg_user["id"])
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    if not user.natal_chart or not user.birth_date or not user.birth_tz:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "No birth data — complete profile first",
+        )
+
+    start = date.today()
+    end = start + timedelta(days=29)
+    cache_key = f"transits-month:{user.id}:{start.isoformat()}"
+    cached = await cache_get(cache_key)
+    if cached:
+        return PeriodEventsResponse(**cached)
+
+    raw_events = calculate_period_events(
+        birth_dt=user.birth_date,
+        lat=user.birth_lat or 0.0,
+        lng=user.birth_lng or 0.0,
+        tz_str=user.birth_tz,
+        start_date=start,
+        days=30,
+        birth_time_known=user.birth_time_known,
+        top_n=_MONTH_TOP_N,
+        include_moon_ingresses=False,
+    )
+
+    response, missing_count = await _build_period_response(
+        db, raw_events, start, end, cache_key_to_invalidate=cache_key,
+    )
+    ttl = _TRANSITS_PARTIAL_TTL if missing_count > 0 else _MONTH_TTL
+    await cache_set(cache_key, response.model_dump(mode="json"), ttl)
+    return response

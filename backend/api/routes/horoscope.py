@@ -53,21 +53,38 @@ _GENERIC_TEXTS: dict[str, str] = {
 }
 
 
+_VALID_SIGNS = {
+    "aries", "taurus", "gemini", "cancer", "leo", "virgo",
+    "libra", "scorpio", "sagittarius", "capricorn", "aquarius", "pisces",
+}
+
+
 @router.get("/today", response_model=HoroscopeResponse)
 async def get_today_horoscope(
+    sign: str | None = Query(None, description="Override sign (lowercase EN)"),
     tg_user: dict = Depends(get_tg_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Today's horoscope. Personalised if user has birth data, generic otherwise.
-    Free for all users. Response is cached per sign per day.
+    Today's horoscope. If `sign` query param is provided, returns the generic
+    horoscope for that sign (used by the sign browser on the Horoscopes screen).
+    Otherwise falls back to the user's sun sign and personalises with their
+    natal chart if one exists. Free for all users. Cached per sign per day.
     """
     user = await user_repo.get_by_id(db, tg_user["id"])
-    sign = user.sun_sign.value if (user and user.sun_sign) else "aries"
+    user_sign = user.sun_sign.value if (user and user.sun_sign) else "aries"
+    requested = (sign or "").lower().strip()
+    if requested and requested in _VALID_SIGNS:
+        sign = requested
+        # Browsing OTHER signs → never personalise; user-sign view still does.
+        personalise = (requested == user_sign)
+    else:
+        sign = user_sign
+        personalise = True
     today = date.today().isoformat()
 
-    # Try personalised (if natal chart exists)
-    if user and user.natal_chart:
+    # Try personalised (if natal chart exists AND we're on the user's own sign)
+    if personalise and user and user.natal_chart:
         return await _personalised_horoscope(user, sign, today, "today")
 
     # Generic sign horoscope — check cache first
@@ -102,10 +119,12 @@ async def get_today_horoscope(
 @router.get("/period", response_model=HoroscopeResponse)
 async def get_period_horoscope(
     period: str = Query(..., pattern="^(tomorrow|week|month)$"),
+    sign: str | None = Query(None, description="Override sign (lowercase EN)"),
     tg_user: dict = Depends(get_tg_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Premium endpoint — requires active subscription or period purchase."""
+    """Premium endpoint — requires active subscription or period purchase.
+    Accepts optional `sign` to view a generic horoscope for any sign."""
     user = await user_repo.get_by_id(db, tg_user["id"])
     if not user:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
@@ -121,7 +140,11 @@ async def get_period_horoscope(
     if not (is_prem or has_purchase):
         raise HTTPException(status.HTTP_402_PAYMENT_REQUIRED, "Premium required")
 
-    sign = user.sun_sign.value if user.sun_sign else "aries"
+    requested = (sign or "").lower().strip()
+    if requested and requested in _VALID_SIGNS:
+        sign = requested
+    else:
+        sign = user.sun_sign.value if user.sun_sign else "aries"
     today = date.today()
 
     # Check cache

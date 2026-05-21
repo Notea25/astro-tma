@@ -13,9 +13,17 @@ from core.cache import cache_get, cache_set, key_natal, key_natal_pdf_download
 from core.logging import get_logger
 from core.settings import settings
 from db.database import get_db
+from services.astro.dominants import compute_dominants
 from services.astro.interpreter import get_natal_interpretation
+from services.astro.key_aspects import top_n_aspects
 from services.astro.llm_interpreter import generate_natal_reading
 from services.astro.natal_descriptions import generate_natal_descriptions
+from services.astro.natal_hero import (
+    build_aspects_hero,
+    build_elements_hero,
+    build_houses_hero,
+    build_planets_hero,
+)
 from services.users import repository as user_repo
 
 log = get_logger(__name__)
@@ -240,6 +248,34 @@ async def get_natal_summary(
     birth_date_str = user.birth_date.strftime("%Y-%m-%d") if user.birth_date else None
     birth_time_str = user.birth_date.strftime("%H:%M") if (user.birth_date and user.birth_time_known) else "12:00"
 
+    raw_aspects = chart.chart_data.get("aspects", [])
+    try:
+        dominants = compute_dominants(
+            planets=raw_planets,
+            ascendant_sign=chart.ascendant_sign if user.birth_time_known else None,
+        )
+    except Exception as e:  # noqa: BLE001
+        log.warning("natal.dominants_failed", user_id=user.id, error=str(e))
+        dominants = None
+
+    try:
+        key_aspects = top_n_aspects(raw_aspects, n=5)
+    except Exception as e:  # noqa: BLE001
+        log.warning("natal.key_aspects_failed", user_id=user.id, error=str(e))
+        key_aspects = []
+
+    hero_info: dict[str, Any] | None = None
+    if dominants:
+        try:
+            hero_info = {
+                "elements": build_elements_hero(dominants),
+                "planets":  build_planets_hero(raw_planets, dominants),
+                "houses":   build_houses_hero(raw_planets),
+                "aspects":  build_aspects_hero(raw_aspects, key_aspects),
+            }
+        except Exception as e:  # noqa: BLE001
+            log.warning("natal.hero_failed", user_id=user.id, error=str(e))
+
     return {
         "has_chart":        True,
         "sun_sign":         chart.sun_sign,
@@ -255,7 +291,10 @@ async def get_natal_summary(
         "birth_time":       birth_time_str,
         "planets":          planets_for_wheel,
         "houses":           houses_for_wheel,
-        "aspects":          chart.chart_data.get("aspects", []),
+        "aspects":          raw_aspects,
+        "dominants":        dominants,
+        "key_aspects":      key_aspects,
+        "hero_info":        hero_info,
     }
 
 
