@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import secrets
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -85,18 +85,18 @@ async def stars_overview(
     db_purchases: dict[str, Purchase] = {}
     db_subs: dict[str, Subscription] = {}
     if charge_ids:
-        rows = await db.execute(
+        purchase_rows = await db.execute(
             select(Purchase).where(Purchase.tg_payment_charge_id.in_(charge_ids))
         )
-        for p in rows.scalars().all():
+        for p in purchase_rows.scalars().all():
             if p.tg_payment_charge_id:
                 db_purchases[p.tg_payment_charge_id] = p
-        rows = await db.execute(
+        subscription_rows = await db.execute(
             select(Subscription).where(
                 Subscription.tg_payment_charge_id.in_(charge_ids)
             )
         )
-        for s in rows.scalars().all():
+        for s in subscription_rows.scalars().all():
             if s.tg_payment_charge_id:
                 db_subs[s.tg_payment_charge_id] = s
 
@@ -153,7 +153,7 @@ async def stars_overview(
 
     top_products = sorted(
         ({"product_id": pid, **stats} for pid, stats in product_counts.items()),
-        key=lambda x: x["stars"],
+        key=lambda x: cast(int, x["stars"]),
         reverse=True,
     )[:10]
 
