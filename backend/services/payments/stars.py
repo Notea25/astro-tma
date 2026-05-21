@@ -72,6 +72,18 @@ PRODUCTS: dict[str, dict] = {
         "stars": settings.PRICE_SYNASTRY,
         "type": "one_time",
     },
+    "transits_week_preview": {
+        "name": "Транзиты на неделю",
+        "description": "Ключевые аспекты и ингрессы на ближайшие 7 дней",
+        "stars": settings.PRICE_TRANSITS_WEEK,
+        "type": "one_time",
+    },
+    "transits_month_preview": {
+        "name": "Транзиты на месяц",
+        "description": "Главные события и ингрессы на ближайшие 30 дней",
+        "stars": settings.PRICE_TRANSITS_MONTH,
+        "type": "one_time",
+    },
     "subscription_month": {
         "name": "Premium подписка — 30 дней",
         "description": "Полный доступ ко всем функциям на 30 дней",

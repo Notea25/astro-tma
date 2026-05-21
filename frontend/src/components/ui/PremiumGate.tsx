@@ -15,13 +15,10 @@ interface PremiumGateProps {
   locked: boolean
 }
 
-// TEST MODE: all premium content unlocked for testing — revert before production
-const TEST_MODE_UNLOCK_ALL = true
-
 export function PremiumGate({ productId, productName, stars, children, locked }: PremiumGateProps) {
   const { purchase, loading } = usePayment()
 
-  if (!locked || TEST_MODE_UNLOCK_ALL) return <>{children}</>
+  if (!locked) return <>{children}</>
 
   return (
     <div className="premium-gate">
