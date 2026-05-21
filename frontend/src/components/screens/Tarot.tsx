@@ -49,7 +49,7 @@ const SPREADS: SpreadOption[] = [
   },
   {
     id: "week",
-    name: "Карта на каждый день",
+    name: "Карты на неделю",
     cardCount: 7,
     premium: true,
     productId: "tarot_week",
@@ -57,7 +57,7 @@ const SPREADS: SpreadOption[] = [
   },
   {
     id: "relationship",
-    name: "Расклад на отношения",
+    name: "Отношения",
     cardCount: 5,
     premium: true,
     productId: "tarot_celtic",

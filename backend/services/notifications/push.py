@@ -17,6 +17,7 @@ from db.models import (
 )
 
 log = get_logger(__name__)
+DAILY_OPEN_APP_LABEL = "Узнать больше"
 
 _MONTHS_RU = (
     "января",
@@ -237,7 +238,7 @@ def build_daily_message(
     )
 
 
-def build_open_app_markup(label: str = "✦ Читать далее") -> dict | None:
+def build_open_app_markup(label: str = DAILY_OPEN_APP_LABEL) -> dict | None:
     """Inline-keyboard with a single `web_app` button that opens the Mini App.
     Returns None if the WebApp URL is not configured (so callers can pass
     the result straight to send_message without conditionals)."""
