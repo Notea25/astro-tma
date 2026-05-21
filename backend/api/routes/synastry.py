@@ -48,11 +48,7 @@ _BOT_USERNAME_PLACEHOLDERS = {
     "changeme",
 }
 
-_PLANET_RU: dict[str, str] = {
-    "sun": "Солнце", "moon": "Луна", "mercury": "Меркурий", "venus": "Венера",
-    "mars": "Марс", "jupiter": "Юпитер", "saturn": "Сатурн",
-    "uranus": "Уран", "neptune": "Нептун", "pluto": "Плутон",
-}
+from services.astro.planet_names import PLANET_RU as _PLANET_RU  # noqa: E402
 
 _ASPECT_RU: dict[str, str] = {
     "conjunction": "Соединение", "opposition": "Оппозиция", "square": "Квадрат",
