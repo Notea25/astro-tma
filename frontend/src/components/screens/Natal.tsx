@@ -7,7 +7,6 @@ import {
 } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, type PanInfo } from "framer-motion";
-import { PremiumGate } from "@/components/ui/PremiumGate";
 import { NatalBasicSkeleton } from "@/components/ui/Skeleton";
 import { useAppStore } from "@/stores/app";
 import { ApiError, natalApi } from "@/services/api";
@@ -34,6 +33,14 @@ import {
   PLANET_FALLBACK_DESC,
   TRAIT_FALLBACK_DESC,
 } from "@/utils/natalFallbacks";
+import { BigThreeBlock } from "@/components/natal/BigThreeBlock";
+import { DominantsBlock } from "@/components/natal/DominantsBlock";
+import { HeroInfo } from "@/components/natal/HeroInfo";
+import { KeyAspectsList } from "@/components/natal/KeyAspectsList";
+import type {
+  NatalElementKey,
+  NatalKeyAspect,
+} from "@/types";
 import styles from "./Natal.module.css";
 
 type NatalDescSelection = {
@@ -2186,6 +2193,99 @@ export function Natal() {
     null,
   );
 
+  const openBigThreeSheet = (kind: "sun" | "moon" | "ascendant") => {
+    const BIG_THREE_META: Record<
+      typeof kind,
+      { title: string; symbol: string; accent: string }
+    > = {
+      sun: { title: "Солнце", symbol: "☉", accent: "var(--gold)" },
+      moon: { title: "Луна", symbol: "☽", accent: "#c6d5e8" },
+      ascendant: { title: "Асцендент", symbol: "↗", accent: "#e8b4a8" },
+    };
+    const meta = BIG_THREE_META[kind];
+    const sign =
+      kind === "sun"
+        ? summary?.sun_sign
+        : kind === "moon"
+          ? summary?.moon_sign
+          : summary?.ascendant_sign;
+    const planetKey = kind === "ascendant" ? "ascendant" : kind;
+    const desc = descriptions?.planets?.[planetKey];
+    const body =
+      (desc as { short?: string; full?: string } | string | undefined) &&
+      typeof desc === "object"
+        ? ((desc as { full?: string; short?: string }).full ??
+          (desc as { full?: string; short?: string }).short ??
+          null)
+        : ((desc as unknown as string | undefined) ??
+          PLANET_FALLBACK_DESC[planetKey] ??
+          null);
+    setSelectedDesc({
+      title: meta.title,
+      subtitle: sign ?? undefined,
+      symbol: meta.symbol,
+      body,
+      accent: meta.accent,
+    });
+  };
+
+  const openDominantElement = (element: NatalElementKey) => {
+    const ELEMENT_TITLE: Record<NatalElementKey, string> = {
+      fire: "Огонь",
+      earth: "Земля",
+      air: "Воздух",
+      water: "Вода",
+    };
+    setSelectedDesc({
+      title: ELEMENT_TITLE[element],
+      symbol: "✦",
+      body: ELEMENT_FALLBACK_DESC[element] ?? null,
+    });
+  };
+
+  const openDominantModality = () => {
+    if (!summary?.dominants) return;
+    const mod = summary.dominants.modalities;
+    setSelectedDesc({
+      title: `${mod.dominant_ru} модальность`,
+      subtitle: "Как вы действуете и проявляетесь",
+      symbol: "✦",
+      body:
+        mod.dominant === "cardinal"
+          ? "Кардинальная модальность — про инициативу и старт. Вы быстро берётесь за новое, любите задавать темп и плохо переносите простой. Сильная сторона — лидерство; зона роста — доводить до конца, не бросать на середине."
+          : mod.dominant === "fixed"
+            ? "Фиксированная модальность — про устойчивость и глубину. Вы держите курс, доводите начатое, цените стабильность. Сильная сторона — надёжность; зона роста — гибкость, способность вовремя сменить тактику."
+            : "Мутабельная модальность — про адаптацию и переходы. Вы легко перестраиваетесь, ловите контекст, видите нюансы. Сильная сторона — гибкость; зона роста — выбрать одно направление и не распыляться.",
+    });
+  };
+
+  const openDominantPlanet = () => {
+    if (!summary?.dominants) return;
+    const planet = summary.dominants.planet;
+    setSelectedDesc({
+      title: `Доминирующая планета — ${planet.planet_ru}`,
+      subtitle: planet.reason,
+      symbol: "✦",
+      body:
+        PLANET_FALLBACK_DESC[planet.planet] ??
+        "Эта планета сильнее всего звучит в вашей карте: её темы будут возвращаться к вам в разных формах.",
+    });
+  };
+
+  const openKeyAspect = (a: NatalKeyAspect) => {
+    const aspectType = (a.aspect ?? "").toLowerCase();
+    setSelectedDesc({
+      title: `${a.p1} ${aspectType} ${a.p2}`,
+      subtitle:
+        typeof a.orb === "number" ? `Орб ${a.orb.toFixed(1)}°` : undefined,
+      symbol: "✦",
+      body:
+        ASPECT_FALLBACK_DESC[aspectType] ??
+        ASPECT_PAIR_FALLBACK_HINT[aspectType] ??
+        null,
+    });
+  };
+
   const sunSign = summary?.sun_sign ?? user?.sun_sign;
   const userSign = ZODIAC_SIGNS.find((s) => s.value === sunSign);
   const chartData = useMemo(
@@ -2269,36 +2369,44 @@ export function Natal() {
     }
 
     return (
-      <PremiumGate
-        locked={false}
-        productId="natal_full"
-        productName="Полная натальная карта"
-        stars={150}
-      >
-        <>
-          {tab === "planets" && (
+      <>
+        {tab === "planets" && (
+          <>
+            <HeroInfo info={summary?.hero_info?.planets} eyebrow="Планеты" />
             <NatalPlanetsPanel
               full={full}
               descriptions={descriptions}
               onSelect={setSelectedDesc}
             />
-          )}
-          {tab === "houses" && (
+          </>
+        )}
+        {tab === "houses" && (
+          <>
+            <HeroInfo info={summary?.hero_info?.houses} eyebrow="Дома" />
             <NatalHousesPanel
               full={full}
               descriptions={descriptions}
               onSelect={setSelectedDesc}
             />
-          )}
-          {tab === "aspects" && (
+          </>
+        )}
+        {tab === "aspects" && (
+          <>
+            <HeroInfo info={summary?.hero_info?.aspects} eyebrow="Аспекты" />
+            {summary?.key_aspects && summary.key_aspects.length > 0 && (
+              <KeyAspectsList
+                aspects={summary.key_aspects}
+                onOpenAspect={openKeyAspect}
+              />
+            )}
             <NatalAspectsPanel
               full={full}
               descriptions={descriptions}
               onSelect={setSelectedDesc}
             />
-          )}
-        </>
-      </PremiumGate>
+          </>
+        )}
+      </>
     );
   };
 
@@ -2335,6 +2443,14 @@ export function Natal() {
             />
           )}
 
+          {summary?.has_chart && (
+            <BigThreeBlock
+              summary={summary}
+              onOpenSheet={openBigThreeSheet}
+              onOpenProfile={() => setScreen("profile")}
+            />
+          )}
+
           <NatalBirthDetails summary={summary} />
           <NatalPdfCard
             full={full}
@@ -2349,6 +2465,15 @@ export function Natal() {
     if (tab === "elements") {
       return (
         <>
+          <HeroInfo info={summary?.hero_info?.elements} eyebrow="Стихии" />
+          {summary?.dominants && (
+            <DominantsBlock
+              dominants={summary.dominants}
+              onOpenElement={openDominantElement}
+              onOpenModality={openDominantModality}
+              onOpenPlanet={openDominantPlanet}
+            />
+          )}
           <NatalElementsPanel
             summary={summary}
             slides={interpretationSlides}
