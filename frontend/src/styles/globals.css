@@ -7667,3 +7667,334 @@ body::before {
   color: var(--text-soft);
   line-height: 1.5;
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   NATAL v2 — HeroInfo, Big Three, Dominants, Key Aspects
+   ════════════════════════════════════════════════════════════════════════════ */
+
+.natal-hero-info {
+  position: relative;
+  padding: 14px 16px 12px;
+  background: linear-gradient(
+    180deg,
+    rgba(32, 22, 56, 0.45) 0%,
+    rgba(18, 14, 36, 0.55) 100%
+  );
+  border: 0.5px solid var(--glass-border);
+  border-radius: var(--card-radius);
+  margin-bottom: 14px;
+  text-align: left;
+}
+.natal-hero-info__eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.natal-hero-info__headline {
+  font-family: "Playfair Display", serif;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.3;
+}
+.natal-hero-info__subline {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-soft);
+  line-height: 1.5;
+}
+
+.natal-big-three {
+  margin-bottom: 16px;
+}
+.natal-big-three__heading {
+  font-family: "Playfair Display", serif;
+  font-size: 14px;
+  color: var(--gold-light);
+  letter-spacing: 0.04em;
+  margin-bottom: 10px;
+  text-align: center;
+}
+.natal-big-three__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.natal-big-three__card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: rgba(18, 14, 36, 0.55);
+  border: 0.5px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 12px 8px 10px;
+  text-align: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.2s, transform 0.15s;
+  color: var(--text);
+}
+.natal-big-three__kind-glyph {
+  font-size: 18px;
+  line-height: 1;
+}
+.natal-big-three__label {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
+}
+.natal-big-three__sign-glyph {
+  font-size: 28px;
+  line-height: 1;
+  margin-top: 4px;
+}
+.natal-big-three__sign {
+  font-size: 13px;
+  color: var(--text);
+}
+.natal-big-three__metaphor {
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-style: italic;
+  letter-spacing: 0.02em;
+}
+.natal-big-three__unknown {
+  font-size: 14px;
+  color: var(--text-soft);
+  margin-top: 6px;
+}
+
+.natal-dominants {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.natal-dominants__card {
+  position: relative;
+  background: rgba(18, 14, 36, 0.55);
+  border: 0.5px solid var(--glass-border);
+  border-radius: var(--card-radius);
+  padding: 14px 16px;
+  width: 100%;
+  text-align: left;
+  color: var(--text);
+}
+.natal-dominants__title {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.natal-elements-ring {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 4px 0 12px;
+}
+.natal-elements-ring__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.natal-elements-ring__pct {
+  font-family: "Playfair Display", serif;
+  font-size: 28px;
+  color: var(--text);
+  line-height: 1;
+}
+.natal-elements-ring__label {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-soft);
+  letter-spacing: 0.04em;
+}
+.natal-dominants__legend {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 14px;
+}
+.natal-dominants__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: var(--text);
+  padding: 4px 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.natal-dominants__legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.natal-dominants__legend-label {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text);
+  text-align: left;
+}
+.natal-dominants__legend-pct {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.natal-dominants__note {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.natal-modalities {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.natal-modalities__title {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.natal-modalities__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.natal-modalities__row {
+  display: grid;
+  grid-template-columns: 110px 1fr 40px;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+.natal-modalities__label {
+  color: var(--text);
+}
+.natal-modalities__bar {
+  position: relative;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.natal-modalities__bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease-out;
+}
+.natal-modalities__value {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.natal-dominants__planet {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  text-align: left;
+}
+.natal-dominants__planet-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.natal-dominants__planet-glyph {
+  font-size: 30px;
+  color: var(--gold);
+  width: 40px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.natal-dominants__planet-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+.natal-dominants__planet-name {
+  font-family: "Playfair Display", serif;
+  font-size: 18px;
+  color: var(--text);
+}
+.natal-dominants__planet-reason {
+  font-size: 12px;
+  color: var(--text-soft);
+  line-height: 1.45;
+}
+
+.natal-key-aspects {
+  background: rgba(18, 14, 36, 0.55);
+  border: 0.5px solid var(--glass-border);
+  border-radius: var(--card-radius);
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+.natal-key-aspects__title {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.natal-key-aspects__star {
+  color: var(--gold);
+}
+.natal-key-aspects__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.natal-key-aspects__row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  background: rgba(18, 14, 36, 0.45);
+  border: 0.5px solid var(--glass-border);
+  border-left: 2.5px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  color: var(--text);
+}
+.natal-key-aspects__planets {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+}
+.natal-key-aspects__title-text {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.3;
+}
+.natal-key-aspects__orb {
+  font-size: 11px;
+  color: var(--text-muted);
+}
