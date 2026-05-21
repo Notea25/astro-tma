@@ -12,6 +12,28 @@ export interface UserProfile {
   created_at: string;
 }
 
+export interface PurchaseItem {
+  product_id: string;
+  product_name: string;
+  status: string;
+  stars_amount: number;
+  created_at: string | null;
+}
+
+export interface SubscriptionItem {
+  plan: string;
+  status: string;
+  stars_paid: number;
+  starts_at: string | null;
+  expires_at: string | null;
+}
+
+export interface MyPurchasesResponse {
+  purchases: PurchaseItem[];
+  subscriptions: SubscriptionItem[];
+  active_subscription: SubscriptionItem | null;
+}
+
 export interface EnergyScores {
   love: number;
   career: number;

@@ -531,6 +531,11 @@ export const usersApi = {
     request<import("@/types").UserProfile>("PATCH", "/users/me/push", {
       enabled,
     }),
+  getPurchases: () =>
+    request<import("@/types").MyPurchasesResponse>(
+      "GET",
+      "/users/me/purchases",
+    ),
 };
 
 // ── Horoscope ──────────────────────────────────────────────────────────────────

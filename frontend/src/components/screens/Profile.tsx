@@ -119,6 +119,72 @@ function BirthDateInput({
   );
 }
 
+function formatPurchaseDate(iso: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  const day = d.getDate();
+  const month = MONTHS_RU_GENITIVE[d.getMonth()];
+  return `${day} ${month} ${d.getFullYear()}`;
+}
+
+function formatExpiresRu(iso: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const day = d.getDate();
+  return `до ${day} ${MONTHS_RU_GENITIVE[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function PurchasesCard() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["my-purchases"],
+    queryFn: usersApi.getPurchases,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  if (isLoading) return null;
+  const purchases = data?.purchases ?? [];
+  const active = data?.active_subscription ?? null;
+
+  if (purchases.length === 0 && !active) return null;
+
+  return (
+    <motion.div
+      className="natal-card"
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.11 }}
+    >
+      <div className="natal-card__tag">✦ Мои покупки</div>
+      {active && (
+        <div className="purchase-row purchase-row--active">
+          <div className="purchase-row__main">
+            <div className="purchase-row__title">
+              Премиум подписка
+            </div>
+            <div className="purchase-row__meta">
+              {formatExpiresRu(active.expires_at) ?? "активна"}
+            </div>
+          </div>
+          <div className="purchase-row__stars">{active.stars_paid} ⭐</div>
+        </div>
+      )}
+      {purchases.map((p, idx) => (
+        <div key={`${p.product_id}-${idx}`} className="purchase-row">
+          <div className="purchase-row__main">
+            <div className="purchase-row__title">{p.product_name}</div>
+            <div className="purchase-row__meta">
+              {formatPurchaseDate(p.created_at)}
+            </div>
+          </div>
+          <div className="purchase-row__stars">{p.stars_amount} ⭐</div>
+        </div>
+      ))}
+    </motion.div>
+  );
+}
+
 export function Profile() {
   const { user, setUser } = useAppStore();
   const { impact, notification } = useHaptic();
@@ -544,6 +610,8 @@ export function Profile() {
             </div>
           )}
         </motion.div>
+
+        <PurchasesCard />
 
         <motion.div
           className="natal-card"
