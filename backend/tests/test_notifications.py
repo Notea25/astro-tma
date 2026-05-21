@@ -3,7 +3,11 @@
 from datetime import date
 
 from db.models import User
-from services.notifications.push import DAILY_OPEN_APP_LABEL, build_daily_message, build_open_app_markup
+from services.notifications.push import (
+    DAILY_OPEN_APP_LABEL,
+    build_daily_message,
+    build_open_app_markup,
+)
 
 
 def _user() -> User:
