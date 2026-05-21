@@ -375,6 +375,36 @@ export interface TransitDetails {
   affected_house_topic: string | null;
 }
 
+export interface PeriodEvent {
+  date: string; // YYYY-MM-DD
+  kind: "aspect" | "ingress";
+  title_ru: string;
+  category: TransitCategory;
+  weight: number;
+  // Aspect-specific
+  transit_planet?: string | null;
+  natal_planet?: string | null;
+  aspect?: string | null;
+  transit_planet_ru?: string | null;
+  natal_planet_ru?: string | null;
+  aspect_ru?: string | null;
+  orb?: number | null;
+  text_ru?: string | null;
+  // Ingress-specific
+  planet?: string | null;
+  planet_ru?: string | null;
+  from_sign?: string | null;
+  from_sign_ru?: string | null;
+  to_sign?: string | null;
+  to_sign_ru?: string | null;
+}
+
+export interface PeriodEventsResponse {
+  start_date: string;
+  end_date: string;
+  events: PeriodEvent[];
+}
+
 export interface MacCardResponse {
   id: number;
   name_ru: string;

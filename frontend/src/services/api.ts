@@ -699,6 +699,10 @@ export const transitsApi = {
       "/transits/details",
       payload,
     ),
+  getWeek: () =>
+    request<import("@/types").PeriodEventsResponse>("GET", "/transits/week"),
+  getMonth: () =>
+    request<import("@/types").PeriodEventsResponse>("GET", "/transits/month"),
 };
 
 // ── Payments ───────────────────────────────────────────────────────────────────
