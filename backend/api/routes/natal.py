@@ -114,6 +114,46 @@ def _natal_pdf_filename(user) -> str:
     return f"natal_{safe_name}.pdf"
 
 
+async def _get_or_generate_pdf_reading(
+    user,
+    chart,
+    planets: dict[str, Any],
+    aspects: list[dict[str, Any]],
+) -> str | None:
+    cache_key = key_natal(user.id)
+    cached = await cache_get(cache_key)
+    if isinstance(cached, dict):
+        reading = cached.get("reading")
+        if isinstance(reading, str) and reading.strip():
+            return reading
+
+    if not settings.ANTHROPIC_API_KEY:
+        return None
+
+    try:
+        reading = await generate_natal_reading(
+            sun_sign=chart.sun_sign,
+            moon_sign=chart.moon_sign,
+            ascendant_sign=chart.ascendant_sign,
+            planets=planets,
+            aspects=aspects,
+            api_key=settings.ANTHROPIC_API_KEY,
+        )
+    except Exception as e:
+        log.error("natal.pdf_reading_failed", user_id=user.id, error=str(e))
+        return None
+
+    if reading and reading.strip():
+        cached_payload = cached if isinstance(cached, dict) else {}
+        await cache_set(
+            cache_key,
+            {**cached_payload, "reading": reading},
+            settings.CACHE_TTL_NATAL,
+        )
+
+    return reading
+
+
 async def _build_natal_pdf_response(db: AsyncSession, user) -> Response:
     from services.natal_pdf import generate_natal_pdf
 
@@ -126,11 +166,8 @@ async def _build_natal_pdf_response(db: AsyncSession, user) -> Response:
         for a in aspects_raw
     ]
 
-    cache_key = key_natal(user.id)
-    cached = await cache_get(cache_key)
-    reading = cached.get("reading") if isinstance(cached, dict) else None
-
     descriptions = await _get_or_generate_descriptions(db, user)
+    reading = await _get_or_generate_pdf_reading(user, chart, planets, aspects)
 
     pdf_bytes = generate_natal_pdf(
         user_name=user.tg_first_name or "User",

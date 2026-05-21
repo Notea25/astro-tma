@@ -1676,7 +1676,7 @@ function NatalNoChartCard({
   return (
     <motion.div
       className={styles.referencePanel}
-      initial={{ opacity: 0, y: 16 }}
+      initial={false}
       animate={{ opacity: 1, y: 0 }}
     >
       <div className={styles.sectionKicker}>Базовый портрет</div>
@@ -1732,7 +1732,7 @@ function NatalElementsPanel({
   return (
     <motion.div
       className={styles.elementsPage}
-      initial={{ opacity: 0, y: 16 }}
+      initial={false}
       animate={{ opacity: 1, y: 0 }}
     >
       <div className={styles.sectionKicker}>Баланс стихий</div>
@@ -1842,7 +1842,7 @@ function NatalPlanetsPanel({
   return (
     <motion.div
       className={styles.planetsPage}
-      initial={{ opacity: 0, y: 16 }}
+      initial={false}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28, ease: "easeOut" }}
     >
@@ -1943,7 +1943,7 @@ function NatalHousesPanel({
   return (
     <motion.div
       className={styles.housesPage}
-      initial={{ opacity: 0, y: 16 }}
+      initial={false}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28, ease: "easeOut" }}
     >
@@ -2029,7 +2029,7 @@ function NatalAspectsPanel({
   return (
     <motion.section
       className={styles.aspectsPage}
-      initial={{ opacity: 0, y: 16 }}
+      initial={false}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28, ease: "easeOut" }}
     >
@@ -2346,7 +2346,7 @@ export function Natal() {
       return (
         <motion.div
           className={styles.referencePanel}
-          initial={{ opacity: 0, y: 16 }}
+          initial={false}
           animate={{ opacity: 1, y: 0 }}
         >
           <div className={styles.loadingState}>Вычисление полной карты...</div>
@@ -2358,7 +2358,7 @@ export function Natal() {
       return (
         <motion.div
           className={styles.referencePanel}
-          initial={{ opacity: 0, y: 16 }}
+          initial={false}
           animate={{ opacity: 1, y: 0 }}
         >
           <div className={styles.loadingState}>
@@ -2424,7 +2424,7 @@ export function Natal() {
         <>
           {chartData ? (
             <motion.div
-              initial={{ opacity: 0, y: 16 }}
+              initial={false}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.42, ease: "easeOut" }}
             >
