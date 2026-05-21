@@ -77,17 +77,16 @@
   --fs-xs: clamp(12px, 3vw, 13px);
   --fs-nav: clamp(11px, 2.8vw, 12px);
 
-  /* Tarot spread typography: one readable, mobile-safe stack. */
-  --tarot-font:
-    "Inter",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
-  --tarot-title-size: clamp(18px, 4.8vw, 22px);
-  --tarot-body-size: clamp(15px, 3.9vw, 16px);
-  --tarot-small-size: clamp(12px, 3.2vw, 14px);
-  --tarot-label-size: clamp(10px, 2.8vw, 12px);
+  /* Tarot uses the same type families as the natal chart. */
+  --tarot-font-display:
+    "Cormorant Garamond", "Forum", "Playfair Display", Georgia, serif;
+  --tarot-font-body:
+    "Manrope", "Inter", "Helvetica Neue", Arial, sans-serif;
+  --tarot-font: var(--tarot-font-body);
+  --tarot-title-size: clamp(19px, 4.2vw, 24px);
+  --tarot-body-size: clamp(15px, 3.4vw, 17px);
+  --tarot-small-size: clamp(13px, 3vw, 15px);
+  --tarot-label-size: clamp(11px, 2.5vw, 13px);
 }
 
 /* ── Reset ─────────────────────────────────────────────────────────────────── */
@@ -1559,10 +1558,39 @@ body::after {
 }
 
 /* ── Tarot ──────────────────────────────────────────────────────────────────── */
+.tarot-screen {
+  font-family: var(--tarot-font-body);
+}
+.tarot-screen .screen-title {
+  font-family: var(--tarot-font-display);
+  font-size: clamp(18px, 4.2vw, 24px);
+  line-height: 1.12;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.tarot-screen .btn-primary,
+.tarot-screen .btn-secondary,
+.tarot-screen .btn-ghost,
+.tarot-screen .btn-stars,
+.tarot-screen .premium-badge,
+.tarot-screen .premium-gate__badge,
+.tarot-screen .premium-gate__title,
+.tarot-screen .error-state p,
+.tarot-screen .loading-spinner,
+.tarot-screen .loading-spinner__message {
+  font-family: var(--tarot-font-display);
+  line-height: 1.35;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
 .tarot-screen .screen-content {
   padding-bottom: 32px;
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  overflow-x: clip;
 }
 .spread-option {
   background: var(--glass);
@@ -1576,6 +1604,9 @@ body::after {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
+  min-width: 0;
+  max-width: 100%;
   cursor: pointer;
   transition: border-color 0.2s;
 }
@@ -1583,13 +1614,20 @@ body::after {
   border-color: var(--gold-border);
 }
 .spread-option__name {
-  font-size: var(--fs-body);
+  font-family: var(--tarot-font-display);
+  font-size: var(--tarot-body-size);
+  line-height: 1.25;
   color: var(--text);
   margin-bottom: 3px;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 .spread-option__count {
-  font-size: var(--fs-small);
+  font-family: var(--tarot-font-body);
+  font-size: var(--tarot-small-size);
+  line-height: 1.45;
   color: var(--text-dim);
+  overflow-wrap: anywhere;
 }
 
 .deck-preview {
@@ -1635,10 +1673,13 @@ body::after {
   gap: 8px;
 }
 .tarot-card__position {
-  font-size: var(--fs-xs);
-  letter-spacing: 0.15em;
+  font-family: var(--tarot-font-display);
+  font-size: var(--tarot-label-size);
+  letter-spacing: 0.08em;
+  line-height: 1.35;
   text-transform: uppercase;
   color: var(--text-dim);
+  overflow-wrap: anywhere;
 }
 
 .tarot-card-flip {
@@ -1668,11 +1709,15 @@ body::after {
   color: var(--gold-dim);
 }
 .tarot-card__tap-hint {
-  font-size: var(--fs-xs);
+  font-family: var(--tarot-font-display);
+  font-size: var(--tarot-label-size);
+  line-height: 1.35;
   color: var(--text-muted);
   margin-top: 8px;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 .tarot-card-flip__back {
   background: var(--glass);
@@ -1703,13 +1748,16 @@ body::after {
   transform: rotate(180deg);
 }
 .tarot-card__name {
-  font-size: var(--fs-xs);
+  font-family: var(--tarot-font-display);
+  font-size: var(--tarot-label-size);
+  line-height: 1.25;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.06em;
   color: var(--gold);
   margin-top: 6px;
   text-align: center;
   padding: 0 4px;
+  overflow-wrap: anywhere;
 }
 .tarot-card__rev {
   color: var(--red);
@@ -1718,14 +1766,12 @@ body::after {
   margin-top: 4px;
 }
 .tarot-card__meaning-text {
-  font-family:
-    "Inter",
-    -apple-system,
-    sans-serif;
-  font-size: var(--fs-body);
+  font-family: var(--tarot-font-body);
+  font-size: var(--tarot-body-size);
   line-height: 1.65;
   color: var(--text-soft);
   font-style: normal;
+  overflow-wrap: anywhere;
 }
 /* ── Spread Info Page ──────────────────────────────────────────────────── */
 .spread-info {
@@ -1733,6 +1779,9 @@ body::after {
   flex-direction: column;
   gap: 12px;
   flex: 1;
+  min-width: 0;
+  max-width: 100%;
+  font-family: var(--tarot-font-body);
 }
 .spread-info__top {
   flex: 1;
@@ -1742,9 +1791,11 @@ body::after {
   gap: 12px;
 }
 .spread-info__intro {
-  font-size: var(--fs-body);
+  font-family: var(--tarot-font-body);
+  font-size: var(--tarot-body-size);
   color: var(--text-soft);
-  line-height: 1.5;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 .spread-info__intro strong {
   color: var(--gold-light);
@@ -1754,13 +1805,18 @@ body::after {
   border: 0.5px solid var(--glass-border);
   border-radius: var(--card-radius);
   padding: clamp(14px, 4vw, 20px);
+  min-width: 0;
+  max-width: 100%;
 }
 .spread-info__section-title {
-  font-family: "Playfair Display", serif;
-  font-size: var(--fs-h3);
+  font-family: var(--tarot-font-display);
+  font-size: var(--tarot-title-size);
   color: var(--gold-light);
   margin-bottom: 14px;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 .spread-info__positions {
   display: flex;
@@ -1771,6 +1827,7 @@ body::after {
   display: flex;
   gap: 12px;
   align-items: flex-start;
+  min-width: 0;
 }
 .spread-info__num {
   flex-shrink: 0;
@@ -1782,21 +1839,28 @@ body::after {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: "Playfair Display", serif;
-  font-size: 13px;
+  font-family: var(--tarot-font-display);
+  font-size: var(--tarot-label-size);
+  line-height: 1;
   color: var(--gold);
   margin-top: 2px;
 }
 .spread-info__pos strong {
-  font-size: var(--fs-body);
+  font-family: var(--tarot-font-display);
+  font-size: var(--tarot-small-size);
+  line-height: 1.35;
   color: var(--text);
   display: block;
   margin-bottom: 2px;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 .spread-info__pos p {
-  font-size: var(--fs-small);
+  font-family: var(--tarot-font-body);
+  font-size: var(--tarot-label-size);
   color: var(--text-dim);
-  line-height: 1.5;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
 /* ── Spread Layout ─────────────────────────────────────────────────────── */
@@ -1902,20 +1966,27 @@ body::after {
 }
 .fan-prompt {
   text-align: center;
-  font-family: "Cormorant Garamond", "Playfair Display", serif;
-  font-size: 15px;
-  letter-spacing: 0.06em;
+  font-family: var(--tarot-font-display);
+  font-size: var(--tarot-small-size);
+  letter-spacing: 0.02em;
+  line-height: 1.45;
   color: rgba(212, 178, 84, 0.85);
   margin: 0 0 6px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 .fan-prompt--cta {
-  font-family: "Cinzel", "Playfair Display", Georgia, serif;
-  font-size: 13px;
+  font-family: var(--tarot-font-display);
+  font-size: var(--tarot-label-size);
   font-weight: 500;
-  letter-spacing: 0.24em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+  line-height: 1.35;
   color: #e8c862;
   margin: 14px 0 6px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
   animation: fanPromptShimmer 2.6s ease-in-out infinite;
 }
 @keyframes fanPromptShimmer {
@@ -1944,7 +2015,7 @@ body::after {
   justify-content: center;
 }
 .spread-slot__placeholder-num {
-  font-family: "Playfair Display", serif;
+  font-family: var(--tarot-font-display);
   font-size: 20px;
   line-height: 1;
   color: rgba(212, 178, 84, 0.64);
@@ -1966,12 +2037,16 @@ body::after {
   margin-top: 8px;
   left: 50%;
   transform: translateX(-50%);
-  font-family: "Cinzel", "Playfair Display", serif;
-  font-size: 14px;
-  letter-spacing: 0.15em;
+  font-family: var(--tarot-font-display);
+  font-size: var(--tarot-label-size);
+  letter-spacing: 0.08em;
+  line-height: 1.35;
   text-transform: uppercase;
   color: rgba(201, 168, 76, 0.75);
-  white-space: nowrap;
+  max-width: min(132px, 42vw);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
   pointer-events: none;
 }
 .spread-slot__label--right {
@@ -2015,7 +2090,7 @@ body::after {
   justify-content: center;
 }
 .spread-slot__number {
-  font-family: "Playfair Display", serif;
+  font-family: var(--tarot-font-display);
   font-size: 20px;
   font-weight: 600;
   color: rgba(212, 178, 84, 0.7);
@@ -3877,6 +3952,16 @@ body::after {
   border-radius: var(--card-radius);
   padding: clamp(14px, 4vw, 20px);
   margin-bottom: 12px;
+  font-family: var(--tarot-font-body);
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
+}
+.tarot-day-card .card-tag {
+  font-family: var(--tarot-font-display);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 
 /* ── Tarot flip ──────────────────────────────────────────────────────────── */
@@ -3946,18 +4031,25 @@ body::after {
 .tarot-flip__hint {
   position: relative;
   z-index: 1;
-  font-size: var(--fs-body);
+  font-family: var(--tarot-font-display);
+  font-size: var(--tarot-body-size);
+  line-height: 1.35;
   color: rgba(255, 255, 255, 0.85);
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 .tarot-flip__free {
   position: relative;
   z-index: 1;
-  font-size: var(--fs-xs);
+  font-family: var(--tarot-font-display);
+  font-size: var(--tarot-label-size);
+  line-height: 1.35;
   color: var(--gold);
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
+  overflow-wrap: anywhere;
 }
 .tarot-flip__face--front {
   transform: rotateY(180deg);
@@ -3989,13 +4081,15 @@ body::after {
   color: var(--gold);
 }
 .tarot-flip__hint {
-  font-size: var(--fs-body);
+  font-family: var(--tarot-font-display);
+  font-size: var(--tarot-body-size);
   color: var(--text-dim);
 }
 .tarot-flip__free {
-  font-size: var(--fs-xs);
+  font-family: var(--tarot-font-display);
+  font-size: var(--tarot-label-size);
   color: var(--gold-dim);
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 .tarot-flip__loading {
@@ -4017,17 +4111,23 @@ body::after {
   color: var(--text-dim);
 }
 .tarot-flip__empty-title {
-  font-size: var(--fs-small);
-  line-height: 1.4;
+  font-family: var(--tarot-font-display);
+  font-size: var(--tarot-small-size);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 .tarot-flip__retry {
   border: 1px solid rgba(212, 178, 84, 0.28);
   border-radius: 8px;
   background: rgba(212, 178, 84, 0.1);
   color: var(--gold-light);
-  font: inherit;
-  font-size: var(--fs-xs);
+  font-family: var(--tarot-font-display);
+  font-size: var(--tarot-label-size);
+  line-height: 1.35;
   padding: 8px 14px;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
@@ -4062,7 +4162,9 @@ body::after {
   font-size: 40px;
 }
 .tarot-flip__orientation {
-  font-size: 10px;
+  font-family: var(--tarot-font-display);
+  font-size: var(--tarot-label-size);
+  line-height: 1.25;
   color: var(--gold-dim);
   letter-spacing: 0.05em;
   text-align: center;
@@ -4084,26 +4186,35 @@ body::after {
   padding-top: 4px;
 }
 .tarot-flip__arcana {
-  font-size: 10px;
+  font-family: var(--tarot-font-display);
+  font-size: var(--tarot-label-size);
+  line-height: 1.35;
   color: var(--gold-dim);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
+  overflow-wrap: anywhere;
 }
 .tarot-flip__name {
-  font-family: "Playfair Display", serif;
-  font-size: clamp(16px, 4.5vw, 20px);
+  font-family: var(--tarot-font-display);
+  font-size: var(--tarot-title-size);
   color: var(--gold-light);
-  line-height: 1.2;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 .tarot-flip__keywords {
-  font-size: var(--fs-xs);
+  font-family: var(--tarot-font-body);
+  font-size: var(--tarot-small-size);
   color: var(--text-muted);
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 .tarot-flip__meaning {
-  font-size: var(--fs-sm);
+  font-family: var(--tarot-font-body);
+  font-size: var(--tarot-body-size);
   color: var(--text-dim);
   line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 /* ── Three Card Flow ─────────────────────────────────────────────────────── */
@@ -4805,13 +4916,17 @@ body::after {
 
 .three-flow__hint {
   text-align: center;
-  font-family: "Cinzel", "Playfair Display", Georgia, serif;
-  font-size: 13px;
+  font-family: var(--tarot-font-display);
+  font-size: var(--tarot-label-size);
   font-weight: 500;
-  letter-spacing: 0.24em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+  line-height: 1.35;
   color: #e8c862;
   margin-top: 8px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
   cursor: pointer;
   animation: threeFlowHintShimmer 2.6s ease-in-out infinite;
 }
@@ -5516,21 +5631,53 @@ body::before {
     100dvh - var(--safe-top) - var(--safe-bottom) - var(--nav-height) - 54px
   );
   padding: clamp(4px, 1.2dvh, 8px) var(--content-px) 24px;
+  font-family: var(--tarot-font-body);
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: clip;
 }
 
 .spread-intro-v2__title {
-  font-family: "Playfair Display", Georgia, serif;
+  --spread-title-base-size: clamp(18px, 5.25vw, 44px);
+  font-family: var(--tarot-font-display);
   font-weight: 500;
   font-style: italic;
-  font-size: clamp(26px, 4vw, 44px);
-  line-height: 1.25;
+  font-size: calc(
+    var(--spread-title-base-size) * var(--spread-title-scale, 1)
+  );
+  line-height: 1.12;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   color: var(--gold-light);
-  letter-spacing: 0.02em;
-  max-width: 1080px;
+  letter-spacing: 0;
+  width: 100%;
+  max-width: min(1080px, 100%);
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
   margin: clamp(4px, 1.2dvh, 8px) auto 0;
   text-shadow: 0 0 14px rgba(240, 212, 138, 0.18);
-  text-wrap: balance;
+  text-wrap: nowrap;
+}
+
+.spread-intro-v2__title-text {
+  display: block;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.spread-intro-v2__title-measure {
+  position: absolute;
+  width: max-content;
+  max-width: none;
+  visibility: hidden;
+  pointer-events: none;
+  white-space: nowrap;
+  font-size: var(--spread-title-base-size);
+  line-height: inherit;
 }
 
 .spread-intro-v2__preview {
@@ -5541,6 +5688,7 @@ body::before {
   align-items: center;
   justify-content: center;
   padding: 12px 8px;
+  overflow-x: clip;
 }
 
 /* Showcase variant — shared intro style for every spread start page. */
@@ -5562,7 +5710,8 @@ body::before {
 .spread-intro-v2--showcase .spread-intro-v2__preview-stage::before {
   content: "";
   position: absolute;
-  inset: -44px -32px;
+  inset: 0;
+  transform: scale(1.35);
   background: radial-gradient(
     ellipse 80% 60% at 50% 50%,
     rgba(139, 106, 208, 0.22) 0%,
@@ -5596,6 +5745,7 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: center;
+  font-family: var(--tarot-font-display);
   color: var(--gold-light);
   text-shadow: 0 0 10px rgba(240, 212, 138, 0.45);
   z-index: 1;
@@ -5617,10 +5767,7 @@ body::before {
 }
 
 .spread-intro-v2--week .spread-intro-v2__mini-symbol {
-  font-family:
-    "Inter",
-    -apple-system,
-    sans-serif;
+  font-family: var(--tarot-font-body);
   font-size: 18px !important;
   font-weight: 700;
   letter-spacing: 0;
@@ -5670,7 +5817,7 @@ body::before {
 }
 
 .spread-intro-v2--week-ritual .spread-intro-v2__title {
-  font-size: clamp(34px, 7vw, 58px);
+  --spread-title-base-size: clamp(24px, 5.8vw, 58px);
   margin-top: clamp(26px, 5dvh, 54px);
   color: #f0d48a;
 }
@@ -5682,7 +5829,8 @@ body::before {
 }
 
 .spread-intro-v2--week-ritual .spread-intro-v2__preview-stage::before {
-  inset: -60px -58px;
+  inset: 0;
+  transform: scale(1.48);
   background:
     radial-gradient(
       ellipse 72% 48% at 50% 54%,
@@ -5739,7 +5887,7 @@ body::before {
 
 .spread-intro-v2--week-ritual .spread-intro-v2__mini-symbol {
   color: rgba(240, 212, 138, 0.92);
-  font-family: "Playfair Display", Georgia, serif;
+  font-family: var(--tarot-font-display);
   font-size: 20px !important;
   font-weight: 500;
   text-shadow: 0 0 14px rgba(240, 212, 138, 0.35);
@@ -5748,10 +5896,12 @@ body::before {
 .spread-intro-v2__preview-stage {
   position: relative;
   margin: 0 auto;
+  max-width: 100%;
 }
 
 .spread-intro-v2__mini-card {
   position: absolute;
+  overflow: hidden;
   border-radius: 5px;
   background: linear-gradient(
     135deg,
@@ -5779,6 +5929,8 @@ body::before {
 
 .spread-intro-v2__frame {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   background: rgba(12, 9, 32, 0.62);
   border: 1px solid var(--gold-border);
   border-radius: var(--card-radius);
@@ -5803,15 +5955,19 @@ body::before {
 }
 
 .spread-intro-v2__intro-text {
-  font-size: var(--fs-body);
+  font-family: var(--tarot-font-body);
+  font-size: var(--tarot-body-size);
   color: var(--text-soft);
   line-height: 1.55;
   margin-bottom: 16px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .spread-intro-v2__intro-text--week {
   margin: 0;
-  font-size: clamp(18px, 4.2vw, 28px);
+  font-family: var(--tarot-font-display);
+  font-size: clamp(18px, 3.6vw, 28px);
   line-height: 1.72;
   color: rgba(246, 237, 219, 0.78);
 }
@@ -5864,7 +6020,7 @@ body::before {
   display: grid;
   place-items: center;
   color: var(--gold-light);
-  font-family: "Playfair Display", Georgia, serif;
+  font-family: var(--tarot-font-display);
   font-size: 34px;
   background:
     radial-gradient(
@@ -5881,17 +6037,23 @@ body::before {
 
 .spread-intro-v2__week-focus strong {
   display: block;
+  font-family: var(--tarot-font-display);
   margin-bottom: 6px;
   color: var(--text);
-  font-size: clamp(22px, 4.8vw, 32px);
+  font-size: clamp(22px, 4vw, 32px);
   line-height: 1.15;
   font-weight: 700;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 
 .spread-intro-v2__week-focus p {
+  font-family: var(--tarot-font-body);
   color: rgba(246, 237, 219, 0.66);
-  font-size: clamp(15px, 3.4vw, 20px);
-  line-height: 1.45;
+  font-size: clamp(15px, 3vw, 19px);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
 .spread-intro-v2__week-details {
@@ -5907,7 +6069,7 @@ body::before {
   .spread-intro-v2__num {
   width: 34px;
   height: 34px;
-  font-family: "Playfair Display", Georgia, serif;
+  font-family: var(--tarot-font-display);
   font-size: 17px;
   background: rgba(212, 178, 84, 0.08);
 }
@@ -5918,6 +6080,13 @@ body::before {
   color: var(--gold-light);
   border-color: rgba(212, 178, 84, 0.35);
   background: rgba(212, 178, 84, 0.08);
+  font-family: var(--tarot-font-display);
+  font-size: clamp(15px, 3.4vw, 18px);
+  line-height: 1.35;
+  letter-spacing: 0;
+  text-transform: none;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 
 .spread-intro-v2__intro-text strong {
@@ -5930,12 +6099,15 @@ body::before {
 }
 
 .spread-intro-v2__section-title {
-  font-family: "Playfair Display", Georgia, serif;
-  font-size: var(--fs-h3);
+  font-family: var(--tarot-font-display);
+  font-size: var(--tarot-title-size);
   font-weight: 600;
   color: var(--gold-light);
   margin-bottom: 10px;
   letter-spacing: 0.01em;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 
 .spread-intro-v2__positions {
@@ -5948,6 +6120,7 @@ body::before {
   display: flex;
   gap: 12px;
   align-items: flex-start;
+  min-width: 0;
 }
 
 .spread-intro-v2__num {
@@ -5960,6 +6133,7 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: center;
+  font-family: var(--tarot-font-display);
   font-size: 12px;
   color: var(--gold-light);
   font-weight: 600;
@@ -5967,17 +6141,23 @@ body::before {
 
 .spread-intro-v2__pos-body strong {
   display: block;
+  font-family: var(--tarot-font-display);
   color: var(--text);
-  font-size: var(--fs-small);
+  font-size: var(--tarot-small-size);
   font-weight: 600;
   margin-bottom: 2px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 
 .spread-intro-v2__pos-body p {
-  font-size: var(--fs-xs);
+  font-family: var(--tarot-font-body);
+  font-size: var(--tarot-label-size);
   color: var(--text-soft);
-  line-height: 1.45;
+  line-height: 1.55;
   opacity: 0.92;
+  overflow-wrap: anywhere;
 }
 
 .spread-intro-v2__start-btn {
@@ -5992,9 +6172,13 @@ body::before {
   background: linear-gradient(135deg, #d4b254 0%, #b8922e 100%);
   border: none;
   color: #0f0c08;
-  font-size: clamp(15px, 3.7vw, 22px);
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  font-family: var(--tarot-font-display);
+  font-size: clamp(18px, 4vw, 24px);
+  letter-spacing: 0;
+  line-height: 1.35;
+  text-transform: none;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
   box-shadow:
     0 14px 26px rgba(0, 0, 0, 0.28),
     inset 0 0 0 1px rgba(229, 194, 122, 0.08);
@@ -7556,7 +7740,9 @@ body::before {
 .reveal-info,
 .meaning-block,
 .spread-detail {
-  font-family: var(--tarot-font);
+  font-family: var(--tarot-font-body);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .fan-prompt,
@@ -7586,12 +7772,66 @@ body::before {
 .spread-detail__orient,
 .spread-detail__name,
 .spread-detail__keys {
-  font-family: var(--tarot-font);
+  font-family: var(--tarot-font-body);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.fan-prompt,
+.fan-prompt--cta,
+.wheel-scene__title,
+.wheel-scene__subtitle,
+.wheel-hint-pill,
+.wheel-pick-note,
+.reveal-info__name,
+.reveal-info__keys,
+.reveal-info__continue-btn,
+.reading-positions-title,
+.wheel-slot__label,
+.wheel-slot__label--top,
+.three-flow__hint,
+.meaning-block__pos,
+.meaning-block__name,
+.meaning-styled__intro,
+.meaning-styled__label,
+.meaning-styled__body,
+.reveal-card__arcana,
+.reveal-card__name,
+.reveal-card__orient,
+.reveal-card__keys,
+.reveal-card__close,
+.spread-detail__pos,
+.spread-detail__orient,
+.spread-detail__name,
+.spread-detail__keys {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.fan-prompt,
+.fan-prompt--cta,
+.wheel-scene__title,
+.reveal-info__name,
+.reading-positions-title,
+.meaning-block__pos,
+.meaning-block__name,
+.meaning-styled__label,
+.reveal-card__arcana,
+.reveal-card__name,
+.reveal-card__orient,
+.reveal-card__close,
+.spread-detail__pos,
+.spread-detail__orient,
+.spread-detail__name {
+  font-family: var(--tarot-font-display);
 }
 
 .wheel-scene__title {
-  font-size: clamp(24px, 7vw, 36px);
+  font-size: clamp(24px, 5.8vw, 36px);
   letter-spacing: 0;
+  line-height: 1.2;
+  text-wrap: balance;
 }
 
 .fan-prompt,
@@ -7603,7 +7843,7 @@ body::before {
 .spread-detail__keys {
   font-size: var(--tarot-small-size);
   letter-spacing: 0;
-  line-height: 1.45;
+  line-height: 1.55;
 }
 
 .fan-prompt--cta,
@@ -7615,6 +7855,7 @@ body::before {
   font-size: var(--tarot-label-size);
   letter-spacing: 0.06em;
   line-height: 1.4;
+  text-wrap: balance;
 }
 
 .reveal-info__name,
@@ -7624,7 +7865,8 @@ body::before {
   font-size: var(--tarot-title-size);
   font-weight: 600;
   letter-spacing: 0;
-  line-height: 1.22;
+  line-height: 1.25;
+  text-wrap: balance;
 }
 
 .meaning-styled__intro,
@@ -7639,6 +7881,179 @@ body::before {
 .reading-positions-title {
   white-space: normal;
   overflow-wrap: anywhere;
+}
+
+/* Tarot-wide type unification. Keep this late in the file so older tarot
+   blocks that still name Playfair/Inter directly resolve to one system. */
+.tarot-screen,
+.tarot-day-card {
+  font-family: var(--tarot-font-body);
+}
+
+.tarot-screen .screen-title,
+.tarot-screen .spread-option__name,
+.tarot-screen .premium-badge,
+.tarot-screen .premium-gate__badge,
+.tarot-screen .premium-gate__title,
+.tarot-screen .btn-primary,
+.tarot-screen .btn-secondary,
+.tarot-screen .btn-ghost,
+.tarot-screen .btn-stars,
+.tarot-screen .error-state p,
+.tarot-screen .spread-info__section-title,
+.tarot-screen .spread-info__num,
+.tarot-screen .spread-info__pos strong,
+.tarot-screen .spread-slot__placeholder-num,
+.tarot-screen .spread-slot__number,
+.tarot-screen .spread-slot__label,
+.tarot-screen .spread-detail__pos,
+.tarot-screen .spread-detail__orient,
+.tarot-screen .spread-detail__name,
+.tarot-screen .fan-prompt,
+.tarot-screen .fan-prompt--cta,
+.tarot-screen .prompt,
+.tarot-screen .promptCta,
+.tarot-screen .placeholderSymbol,
+.tarot-screen .slotLabel,
+.tarot-screen .deckLabel,
+.tarot-screen .completeBanner,
+.tarot-screen .wheel-scene__title,
+.tarot-screen .wheel-scene__subtitle,
+.tarot-screen .wheel-hint-pill,
+.tarot-screen .wheel-pick-note,
+.tarot-screen .reading-positions-title,
+.tarot-screen .wheel-slot__label,
+.tarot-screen .wheel-slot__label--top,
+.tarot-screen .slot-number,
+.tarot-screen .three-flow__hint,
+.tarot-screen .reveal-info__name,
+.tarot-screen .reveal-info__continue-btn,
+.tarot-screen .meaning-block__pos,
+.tarot-screen .meaning-block__name,
+.tarot-screen .meaning-styled__label,
+.tarot-screen .reveal-card__arcana,
+.tarot-screen .reveal-card__name,
+.tarot-screen .reveal-card__orient,
+.tarot-screen .reveal-card__close,
+.tarot-screen .spread-intro-v2__title,
+.tarot-screen .spread-intro-v2__mini-symbol,
+.tarot-screen .spread-intro-v2__intro-text--week,
+.tarot-screen .spread-intro-v2__week-icon,
+.tarot-screen .spread-intro-v2__week-focus strong,
+.tarot-screen .spread-intro-v2__details-btn,
+.tarot-screen .spread-intro-v2__section-title,
+.tarot-screen .spread-intro-v2__num,
+.tarot-screen .spread-intro-v2__pos-body strong,
+.tarot-screen .spread-intro-v2__start-btn,
+.tarot-card__position,
+.tarot-card__tap-hint,
+.tarot-card__name,
+.tarot-day-card .card-tag,
+.tarot-day-card .tarot-flip__hint,
+.tarot-day-card .tarot-flip__free,
+.tarot-day-card .tarot-flip__empty-title,
+.tarot-day-card .tarot-flip__retry,
+.tarot-day-card .tarot-flip__orientation,
+.tarot-day-card .tarot-flip__arcana,
+.tarot-day-card .tarot-flip__name {
+  font-family: var(--tarot-font-display);
+}
+
+.tarot-screen .spread-option__count,
+.tarot-screen .premium-gate__desc,
+.tarot-screen .spread-info__intro,
+.tarot-screen .spread-info__pos p,
+.tarot-screen .spread-detail__keys,
+.tarot-screen .meaning-styled__intro,
+.tarot-screen .meaning-styled__body,
+.tarot-screen .meaning-block__keys,
+.tarot-screen .meaning-block__text,
+.tarot-screen .reveal-info__keys,
+.tarot-screen .reveal-card__keys,
+.tarot-screen .spread-intro-v2__intro-text,
+.tarot-screen .spread-intro-v2__week-focus p,
+.tarot-screen .spread-intro-v2__pos-body p,
+.tarot-card__meaning-text,
+.tarot-card__keywords,
+.keyword-chip,
+.tarot-day-card .tarot-flip__keywords,
+.tarot-day-card .tarot-flip__meaning,
+.tarot-day-card .meaning-styled__intro,
+.tarot-day-card .meaning-styled__body {
+  font-family: var(--tarot-font-body);
+}
+
+.tarot-screen .screen-title,
+.tarot-screen .spread-option,
+.tarot-screen .spread-option__name,
+.tarot-screen .spread-option__count,
+.tarot-screen .premium-badge,
+.tarot-screen .premium-gate__badge,
+.tarot-screen .premium-gate__title,
+.tarot-screen .premium-gate__desc,
+.tarot-screen .btn-primary,
+.tarot-screen .btn-secondary,
+.tarot-screen .btn-ghost,
+.tarot-screen .btn-stars,
+.tarot-screen .error-state p,
+.tarot-screen .spread-info,
+.tarot-screen .spread-info__section,
+.tarot-screen .spread-info__intro,
+.tarot-screen .spread-info__section-title,
+.tarot-screen .spread-info__pos,
+.tarot-screen .spread-info__pos strong,
+.tarot-screen .spread-info__pos p,
+.tarot-screen .spread-detail,
+.tarot-screen .spread-detail__header,
+.tarot-screen .spread-detail__pos,
+.tarot-screen .spread-detail__orient,
+.tarot-screen .spread-detail__name,
+.tarot-screen .spread-detail__keys,
+.tarot-screen .reading-content,
+.tarot-screen .reading-meanings,
+.tarot-screen .meaning-block,
+.tarot-screen .meaning-block__header,
+.tarot-screen .meaning-block__name,
+.tarot-screen .meaning-block__keys,
+.tarot-screen .meaning-block__text,
+.tarot-screen .meaning-styled,
+.tarot-screen .meaning-styled__intro,
+.tarot-screen .meaning-styled__body,
+.tarot-screen .reveal-info,
+.tarot-screen .reveal-info__name,
+.tarot-screen .reveal-info__keys,
+.tarot-screen .reveal-card,
+.tarot-screen .reveal-card__name,
+.tarot-screen .reveal-card__keys,
+.tarot-screen .wheel-slot__label,
+.tarot-screen .spread-intro-v2,
+.tarot-screen .spread-intro-v2__title,
+.tarot-screen .spread-intro-v2__frame,
+.tarot-screen .spread-intro-v2__intro-text,
+.tarot-screen .spread-intro-v2__section-title,
+.tarot-screen .spread-intro-v2__pos,
+.tarot-screen .spread-intro-v2__pos-body,
+.tarot-screen .spread-intro-v2__pos-body strong,
+.tarot-screen .spread-intro-v2__pos-body p,
+.tarot-day-card,
+.tarot-day-card .card-tag,
+.tarot-day-card .tarot-flip__hint,
+.tarot-day-card .tarot-flip__free,
+.tarot-day-card .tarot-flip__empty-title,
+.tarot-day-card .tarot-flip__arcana,
+.tarot-day-card .tarot-flip__name,
+.tarot-day-card .tarot-flip__keywords,
+.tarot-day-card .tarot-flip__meaning {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.tarot-screen .spread-intro-v2__title {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+  text-wrap: nowrap;
 }
 
 .deep-dive {
