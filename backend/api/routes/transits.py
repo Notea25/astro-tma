@@ -34,33 +34,7 @@ from services.users import repository as user_repo
 log = get_logger(__name__)
 router = APIRouter(prefix="/transits", tags=["transits"])
 
-_PLANET_RU: dict[str, str] = {
-    "sun": "Солнце", "moon": "Луна", "mercury": "Меркурий", "venus": "Венера",
-    "mars": "Марс", "jupiter": "Юпитер", "saturn": "Сатурн",
-    "uranus": "Уран", "neptune": "Нептун", "pluto": "Плутон",
-    # Chart axes
-    "ascendant": "Асцендент",
-    "descendant": "Десцендент",
-    "medium_coeli": "Середина неба",
-    "imum_coeli": "Глубина неба",
-    # Lunar nodes (kerykeion uses several variants)
-    "mean_node": "Северный узел",
-    "true_node": "Северный узел",
-    "mean_lunar_node": "Северный узел",
-    "true_lunar_node": "Северный узел",
-    "mean_north_lunar_node": "Северный узел",
-    "true_north_lunar_node": "Северный узел",
-    "mean_south_node": "Южный узел",
-    "true_south_node": "Южный узел",
-    "mean_south_lunar_node": "Южный узел",
-    "true_south_lunar_node": "Южный узел",
-    # Lilith (Black Moon)
-    "mean_lilith": "Лилит",
-    "true_lilith": "Лилит",
-    "black_moon_lilith": "Лилит",
-    # Other points
-    "chiron": "Хирон",
-}
+from services.astro.planet_names import PLANET_RU as _PLANET_RU  # noqa: E402
 
 _ASPECT_RU: dict[str, str] = {
     "conjunction": "Соединение", "opposition": "Оппозиция", "square": "Квадрат",
@@ -80,19 +54,7 @@ _SIGN_ABBR: dict[str, str] = {
     "Sag": "sagittarius", "Cap": "capricorn", "Aqu": "aquarius", "Pis": "pisces",
 }
 
-_PLANET_GLYPH: dict[str, str] = {
-    "sun": "☉", "moon": "☽", "mercury": "☿", "venus": "♀", "mars": "♂",
-    "jupiter": "♃", "saturn": "♄", "uranus": "♅", "neptune": "♆", "pluto": "♇",
-    "ascendant": "Asc", "descendant": "Dsc",
-    "medium_coeli": "MC", "imum_coeli": "IC",
-    "mean_node": "☊", "true_node": "☊",
-    "mean_lunar_node": "☊", "true_lunar_node": "☊",
-    "mean_north_lunar_node": "☊", "true_north_lunar_node": "☊",
-    "mean_south_node": "☋", "true_south_node": "☋",
-    "mean_south_lunar_node": "☋", "true_south_lunar_node": "☋",
-    "mean_lilith": "⚸", "true_lilith": "⚸", "black_moon_lilith": "⚸",
-    "chiron": "⚷",
-}
+from services.astro.planet_names import PLANET_GLYPH as _PLANET_GLYPH  # noqa: E402
 
 # Short, viral-friendly retrograde blurbs — written for a general audience.
 _RETRO_BLURB: dict[str, str] = {
