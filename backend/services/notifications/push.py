@@ -1,6 +1,7 @@
 """Telegram Bot API push notifications."""
 
 import hashlib
+import re
 from datetime import date
 
 import httpx
@@ -67,6 +68,17 @@ _CLOSINGS = (
     "Сделайте один точный шаг, а остальное выстроится легче.",
     "Не торопите события: день лучше раскрывается постепенно.",
 )
+
+_MESSAGE_PATTERNS = (
+    "{greeting}\n{intro}\n\n{bridge}\n{teaser}\n\n{closing}",
+    "{greeting}\n{intro}\n\n{teaser}\n\n{closing}",
+    "{greeting}\n\n{bridge}\n{teaser}\n\n{intro}\n{closing}",
+    "{greeting}\n{intro}\n\n{teaser}\n\nМягкий ориентир: {closing_lc}",
+    "{greeting}\n\n{intro}\n{bridge_lc}\n{teaser}\n\n{closing}",
+)
+
+_SENTENCE_RE = re.compile(r"[^.!?…]+[.!?…]+", re.MULTILINE)
+_SAFE_CUT_RE = re.compile(r"^(.{120,360}?)[,;:—-]\s+\S*$", re.DOTALL)
 
 
 async def send_message(
@@ -147,6 +159,53 @@ def _format_ru_date(target_date: date) -> str:
     return f"{target_date.day} {_MONTHS_RU[target_date.month - 1]}"
 
 
+def _ensure_final_period(text: str) -> str:
+    text = text.strip()
+    if not text:
+        return ""
+    text = text.rstrip("…").rstrip()
+    if text.endswith((".", "!", "?")):
+        return text
+    return f"{text}."
+
+
+def _lower_first(text: str) -> str:
+    return text[:1].lower() + text[1:] if text else text
+
+
+def _normalize_horoscope_text(text: str) -> str:
+    text = re.sub(r"\s+", " ", text or "").strip()
+    return text.replace("...", "…")
+
+
+def _sentence_teaser(text: str, *, max_chars: int = 360) -> str:
+    """Return a complete teaser without dangling ellipsis or half-sentences."""
+    normalized = _normalize_horoscope_text(text)
+    if not normalized:
+        return "День лучше проживать внимательнее: выбирайте спокойный темп, не распыляйтесь и оставляйте место для ясного решения."
+
+    sentences = [match.group(0).strip() for match in _SENTENCE_RE.finditer(normalized)]
+    if not sentences:
+        return _ensure_final_period(normalized[:max_chars])
+
+    picked: list[str] = []
+    total = 0
+    for sentence in sentences:
+        clean = _ensure_final_period(sentence)
+        projected = total + len(clean) + (1 if picked else 0)
+        if picked and projected > max_chars:
+            break
+        if not picked and len(clean) > max_chars:
+            match = _SAFE_CUT_RE.match(clean[:max_chars])
+            return _ensure_final_period(match.group(1) if match else clean[:max_chars])
+        picked.append(clean)
+        total = projected
+        if total >= 220:
+            break
+
+    return _ensure_final_period(" ".join(picked))
+
+
 def build_daily_message(
     user: User,
     sign_ru: str,
@@ -160,19 +219,21 @@ def build_daily_message(
     target_date = message_date or date.today()
     variant = _daily_variant(user.id, sign_ru, target_date)
     day = _format_ru_date(target_date)
-    # Clip to a short teaser — Telegram message limit is 4096, keep it snack-sized
-    teaser = text_ru[:280] + ("…" if len(text_ru) > 280 else "")
+    teaser = _sentence_teaser(text_ru)
     greeting = _pick(_GREETINGS, variant, 0).format(name=name)
     intro = _pick(_INTROS, variant, 5).format(sign=sign_ru, day=day)
     bridge = _pick(_BRIDGES, variant, 10)
     closing = _pick(_CLOSINGS, variant, 15)
+    pattern = _pick(_MESSAGE_PATTERNS, variant, 20)
 
-    return (
-        f"<b>{greeting}</b>\n"
-        f"{intro}\n\n"
-        f"{bridge}\n"
-        f"{teaser}\n\n"
-        f"{closing}"
+    return pattern.format(
+        greeting=f"<b>{greeting}</b>",
+        intro=intro,
+        bridge=bridge,
+        bridge_lc=_lower_first(bridge),
+        teaser=teaser,
+        closing=closing,
+        closing_lc=_lower_first(closing),
     )
 
 

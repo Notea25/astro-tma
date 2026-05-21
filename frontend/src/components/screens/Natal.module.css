@@ -652,8 +652,8 @@
   position: relative;
   z-index: 1;
   display: grid;
-  width: 100%;
-  max-width: 340px;
+  width: min(100%, clamp(280px, 58vw, 390px));
+  max-width: 100%;
   aspect-ratio: 1;
   place-items: center;
   margin: 14px auto 18px;
@@ -2303,8 +2303,8 @@
   }
 
   .wheelStage {
-    width: 100%;
-    max-width: 380px;
+    width: min(100%, clamp(300px, 54vw, 400px));
+    max-width: 100%;
     margin: 16px auto 18px;
   }
 
@@ -2688,8 +2688,8 @@
   }
 
   .wheelStage {
-    width: 100%;
-    max-width: 340px;
+    width: min(100%, clamp(280px, 88vw, 360px));
+    max-width: 100%;
     margin: 14px auto 18px;
   }
 

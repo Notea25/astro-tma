@@ -148,3 +148,41 @@ async def test_natal_pdf_token_download_does_not_require_telegram_auth(monkeypat
 
     assert response.body == b"%PDF-test"
     assert response.media_type == "application/pdf"
+
+
+@pytest.mark.asyncio
+async def test_pdf_reading_is_generated_when_full_chart_cache_is_cold(monkeypatch):
+    from api.routes import natal
+
+    calls = {}
+    chart = SimpleNamespace(
+        sun_sign="Scorpio",
+        moon_sign="Aquarius",
+        ascendant_sign="Aries",
+    )
+    planets = {"sun": {"sign": "Scorpio"}}
+    aspects = [{"p1": "Sun", "p2": "Moon", "aspect": "square", "orb": 1.2}]
+    user = SimpleNamespace(id=1001)
+
+    async def fake_cache_get(key):
+        calls["cache_get_key"] = key
+        return None
+
+    async def fake_cache_set(key, value, ttl):
+        calls["cache_set"] = (key, value, ttl)
+
+    async def fake_reading(**kwargs):
+        calls["reading_kwargs"] = kwargs
+        return "Полное итоговое чтение карты."
+
+    monkeypatch.setattr(natal, "cache_get", fake_cache_get)
+    monkeypatch.setattr(natal, "cache_set", fake_cache_set)
+    monkeypatch.setattr(natal.settings, "ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.setattr(natal, "generate_natal_reading", fake_reading)
+
+    reading = await natal._get_or_generate_pdf_reading(user, chart, planets, aspects)
+
+    assert reading == "Полное итоговое чтение карты."
+    assert calls["reading_kwargs"]["aspects"] == aspects
+    assert calls["cache_set"][0] == "natal:1001"
+    assert calls["cache_set"][1]["reading"] == "Полное итоговое чтение карты."

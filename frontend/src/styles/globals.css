@@ -76,6 +76,18 @@
   --fs-small: clamp(14px, 3.5vw, 15px);
   --fs-xs: clamp(12px, 3vw, 13px);
   --fs-nav: clamp(11px, 2.8vw, 12px);
+
+  /* Tarot spread typography: one readable, mobile-safe stack. */
+  --tarot-font:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  --tarot-title-size: clamp(18px, 4.8vw, 22px);
+  --tarot-body-size: clamp(15px, 3.9vw, 16px);
+  --tarot-small-size: clamp(12px, 3.2vw, 14px);
+  --tarot-label-size: clamp(10px, 2.8vw, 12px);
 }
 
 /* ── Reset ─────────────────────────────────────────────────────────────────── */
@@ -313,6 +325,11 @@ body::after {
   min-height: 100vh;
   min-height: 100dvh;
   padding-bottom: calc(var(--nav-height) + var(--safe-bottom) + 12px);
+}
+.route-fallback-screen {
+  align-items: center;
+  justify-content: center;
+  padding-inline: 24px;
 }
 
 /* ── Bottom Navigation ─────────────────────────────────────────────────────── */
@@ -6701,7 +6718,6 @@ body::before {
   cursor: not-allowed;
 }
 
-
 /* ── Bottom Nav with central FAB (Practices) ───────────────────────────── */
 .bottom-nav.bottom-nav--fab {
   height: calc(var(--nav-height) + var(--safe-bottom) + 8px);
@@ -7530,6 +7546,99 @@ body::before {
   font-size: 12px;
   color: var(--text-soft);
   line-height: 1.45;
+}
+
+/* ── Tarot mobile typography overrides ───────────────────────────────────── */
+.spread-layout,
+.three-flow,
+.reading-content,
+.reveal-card,
+.reveal-info,
+.meaning-block,
+.spread-detail {
+  font-family: var(--tarot-font);
+}
+
+.fan-prompt,
+.fan-prompt--cta,
+.wheel-scene__title,
+.wheel-scene__subtitle,
+.wheel-hint-pill,
+.wheel-pick-note,
+.reveal-info__name,
+.reveal-info__keys,
+.reveal-info__continue-btn,
+.reading-positions-title,
+.wheel-slot__label,
+.wheel-slot__label--top,
+.three-flow__hint,
+.meaning-block__pos,
+.meaning-block__name,
+.meaning-styled__intro,
+.meaning-styled__label,
+.meaning-styled__body,
+.reveal-card__arcana,
+.reveal-card__name,
+.reveal-card__orient,
+.reveal-card__keys,
+.reveal-card__close,
+.spread-detail__pos,
+.spread-detail__orient,
+.spread-detail__name,
+.spread-detail__keys {
+  font-family: var(--tarot-font);
+}
+
+.wheel-scene__title {
+  font-size: clamp(24px, 7vw, 36px);
+  letter-spacing: 0;
+}
+
+.fan-prompt,
+.wheel-scene__subtitle,
+.wheel-pick-note,
+.reveal-info__keys,
+.meaning-styled__body,
+.reveal-card__keys,
+.spread-detail__keys {
+  font-size: var(--tarot-small-size);
+  letter-spacing: 0;
+  line-height: 1.45;
+}
+
+.fan-prompt--cta,
+.three-flow__hint,
+.meaning-block__pos,
+.meaning-styled__label,
+.reveal-card__arcana,
+.spread-detail__orient {
+  font-size: var(--tarot-label-size);
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+}
+
+.reveal-info__name,
+.meaning-block__name,
+.reveal-card__name,
+.spread-detail__pos {
+  font-size: var(--tarot-title-size);
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.22;
+}
+
+.meaning-styled__intro,
+.spread-detail .meaning-styled__intro,
+.meaning-block .meaning-styled__intro {
+  font-size: var(--tarot-body-size);
+  line-height: 1.62;
+}
+
+.wheel-slot__label,
+.spread-slot__label,
+.reading-positions-title {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .deep-dive {
