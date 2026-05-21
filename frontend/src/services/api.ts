@@ -509,12 +509,17 @@ export const usersApi = {
 
 // ── Horoscope ──────────────────────────────────────────────────────────────────
 export const horoscopeApi = {
-  getToday: () =>
-    request<import("@/types").HoroscopeResponse>("GET", "/horoscope/today"),
-  getPeriod: (period: string) =>
+  getToday: (sign?: string) =>
     request<import("@/types").HoroscopeResponse>(
       "GET",
-      `/horoscope/period?period=${period}`,
+      sign ? `/horoscope/today?sign=${sign}` : "/horoscope/today",
+    ),
+  getPeriod: (period: string, sign?: string) =>
+    request<import("@/types").HoroscopeResponse>(
+      "GET",
+      sign
+        ? `/horoscope/period?period=${period}&sign=${sign}`
+        : `/horoscope/period?period=${period}`,
     ),
   getMoon: () =>
     request<import("@/types").MoonPhaseResponse>("GET", "/horoscope/moon"),

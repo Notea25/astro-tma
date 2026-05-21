@@ -45,8 +45,8 @@ export function Horoscopes() {
     queryKey: ["horoscope-page", period, selectedSign, user?.id],
     queryFn: () =>
       period === "today"
-        ? horoscopeApi.getToday()
-        : horoscopeApi.getPeriod(period),
+        ? horoscopeApi.getToday(selectedSign)
+        : horoscopeApi.getPeriod(period, selectedSign),
     staleTime: 1000 * 60 * 30,
   });
 
