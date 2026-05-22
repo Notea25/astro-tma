@@ -10,6 +10,8 @@
  * Sized by `size` prop (rendered as a square). Designed for the celestial
  * theme — black background, gold strokes.
  */
+import { ZODIAC_PATH } from "@/components/ui/ZodiacIcon";
+import type { ZodiacSign } from "@/components/NatalChart/types";
 import type {
   SynastryAspectOut,
   SynastryHouseInfo,
@@ -31,21 +33,6 @@ const PLANET_GLYPH: Record<string, string> = {
   true_node: "☊",
   mean_node: "☊",
   lilith: "⚸",
-};
-
-const ZODIAC_GLYPH: Record<string, string> = {
-  aries: "♈",
-  taurus: "♉",
-  gemini: "♊",
-  cancer: "♋",
-  leo: "♌",
-  virgo: "♍",
-  libra: "♎",
-  scorpio: "♏",
-  sagittarius: "♐",
-  capricorn: "♑",
-  aquarius: "♒",
-  pisces: "♓",
 };
 
 const ZODIAC_ORDER = [
@@ -224,17 +211,19 @@ export function SynastryBiWheel({
                 stroke="rgba(212,178,84,0.32)"
                 strokeWidth="0.5"
               />
-              <text
-                x={mid.x}
-                y={mid.y}
-                fill="rgba(232,200,98,0.8)"
-                fontSize="18"
-                textAnchor="middle"
-                dominantBaseline="central"
-                style={{ fontFamily: "serif" }}
+              <g
+                transform={`translate(${mid.x - 11} ${mid.y - 11}) scale(${22 / 24})`}
               >
-                {ZODIAC_GLYPH[sign]}
-              </text>
+                <path
+                  d={ZODIAC_PATH[sign as ZodiacSign]}
+                  fill="none"
+                  stroke="rgba(232,200,98,0.8)"
+                  strokeWidth={1.6}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  vectorEffect="non-scaling-stroke"
+                />
+              </g>
             </g>
           );
         })}

@@ -17,6 +17,8 @@ import {
   type NatalSummaryResponse,
 } from "@/types";
 import { NatalChart, type NatalChartData } from "@/components/NatalChart";
+import { ZodiacIcon } from "@/components/ui/ZodiacIcon";
+import type { ZodiacSign } from "@/components/NatalChart/types";
 import { toNatalChartData } from "@/components/NatalChart/adapter";
 import { PlanetOrb } from "@/components/NatalChart/PlanetOrb";
 import { AspectOrb } from "@/components/NatalChart/AspectOrb";
@@ -84,6 +86,15 @@ const HOUSE_AXIS_LABELS: Record<number, HouseAxisLabel> = {
   10: "Середина неба",
 };
 
+const ZODIAC_KEYS = new Set<string>([
+  "aries", "taurus", "gemini", "cancer", "leo", "virgo",
+  "libra", "scorpio", "sagittarius", "capricorn", "aquarius", "pisces",
+]);
+const toZodiacSign = (key: string | null | undefined): ZodiacSign | null =>
+  key && ZODIAC_KEYS.has(key) ? (key as ZodiacSign) : null;
+
+// Legacy unicode fallback table — kept only for non-icon contexts (e.g. card
+// title strings). Visual renders below should use <ZodiacIcon>.
 const ZODIAC_GLYPHS: Record<string, string> = {
   aries: "♈",
   taurus: "♉",
@@ -1468,10 +1479,17 @@ function NatalKeyChips({
         )
       : "—";
 
-  const chips = [
+  const ascSign = toZodiacSign(signKey(summary?.ascendant_sign));
+  const chips: {
+    key: string;
+    glyph: React.ReactNode;
+    title: string;
+    sign: string;
+    degree: string;
+  }[] = [
     {
       key: "asc",
-      glyph: ZODIAC_GLYPHS[signKey(summary?.ascendant_sign)] ?? "AC",
+      glyph: ascSign ? <ZodiacIcon sign={ascSign} size={20} /> : "AC",
       title: "ASC",
       sign: toRu(summary?.ascendant_sign),
       degree: ascendantDegree,
@@ -1543,7 +1561,10 @@ function NatalHeroCard({
         <h2 className={styles.personName}>{displayName}</h2>
         <div className={styles.ascLine}>
           <span aria-hidden="true">
-            {ZODIAC_GLYPHS[signKey(subtitleSign)] ?? "☉"}
+            {(() => {
+              const s = toZodiacSign(signKey(subtitleSign));
+              return s ? <ZodiacIcon sign={s} size={18} /> : "☉";
+            })()}
           </span>
           <span>{subtitle}</span>
         </div>
@@ -1614,7 +1635,10 @@ function NatalBirthDetails({
         <h3>Ключевые акценты</h3>
         <div className={styles.highlightRow}>
           <span aria-hidden="true">
-            {ZODIAC_GLYPHS[signKey(summary?.ascendant_sign)] ?? "AC"}
+            {(() => {
+              const s = toZodiacSign(signKey(summary?.ascendant_sign));
+              return s ? <ZodiacIcon sign={s} size={18} /> : "AC";
+            })()}
           </span>
           <p>{ascendant}</p>
         </div>
@@ -1964,6 +1988,7 @@ function NatalHousesPanel({
             house.sign;
           const axisLabel = HOUSE_AXIS_LABELS[house.number];
           const glyph = ZODIAC_GLYPHS[houseSignKey] ?? "✦";
+          const houseZodiac = toZodiacSign(houseSignKey);
           const tone = ZODIAC_TONES[houseSignKey] ?? "gold";
           const desc = descriptions?.houses?.[String(house.number)];
           const subtitleParts = [signRu, formatDegree(house.degree)];
@@ -1991,7 +2016,7 @@ function NatalHousesPanel({
             >
               <span className={styles.houseNumber}>{house.number}</span>
               <span className={styles.houseGlyph} aria-hidden="true">
-                {glyph}
+                {houseZodiac ? <ZodiacIcon sign={houseZodiac} size={20} /> : glyph}
               </span>
               <span className={styles.houseCopy}>
                 <b>{signRu}</b>

@@ -1,5 +1,6 @@
 import type { ChartVariant } from '../types';
-import { ZODIAC_EN_LABEL, ZODIAC_GLYPH, ZODIAC_ORDER, WHEEL } from '../constants';
+import { ZODIAC_EN_LABEL, ZODIAC_ORDER, WHEEL } from '../constants';
+import { ZODIAC_PATH } from '@/components/ui/ZodiacIcon';
 import { polar, sectorPath, zodiacToSvgAngle } from '../utils/geometry';
 import styles from '../NatalChart.module.css';
 
@@ -69,19 +70,17 @@ export function ZodiacRing({ ascendantDegree, variant = 'editorial' }: Props) {
         );
       })}
 
-      {/* glyphs — upright, centered in each sector */}
+      {/* glyphs — upright SVG-path icons, centered in each sector */}
       {ZODIAC_ORDER.map((sign, i) => {
         const midSvgAng = zodiacToSvgAngle(i * 30 + 15, ascendantDegree);
         const pos = polar(0, 0, glyphR, midSvgAng);
+        const visualSize = isReferenceWheel ? 44 : isPoster ? 58 : GLYPH_FONT_SIZE;
+        const scale = visualSize / 24;
+        const stroke = isSquareWheel ? 'var(--natal-accent)' : 'var(--natal-primary)';
         return (
-          <text
+          <g
             key={`glyph-${sign}`}
-            x={pos.x}
-            y={pos.y}
-            textAnchor="middle"
-            dominantBaseline="central"
-            fontSize={isReferenceWheel ? 44 : isPoster ? 58 : GLYPH_FONT_SIZE}
-            fill={isSquareWheel ? 'var(--natal-accent)' : 'var(--natal-primary)'}
+            transform={`translate(${pos.x - visualSize / 2} ${pos.y - visualSize / 2}) scale(${scale})`}
             className={
               isReferenceWheel
                 ? styles.referenceGlyphText
@@ -90,8 +89,16 @@ export function ZodiacRing({ ascendantDegree, variant = 'editorial' }: Props) {
                   : styles.glyphText
             }
           >
-            {ZODIAC_GLYPH[sign]}
-          </text>
+            <path
+              d={ZODIAC_PATH[sign]}
+              fill="none"
+              stroke={stroke}
+              strokeWidth={1.6}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+            />
+          </g>
         );
       })}
 
