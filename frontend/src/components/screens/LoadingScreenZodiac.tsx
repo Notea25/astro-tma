@@ -11,10 +11,8 @@ const R_SYM_IN     = 168;
 const R_MID_OUT    = 164;
 const R_MID_IN     = 128;
 const R_ARROWS_OUT = 124;
-const R_ARROWS_IN  = 98;
-const R_INNER_OUT  = 94;
-const R_INNER_IN   = 66;
-const R_SUN_RING   = 60;
+const R_ARROWS_IN  = 78;
+const R_SUN_RING   = 10;
 
 // 12 zodiac signs as hand-crafted SVG paths
 // (local viewBox 0..100, centred on 50,50 — stroke-only outline)
@@ -166,12 +164,11 @@ export function LoadingScreenZodiac() {
         <circle cx={CX} cy={CY} r={R_MID_IN}     fill="none" stroke={GOLD_DIM} strokeWidth={1}   opacity={0.55} />
         <circle cx={CX} cy={CY} r={R_ARROWS_OUT} fill="none" stroke={GOLD_DIM} strokeWidth={1}   opacity={0.55} />
         <circle cx={CX} cy={CY} r={R_ARROWS_IN}  fill="none" stroke={GOLD_DIM} strokeWidth={1}   opacity={0.55} />
-        <circle cx={CX} cy={CY} r={R_INNER_IN}   fill="none" stroke={GOLD_DIM} strokeWidth={1}   opacity={0.6} />
 
-        {/* === 12 RADIAL DIVIDERS (through symbol rings only) === */}
+        {/* === 12 RADIAL DIVIDERS (only through outer name/symbol rings) === */}
         {Array.from({ length: 12 }).map((_, i) => {
           const angle = i * 30;
-          const a = pt(R_INNER_IN, angle);
+          const a = pt(R_MID_IN, angle);
           const b = pt(R_TEXT_OUT, angle);
           return (
             <line
@@ -243,29 +240,29 @@ export function LoadingScreenZodiac() {
           })}
         </g>
 
-        {/* === RING 4: decorative arrow ring (12 inward + 12 outward) === */}
+        {/* === RING 4: decorative arrow ring (long inward triangles + small ticks) === */}
         <g className={styles.arrowsRing}>
-          {/* 12 inward-pointing triangles */}
+          {/* 12 large inward-pointing triangles */}
           {Array.from({ length: 12 }).map((_, i) => {
             const angle = i * 30 + 15;
             const tip = pt(R_ARROWS_IN + 1, angle);
             const baseR = R_ARROWS_OUT - 2;
-            const b1 = pt(baseR, angle - 4.5);
-            const b2 = pt(baseR, angle + 4.5);
+            const b1 = pt(baseR, angle - 4);
+            const b2 = pt(baseR, angle + 4);
             return (
               <polygon
                 key={`ai${i}`}
                 points={`${b1.x},${b1.y} ${tip.x},${tip.y} ${b2.x},${b2.y}`}
                 fill={GOLD}
-                opacity={0.9}
+                opacity={0.92}
               />
             );
           })}
-          {/* 12 small radial ticks between triangles */}
+          {/* 12 short radial ticks between the triangles */}
           {Array.from({ length: 12 }).map((_, i) => {
             const angle = i * 30;
-            const inner = pt(R_ARROWS_IN + 5, angle);
-            const outer = pt(R_ARROWS_OUT - 5, angle);
+            const inner = pt(R_ARROWS_IN + 6, angle);
+            const outer = pt(R_ARROWS_OUT - 6, angle);
             return (
               <line
                 key={`tick${i}`}
@@ -279,41 +276,18 @@ export function LoadingScreenZodiac() {
           })}
         </g>
 
-        {/* === RING 5: small inner zodiac glyphs === */}
-        <g className={styles.innerRing}>
-          {ZODIAC.map(({ name, path }, i) => {
-            const midAngle = i * 30 + 15;
-            const labelR = (R_INNER_OUT + R_INNER_IN) / 2;
-            const { x, y } = pt(labelR, midAngle);
-            return (
-              <ZodiacIcon
-                key={`in${i}-${name}`}
-                d={path}
-                cx={x}
-                cy={y}
-                size={15}
-                color={GOLD}
-                strokeWidth={1.5}
-                opacity={0.88}
-              />
-            );
-          })}
-        </g>
-
-        {/* === CENTER: simple ☉ — small ring with central dot, no 12-ray sun === */}
+        {/* === CENTRE: empty dark field with tiny classical ☉ === */}
         <g className={styles.centerSun}>
-          <circle cx={CX} cy={CY} r={R_SUN_RING} fill="none" stroke={GOLD_DIM} strokeWidth={1.2} opacity={0.55} />
-          <circle cx={CX} cy={CY} r={6}   fill={GOLD} />
-          <circle cx={CX} cy={CY} r={4}   fill="rgba(6, 4, 21, 0.95)" />
-          <circle cx={CX} cy={CY} r={1.8} fill={GOLD} />
+          <circle cx={CX} cy={CY} r={R_SUN_RING}     fill="none" stroke={GOLD} strokeWidth={1.4} opacity={0.95} />
+          <circle cx={CX} cy={CY} r={R_SUN_RING - 6} fill={GOLD} />
         </g>
 
-        {/* Subtle pulse aura around centre */}
+        {/* Subtle pulse aura around the centre dot */}
         <circle
           cx={CX} cy={CY} r={R_SUN_RING + 4}
           fill="none"
-          stroke="rgba(232, 200, 98, 0.4)"
-          strokeWidth={4}
+          stroke="rgba(232, 200, 98, 0.45)"
+          strokeWidth={3}
           className={styles.centerAura}
         />
       </svg>
