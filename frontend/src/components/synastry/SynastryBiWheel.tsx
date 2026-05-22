@@ -10,7 +10,7 @@
  * Sized by `size` prop (rendered as a square). Designed for the celestial
  * theme — black background, gold strokes.
  */
-import { ZODIAC_PATH } from "@/components/ui/ZodiacIcon";
+import { zodiacIconUrl } from "@/components/ui/ZodiacIcon";
 import type { ZodiacSign } from "@/components/NatalChart/types";
 import type {
   SynastryAspectOut,
@@ -211,19 +211,13 @@ export function SynastryBiWheel({
                 stroke="rgba(212,178,84,0.32)"
                 strokeWidth="0.5"
               />
-              <g
-                transform={`translate(${mid.x - 11} ${mid.y - 11}) scale(${22 / 24})`}
-              >
-                <path
-                  d={ZODIAC_PATH[sign as ZodiacSign]}
-                  fill="none"
-                  stroke="rgba(232,200,98,0.8)"
-                  strokeWidth={1.6}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  vectorEffect="non-scaling-stroke"
-                />
-              </g>
+              <image
+                href={zodiacIconUrl(sign as ZodiacSign)}
+                x={mid.x - 11}
+                y={mid.y - 11}
+                width={22}
+                height={22}
+              />
             </g>
           );
         })}
