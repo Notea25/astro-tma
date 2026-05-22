@@ -1705,7 +1705,9 @@ function NatalNoChartCard({
     >
       <div className={styles.sectionKicker}>Базовый портрет</div>
       <div className={styles.basicSignRow}>
-        <span>{userSign?.emoji ?? "☉"}</span>
+        <span>
+          {userSign ? <ZodiacIcon sign={userSign.value} size={30} /> : "☉"}
+        </span>
         <div>
           <h2>{userSign?.label ?? toRu(sunSign)}</h2>
           <p>{userSign?.dates}</p>

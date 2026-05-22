@@ -1,5 +1,7 @@
 import { motion } from "framer-motion";
 import { ZODIAC_SIGNS, type NatalSummaryResponse } from "@/types";
+import { ZodiacIcon } from "@/components/ui/ZodiacIcon";
+import type { ZodiacSign } from "@/components/NatalChart/types";
 
 type BigThreeKind = "sun" | "moon" | "ascendant";
 
@@ -39,10 +41,10 @@ for (const s of ZODIAC_SIGNS) {
   SIGN_RU_FROM_RAW[s.value.charAt(0).toUpperCase() + s.value.slice(1)] = s.label;
 }
 
-function signGlyph(signRaw: string | null | undefined): string {
-  if (!signRaw) return "✦";
+function signValue(signRaw: string | null | undefined): ZodiacSign | null {
+  if (!signRaw) return null;
   const lower = signRaw.toLowerCase();
-  return ZODIAC_SIGNS.find((s) => s.value === lower)?.emoji ?? "✦";
+  return (ZODIAC_SIGNS.find((s) => s.value === lower)?.value as ZodiacSign | undefined) ?? null;
 }
 
 function signLabelRu(signRaw: string | null | undefined): string | null {
@@ -98,7 +100,10 @@ function BigThreeCard({
             className="natal-big-three__sign-glyph"
             style={{ color: meta.color }}
           >
-            {signGlyph(sign)}
+            {(() => {
+              const sv = signValue(sign);
+              return sv ? <ZodiacIcon sign={sv} size={26} /> : "✦";
+            })()}
           </span>
           <span className="natal-big-three__sign">{ru ?? "—"}</span>
           <span className="natal-big-three__metaphor">{meta.metaphor}</span>
