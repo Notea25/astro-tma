@@ -53,19 +53,24 @@ class Settings(BaseSettings):
     # GeoNames
     GEONAMES_USERNAME: str = "demo"
 
-    # Stars pricing — defaults are TEST values (1 ⭐ everywhere).
-    # Production prices are set in .env / admin Redis overrides.
-    PRICE_HOROSCOPE_TOMORROW: int = 1
-    PRICE_HOROSCOPE_WEEK: int = 1
-    PRICE_HOROSCOPE_MONTH: int = 1
-    PRICE_TAROT_CELTIC: int = 1
-    PRICE_TAROT_WEEK: int = 1
-    PRICE_NATAL_FULL: int = 1
-    PRICE_SYNASTRY: int = 1
-    PRICE_TRANSITS_WEEK: int = 1
-    PRICE_TRANSITS_MONTH: int = 1
-    PRICE_SUBSCRIPTION_MONTH: int = 1
-    PRICE_SUBSCRIPTION_YEAR: int = 1
+    # Stars pricing — boot defaults match the launch monetization spec.
+    # Production prices live in .env / admin Redis overrides.
+    PRICE_TAROT_CELTIC: int = 29
+    PRICE_NATAL_FULL: int = 149
+    PRICE_SYNASTRY: int = 49
+    PRICE_SUBSCRIPTION_MONTH: int = 199
+    PRICE_SUBSCRIPTION_YEAR: int = 1490
+
+    # Feature flags for launch pack — easy off-switch if something goes wrong.
+    FEATURE_WELCOME_TRIAL: bool = True
+    FEATURE_REFERRAL_PROGRAM: bool = True
+    WELCOME_TRIAL_DAYS: int = 3
+    REFERRAL_TRIAL_EXTENSION_DAYS: int = 4  # 3 + 4 = 7 total
+    REFERRAL_FIRST_PURCHASE_BONUS_DAYS: int = 14
+
+    # URL of the bot WebApp deeplink (e.g. "https://t.me/<bot>/app").
+    # Used in referrer-reward Telegram notifications.
+    MINIAPP_URL: str = ""
 
     # Feature flags
     FEATURE_PUSH_NOTIFICATIONS: bool = True

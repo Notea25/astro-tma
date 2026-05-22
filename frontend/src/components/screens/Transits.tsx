@@ -6,7 +6,6 @@ import { PremiumGate } from "@/components/ui/PremiumGate";
 import { HoroscopeSkeleton } from "@/components/ui/Skeleton";
 import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
-import { useEntitlementChecker } from "@/hooks/useEntitlement";
 import { transitsApi } from "@/services/api";
 import { ApiError } from "@/services/api";
 import type {
@@ -599,9 +598,9 @@ export function Transits() {
   );
   const headline = useMemo(() => pickHeadline(sortedAspects), [sortedAspects]);
   const isPremium = user?.is_premium ?? false;
-  const isEntitled = useEntitlementChecker();
-  const weekProductId = "transits_week_preview";
-  const monthProductId = "transits_month_preview";
+  // Week/Month transit periods now ride on Premium subscription, not on
+  // standalone transit products (those were retired in launch v1.1).
+  const periodProductId = "subscription_month";
   const visibleAspects =
     isPremium || showAll ? sortedAspects : sortedAspects.slice(0, FREE_LIMIT);
   const hiddenCount = Math.max(sortedAspects.length - FREE_LIMIT, 0);
@@ -687,8 +686,7 @@ export function Transits() {
                   }}
                 >
                   {PERIOD_LABELS[p]}
-                  {((p === "week" && !isEntitled(weekProductId)) ||
-                    (p === "month" && !isEntitled(monthProductId))) && (
+                  {p !== "today" && !isPremium && (
                     <svg
                       className="period-tab__lock"
                       width="10"
@@ -770,11 +768,14 @@ export function Transits() {
               </div>
             ) : (
               <PremiumGate
-                productId={
-                  period === "week" ? weekProductId : monthProductId
+                productId={periodProductId}
+                productName="Premium — 30 дней"
+                stars={199}
+                pitch={
+                  period === "week"
+                    ? "Прогноз транзитов на неделю и весь Premium-доступ."
+                    : "Прогноз транзитов на месяц и весь Premium-доступ."
                 }
-                productName={`Транзиты — ${PERIOD_LABELS[period]}`}
-                stars={period === "week" ? 50 : 100}
               >
                 <div className="horoscope-card">
                   <div
