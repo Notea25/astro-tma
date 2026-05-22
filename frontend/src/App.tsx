@@ -7,7 +7,7 @@ import { TrialEndingModal } from "@/components/ui/TrialEndingModal";
 import { referralsApi, usersApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
 import { useStartParam, useTelegramReady } from "@/hooks/useTelegram";
-import { LoadingScreenFull } from "@/components/screens/LoadingScreen";
+import { LoadingScreenZodiac } from "@/components/screens/LoadingScreenZodiac";
 
 const Onboarding = lazy(() =>
   import("@/components/screens/Onboarding").then((m) => ({
@@ -96,7 +96,7 @@ function SplashScreen() {
       exit={{ opacity: 0 }}
       transition={{ duration: 0.6, ease: "easeInOut" }}
     >
-      <LoadingScreenFull />
+      <LoadingScreenZodiac />
     </motion.div>
   );
 }
