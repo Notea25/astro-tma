@@ -11,6 +11,7 @@
 import { motion } from "framer-motion";
 import { usePayment } from "@/hooks/usePayment";
 import { useEntitlement } from "@/hooks/useEntitlement";
+import { useProductPrice } from "@/hooks/useProductPrice";
 
 interface PremiumGateProps {
   productId: string;
@@ -46,6 +47,11 @@ export function PremiumGate({
 }: PremiumGateProps) {
   const { purchase, loading, activating } = usePayment();
   const entitled = useEntitlement(productId);
+  // Live price from the backend catalogue (honours admin overrides).
+  // Falls back to the prop while the catalogue fetch is in flight so
+  // the gate never flashes a placeholder.
+  const livePrice = useProductPrice(productId);
+  const displayStars = livePrice ?? stars;
 
   // Caller forced free access OR user is entitled → show the real content.
   if (locked === false || entitled) {
@@ -80,7 +86,7 @@ export function PremiumGate({
       </ul>
       <div className="premium-gate__price-row">
         <div className="premium-gate__price">
-          <span className="premium-gate__price-amount">{stars}</span>
+          <span className="premium-gate__price-amount">{displayStars}</span>
           <span className="premium-gate__price-unit">⭐</span>
         </div>
         <span className="premium-gate__once">единоразово</span>
@@ -95,7 +101,7 @@ export function PremiumGate({
           ? "Активируем доступ…"
           : loading
             ? "Открываем Telegram…"
-            : `Открыть за ${stars} ⭐`}
+            : `Открыть за ${displayStars} ⭐`}
       </button>
 
       {activating && (
