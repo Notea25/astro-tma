@@ -44,7 +44,7 @@ export function PremiumGate({
   pitch,
   benefits,
 }: PremiumGateProps) {
-  const { purchase, loading } = usePayment();
+  const { purchase, loading, activating } = usePayment();
   const entitled = useEntitlement(productId);
 
   // Caller forced free access OR user is entitled → show the real content.
@@ -91,8 +91,29 @@ export function PremiumGate({
         onClick={() => purchase(productId)}
         disabled={loading}
       >
-        {loading ? "Открываем Telegram…" : `Открыть за ${stars} ⭐`}
+        {activating
+          ? "Активируем доступ…"
+          : loading
+            ? "Открываем Telegram…"
+            : `Открыть за ${stars} ⭐`}
       </button>
+
+      {activating && (
+        <motion.div
+          className="premium-gate__activating"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
+        >
+          <div className="premium-gate__spinner" aria-hidden="true" />
+          <div className="premium-gate__activating-title">
+            Открываем доступ
+          </div>
+          <div className="premium-gate__activating-sub">
+            Платёж принят. Ждём подтверждение от Telegram — обычно 2-5 секунд.
+          </div>
+        </motion.div>
+      )}
     </motion.div>
   );
 }

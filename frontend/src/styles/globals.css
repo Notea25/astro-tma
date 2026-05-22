@@ -1130,6 +1130,44 @@ body::after {
   max-width: 320px;
   margin-top: 6px;
 }
+.premium-gate__activating {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: rgba(8, 6, 20, 0.92);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border-radius: var(--card-radius);
+  padding: 22px;
+  text-align: center;
+}
+.premium-gate__spinner {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid rgba(212, 178, 84, 0.18);
+  border-top-color: var(--gold);
+  animation: premium-gate-spin 0.9s linear infinite;
+}
+@keyframes premium-gate-spin {
+  to { transform: rotate(360deg); }
+}
+.premium-gate__activating-title {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 18px;
+  color: var(--gold-light);
+}
+.premium-gate__activating-sub {
+  font-size: 13px;
+  color: var(--text-soft);
+  line-height: 1.5;
+  max-width: 280px;
+}
 .premium-badge {
   font-size: var(--fs-xs);
   color: var(--gold);
