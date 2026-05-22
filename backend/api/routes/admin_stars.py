@@ -78,6 +78,65 @@ def _parse_product(payload: str | None) -> str | None:
     return parts[1] if len(parts) >= 2 else None
 
 
+_NAV_LINKS = (
+    ("База",  "/admin/",                   "db"),
+    ("Stars", "/api/admin/stars.html",     "stars"),
+    ("Цены",  "/api/admin/products.html",  "prices"),
+)
+
+
+def _admin_nav_html(active: str) -> str:
+    """Top nav bar rendered above every custom admin page so the operator
+    can jump between SQLAdmin (БД), Stars overview and Prices editor
+    without retyping the URL."""
+    items = "".join(
+        f'<a href="{href}" class="admin-nav__link{" admin-nav__link--active" if key == active else ""}">{label}</a>'
+        for label, href, key in _NAV_LINKS
+    )
+    return (
+        '<nav class="admin-nav">'
+        '<span class="admin-nav__brand">✦ Astro Admin</span>'
+        f'<span class="admin-nav__links">{items}</span>'
+        "</nav>"
+    )
+
+
+_NAV_CSS = """
+  .admin-nav {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 12px 18px;
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 18px;
+  }
+  .admin-nav__brand {
+    font-family: "Playfair Display", Georgia, serif;
+    color: var(--gold);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+  .admin-nav__links { display: inline-flex; gap: 6px; margin-left: auto; }
+  .admin-nav__link {
+    color: var(--text);
+    text-decoration: none;
+    font-size: 13px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 0.5px solid transparent;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .admin-nav__link:hover { background: rgba(255,255,255,0.04); }
+  .admin-nav__link--active {
+    background: rgba(212,178,84,0.12);
+    color: var(--gold);
+    border-color: var(--border);
+  }
+"""
+
+
 @router.get("/stars")
 async def stars_overview(
     _: str = Depends(_require_admin),
@@ -247,8 +306,9 @@ async def stars_overview_html(
     font-family: "Playfair Display", Georgia, serif;
     color: var(--gold);
     font-weight: 500;
-    margin: 0 0 24px;
+    margin: 0 0 18px;
   }}
+  {_NAV_CSS}
   .totals {{
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -312,6 +372,7 @@ async def stars_overview_html(
 </style>
 </head>
 <body>
+{_admin_nav_html("stars")}
 <h1>✦ Stars · Admin</h1>
 
 <div class="totals">
@@ -343,7 +404,6 @@ async def stars_overview_html(
 </table>
 
 <p class="footer">JSON: <a href="/api/admin/stars">/api/admin/stars</a> ·
-Цены: <a href="/api/admin/products.html">/api/admin/products.html</a> ·
 Бот: @{_esc(settings.TELEGRAM_BOT_USERNAME or 'astrologiyatut_bot')}</p>
 </body>
 </html>"""
@@ -496,9 +556,11 @@ async def admin_products_html(_: str = Depends(_require_admin)) -> Response:
   .toast.show {{ opacity: 1; }}
   a {{ color: var(--gold); }}
   .footer {{ margin-top: 24px; color: var(--muted); font-size: 12px; }}
+  {_NAV_CSS}
 </style>
 </head>
 <body>
+{_admin_nav_html("prices")}
 <h1>✦ Цены продуктов</h1>
 <p class="hint">Изменения применяются мгновенно ко всем новым инвойсам. Чтобы вернуться к каталожной цене — нажмите «Сбросить».</p>
 
@@ -565,7 +627,7 @@ document.querySelectorAll('tr[data-product-id]').forEach(row => {{
 </script>
 
 <p class="footer">
-  Транзакции: <a href="/api/admin/stars.html">/api/admin/stars.html</a>
+  JSON: <a href="/api/admin/products">/api/admin/products</a>
 </p>
 </body>
 </html>"""
