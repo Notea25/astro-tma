@@ -30,6 +30,12 @@ from core.logging import get_logger
 from core.settings import settings
 from db.database import get_db
 from db.models import Purchase, Subscription
+from services.payments.pricing import (
+    clear_product_price,
+    get_all_overrides,
+    set_product_price,
+)
+from services.payments.stars import PRODUCTS
 
 log = get_logger(__name__)
 
@@ -337,7 +343,230 @@ async def stars_overview_html(
 </table>
 
 <p class="footer">JSON: <a href="/api/admin/stars">/api/admin/stars</a> ·
+Цены: <a href="/api/admin/products.html">/api/admin/products.html</a> ·
 Бот: @{_esc(settings.TELEGRAM_BOT_USERNAME or 'astrologiyatut_bot')}</p>
+</body>
+</html>"""
+    return HTMLResponse(html)
+
+
+# ── Pricing management ───────────────────────────────────────────────────────
+
+
+@router.get("/products")
+async def admin_list_products(_: str = Depends(_require_admin)) -> dict[str, Any]:
+    """Per-product effective Stars price (override → catalogue default)."""
+    overrides = await get_all_overrides(list(PRODUCTS.keys()))
+    items: list[dict[str, Any]] = []
+    for pid, product in PRODUCTS.items():
+        override = overrides.get(pid)
+        items.append(
+            {
+                "id": pid,
+                "name": product["name"],
+                "type": product["type"],
+                "default_stars": product["stars"],
+                "current_stars": override if override is not None else product["stars"],
+                "is_overridden": override is not None,
+            }
+        )
+    return {"products": items}
+
+
+@router.post("/products/{product_id}/price")
+async def admin_set_price(
+    product_id: str,
+    payload: dict[str, Any],
+    _: str = Depends(_require_admin),
+) -> dict[str, Any]:
+    if product_id not in PRODUCTS:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown product")
+    try:
+        stars = int(payload.get("stars", 0))
+    except (TypeError, ValueError):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "stars must be an integer")
+    if stars < 1:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "stars must be ≥ 1")
+    await set_product_price(product_id, stars)
+    log.info("admin.price_set", product=product_id, stars=stars)
+    return {"product_id": product_id, "stars": stars, "ok": True}
+
+
+@router.delete("/products/{product_id}/price")
+async def admin_clear_price(
+    product_id: str,
+    _: str = Depends(_require_admin),
+) -> dict[str, Any]:
+    if product_id not in PRODUCTS:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown product")
+    await clear_product_price(product_id)
+    log.info("admin.price_cleared", product=product_id)
+    return {"product_id": product_id, "ok": True}
+
+
+@router.get("/products.html", response_class=HTMLResponse)
+async def admin_products_html(_: str = Depends(_require_admin)) -> Response:
+    """Inline HTML page to edit Stars prices per product."""
+    overrides = await get_all_overrides(list(PRODUCTS.keys()))
+    rows = []
+    for pid, product in PRODUCTS.items():
+        override = overrides.get(pid)
+        current = override if override is not None else product["stars"]
+        badge = (
+            "<span class='badge override'>override</span>"
+            if override is not None
+            else "<span class='badge default'>default</span>"
+        )
+        rows.append(
+            f"<tr data-product-id='{pid}'>"
+            f"<td><strong>{product['name']}</strong>"
+            f"<div class='muted'>{pid}</div></td>"
+            f"<td>{product['type']}</td>"
+            f"<td>{product['stars']} ⭐</td>"
+            f"<td>"
+            f"<input type='number' min='1' value='{current}' class='price-input' /> "
+            f"{badge}"
+            f"</td>"
+            f"<td>"
+            f"<button class='save'>Сохранить</button> "
+            f"<button class='reset'>Сбросить</button>"
+            f"</td>"
+            f"</tr>"
+        )
+    rows_html = "".join(rows) or "<tr><td colspan='5'><em>пусто</em></td></tr>"
+
+    html = f"""<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Products · Admin</title>
+<style>
+  :root {{
+    --bg: #0a0906; --surface: #141210; --border: rgba(196,163,90,0.25);
+    --text: #f0ecf8; --muted: #8a8492; --gold: #c4a35a;
+    --green: #8bc89b; --red: #e88b8b;
+  }}
+  body {{
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", Roboto, sans-serif;
+    margin: 0; padding: 24px;
+  }}
+  h1 {{
+    font-family: "Playfair Display", Georgia, serif;
+    color: var(--gold); font-weight: 500; margin: 0 0 12px;
+  }}
+  .hint {{ color: var(--muted); font-size: 13px; margin: 0 0 20px; }}
+  table {{
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: 12px; overflow: hidden; font-size: 13px;
+  }}
+  thead th {{
+    text-align: left; padding: 12px 14px; color: var(--muted);
+    font-weight: 500; text-transform: uppercase; font-size: 11px;
+    letter-spacing: 0.08em; border-bottom: 0.5px solid var(--border);
+  }}
+  tbody td {{ padding: 12px 14px; border-top: 0.5px solid rgba(255,255,255,0.05); }}
+  .muted {{ color: var(--muted); font-size: 11px; }}
+  .price-input {{
+    width: 80px; padding: 6px 8px;
+    background: rgba(255,255,255,0.04); border: 0.5px solid var(--border);
+    border-radius: 8px; color: var(--text); font-size: 14px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }}
+  .badge {{
+    margin-left: 8px; padding: 2px 8px; border-radius: 999px;
+    font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  }}
+  .badge.override {{ background: rgba(212,178,84,0.18); color: var(--gold); }}
+  .badge.default {{ background: rgba(255,255,255,0.06); color: var(--muted); }}
+  button {{
+    background: var(--gold); color: #0a0906; border: none;
+    padding: 6px 14px; border-radius: 8px; cursor: pointer;
+    font-size: 12px; font-weight: 500;
+  }}
+  button.reset {{ background: transparent; color: var(--muted); border: 0.5px solid var(--border); }}
+  button:disabled {{ opacity: 0.5; cursor: wait; }}
+  .toast {{
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--surface); border: 0.5px solid var(--gold-border);
+    color: var(--text); padding: 10px 18px; border-radius: 10px;
+    font-size: 13px; opacity: 0; transition: opacity 0.2s;
+  }}
+  .toast.show {{ opacity: 1; }}
+  a {{ color: var(--gold); }}
+  .footer {{ margin-top: 24px; color: var(--muted); font-size: 12px; }}
+</style>
+</head>
+<body>
+<h1>✦ Цены продуктов</h1>
+<p class="hint">Изменения применяются мгновенно ко всем новым инвойсам. Чтобы вернуться к каталожной цене — нажмите «Сбросить».</p>
+
+<table>
+  <thead><tr>
+    <th>Продукт</th><th>Тип</th><th>В каталоге</th>
+    <th>Текущая цена</th><th>Действия</th>
+  </tr></thead>
+  <tbody>{rows_html}</tbody>
+</table>
+
+<div class="toast" id="toast"></div>
+
+<script>
+function showToast(msg) {{
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}}
+
+document.querySelectorAll('tr[data-product-id]').forEach(row => {{
+  const pid = row.dataset.productId;
+  const input = row.querySelector('.price-input');
+  const saveBtn = row.querySelector('.save');
+  const resetBtn = row.querySelector('.reset');
+
+  saveBtn.addEventListener('click', async () => {{
+    const stars = parseInt(input.value, 10);
+    if (!stars || stars < 1) {{ showToast('Цена должна быть ≥ 1'); return; }}
+    saveBtn.disabled = true;
+    try {{
+      const resp = await fetch(`/api/admin/products/${{pid}}/price`, {{
+        method: 'POST',
+        headers: {{ 'Content-Type': 'application/json' }},
+        body: JSON.stringify({{ stars }}),
+        credentials: 'include',
+      }});
+      if (!resp.ok) throw new Error(`HTTP ${{resp.status}}`);
+      showToast(`${{pid}}: ${{stars}} ⭐ сохранено`);
+      setTimeout(() => location.reload(), 600);
+    }} catch (e) {{
+      showToast(`Ошибка: ${{e.message}}`);
+      saveBtn.disabled = false;
+    }}
+  }});
+
+  resetBtn.addEventListener('click', async () => {{
+    resetBtn.disabled = true;
+    try {{
+      const resp = await fetch(`/api/admin/products/${{pid}}/price`, {{
+        method: 'DELETE',
+        credentials: 'include',
+      }});
+      if (!resp.ok) throw new Error(`HTTP ${{resp.status}}`);
+      showToast(`${{pid}}: сброшено к каталожной цене`);
+      setTimeout(() => location.reload(), 600);
+    }} catch (e) {{
+      showToast(`Ошибка: ${{e.message}}`);
+      resetBtn.disabled = false;
+    }}
+  }});
+}});
+</script>
+
+<p class="footer">
+  Транзакции: <a href="/api/admin/stars.html">/api/admin/stars.html</a>
+</p>
 </body>
 </html>"""
     return HTMLResponse(html)

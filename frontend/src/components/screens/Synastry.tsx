@@ -148,7 +148,7 @@ function getManualSynastryErrorMessage(error: unknown): string | null {
 }
 
 export function Synastry() {
-  const { setScreen, user } = useAppStore();
+  const { setScreen } = useAppStore();
   const { impact, notification } = useHaptic();
   const queryClient = useQueryClient();
   const [localResult, setLocalResult] = useState<SynastryResult | null>(null);
@@ -244,7 +244,6 @@ export function Synastry() {
             productId="synastry"
             productName="Синастрия"
             stars={100}
-            locked={!user?.is_premium}
           >
             {pending && pending.length > 0 && (
               <div className="horoscope-card" style={{ marginBottom: 12 }}>

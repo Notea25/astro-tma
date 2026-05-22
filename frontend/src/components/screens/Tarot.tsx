@@ -66,7 +66,7 @@ const SPREADS: SpreadOption[] = [
 ];
 
 export function Tarot() {
-  const { user, setScreen } = useAppStore();
+  const { setScreen } = useAppStore();
   const { impact } = useHaptic();
   const [selectedSpread, setSelectedSpread] = useState<SpreadType | null>(null);
   const [reading, setReading] = useState<TarotSpreadResponse | null>(null);
@@ -210,7 +210,7 @@ export function Tarot() {
           {SPREADS.map((spread) => (
             <PremiumGate
               key={spread.id}
-              locked={spread.premium && !user?.is_premium}
+              locked={spread.premium}
               productId={spread.productId}
               productName={spread.name}
               stars={spread.stars}

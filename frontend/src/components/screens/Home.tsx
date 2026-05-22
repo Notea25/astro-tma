@@ -10,6 +10,7 @@ import { HeaderAvatarButton } from "@/components/ui/HeaderAvatarButton";
 import { horoscopeApi, tarotApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
+import { useEntitlementChecker } from "@/hooks/useEntitlement";
 import { ZODIAC_SIGNS } from "@/types";
 
 const POWER_EMOJIS: Record<string, string[]> = {
@@ -61,6 +62,7 @@ export function Home() {
   const [cardRevealed, setCardRevealed] = useState(false);
 
   const signInfo = ZODIAC_SIGNS.find((s) => s.value === user?.sun_sign);
+  const isEntitled = useEntitlementChecker();
 
   const { data: horoscope, isLoading } = useQuery({
     queryKey: ["horoscope", period, user?.id],
@@ -139,7 +141,10 @@ export function Home() {
             }}
           >
             {PERIOD_LABELS[p]}
-            {p !== "today" && !user?.is_premium && (
+            {p !== "today" &&
+              !isEntitled(
+                PERIOD_PRODUCTS[p as Exclude<Period, "today">].id,
+              ) && (
               <svg
                 className="period-tab__lock"
                 width="10"
@@ -189,7 +194,6 @@ export function Home() {
           </motion.div>
         ) : (
           <PremiumGate
-            locked={!user?.is_premium}
             productId={PERIOD_PRODUCTS[period as Exclude<Period, "today">].id}
             productName={`Гороскоп — ${PERIOD_LABELS[period]}`}
             stars={PERIOD_PRODUCTS[period as Exclude<Period, "today">].stars}

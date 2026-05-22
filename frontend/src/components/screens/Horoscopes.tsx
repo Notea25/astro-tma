@@ -8,6 +8,7 @@ import { HeaderAvatarButton } from "@/components/ui/HeaderAvatarButton";
 import { horoscopeApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
+import { useEntitlementChecker } from "@/hooks/useEntitlement";
 import { ZODIAC_SIGNS, type ZodiacSign } from "@/types";
 
 type Period = "today" | "tomorrow" | "week" | "month";
@@ -40,6 +41,7 @@ export function Horoscopes() {
     (user?.sun_sign as ZodiacSign | undefined) ?? "leo",
   );
   const signInfo = ZODIAC_SIGNS.find((s) => s.value === selectedSign);
+  const isEntitled = useEntitlementChecker();
 
   const { data: horoscope, isLoading } = useQuery({
     queryKey: ["horoscope-page", period, selectedSign, user?.id],
@@ -95,7 +97,10 @@ export function Horoscopes() {
               }}
             >
               {PERIOD_LABELS[p]}
-              {p !== "today" && !user?.is_premium && (
+              {p !== "today" &&
+                !isEntitled(
+                  PERIOD_PRODUCTS[p as Exclude<Period, "today">].id,
+                ) && (
                 <svg
                   className="period-tab__lock"
                   width="10"
@@ -138,7 +143,6 @@ export function Horoscopes() {
           </motion.div>
         ) : (
           <PremiumGate
-            locked={!user?.is_premium}
             productId={PERIOD_PRODUCTS[period as Exclude<Period, "today">].id}
             productName={`Гороскоп — ${PERIOD_LABELS[period]}`}
             stars={PERIOD_PRODUCTS[period as Exclude<Period, "today">].stars}

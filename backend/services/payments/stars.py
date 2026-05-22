@@ -111,7 +111,12 @@ async def create_invoice_link(user_id: int, product_id: str) -> str:
     if product_id not in PRODUCTS:
         raise ValueError(f"Unknown product: {product_id!r}")
 
+    # Lazy import to avoid circular dependency between pricing and stars.
+    from services.payments.pricing import get_product_price
+
     product = PRODUCTS[product_id]
+    stars_amount = await get_product_price(product_id, default=product["stars"])
+
     # Payload encodes user + product + timestamp for webhook verification
     payload = f"{user_id}:{product_id}:{int(time.time())}"
 
@@ -124,7 +129,7 @@ async def create_invoice_link(user_id: int, product_id: str) -> str:
                 "payload": payload,
                 "provider_token": "",   # MUST be empty for Stars
                 "currency": "XTR",      # Telegram Stars
-                "prices": [{"label": product["name"], "amount": product["stars"]}],
+                "prices": [{"label": product["name"], "amount": stars_amount}],
             },
         )
 
@@ -134,7 +139,12 @@ async def create_invoice_link(user_id: int, product_id: str) -> str:
         raise RuntimeError(f"Telegram API error: {data.get('description')}")
 
     invoice_url: str = data["result"]
-    log.info("stars.invoice_created", user_id=user_id, product=product_id, stars=product["stars"])
+    log.info(
+        "stars.invoice_created",
+        user_id=user_id,
+        product=product_id,
+        stars=stars_amount,
+    )
     return invoice_url
 
 

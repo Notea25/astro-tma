@@ -13,6 +13,7 @@ from api.schemas.payments import (
 from core.logging import get_logger
 from core.settings import settings
 from db.database import get_db
+from services.payments.pricing import get_product_price
 from services.payments.stars import (
     PRODUCTS,
     create_invoice_link,
@@ -27,11 +28,19 @@ log = get_logger(__name__)
 @router.get("/products", response_model=list[ProductInfo])
 async def list_products(tg_user: dict = Depends(get_tg_user)):
     """Return all purchasable products with current Stars prices."""
-    return [
-        ProductInfo(id=pid, name=p["name"], description=p["description"],
-                    stars=p["stars"], type=p["type"])
-        for pid, p in PRODUCTS.items()
-    ]
+    out: list[ProductInfo] = []
+    for pid, p in PRODUCTS.items():
+        stars = await get_product_price(pid, default=p["stars"])
+        out.append(
+            ProductInfo(
+                id=pid,
+                name=p["name"],
+                description=p["description"],
+                stars=stars,
+                type=p["type"],
+            )
+        )
+    return out
 
 
 @router.post("/invoice", response_model=CreateInvoiceResponse)

@@ -53,18 +53,19 @@ class Settings(BaseSettings):
     # GeoNames
     GEONAMES_USERNAME: str = "demo"
 
-    # Stars pricing
-    PRICE_HOROSCOPE_TOMORROW: int = 25
-    PRICE_HOROSCOPE_WEEK: int = 50
-    PRICE_HOROSCOPE_MONTH: int = 75
-    PRICE_TAROT_CELTIC: int = 30
-    PRICE_TAROT_WEEK: int = 40
-    PRICE_NATAL_FULL: int = 150
-    PRICE_SYNASTRY: int = 100
-    PRICE_TRANSITS_WEEK: int = 50
-    PRICE_TRANSITS_MONTH: int = 100
-    PRICE_SUBSCRIPTION_MONTH: int = 299
-    PRICE_SUBSCRIPTION_YEAR: int = 1990
+    # Stars pricing — defaults are TEST values (1 ⭐ everywhere).
+    # Production prices are set in .env / admin Redis overrides.
+    PRICE_HOROSCOPE_TOMORROW: int = 1
+    PRICE_HOROSCOPE_WEEK: int = 1
+    PRICE_HOROSCOPE_MONTH: int = 1
+    PRICE_TAROT_CELTIC: int = 1
+    PRICE_TAROT_WEEK: int = 1
+    PRICE_NATAL_FULL: int = 1
+    PRICE_SYNASTRY: int = 1
+    PRICE_TRANSITS_WEEK: int = 1
+    PRICE_TRANSITS_MONTH: int = 1
+    PRICE_SUBSCRIPTION_MONTH: int = 1
+    PRICE_SUBSCRIPTION_YEAR: int = 1
 
     # Feature flags
     FEATURE_PUSH_NOTIFICATIONS: bool = True
