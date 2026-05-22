@@ -613,6 +613,27 @@ export function Profile() {
 
         <PurchasesCard />
 
+        <motion.button
+          type="button"
+          className="profile-cta-card"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.115 }}
+          onClick={() => {
+            impact("light");
+            useAppStore.getState().setScreen("referral");
+          }}
+        >
+          <span className="profile-cta-card__icon" aria-hidden="true">✦</span>
+          <span className="profile-cta-card__col">
+            <span className="profile-cta-card__title">Пригласить друзей</span>
+            <span className="profile-cta-card__desc">
+              Когда друг купит — получите 14 дней Premium
+            </span>
+          </span>
+          <span className="profile-cta-card__chev" aria-hidden="true">›</span>
+        </motion.button>
+
         <motion.div
           className="natal-card"
           initial={{ opacity: 0, y: 16 }}

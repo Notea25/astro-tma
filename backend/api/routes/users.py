@@ -134,6 +134,8 @@ async def get_my_purchases(
             "created_at": p.created_at.isoformat() if p.created_at else None,
         })
 
+    from datetime import UTC, datetime
+    now = datetime.now(UTC)
     sub_rows = await db.execute(
         select(Subscription)
         .where(Subscription.user_id == user_id)
@@ -148,11 +150,15 @@ async def get_my_purchases(
             "stars_paid": s.stars_paid,
             "starts_at": s.starts_at.isoformat() if s.starts_at else None,
             "expires_at": s.expires_at.isoformat() if s.expires_at else None,
+            "is_trial": bool(getattr(s, "is_trial", False)),
+            "trial_reason": getattr(s, "trial_reason", None),
         }
         subscriptions_out.append(item)
         if (
             active is None
             and s.status == SubscriptionStatus.ACTIVE
+            and s.expires_at
+            and s.expires_at > now
         ):
             active = item
 

@@ -26,12 +26,32 @@ export interface SubscriptionItem {
   stars_paid: number;
   starts_at: string | null;
   expires_at: string | null;
+  is_trial?: boolean;
+  trial_reason?: string | null;
 }
 
 export interface MyPurchasesResponse {
   purchases: PurchaseItem[];
   subscriptions: SubscriptionItem[];
   active_subscription: SubscriptionItem | null;
+}
+
+export interface ReferralStats {
+  invited_total: number;
+  purchased: number;
+  days_earned: number;
+}
+
+export interface ReferralInfoResponse {
+  code: string;
+  invite_url: string;
+  stats: ReferralStats;
+}
+
+export interface ApplyReferralResponse {
+  success: boolean;
+  days_granted: number;
+  message: string;
 }
 
 export interface EnergyScores {

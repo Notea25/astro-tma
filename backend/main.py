@@ -25,6 +25,7 @@ from api.routes import (
     natal,
     news,
     payments,
+    referrals,
     synastry,
     tarot,
     transits,
@@ -162,6 +163,7 @@ app.include_router(transits.router,      prefix="/api")
 app.include_router(synastry.router,      prefix="/api")
 app.include_router(glossary.router,      prefix="/api")
 app.include_router(news.router,          prefix="/api")
+app.include_router(referrals.router,     prefix="/api")
 app.include_router(admin_stars.router,   prefix="/api")
 
 

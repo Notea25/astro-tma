@@ -2,15 +2,14 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { EnergyBars } from "@/components/ui/EnergyBars";
-import { PremiumGate } from "@/components/ui/PremiumGate";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { HoroscopeSkeleton, MoonCardSkeleton } from "@/components/ui/Skeleton";
 import { MeaningText } from "@/components/ui/MeaningText";
 import { HeaderAvatarButton } from "@/components/ui/HeaderAvatarButton";
+import { EntitlementBadge } from "@/components/ui/EntitlementBadge";
 import { horoscopeApi, tarotApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
-import { useEntitlementChecker } from "@/hooks/useEntitlement";
 import { ZODIAC_SIGNS } from "@/types";
 
 const POWER_EMOJIS: Record<string, string[]> = {
@@ -46,15 +45,6 @@ const PERIOD_LABELS: Record<Period, string> = {
   week: "Неделя",
   month: "Месяц",
 };
-const PERIOD_PRODUCTS: Record<
-  Exclude<Period, "today">,
-  { id: string; stars: number }
-> = {
-  tomorrow: { id: "horoscope_tomorrow", stars: 25 },
-  week: { id: "horoscope_week", stars: 50 },
-  month: { id: "horoscope_month", stars: 75 },
-};
-
 export function Home() {
   const { user, setScreen } = useAppStore();
   const { impact } = useHaptic();
@@ -62,7 +52,6 @@ export function Home() {
   const [cardRevealed, setCardRevealed] = useState(false);
 
   const signInfo = ZODIAC_SIGNS.find((s) => s.value === user?.sun_sign);
-  const isEntitled = useEntitlementChecker();
 
   const { data: horoscope, isLoading } = useQuery({
     queryKey: ["horoscope", period, user?.id],
@@ -126,7 +115,10 @@ export function Home() {
           </h1>
           <p className="screen-date">{today}</p>
         </div>
-        <HeaderAvatarButton />
+        <div className="home-header__right">
+          <EntitlementBadge />
+          <HeaderAvatarButton />
+        </div>
       </div>
 
       {/* Period tabs */}
@@ -141,25 +133,6 @@ export function Home() {
             }}
           >
             {PERIOD_LABELS[p]}
-            {p !== "today" &&
-              !isEntitled(
-                PERIOD_PRODUCTS[p as Exclude<Period, "today">].id,
-              ) && (
-              <svg
-                className="period-tab__lock"
-                width="10"
-                height="10"
-                viewBox="0 0 10 10"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <rect x="1.5" y="4.5" width="7" height="5" rx="1" />
-                <path d="M3 4.5V3a2 2 0 0 1 4 0v1.5" />
-              </svg>
-            )}
           </button>
         ))}
       </div>
@@ -193,21 +166,15 @@ export function Home() {
             </div>
           </motion.div>
         ) : (
-          <PremiumGate
-            productId={PERIOD_PRODUCTS[period as Exclude<Period, "today">].id}
-            productName={`Гороскоп — ${PERIOD_LABELS[period]}`}
-            stars={PERIOD_PRODUCTS[period as Exclude<Period, "today">].stars}
+          <motion.div
+            key={period}
+            className="horoscope-card glass-gold"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
           >
-            <motion.div
-              key={period}
-              className="horoscope-card glass-gold"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <div className="card-tag">✦ {PERIOD_LABELS[period]}</div>
-              <p className="horoscope-text">{horoscope?.text_ru}</p>
-            </motion.div>
-          </PremiumGate>
+            <div className="card-tag">✦ {PERIOD_LABELS[period]}</div>
+            <p className="horoscope-text">{horoscope?.text_ru}</p>
+          </motion.div>
         )}
 
         {/* Moon card + Tarot daily — only on "today" tab. For tomorrow/week/month

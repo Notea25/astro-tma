@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import WebApp from "@twa-dev/sdk";
 import { PremiumGate } from "@/components/ui/PremiumGate";
@@ -45,23 +45,23 @@ const SPREADS: SpreadOption[] = [
     cardCount: 10,
     premium: true,
     productId: "tarot_celtic",
-    stars: 30,
+    stars: 29,
   },
   {
     id: "week",
     name: "Карты на неделю",
     cardCount: 7,
     premium: true,
-    productId: "tarot_week",
-    stars: 40,
+    productId: "subscription_month",
+    stars: 199,
   },
   {
     id: "relationship",
     name: "Отношения",
     cardCount: 5,
     premium: true,
-    productId: "tarot_celtic",
-    stars: 30,
+    productId: "subscription_month",
+    stars: 199,
   },
 ];
 
@@ -74,6 +74,12 @@ export function Tarot() {
   const [allFlipped, setAllFlipped] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [threeCardInProgress, setThreeCardInProgress] = useState(false);
+
+  const { data: celticStatus } = useQuery({
+    queryKey: ["tarot-celtic-status"],
+    queryFn: tarotApi.celticStatus,
+    staleTime: 1000 * 60,
+  });
 
   const drawMutation = useMutation({
     mutationFn: tarotApi.draw,
@@ -207,29 +213,46 @@ export function Tarot() {
           <HeaderAvatarButton />
         </div>
         <div className="screen-content">
-          {SPREADS.map((spread) => (
-            <PremiumGate
-              key={spread.id}
-              locked={spread.premium}
-              productId={spread.productId}
-              productName={spread.name}
-              stars={spread.stars}
-            >
-              <motion.div
-                className="spread-option"
-                onClick={() => handleSelectSpread(spread)}
-                whileTap={{ scale: 0.97 }}
+          {SPREADS.map((spread) => {
+            const isCeltic = spread.id === "celtic_cross";
+            // Celtic Cross: lifetime 2 free draws — only gate when the
+            // backend says they're out AND not entitled.
+            const locked = isCeltic
+              ? celticStatus?.needs_gate ?? false
+              : spread.premium;
+            const freeNote =
+              isCeltic && !celticStatus?.is_premium && !celticStatus?.has_purchased
+                ? celticStatus
+                  ? `Осталось ${celticStatus.free_remaining} из ${celticStatus.free_limit} бесплатных`
+                  : null
+                : null;
+            return (
+              <PremiumGate
+                key={spread.id}
+                locked={locked}
+                productId={spread.productId}
+                productName={spread.name}
+                stars={spread.stars}
               >
-                <div className="spread-option__info">
-                  <div className="spread-option__name">{spread.name}</div>
-                  <div className="spread-option__count">
-                    {spread.cardCount} карт
+                <motion.div
+                  className="spread-option"
+                  onClick={() => handleSelectSpread(spread)}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  <div className="spread-option__info">
+                    <div className="spread-option__name">{spread.name}</div>
+                    <div className="spread-option__count">
+                      {spread.cardCount} карт
+                      {freeNote ? ` · ${freeNote}` : ""}
+                    </div>
                   </div>
-                </div>
-                {spread.premium && <span className="premium-badge">✦ Pro</span>}
-              </motion.div>
-            </PremiumGate>
-          ))}
+                  {spread.premium && (
+                    <span className="premium-badge">✦ Pro</span>
+                  )}
+                </motion.div>
+              </PremiumGate>
+            );
+          })}
 
           <motion.div
             className="spread-option"

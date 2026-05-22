@@ -647,6 +647,14 @@ export const tarotApi = {
     ),
   history: () =>
     request<import("@/types").TarotHistoryItem[]>("GET", "/tarot/history"),
+  celticStatus: () =>
+    request<{
+      free_remaining: number;
+      free_limit: number;
+      has_purchased: boolean;
+      is_premium: boolean;
+      needs_gate: boolean;
+    }>("GET", "/tarot/celtic/status"),
   getReading: (reading_id: number) =>
     request<import("@/types").TarotSpreadResponse>(
       "GET",
@@ -751,6 +759,15 @@ export const macApi = {
     request<import("@/types").MacPickResponse>("POST", "/mac/pick", body),
   picks: () =>
     request<import("@/types").MacPickHistoryItem[]>("GET", "/mac/picks"),
+};
+
+export const referralsApi = {
+  getMe: () =>
+    request<import("@/types").ReferralInfoResponse>("GET", "/referrals/me"),
+  apply: (code: string) =>
+    request<import("@/types").ApplyReferralResponse>("POST", "/referrals/apply", {
+      code,
+    }),
 };
 
 export const paymentsApi = {

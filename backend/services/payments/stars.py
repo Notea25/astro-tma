@@ -29,72 +29,39 @@ from db.models import (
 log = get_logger(__name__)
 
 # ── Product catalogue ─────────────────────────────────────────────────────────
+# Launch monetization v1.1: horoscope_*, tarot_week, transits_*_preview were
+# retired (gateways moved to the subscription). Existing rows in `purchases`
+# for those product_ids stay in the DB for historical accuracy.
 PRODUCTS: dict[str, dict] = {
-    "horoscope_tomorrow": {
-        "name": "Гороскоп на завтра",
-        "description": "Персональный гороскоп на завтра с анализом транзитов",
-        "stars": settings.PRICE_HOROSCOPE_TOMORROW,
-        "type": "one_time",
-    },
-    "horoscope_week": {
-        "name": "Гороскоп на неделю",
-        "description": "Прогноз на 7 дней с анализом планетарных влияний",
-        "stars": settings.PRICE_HOROSCOPE_WEEK,
-        "type": "one_time",
-    },
-    "horoscope_month": {
-        "name": "Гороскоп на месяц",
-        "description": "Детальный прогноз на весь месяц",
-        "stars": settings.PRICE_HOROSCOPE_MONTH,
-        "type": "one_time",
-    },
     "tarot_celtic": {
         "name": "Расклад Кельтский Крест",
-        "description": "Глубокий 10-карточный расклад для детального анализа ситуации",
+        "description": "10-карточный расклад с глубокой LLM-интерпретацией. Первые 2 расклада в подарок.",
         "stars": settings.PRICE_TAROT_CELTIC,
-        "type": "one_time",
-    },
-    "tarot_week": {
-        "name": "Таро на неделю",
-        "description": "Одна карта на каждый день недели",
-        "stars": settings.PRICE_TAROT_WEEK,
         "type": "one_time",
     },
     "natal_full": {
         "name": "Полная натальная карта",
-        "description": "Детальный анализ всех планет, домов и аспектов + SVG-диаграмма",
+        "description": "Длинные интерпретации планет/домов/аспектов + персональный портрет + PDF",
         "stars": settings.PRICE_NATAL_FULL,
         "type": "one_time",
     },
     "synastry": {
-        "name": "Синастрия — совместимость",
+        "name": "Синастрия — детальный анализ",
         "description": "Глубокий анализ совместимости двух натальных карт",
         "stars": settings.PRICE_SYNASTRY,
         "type": "one_time",
     },
-    "transits_week_preview": {
-        "name": "Транзиты на неделю",
-        "description": "Ключевые аспекты и ингрессы на ближайшие 7 дней",
-        "stars": settings.PRICE_TRANSITS_WEEK,
-        "type": "one_time",
-    },
-    "transits_month_preview": {
-        "name": "Транзиты на месяц",
-        "description": "Главные события и ингрессы на ближайшие 30 дней",
-        "stars": settings.PRICE_TRANSITS_MONTH,
-        "type": "one_time",
-    },
     "subscription_month": {
-        "name": "Premium подписка — 30 дней",
-        "description": "Полный доступ ко всем функциям на 30 дней",
+        "name": "Premium — 30 дней",
+        "description": "Все интерпретации, прогнозы на неделю и месяц, Таро на неделю, push о значимых транзитах",
         "stars": settings.PRICE_SUBSCRIPTION_MONTH,
         "type": "subscription",
         "duration_days": 30,
         "plan": SubscriptionPlan.PREMIUM_MONTH,
     },
     "subscription_year": {
-        "name": "Premium подписка — 365 дней",
-        "description": "Полный доступ ко всем функциям на год. Выгода 40%!",
+        "name": "Premium — 365 дней",
+        "description": "Всё то же, что в месячной, но на год. Выгода 38%.",
         "stars": settings.PRICE_SUBSCRIPTION_YEAR,
         "type": "subscription",
         "duration_days": 365,
@@ -213,3 +180,21 @@ async def grant_product_access(
         product=product_id,
         charge_id=tg_payment_charge_id,
     )
+
+    # Referral programme — Model B: pay the referrer when their friend
+    # converts. Lazy import to avoid a circular dep between payments and
+    # referrals routes.
+    try:
+        from db.models import User as _UserModel
+        from sqlalchemy import select as _select
+        from api.routes.referrals import maybe_award_first_purchase
+        result = await db.execute(_select(_UserModel).where(_UserModel.id == user_id))
+        u = result.scalar_one_or_none()
+        await maybe_award_first_purchase(
+            db,
+            referee_user_id=user_id,
+            referee_first_name=u.tg_first_name if u else None,
+            product_id=product_id,
+        )
+    except Exception as e:  # noqa: BLE001
+        log.warning("referral.hook_failed", user_id=user_id, error=str(e))
