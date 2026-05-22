@@ -39,6 +39,11 @@
   animation: zSpinCw 150s linear infinite;
 }
 
+.arrowsRing {
+  transform-origin: 250px 250px;
+  animation: zSpinCcw 50s linear infinite;
+}
+
 .centerSun {
   transform-origin: 250px 250px;
   animation: zPulseSun 4.4s ease-in-out infinite;
