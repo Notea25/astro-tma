@@ -34,11 +34,6 @@
   animation: zSpinCcw 90s linear infinite;
 }
 
-.innerRing {
-  transform-origin: 250px 250px;
-  animation: zSpinCw 150s linear infinite;
-}
-
 .arrowsRing {
   transform-origin: 250px 250px;
   animation: zSpinCcw 50s linear infinite;
