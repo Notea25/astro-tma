@@ -17,7 +17,9 @@ from db.models import (
 )
 
 log = get_logger(__name__)
-DAILY_OPEN_APP_LABEL = "Узнать больше"
+# Phrased as a direct invitation to *finish* an interrupted message —
+# matches the cliff-hanger ellipsis at the end of the push body.
+DAILY_OPEN_APP_LABEL = "✦ Дочитать в приложении"
 
 _MONTHS_RU = (
     "января",
@@ -70,12 +72,15 @@ _CLOSINGS = (
     "Не торопите события: день лучше раскрывается постепенно.",
 )
 
+# Tease, don't conclude — every pattern ends with `{teaser}` so the
+# message visually breaks off mid-thought. The CTA button "Читать далее"
+# is the only natural way for the user to finish reading.
 _MESSAGE_PATTERNS = (
-    "{greeting}\n{intro}\n\n{bridge}\n{teaser}\n\n{closing}",
-    "{greeting}\n{intro}\n\n{teaser}\n\n{closing}",
-    "{greeting}\n\n{bridge}\n{teaser}\n\n{intro}\n{closing}",
-    "{greeting}\n{intro}\n\n{teaser}\n\nМягкий ориентир: {closing_lc}",
-    "{greeting}\n\n{intro}\n{bridge_lc}\n{teaser}\n\n{closing}",
+    "{greeting}\n{intro}\n\n{teaser}",
+    "{greeting}\n\n{intro}\n{teaser}",
+    "{greeting}\n{intro}\n\n{bridge}\n{teaser}",
+    "{greeting}\n{intro}\n{bridge_lc}\n{teaser}",
+    "{greeting}\n\n{intro}\n\n{bridge}\n{teaser}",
 )
 
 _SENTENCE_RE = re.compile(r"[^.!?…]+[.!?…]+", re.MULTILINE)
@@ -179,32 +184,64 @@ def _normalize_horoscope_text(text: str) -> str:
     return text.replace("...", "…")
 
 
-def _sentence_teaser(text: str, *, max_chars: int = 360) -> str:
-    """Return a complete teaser without dangling ellipsis or half-sentences."""
+_CLIFFHANGER_TRIM = ".,!?;:—-– \t\n«»\"'"
+
+
+def _cliffhanger_cut(text: str, *, target_chars: int) -> str:
+    """Trim `text` to roughly `target_chars`, snap back to the previous
+    word boundary, strip any dangling punctuation, and append `…`."""
+    if not text:
+        return ""
+    cut = text[:target_chars]
+    last_space = cut.rfind(" ")
+    if last_space > target_chars * 0.5:
+        cut = cut[:last_space]
+    cut = cut.rstrip(_CLIFFHANGER_TRIM)
+    if not cut:
+        return ""
+    return f"{cut}…"
+
+
+def _sentence_teaser(text: str, *, target_chars: int = 240) -> str:
+    """Cliff-hanger teaser: cut the daily horoscope mid-sentence so the
+    push reads like a story that breaks off — pushing the user to tap
+    "Читать далее" to finish it inside the app.
+
+    Strategy: keep 1-2 full sentences if they fit comfortably, then cut
+    the next sentence mid-word and append `…`. Never end on a full stop.
+    """
     normalized = _normalize_horoscope_text(text)
     if not normalized:
-        return "День лучше проживать внимательнее: выбирайте спокойный темп, не распыляйтесь и оставляйте место для ясного решения."
+        return "Сегодня есть на что обратить внимание — подробности уже ждут вас…"
 
     sentences = [match.group(0).strip() for match in _SENTENCE_RE.finditer(normalized)]
     if not sentences:
-        return _ensure_final_period(normalized[:max_chars])
+        return _cliffhanger_cut(normalized, target_chars=target_chars)
 
-    picked: list[str] = []
+    # Keep whole sentences until we're close to the target, then chip a
+    # piece of the next one so the message ends in the middle.
+    kept: list[str] = []
     total = 0
+    cut_next: str | None = None
     for sentence in sentences:
-        clean = _ensure_final_period(sentence)
-        projected = total + len(clean) + (1 if picked else 0)
-        if picked and projected > max_chars:
-            break
-        if not picked and len(clean) > max_chars:
-            match = _SAFE_CUT_RE.match(clean[:max_chars])
-            return _ensure_final_period(match.group(1) if match else clean[:max_chars])
-        picked.append(clean)
-        total = projected
-        if total >= 220:
-            break
+        sentence = sentence.strip()
+        projected = total + len(sentence) + (1 if kept else 0)
+        if projected <= target_chars - 20:
+            kept.append(sentence)
+            total = projected
+            continue
+        # The next sentence won't fit whole — keep a fragment of it.
+        remaining = max(40, target_chars - total - 2)
+        cut_next = _cliffhanger_cut(sentence, target_chars=remaining)
+        break
 
-    return _ensure_final_period(" ".join(picked))
+    if cut_next:
+        prefix = " ".join(kept).strip()
+        return (f"{prefix} {cut_next}" if prefix else cut_next).strip()
+
+    # Everything fit — still drop the final period so it feels open-ended.
+    joined = " ".join(kept).strip()
+    return _cliffhanger_cut(joined, target_chars=target_chars) or joined
 
 
 def build_daily_message(
@@ -238,7 +275,11 @@ def build_daily_message(
     )
 
 
+<<<<<<< HEAD
 def build_open_app_markup(label: str = DAILY_OPEN_APP_LABEL) -> dict | None:
+=======
+def build_open_app_markup(label: str = DAILY_OPEN_APP_LABEL) -> dict | None:
+>>>>>>> 1ca048e (feat(push): cliff-hanger teaser — break mid-thought so users open the app)
     """Inline-keyboard with a single `web_app` button that opens the Mini App.
     Returns None if the WebApp URL is not configured (so callers can pass
     the result straight to send_message without conditionals)."""

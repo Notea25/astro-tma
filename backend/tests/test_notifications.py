@@ -64,16 +64,17 @@ def test_open_app_markup_returns_webapp_button(monkeypatch):
     assert markup["inline_keyboard"][0][0]["web_app"]["url"] == "https://example.com/"
 
 
-def test_open_app_markup_default_label_invites_to_learn_more(monkeypatch):
+def test_open_app_markup_default_label_invites_to_finish_reading(monkeypatch):
     from core.settings import settings
 
     monkeypatch.setattr(settings, "TELEGRAM_WEBAPP_URL", "https://example.com/")
 
     markup = build_open_app_markup()
 
-    assert DAILY_OPEN_APP_LABEL == "Узнать больше"
+    # The label should match the cliff-hanger framing of the push body.
+    assert DAILY_OPEN_APP_LABEL == "✦ Дочитать в приложении"
     assert markup is not None
-    assert markup["inline_keyboard"][0][0]["text"] == "Узнать больше"
+    assert markup["inline_keyboard"][0][0]["text"] == DAILY_OPEN_APP_LABEL
 
 
 def test_open_app_markup_returns_none_when_url_missing(monkeypatch):
@@ -83,7 +84,9 @@ def test_open_app_markup_returns_none_when_url_missing(monkeypatch):
     assert build_open_app_markup() is None
 
 
-def test_daily_message_does_not_cut_sentence_with_ellipsis():
+def test_daily_message_ends_with_cliffhanger_ellipsis():
+    """Push has to break off mid-thought so the user has a reason to tap
+    "Читать далее" inside the bot."""
     long_text = (
         "В этот день Луна в Деве создаёт гармоничный секстиль с вашим "
         "управителем Плутоном, пробуждая в вас дар различения и стратегического "
@@ -101,7 +104,26 @@ def test_daily_message_does_not_cut_sentence_with_ellipsis():
         message_date=date(2026, 5, 17),
     )
 
-    assert "…" not in message
-    assert "В сфере чувств Венера находится в\n" not in message
-    assert message.rstrip().endswith((".", "!", "?"))
-    assert "вопросов, которые требовали вашего внимания." in message
+    # Must end with the unfinished-thought marker, NOT a full stop.
+    assert message.rstrip().endswith("…")
+    assert not message.rstrip().endswith((".", "!", "?"))
+    # Generic "soft closer" phrases should be gone — they killed the cliffhanger.
+    for soft_closer in (
+        "Пусть день сложится без лишней спешки.",
+        "Берегите темп и выбирайте то, что действительно важно.",
+        "Пусть сегодня будет больше ясности, чем шума.",
+    ):
+        assert soft_closer not in message
+
+
+def test_daily_message_short_horoscope_still_breaks_off():
+    """Even when the horoscope is shorter than the target, we still want
+    the ellipsis tail."""
+    message = build_daily_message(
+        _user(),
+        sign_ru="Лев",
+        text_ru="Сегодня лучше не спешить с выводами. Дайте темам дозреть.",
+        energy={},
+        message_date=date(2026, 5, 17),
+    )
+    assert message.rstrip().endswith("…")
