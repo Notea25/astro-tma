@@ -275,11 +275,7 @@ def build_daily_message(
     )
 
 
-<<<<<<< HEAD
 def build_open_app_markup(label: str = DAILY_OPEN_APP_LABEL) -> dict | None:
-=======
-def build_open_app_markup(label: str = DAILY_OPEN_APP_LABEL) -> dict | None:
->>>>>>> 1ca048e (feat(push): cliff-hanger teaser — break mid-thought so users open the app)
     """Inline-keyboard with a single `web_app` button that opens the Mini App.
     Returns None if the WebApp URL is not configured (so callers can pass
     the result straight to send_message without conditionals)."""
