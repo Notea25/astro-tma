@@ -11,6 +11,7 @@
   overflow: hidden;
 }
 
+/* Cosmic background fills the whole screen */
 .starsBg {
   position: absolute;
   inset: 0;
@@ -20,6 +21,7 @@
   z-index: 0;
 }
 
+/* Largest wheel (outer names + outer symbols) — clockwise, fastest */
 .namesRing {
   transform-origin: 250px 250px;
   animation: zSpinCw 70s linear infinite;
@@ -29,27 +31,32 @@
   animation: zSpinCw 70s linear infinite;
 }
 
+/* Middle wheel — counter-clockwise */
 .midRing {
   transform-origin: 250px 250px;
   animation: zSpinCcw 90s linear infinite;
 }
 
-.arrowsRing {
+/* Smallest inner wheel — clockwise but slower than the largest */
+.innerRing {
   transform-origin: 250px 250px;
-  animation: zSpinCcw 50s linear infinite;
+  animation: zSpinCw 150s linear infinite;
 }
 
+/* Center sun gently pulses */
 .centerSun {
   transform-origin: 250px 250px;
   animation: zPulseSun 4.4s ease-in-out infinite;
 }
 
+/* Aura ring expanding */
 .centerAura {
   transform-box: fill-box;
   transform-origin: center;
   animation: zPulseAura 3.6s ease-out infinite;
 }
 
+/* Footer */
 .footer {
   position: relative;
   z-index: 2;
