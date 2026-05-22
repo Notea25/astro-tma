@@ -1,0 +1,26 @@
+import { useQuery } from "@tanstack/react-query";
+import { usersApi } from "@/services/api";
+import { useAppStore } from "@/stores/app";
+
+/**
+ * Returns true if the current user is entitled to `productId` content —
+ * either they hold an active Premium subscription OR they bought this
+ * specific product once. Keeps the list of completed purchases in
+ * React Query cache so the rest of the UI can stay in sync after a
+ * successful Stars payment.
+ */
+export function useEntitlement(productId: string | undefined | null): boolean {
+  const isPremium = useAppStore((s) => s.user?.is_premium ?? false);
+  const { data } = useQuery({
+    queryKey: ["my-purchases"],
+    queryFn: usersApi.getPurchases,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  if (isPremium) return true;
+  if (!productId || !data) return false;
+
+  return data.purchases.some(
+    (p) => p.product_id === productId && p.status === "completed",
+  );
+}
