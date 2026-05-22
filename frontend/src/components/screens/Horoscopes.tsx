@@ -8,6 +8,7 @@ import { horoscopeApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
 import { ZODIAC_SIGNS, type ZodiacSign } from "@/types";
+import { ZodiacIcon } from "@/components/ui/ZodiacIcon";
 
 type Period = "today" | "tomorrow" | "week" | "month";
 
@@ -67,7 +68,9 @@ export function Horoscopes() {
                 }}
                 aria-pressed={active}
               >
-                <span className="zodiac-grid__emoji">{s.emoji}</span>
+                <span className="zodiac-grid__emoji">
+                  <ZodiacIcon sign={s.value} size={28} />
+                </span>
                 <span className="zodiac-grid__label">{s.label}</span>
               </button>
             );
@@ -102,7 +105,9 @@ export function Horoscopes() {
           >
             <div className="card-tag">✦ {PERIOD_LABELS[period]}</div>
             <div className="card-sign-row">
-              <div className="sign-badge">{signInfo?.emoji ?? "✦"}</div>
+              <div className="sign-badge">
+                {signInfo ? <ZodiacIcon sign={signInfo.value} size={32} /> : "✦"}
+              </div>
               <div>
                 <div className="sign-name">{signInfo?.label}</div>
                 <div className="sign-dates">{signInfo?.dates}</div>

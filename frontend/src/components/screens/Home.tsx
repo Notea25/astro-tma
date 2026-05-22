@@ -11,6 +11,7 @@ import { horoscopeApi, tarotApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
 import { ZODIAC_SIGNS } from "@/types";
+import { ZodiacIcon } from "@/components/ui/ZodiacIcon";
 
 const POWER_EMOJIS: Record<string, string[]> = {
   aries: ["🔥", "⚡", "🗡️", "🏆", "🚀", "💥"],
@@ -150,7 +151,9 @@ export function Home() {
           >
             <div className="card-tag">✦ Гороскоп на сегодня</div>
             <div className="card-sign-row">
-              <div className="sign-badge">{signInfo?.emoji ?? "✦"}</div>
+              <div className="sign-badge">
+                {signInfo ? <ZodiacIcon sign={signInfo.value} size={32} /> : "✦"}
+              </div>
               <div>
                 <div className="sign-name">{signInfo?.label ?? "Ваш знак"}</div>
                 <div className="sign-dates">{signInfo?.dates}</div>
@@ -244,7 +247,9 @@ export function Home() {
                     setScreen("horoscopes");
                   }}
                 >
-                  <span className="zodiac-scroll__symbol">{s.emoji}</span>
+                  <span className="zodiac-scroll__symbol">
+                    <ZodiacIcon sign={s.value} size={26} />
+                  </span>
                   <span className="zodiac-scroll__constellation" aria-hidden="true">
                     ✦ &nbsp;✦&nbsp; ✧ &nbsp;✦
                   </span>
