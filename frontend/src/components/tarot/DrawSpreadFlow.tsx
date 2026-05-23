@@ -9,7 +9,7 @@ import styles from './CelticCrossFlow.module.css'
 
 const INITIAL_FAN_COUNT = 15
 
-type DrawSpreadKey = Extract<SpreadKey, 'week' | 'relationship'>
+type DrawSpreadKey = Exclude<SpreadKey, 'celtic_cross'>
 type Phase = 'idle' | 'shuffle' | 'fan' | 'reading' | 'complete'
 
 interface FlyCardState {

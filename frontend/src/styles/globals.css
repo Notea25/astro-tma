@@ -4142,7 +4142,7 @@ body::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: url("/tarot-back.jpg") center / cover no-repeat;
+  background: url("/tarot-back.jpg") center / contain no-repeat;
 }
 .tarot-flip__face--back::after {
   content: "";
