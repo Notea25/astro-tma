@@ -941,6 +941,14 @@
   text-align: center;
 }
 
+.pdfHint {
+  margin: 10px 16px 0;
+  color: rgba(255, 220, 160, 0.62);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  text-align: center;
+}
+
 .referencePanel {
   padding: 22px;
   border-radius: 22px;
