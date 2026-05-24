@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -72,9 +71,7 @@ async def get_my_referral_info(
     await db.commit()
 
     invited_total = (
-        await db.execute(
-            select(func.count(User.id)).where(User.referred_by == user_id)
-        )
+        await db.execute(select(func.count(User.id)).where(User.referred_by == user_id))
     ).scalar_one() or 0
     purchased = (
         await db.execute(
@@ -90,8 +87,7 @@ async def get_my_referral_info(
     ).scalar_one() or 0
     days_earned = (
         await db.execute(
-            select(func.coalesce(func.sum(ReferralReward.days_granted), 0))
-            .where(
+            select(func.coalesce(func.sum(ReferralReward.days_granted), 0)).where(
                 ReferralReward.referrer_id == user_id,
                 ReferralReward.event_type == "first_purchase_referrer_bonus",
             )
@@ -120,7 +116,9 @@ async def apply_referral(
     that bonus is triggered later by `grant_product_access`."""
     if not settings.FEATURE_REFERRAL_PROGRAM:
         return ApplyReferralResponse(
-            success=False, days_granted=0, message="Реферальная программа отключена",
+            success=False,
+            days_granted=0,
+            message="Реферальная программа отключена",
         )
 
     referral_code = body.code.lower().strip()
@@ -132,13 +130,17 @@ async def apply_referral(
     ).scalar_one_or_none()
     if not referrer:
         return ApplyReferralResponse(
-            success=False, days_granted=0, message="Код не найден",
+            success=False,
+            days_granted=0,
+            message="Код не найден",
         )
 
     # 2. Self-referral
     if referrer.id == user_id:
         return ApplyReferralResponse(
-            success=False, days_granted=0, message="Нельзя пригласить самого себя",
+            success=False,
+            days_granted=0,
+            message="Нельзя пригласить самого себя",
         )
 
     # 3. Get referee
@@ -149,7 +151,9 @@ async def apply_referral(
     # 4. Already referred — silent no-op
     if referee.referred_by is not None:
         return ApplyReferralResponse(
-            success=False, days_granted=0, message="Код уже применён ранее",
+            success=False,
+            days_granted=0,
+            message="Код уже применён ранее",
         )
 
     # 5. 24h window — fresh accounts only
@@ -168,7 +172,10 @@ async def apply_referral(
     # 7. Extend the welcome trial (welcome 3 + extension 4 = 7 total)
     days = settings.REFERRAL_TRIAL_EXTENSION_DAYS
     await grant_trial_days(
-        db, user_id=referee.id, days=days, reason="referral_signup_referee",
+        db,
+        user_id=referee.id,
+        days=days,
+        reason="referral_signup_referee",
     )
 
     # 8. Audit row — UniqueConstraint protects against repeated calls
@@ -276,6 +283,7 @@ async def maybe_award_first_purchase(
     # want a sendMessage hiccup to roll back the bonus grant.
     try:
         from services.referrals.notifications import notify_referrer_of_bonus
+
         await notify_referrer_of_bonus(
             referrer_id=user.referred_by,
             referee_name=referee_first_name or "ваш друг",
