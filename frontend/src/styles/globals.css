@@ -8775,6 +8775,51 @@ body::before {
   white-space: nowrap;
 }
 
+/* "Мои покупки" — standalone screen */
+.purchases-screen .screen-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding-bottom: var(--space-xl);
+}
+.purchases-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 18px 20px;
+  border-radius: var(--card-radius);
+}
+.purchases-summary__label {
+  color: var(--text-soft);
+  font-size: var(--fs-tiny);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+.purchases-summary__value {
+  font-family: "Playfair Display", serif;
+  font-size: 1.75rem;
+  color: var(--gold);
+}
+.purchases-list {
+  padding: 4px 16px;
+}
+.purchases-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 24px;
+  color: var(--text-soft);
+  text-align: center;
+}
+.purchases-empty__icon {
+  font-family: "Playfair Display", serif;
+  font-size: 40px;
+  color: var(--gold);
+  text-shadow: 0 0 18px var(--gold-glow);
+}
+
 /* ════════════════════════════════════════════════════════════════════════════
    LAUNCH MONETIZATION — trial badge, soft paywall, referral screen
    ════════════════════════════════════════════════════════════════════════════ */
