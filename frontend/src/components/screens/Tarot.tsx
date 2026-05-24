@@ -4,8 +4,6 @@ import { motion } from "framer-motion";
 import WebApp from "@twa-dev/sdk";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { HeaderAvatarButton } from "@/components/ui/HeaderAvatarButton";
-import { ThreeCardFlow } from "./ThreeCardFlow";
-import { SpreadLayout } from "./SpreadLayout";
 import { SpreadIntro } from "./SpreadIntro";
 import { CelticCrossFlow } from "@/components/tarot/CelticCrossFlow";
 import { DrawSpreadFlow } from "@/components/tarot/DrawSpreadFlow";
@@ -41,7 +39,6 @@ export function Tarot() {
   const [showInfo, setShowInfo] = useState(true);
   const [allFlipped, setAllFlipped] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [threeCardInProgress, setThreeCardInProgress] = useState(false);
 
   const drawMutation = useMutation({
     mutationFn: tarotApi.draw,
@@ -61,7 +58,6 @@ export function Tarot() {
       drawMutation.reset();
     } else if (!showInfo && selectedSpread) {
       setShowInfo(true);
-      setThreeCardInProgress(false);
     } else if (selectedSpread) {
       setSelectedSpread(null);
       setShowInfo(true);
@@ -72,8 +68,7 @@ export function Tarot() {
     }
   }, [reading, selectedSpread, showInfo, showHistory, setScreen, drawMutation]);
 
-  const isSpreadInProgress =
-    !!reading || (selectedSpread === "three_card" && threeCardInProgress);
+  const isSpreadInProgress = !!reading || drawMutation.isPending;
 
   const requestBack = useCallback(() => {
     if (!isSpreadInProgress) {
@@ -82,7 +77,7 @@ export function Tarot() {
     }
     const message =
       "Вы уверены, что хотите выйти?\nТекущий расклад будет потерян.";
-    if (typeof WebApp.showConfirm === "function") {
+    if (WebApp.initData && typeof WebApp.showConfirm === "function") {
       WebApp.showConfirm(message, (confirmed: boolean) => {
         if (confirmed) handleBack();
       });
@@ -112,10 +107,7 @@ export function Tarot() {
     if (!selectedSpread) return;
 
     setShowInfo(false);
-
-    if (selectedSpread !== "three_card") {
-      handleDraw();
-    }
+    handleDraw();
   };
 
   if (!selectedSpread && showHistory) {
@@ -218,7 +210,7 @@ export function Tarot() {
     return (
       <div className="screen tarot-screen">
         <div className="screen-header screen-header--with-back">
-          <button className="back-btn" onClick={requestBack} aria-label="Назад">
+          <button className="back-btn" onClick={handleBack} aria-label="Назад">
             <svg
               width="20"
               height="20"
@@ -243,37 +235,10 @@ export function Tarot() {
     );
   }
 
-  if (selectedSpread === "three_card") {
-    return (
-      <div className="screen tarot-screen">
-        <div className="screen-header screen-header--with-back">
-          <button className="back-btn" onClick={requestBack} aria-label="Назад">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 20 20"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M13 4l-6 6 6 6" />
-            </svg>
-          </button>
-          <h2 className="screen-title">{spreadInfo.name}</h2>
-        </div>
-        <div className="screen-content">
-          <ThreeCardFlow onProgressChange={setThreeCardInProgress} />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="screen tarot-screen">
       <div className="screen-header screen-header--with-back">
-        <button className="back-btn" onClick={requestBack} aria-label="Назад">
+        <button className="back-btn" onClick={handleBack} aria-label="Назад">
           <svg
             width="20"
             height="20"
@@ -333,12 +298,11 @@ export function Tarot() {
         )}
 
         {reading &&
-          (selectedSpread === "week" || selectedSpread === "relationship") && (
+          selectedSpread !== "celtic_cross" && (
             <>
               <DrawSpreadFlow
                 spreadType={selectedSpread}
                 cards={reading.cards}
-                reusedExisting={reading.reused_existing}
                 nextResetAt={reading.next_reset_at}
                 onAllFlipped={() => setAllFlipped(true)}
               />
@@ -351,26 +315,6 @@ export function Tarot() {
               )}
             </>
           )}
-
-        {reading &&
-          selectedSpread !== "celtic_cross" &&
-          selectedSpread !== "week" &&
-          selectedSpread !== "relationship" && (
-          <>
-            <SpreadLayout
-              spreadType={selectedSpread}
-              cards={reading.cards}
-              onAllFlipped={() => setAllFlipped(true)}
-            />
-            {allFlipped && (
-              <SpreadReading
-                spreadType={selectedSpread}
-                readingId={reading.reading_id}
-                cards={reading.cards}
-              />
-            )}
-          </>
-        )}
       </div>
     </div>
   );

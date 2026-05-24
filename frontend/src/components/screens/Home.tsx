@@ -152,7 +152,11 @@ export function Home() {
             <div className="card-tag">✦ Гороскоп на сегодня</div>
             <div className="card-sign-row">
               <div className="sign-badge">
-                {signInfo ? <ZodiacIcon sign={signInfo.value} size={32} /> : "✦"}
+                {signInfo ? (
+                  <ZodiacIcon sign={signInfo.value} size={32} />
+                ) : (
+                  "✦"
+                )}
               </div>
               <div>
                 <div className="sign-name">{signInfo?.label ?? "Ваш знак"}</div>
@@ -232,7 +236,16 @@ export function Home() {
                 }}
               >
                 Смотреть все
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <path d="M4 2l4 4-4 4" />
                 </svg>
               </button>
@@ -250,7 +263,10 @@ export function Home() {
                   <span className="zodiac-scroll__symbol">
                     <ZodiacIcon sign={s.value} size={26} />
                   </span>
-                  <span className="zodiac-scroll__constellation" aria-hidden="true">
+                  <span
+                    className="zodiac-scroll__constellation"
+                    aria-hidden="true"
+                  >
                     ✦ &nbsp;✦&nbsp; ✧ &nbsp;✦
                   </span>
                   <span className="zodiac-scroll__name">{s.label}</span>
@@ -271,10 +287,14 @@ export function Home() {
                 setScreen("moon");
               }}
             >
-              <span className="home-tile__emoji" aria-hidden="true">🌙</span>
+              <span className="home-tile__emoji" aria-hidden="true">
+                🌙
+              </span>
               <span className="home-tile__title">Лунный календарь</span>
               <span className="home-tile__desc">Фазы Луны и влияние дней</span>
-              <span className="home-tile__arrow" aria-hidden="true">›</span>
+              <span className="home-tile__arrow" aria-hidden="true">
+                ›
+              </span>
             </button>
             <button
               className="home-tile"
@@ -283,10 +303,16 @@ export function Home() {
                 setScreen("natal");
               }}
             >
-              <span className="home-tile__emoji" aria-hidden="true">✦</span>
+              <span className="home-tile__emoji" aria-hidden="true">
+                ✦
+              </span>
               <span className="home-tile__title">Натальная карта</span>
-              <span className="home-tile__desc">Расшифровка вашей карты рождения</span>
-              <span className="home-tile__arrow" aria-hidden="true">›</span>
+              <span className="home-tile__desc">
+                Расшифровка вашей карты рождения
+              </span>
+              <span className="home-tile__arrow" aria-hidden="true">
+                ›
+              </span>
             </button>
             <button
               className="home-tile"
@@ -295,10 +321,14 @@ export function Home() {
                 setScreen("synastry_invite");
               }}
             >
-              <span className="home-tile__emoji" aria-hidden="true">♥</span>
+              <span className="home-tile__emoji" aria-hidden="true">
+                ♥
+              </span>
               <span className="home-tile__title">Совместимость</span>
               <span className="home-tile__desc">Сравните два знака</span>
-              <span className="home-tile__arrow" aria-hidden="true">›</span>
+              <span className="home-tile__arrow" aria-hidden="true">
+                ›
+              </span>
             </button>
             <button
               className="home-tile"
@@ -307,128 +337,157 @@ export function Home() {
                 setScreen("tarot");
               }}
             >
-              <span className="home-tile__emoji" aria-hidden="true">🎴</span>
+              <span className="home-tile__emoji" aria-hidden="true">
+                🎴
+              </span>
               <span className="home-tile__title">Таро</span>
               <span className="home-tile__desc">Расклады и совет дня</span>
-              <span className="home-tile__arrow" aria-hidden="true">›</span>
+              <span className="home-tile__arrow" aria-hidden="true">
+                ›
+              </span>
             </button>
           </section>
         )}
 
         {/* Tarot card of the day */}
         {period === "today" && (
-        <motion.div
-          className="tarot-day-card"
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.14 }}
-        >
-          <div className="card-tag">✦ Карта таро на сегодня</div>
-          <div className="tarot-flip">
-            <motion.div
-              key={cardRevealed ? "front" : "back"}
-              className={`tarot-flip__inner ${
-                cardRevealed ? "tarot-flip__inner--revealed" : ""
-              }`}
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.28, ease: "easeOut" }}
-            >
-              {!cardRevealed ? (
-                <button
-                  type="button"
-                  className="tarot-flip__face tarot-flip__face--back"
-                  onClick={() => {
-                    impact("medium");
-                    setCardRevealed(true);
-                  }}
-                >
-                  <div className="tarot-flip__back-ornament" aria-hidden="true">
-                    ✦
-                  </div>
-                  <span className="tarot-flip__hint">Нажмите, чтобы открыть</span>
-                  <span className="tarot-flip__free">Бесплатно</span>
-                </button>
-              ) : (
-                <div className="tarot-flip__face tarot-flip__face--front">
-                  {cardLoading || cardFetching ? (
-                    <div className="tarot-flip__loading">
-                      <LoadingSpinner message="Карты открываются..." />
-                    </div>
-                  ) : cardError ? (
-                    <div className="tarot-flip__empty">
-                      <p className="tarot-flip__empty-title">Не удалось открыть карту</p>
+          <motion.div
+            className="tarot-day-card"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.14 }}
+          >
+            <div className="card-tag">✦ Карта таро на сегодня</div>
+            <div className="tarot-day-card__split">
+              <div className="tarot-day-card__visual">
+                <div className="tarot-flip">
+                  <motion.div
+                    key={cardRevealed ? "front" : "back"}
+                    className={`tarot-flip__inner ${
+                      cardRevealed ? "tarot-flip__inner--revealed" : ""
+                    }`}
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.28, ease: "easeOut" }}
+                  >
+                    {!cardRevealed ? (
                       <button
                         type="button"
-                        className="tarot-flip__retry"
+                        className="tarot-flip__face tarot-flip__face--back"
                         onClick={() => {
-                          impact("light");
-                          void refetchDailyCard();
+                          impact("medium");
+                          setCardRevealed(true);
                         }}
-                      >
-                        Повторить
-                      </button>
-                    </div>
-                  ) : openedDailyCard ? (
-                    <>
-                      <div className="tarot-flip__img-wrap">
-                        {openedDailyCard.image_url ? (
-                          <img
-                            src={openedDailyCard.image_url}
-                            alt={openedDailyCard.name_ru}
-                            className="tarot-flip__img"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="tarot-flip__img-fallback">
-                            {openedDailyCard.emoji}
+                        aria-label="Открыть карту дня"
+                      />
+                    ) : (
+                      <div className="tarot-flip__face tarot-flip__face--front">
+                        {cardLoading || cardFetching ? (
+                          <div className="tarot-flip__loading">
+                            <LoadingSpinner message="Карты открываются..." />
                           </div>
-                        )}
-                        <span
-                          className={`tarot-flip__orientation ${
-                            openedDailyCard.reversed
-                              ? "tarot-flip__orientation--rev"
-                              : ""
-                          }`}
-                        >
-                          {openedDailyCard.reversed ? "↓ Перевёрнутое" : "↑ Прямое"}
-                        </span>
+                        ) : openedDailyCard ? (
+                          <div className="tarot-flip__img-wrap">
+                            {openedDailyCard.image_url ? (
+                              <img
+                                src={openedDailyCard.image_url}
+                                alt={openedDailyCard.name_ru}
+                                className="tarot-flip__img"
+                                loading="lazy"
+                              />
+                            ) : (
+                              <div className="tarot-flip__img-fallback">
+                                {openedDailyCard.emoji}
+                              </div>
+                            )}
+                          </div>
+                        ) : null}
                       </div>
-                      <div className="tarot-flip__info">
-                        <div className="tarot-flip__arcana">
-                          {openedDailyCard.arcana === "major"
-                            ? "Старший аркан"
-                            : "Младший аркан"}
-                        </div>
-                        <div className="tarot-flip__name">
-                          {openedDailyCard.name_ru}
-                        </div>
-                        <p className="tarot-flip__keywords">
-                          {openedDailyCard.keywords_ru?.slice(0, 3).join(" · ")}
-                        </p>
-                        <MeaningText text={openedDailyCard.meaning_ru} compact />
-                      </div>
-                    </>
-                  ) : (
-                    <div className="tarot-flip__empty">
-                      <p className="tarot-flip__empty-title">Карта пока не пришла</p>
-                      <button
-                        type="button"
-                        className="tarot-flip__retry"
-                        onClick={() => {
-                          impact("light");
-                          void refetchDailyCard();
-                        }}
-                      >
-                        Открыть снова
-                      </button>
-                    </div>
-                  )}
+                    )}
+                  </motion.div>
                 </div>
-              )}
-            </motion.div>
-          </div>
-        </motion.div>
+              </div>
+              <motion.div
+                key={cardRevealed ? "text-front" : "text-back"}
+                className="tarot-day-card__text"
+                initial={{ opacity: 0, x: 8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.32, ease: [0.22, 0.61, 0.36, 1] }}
+              >
+                {!cardRevealed ? (
+                  <>
+                    <div className="tarot-day-card__hint-title">
+                      Ваша карта дня
+                    </div>
+                    <p className="tarot-day-card__hint-desc">
+                      Нажмите на карту слева, чтобы узнать совет на сегодня.
+                    </p>
+                    <span className="tarot-flip__free">Бесплатно</span>
+                  </>
+                ) : cardError ? (
+                  <div className="tarot-flip__empty">
+                    <p className="tarot-flip__empty-title">
+                      Не удалось открыть карту
+                    </p>
+                    <button
+                      type="button"
+                      className="tarot-flip__retry"
+                      onClick={() => {
+                        impact("light");
+                        void refetchDailyCard();
+                      }}
+                    >
+                      Повторить
+                    </button>
+                  </div>
+                ) : openedDailyCard ? (
+                  <div className="tarot-flip__info">
+                    <div className="tarot-flip__meta-row">
+                      <span className="tarot-flip__arcana">
+                        {openedDailyCard.arcana === "major"
+                          ? "Старший аркан"
+                          : "Младший аркан"}
+                      </span>
+                      <span
+                        className={`tarot-flip__orientation ${
+                          openedDailyCard.reversed
+                            ? "tarot-flip__orientation--rev"
+                            : ""
+                        }`}
+                      >
+                        {openedDailyCard.reversed
+                          ? "↓ Перевёрнутое"
+                          : "↑ Прямое"}
+                      </span>
+                    </div>
+                    <div className="tarot-flip__name">
+                      {openedDailyCard.name_ru}
+                    </div>
+                    <p className="tarot-flip__keywords">
+                      {openedDailyCard.keywords_ru?.slice(0, 3).join(" · ")}
+                    </p>
+                    <MeaningText text={openedDailyCard.meaning_ru} compact />
+                  </div>
+                ) : !cardLoading && !cardFetching ? (
+                  <div className="tarot-flip__empty">
+                    <p className="tarot-flip__empty-title">
+                      Карта пока не пришла
+                    </p>
+                    <button
+                      type="button"
+                      className="tarot-flip__retry"
+                      onClick={() => {
+                        impact("light");
+                        void refetchDailyCard();
+                      }}
+                    >
+                      Открыть снова
+                    </button>
+                  </div>
+                ) : null}
+              </motion.div>
+            </div>
+          </motion.div>
         )}
       </div>
     </div>
