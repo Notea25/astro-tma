@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
+import WebApp from "@twa-dev/sdk";
 import { usersApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
 import type { SubscriptionItem } from "@/types";
@@ -49,6 +50,12 @@ function _computeStatus(active: SubscriptionItem | null | undefined): Entitlemen
   };
 }
 
+function isLocalBrowserWithoutTelegram(): boolean {
+  if (WebApp.initData) return false;
+  if (typeof window === "undefined") return false;
+  return ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+}
+
 /**
  * Trial / Premium status derived from /users/me/purchases. Use this when
  * you need to render badges or pop a soft paywall.
@@ -73,6 +80,8 @@ export function useEntitlementStatus(): EntitlementStatus {
  * successful Stars payment.
  */
 export function useEntitlement(productId: string | undefined | null): boolean {
+  if (isLocalBrowserWithoutTelegram()) return true;
+
   const isPremium = useAppStore((s) => s.user?.is_premium ?? false);
   const { data } = useQuery({
     queryKey: ["my-purchases"],
@@ -94,6 +103,7 @@ export function useEntitlement(productId: string | undefined | null): boolean {
  * the period-tab lock icons on the Horoscopes / Transits screens).
  */
 export function useEntitlementChecker(): (productId: string) => boolean {
+  const isLocalDevUnlocked = isLocalBrowserWithoutTelegram();
   const isPremium = useAppStore((s) => s.user?.is_premium ?? false);
   const { data } = useQuery({
     queryKey: ["my-purchases"],
@@ -103,12 +113,13 @@ export function useEntitlementChecker(): (productId: string) => boolean {
 
   return useCallback(
     (productId: string) => {
+      if (isLocalDevUnlocked) return true;
       if (isPremium) return true;
       if (!data) return false;
       return data.purchases.some(
         (p) => p.product_id === productId && p.status === "completed",
       );
     },
-    [isPremium, data],
+    [isLocalDevUnlocked, isPremium, data],
   );
 }
