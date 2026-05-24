@@ -20,7 +20,7 @@ from core.logging import get_logger
 from db.database import get_db
 from db.models import Gender, Purchase, Subscription, SubscriptionStatus, ZodiacSign
 from services.astro.natal import calculate_natal, chart_to_json
-from services.payments.stars import PRODUCTS
+from services.payments.stars import LEGACY_PRODUCT_NAMES_RU, PRODUCTS
 from services.users import repository as user_repo
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -126,9 +126,14 @@ async def get_my_purchases(
     purchases_out: list[dict[str, Any]] = []
     for p in purchase_rows.scalars().all():
         meta = PRODUCTS.get(p.product_id, {})
+        product_name = (
+            meta.get("name")
+            or LEGACY_PRODUCT_NAMES_RU.get(p.product_id)
+            or p.product_id
+        )
         purchases_out.append({
             "product_id": p.product_id,
-            "product_name": meta.get("name", p.product_id),
+            "product_name": product_name,
             "status": p.status.value if hasattr(p.status, "value") else str(p.status),
             "stars_amount": p.stars_amount,
             "created_at": p.created_at.isoformat() if p.created_at else None,
