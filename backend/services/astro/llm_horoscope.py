@@ -35,21 +35,39 @@ _SIGN_ELEMENTS: dict[str, str] = {
 }
 
 
+_WEEKDAY_RU = [
+    "понедельник", "вторник", "среда", "четверг",
+    "пятница", "суббота", "воскресенье",
+]
+_MONTH_RU_GENITIVE = [
+    "января", "февраля", "марта", "апреля", "мая", "июня",
+    "июля", "августа", "сентября", "октября", "ноября", "декабря",
+]
+
+
+def _ru_date(d: date) -> str:
+    """Human Russian date like 'воскресенье, 24 мая 2026'. We pass this
+    explicitly to Haiku because the model is unreliable at computing
+    weekday-from-date itself (it would happily say «в субботу» on a Sunday)."""
+    return f"{_WEEKDAY_RU[d.weekday()]}, {d.day} {_MONTH_RU_GENITIVE[d.month - 1]} {d.year}"
+
+
 def _build_horoscope_prompt(sign: str, target_date: date, period: str = "today") -> str:
     sign_ru = _SIGN_RU.get(sign, sign)
     ruler = _SIGN_RULERS.get(sign, "")
     element = _SIGN_ELEMENTS.get(sign, "")
 
+    ru_date = _ru_date(target_date)
     period_desc = {
-        "today": f"на сегодня ({target_date.strftime('%d.%m.%Y')})",
-        "tomorrow": f"на завтра ({target_date.strftime('%d.%m.%Y')})",
+        "today": f"на сегодня ({ru_date})",
+        "tomorrow": f"на завтра ({ru_date})",
         "week": "на эту неделю",
         "month": "на этот месяц",
     }.get(period, "на сегодня")
 
     return f"""Ты пишешь короткие гороскопы для популярного приложения. Читатели — обычные люди, не астрологи.
 
-Гороскоп {period_desc} для знака {sign_ru} (стихия — {element}, управитель — {ruler}, дата — {target_date.strftime('%d %B %Y')}).
+Гороскоп {period_desc} для знака {sign_ru} (стихия — {element}, управитель — {ruler}). Дата (обязательно используй именно её, если упоминаешь день недели): {ru_date}.
 
 ЧТО НУЖНО НАПИСАТЬ (4-6 предложений):
 - Главный тон периода — что приходит, на что обратить внимание.
