@@ -33,12 +33,6 @@ log = get_logger(__name__)
 # retired (gateways moved to the subscription). Existing rows in `purchases`
 # for those product_ids stay in the DB for historical accuracy.
 PRODUCTS: dict[str, dict] = {
-    "tarot_celtic": {
-        "name": "Расклад Кельтский Крест",
-        "description": "10-карточный расклад с глубокой LLM-интерпретацией. Первые 2 расклада в подарок.",
-        "stars": settings.PRICE_TAROT_CELTIC,
-        "type": "one_time",
-    },
     "natal_full": {
         "name": "Полная натальная карта",
         "description": "Длинные интерпретации планет/домов/аспектов + персональный портрет + PDF",
