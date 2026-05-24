@@ -36,9 +36,6 @@ export function Purchases() {
 
   const purchases = data?.purchases ?? [];
   const active = data?.active_subscription ?? null;
-  const completedPurchases = purchases.filter((p) => p.status === "completed");
-  const total = (active ? active.stars_paid : 0) +
-    completedPurchases.reduce((sum, p) => sum + (p.stars_amount ?? 0), 0);
 
   return (
     <div className="screen purchases-screen">
@@ -85,17 +82,6 @@ export function Purchases() {
           </div>
         ) : (
           <>
-            {total > 0 && (
-              <motion.div
-                className="purchases-summary glass-gold"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <div className="purchases-summary__label">Всего потрачено</div>
-                <div className="purchases-summary__value">{total} ⭐</div>
-              </motion.div>
-            )}
-
             <motion.div
               className="natal-card purchases-list"
               initial={{ opacity: 0, y: 12 }}
