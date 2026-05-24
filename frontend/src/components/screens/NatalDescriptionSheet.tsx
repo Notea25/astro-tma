@@ -14,7 +14,7 @@ function renderBoldInline(line: string): ReactNode[] {
   const parts = line.split(/\*\*(.+?)\*\*/g);
   return parts.map((part, i) =>
     i % 2 === 1 ? (
-      <strong key={i}>{part}</strong>
+      <strong key={i} className={styles.descSheetHeading}>{part}</strong>
     ) : (
       <Fragment key={i}>{part}</Fragment>
     ),

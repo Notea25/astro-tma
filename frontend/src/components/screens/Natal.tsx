@@ -2143,7 +2143,7 @@ function NatalAspectsPanel({
                 "взаимодействуют между собой";
               const fallback = `${name1} и ${name2} ${hint}. Подробнее эта пара раскроется в полном PDF-отчёте.`;
               const text = desc?.short ?? fallback;
-              blocks.push(`${heading}\n${text}`);
+              blocks.push(`${heading}\n\n${text}`);
             }
 
             return blocks.join("\n\n").trim() || null;
