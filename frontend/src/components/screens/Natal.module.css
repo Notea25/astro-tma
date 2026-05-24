@@ -3312,11 +3312,21 @@
 }
 
 .descSheetBody p {
-  margin: 0;
+  margin: 0 0 14px;
   color: var(--ref-text, #ece6f7);
   font-size: 0.98rem;
   line-height: 1.55;
   white-space: pre-wrap;
+}
+.descSheetBody p:last-child {
+  margin-bottom: 0;
+}
+
+.descSheetHeading {
+  display: inline-block;
+  font-weight: 600;
+  color: var(--ref-gold, #E8C862);
+  letter-spacing: 0.01em;
 }
 
 .descSheetLoader {
