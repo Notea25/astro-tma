@@ -55,9 +55,9 @@ class Settings(BaseSettings):
 
     # Stars pricing — boot defaults match the launch monetization spec.
     # Production prices live in .env / admin Redis overrides.
-    PRICE_TAROT_CELTIC: int = 29
+    PRICE_TAROT_CELTIC: int = 29  # retired SKU, kept for back-compat
     PRICE_NATAL_FULL: int = 149
-    PRICE_SYNASTRY: int = 49
+    PRICE_SYNASTRY: int = 79  # bumped from 49 (see UNIT_ECONOMICS.md §6)
     PRICE_SUBSCRIPTION_MONTH: int = 199
     PRICE_SUBSCRIPTION_YEAR: int = 1490
 
