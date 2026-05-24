@@ -2202,15 +2202,13 @@ body::after {
   -webkit-backface-visibility: hidden;
   border-radius: 10px;
   overflow: hidden;
-  box-shadow:
-    0 14px 40px rgba(0, 0, 0, 0.7),
-    0 0 0 1px rgba(201, 168, 76, 0.15);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.7);
 }
 
 /* Face-down: card back with number */
 .spread-slot__back {
-  background: url("/tarot-back.jpg") center/cover no-repeat;
-  border: 1px solid rgba(212, 178, 84, 0.35);
+  background: transparent url("/tarot-back.jpg") center/contain no-repeat;
+  border: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2304,8 +2302,8 @@ body::after {
   width: 36px;
   height: 52px;
   border-radius: 5px;
-  background: url("/tarot-back.jpg") center/cover no-repeat;
-  border: 1px solid rgba(212, 178, 84, 0.32);
+  background: #050505 url("/tarot-back.jpg") center/contain no-repeat;
+  border: 0;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.42);
 }
 .spread-remaining-deck__card:nth-child(1) {
@@ -4384,7 +4382,7 @@ body::after {
   height: 100%;
   border-radius: inherit;
   overflow: hidden;
-  background: url("/tarot-back.jpg") center/cover no-repeat;
+  background: transparent url("/tarot-back.jpg") center/contain no-repeat;
 }
 
 /* ── Wheel scene wrapper ── */
@@ -4435,12 +4433,12 @@ body::after {
 .tarot-card-back {
   width: 100%;
   height: 100%;
-  background: url("/tarot-back.jpg") center/cover no-repeat;
-  border: 0.5px solid rgba(201, 168, 76, 0.28);
+  background: transparent url("/tarot-back.jpg") center/contain no-repeat;
+  border: 0;
   border-radius: inherit;
 }
 .tarot-card-back--large {
-  border: 1px solid rgba(201, 168, 76, 0.4);
+  border: 0;
 }
 
 /* ── Card frame — gold border + glow + shadow ── */
@@ -6086,16 +6084,17 @@ body::before {
 
 .spread-intro-v2__mini-card--ornament {
   background-image: url("/tarot-back.jpg");
-  background-size: cover;
+  background-color: transparent;
+  background-size: contain;
   background-position: center;
+  background-repeat: no-repeat;
   border-radius: 6px;
-  border: 0.5px solid rgba(212, 175, 55, 0.5);
+  border: 0;
   display: grid;
   place-items: center;
   container-type: inline-size;
   box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.45),
-    inset 0 0 0 0.5px rgba(229, 194, 122, 0.25);
+    0 4px 12px rgba(0, 0, 0, 0.45);
 }
 
 .spread-intro-v2__mini-card--ornament::after {
@@ -6404,17 +6403,35 @@ body::before {
 .spread-intro-v2__back-card {
   position: relative;
   width: 100%;
-  aspect-ratio: 68 / 102;
+  aspect-ratio: 794 / 1551;
   border-radius: 10px;
-  background-image: url("/tarot-back.jpg");
-  background-size: cover;
+  overflow: hidden;
+  background-color: #0a0a0a;
+  background-image: url("/tarot-back-moons.jpg");
+  background-size: contain;
   background-position: center;
+  background-repeat: no-repeat;
   display: grid;
   place-items: center;
   container-type: inline-size;
   box-shadow:
-    0 6px 18px rgba(0, 0, 0, 0.45),
-    inset 0 0 0 1px rgba(212, 175, 55, 0.45);
+    0 6px 18px rgba(0, 0, 0, 0.5);
+}
+
+.spread-intro-v2__back-card-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.spread-intro-v2__back-card .spread-intro-v2__back-badge {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  transform: translate(-50%, -50%);
 }
 
 .spread-intro-v2__back-card--positioned {
@@ -6424,21 +6441,29 @@ body::before {
   border-radius: 6px;
 }
 
+.spread-intro-v2__preview-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 480px;
+  margin: 0 auto;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.35));
+}
+
 .spread-intro-v2__back-badge {
-  width: 22cqw;
-  height: 22cqw;
-  background: linear-gradient(180deg, #e7c46a 0%, #b8902f 100%);
-  color: #1a1330;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  color: #151007;
   font-family: var(--tarot-font-display, "Cormorant Garamond", serif);
   font-weight: 700;
-  font-size: 13cqw;
+  font-size: clamp(16px, 14cqw, 26px);
   line-height: 1;
-  display: grid;
-  place-items: center;
-  border-radius: 3px;
-  box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.35),
-    0 2px 5px rgba(0, 0, 0, 0.45);
+  text-align: center;
+  pointer-events: none;
+  text-shadow:
+    0 1px 2px rgba(232, 210, 158, 0.48),
+    0 0 6px rgba(0, 0, 0, 0.35);
 }
 
 .spread-intro-v2__frame--three {

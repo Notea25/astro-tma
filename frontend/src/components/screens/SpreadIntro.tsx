@@ -12,13 +12,6 @@ interface Props {
   onStart: () => void;
 }
 
-const SCALE_BY_KEY: Record<SpreadKey, number> = {
-  three_card: 0.9,
-  celtic_cross: 1.08,
-  week: 1.14,
-  relationship: 1.0,
-};
-
 function ThreeCardIntro({ onStart }: { onStart: () => void }) {
   const config = SPREAD_CONFIG.three_card;
   const positions = config.sections[0]?.positions ?? [];
@@ -67,11 +60,7 @@ export function SpreadIntro({ spreadKey, onStart }: Props) {
 
   const config = SPREAD_CONFIG[spreadKey];
   const { layout, title } = config;
-  const scale = SCALE_BY_KEY[spreadKey] ?? 1.0;
-  const previewW = layout.w * scale;
-  const previewH = layout.h * scale;
-  const cardW = CARD_W * scale;
-  const cardH = CARD_H * scale;
+  const previewCardW = CARD_H * (794 / 1551);
   const titleStyle = {
     "--spread-title-scale": titleScale,
   } as CSSProperties;
@@ -142,28 +131,55 @@ export function SpreadIntro({ spreadKey, onStart }: Props) {
       </h1>
 
       <div className="spread-intro-v2__preview spread-intro-v2__preview--ornament">
-        <div
-          className="spread-intro-v2__preview-stage"
-          style={{ width: previewW, height: previewH }}
+        <svg
+          className="spread-intro-v2__preview-svg"
+          viewBox={`0 0 ${layout.w} ${layout.h}`}
+          preserveAspectRatio="xMidYMid meet"
+          xmlns="http://www.w3.org/2000/svg"
         >
-          {layout.slots.map((slot, idx) => (
-            <div
-              key={idx}
-              className="spread-intro-v2__back-card spread-intro-v2__back-card--positioned"
-              style={{
-                left: slot.x * scale,
-                top: slot.y * scale,
-                width: cardW,
-                height: cardH,
-                ...(slot.rotate
-                  ? { transform: `rotate(${slot.rotate}deg)` }
-                  : {}),
-              }}
-            >
-              <div className="spread-intro-v2__back-badge">{idx + 1}</div>
-            </div>
-          ))}
-        </div>
+          {layout.slots.map((slot, idx) => {
+            const number = idx + 1;
+            const cx = slot.x + CARD_W / 2;
+            const cy = slot.y + CARD_H / 2;
+            const imageX = cx - previewCardW / 2;
+            const transform = slot.rotate
+              ? `rotate(${slot.rotate} ${cx} ${cy})`
+              : undefined;
+            return (
+              <g key={idx} transform={transform}>
+                <image
+                  href="/tarot-back.jpg"
+                  x={imageX}
+                  y={slot.y}
+                  width={previewCardW}
+                  height={CARD_H}
+                  preserveAspectRatio="xMidYMid meet"
+                />
+                <g transform={`translate(${cx} ${cy})`} pointerEvents="none">
+                  <text
+                    x="0"
+                    y="0"
+                    dy="0.05em"
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    alignmentBaseline="middle"
+                    fontFamily="Cormorant Garamond, Georgia, serif"
+                    fontWeight={700}
+                    fontSize={15}
+                    fontVariant="tabular-nums"
+                    style={{ fontFeatureSettings: "'tnum' 1, 'lnum' 1" }}
+                    fill="#151007"
+                    stroke="#e8d29e"
+                    strokeWidth={0.28}
+                    paintOrder="stroke"
+                  >
+                    {number}
+                  </text>
+                </g>
+              </g>
+            );
+          })}
+        </svg>
       </div>
 
       <div className="spread-intro-v2__frame">
