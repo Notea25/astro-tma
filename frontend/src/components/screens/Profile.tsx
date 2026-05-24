@@ -381,27 +381,31 @@ export function Profile() {
           )}
         </motion.div>
 
-        {/* Premium status card */}
-        {user?.is_premium && (
-          <motion.button
-            type="button"
-            className="premium-status-card"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 }}
-            onClick={() => {
-              impact("light");
-              useAppStore.getState().setScreen("premium");
-            }}
-          >
-            <span className="premium-status-card__star" aria-hidden="true">★</span>
-            <span className="premium-status-card__main">
-              <span className="premium-status-card__title">Премиум-доступ</span>
-              <span className="premium-status-card__desc">Активен</span>
+        {/* Premium status card — active or upsell */}
+        <motion.button
+          type="button"
+          className={`premium-status-card ${user?.is_premium ? "" : "premium-status-card--upsell"}`}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          onClick={() => {
+            impact("light");
+            useAppStore.getState().setScreen("premium");
+          }}
+        >
+          <span className="premium-status-card__star" aria-hidden="true">★</span>
+          <span className="premium-status-card__main">
+            <span className="premium-status-card__title">
+              {user?.is_premium ? "Премиум-доступ" : "Открыть Premium"}
             </span>
-            <span className="premium-status-card__arrow" aria-hidden="true">›</span>
-          </motion.button>
-        )}
+            <span className="premium-status-card__desc">
+              {user?.is_premium
+                ? "Активен"
+                : "Все интерпретации, прогнозы и Таро · от 199 ⭐ / мес"}
+            </span>
+          </span>
+          <span className="premium-status-card__arrow" aria-hidden="true">›</span>
+        </motion.button>
 
         {/* Birth data section */}
         <motion.div
