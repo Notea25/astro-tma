@@ -121,6 +121,8 @@ async def draw_tarot(
     if not user:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
 
+    from services.ratelimit import LIMITS, enforce_monthly_limit
+
     period_type = period_type_for_tarot(spread_type)
     latest_result = await db.execute(
         select(TarotReading)
@@ -134,6 +136,11 @@ async def draw_tarot(
     latest = latest_result.scalar_one_or_none()
     if latest and is_active_period(latest.created_at, period_type, now=now_utc()):
         return await _build_spread_response(db, latest, reused_existing=True)
+
+    # Monthly fair-use cap (don't count reused readings — only fresh draws).
+    await enforce_monthly_limit(
+        user.id, "tarot_draw", LIMITS["tarot_draw"], feature_ru="расклады Таро",
+    )
 
     # Load all card IDs
     result = await db.execute(select(TarotCard.id))
