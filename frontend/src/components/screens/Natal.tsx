@@ -2137,7 +2137,7 @@ function NatalAspectsPanel({
               );
               const name1 = aspectDisplayName(aspect.p1);
               const name2 = aspectDisplayName(aspect.p2);
-              const heading = `${name1} ${meta.symbol} ${name2} · орб ${aspect.orb.toFixed(1)}°`;
+              const heading = `**${name1} ${meta.symbol} ${name2} · орб ${aspect.orb.toFixed(1)}°**`;
               const hint =
                 ASPECT_PAIR_FALLBACK_HINT[type] ??
                 "взаимодействуют между собой";
