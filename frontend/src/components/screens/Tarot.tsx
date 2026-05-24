@@ -9,7 +9,7 @@ import { CelticCrossFlow } from "@/components/tarot/CelticCrossFlow";
 import { DrawSpreadFlow } from "@/components/tarot/DrawSpreadFlow";
 import { SpreadReading } from "@/components/tarot/SpreadReading";
 import { TarotHistory } from "@/components/tarot/TarotHistory";
-import { tarotApi } from "@/services/api";
+import { ApiError, tarotApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
 import { useTelegramBackButton } from "@/hooks/useTelegram";
@@ -260,35 +260,44 @@ export function Tarot() {
           <LoadingSpinner message="Тасуем колоду..." />
         )}
 
-        {drawMutation.isError && (
-          <div className="error-state">
-            <svg
-              width="32"
-              height="32"
-              viewBox="0 0 32 32"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              opacity="0.5"
-            >
-              <circle cx="16" cy="16" r="13" />
-              <line x1="16" y1="10" x2="16" y2="17" />
-              <circle cx="16" cy="21" r="1" fill="currentColor" stroke="none" />
-            </svg>
-            <p>Не удалось загрузить расклад. Попробуйте ещё раз.</p>
-            <button
-              className="btn-ghost"
-              onClick={() => {
-                drawMutation.reset();
-                handleDraw();
-              }}
-            >
-              Повторить
-            </button>
-          </div>
-        )}
+        {drawMutation.isError && (() => {
+          const err = drawMutation.error;
+          const isRateLimit = err instanceof ApiError && err.status === 429;
+          const message = isRateLimit && err instanceof ApiError
+            ? err.message
+            : "Не удалось загрузить расклад. Попробуйте ещё раз.";
+          return (
+            <div className="error-state">
+              <svg
+                width="32"
+                height="32"
+                viewBox="0 0 32 32"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity="0.5"
+              >
+                <circle cx="16" cy="16" r="13" />
+                <line x1="16" y1="10" x2="16" y2="17" />
+                <circle cx="16" cy="21" r="1" fill="currentColor" stroke="none" />
+              </svg>
+              <p>{message}</p>
+              {!isRateLimit && (
+                <button
+                  className="btn-ghost"
+                  onClick={() => {
+                    drawMutation.reset();
+                    handleDraw();
+                  }}
+                >
+                  Повторить
+                </button>
+              )}
+            </div>
+          );
+        })()}
 
         {reading && selectedSpread === "celtic_cross" && (
           <CelticCrossFlow

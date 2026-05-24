@@ -309,6 +309,12 @@ async def get_transit_details_endpoint(
     if not user:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
 
+    from services.ratelimit import LIMITS, enforce_monthly_limit
+    await enforce_monthly_limit(
+        user.id, "transit_details", LIMITS["transit_details"],
+        feature_ru="разборы транзитов",
+    )
+
     chart = user.natal_chart.chart_data if user.natal_chart else None
 
     details = await get_transit_details(
