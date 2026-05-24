@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { EnergyBars } from "@/components/ui/EnergyBars";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { HoroscopeSkeleton, MoonCardSkeleton } from "@/components/ui/Skeleton";
@@ -10,8 +10,36 @@ import { EntitlementBadge } from "@/components/ui/EntitlementBadge";
 import { horoscopeApi, tarotApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
-import { ZODIAC_SIGNS } from "@/types";
+import { ZODIAC_SIGNS, type TarotSpreadResponse } from "@/types";
 import { ZodiacIcon } from "@/components/ui/ZodiacIcon";
+
+const DAILY_CARD_STORAGE_KEY = "tarot-daily-state";
+
+function getTodayKey(): string {
+  return new Date().toLocaleDateString("en-CA");
+}
+
+type StoredDailyCard = {
+  date: string;
+  response: TarotSpreadResponse;
+};
+
+function readStoredDailyCard(): StoredDailyCard | null {
+  try {
+    const raw = localStorage.getItem(DAILY_CARD_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoredDailyCard;
+    if (!parsed?.date || !parsed.response?.cards?.length) return null;
+    if (parsed.date !== getTodayKey()) {
+      localStorage.removeItem(DAILY_CARD_STORAGE_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    localStorage.removeItem(DAILY_CARD_STORAGE_KEY);
+    return null;
+  }
+}
 
 const POWER_EMOJIS: Record<string, string[]> = {
   aries: ["🔥", "⚡", "🗡️", "🏆", "🚀", "💥"],
@@ -49,8 +77,23 @@ const PERIOD_LABELS: Record<Period, string> = {
 export function Home() {
   const { user, setScreen } = useAppStore();
   const { impact } = useHaptic();
+  const queryClient = useQueryClient();
   const [period, setPeriod] = useState<Period>("today");
-  const [cardRevealed, setCardRevealed] = useState(false);
+
+  const storedDailyRef = useRef<StoredDailyCard | null>(null);
+  if (storedDailyRef.current === null && typeof window !== "undefined") {
+    storedDailyRef.current = readStoredDailyCard();
+  }
+  const [cardRevealed, setCardRevealed] = useState(
+    () => storedDailyRef.current !== null,
+  );
+
+  useEffect(() => {
+    const stored = storedDailyRef.current;
+    if (stored) {
+      queryClient.setQueryData(["tarot-daily"], stored.response);
+    }
+  }, [queryClient]);
 
   const signInfo = ZODIAC_SIGNS.find((s) => s.value === user?.sun_sign);
 
@@ -81,6 +124,19 @@ export function Home() {
     enabled: cardRevealed,
     staleTime: 1000 * 60 * 60 * 12,
   });
+
+  useEffect(() => {
+    if (!dailyCard?.cards?.length) return;
+    try {
+      const payload: StoredDailyCard = {
+        date: getTodayKey(),
+        response: dailyCard,
+      };
+      localStorage.setItem(DAILY_CARD_STORAGE_KEY, JSON.stringify(payload));
+    } catch {
+      // localStorage может быть недоступен — игнорируем
+    }
+  }, [dailyCard]);
 
   // Re-tick the clock every minute so the greeting flips at 5/12/17/23
   // even if the user keeps the home screen open across boundaries.
