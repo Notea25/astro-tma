@@ -94,8 +94,8 @@ async def create_invoice_link(user_id: int, product_id: str) -> str:
                 "title": product["name"],
                 "description": product["description"],
                 "payload": payload,
-                "provider_token": "",   # MUST be empty for Stars
-                "currency": "XTR",      # Telegram Stars
+                "provider_token": "",  # MUST be empty for Stars
+                "currency": "XTR",  # Telegram Stars
                 "prices": [{"label": product["name"], "amount": stars_amount}],
             },
         )
@@ -185,9 +185,11 @@ async def grant_product_access(
     # converts. Lazy import to avoid a circular dep between payments and
     # referrals routes.
     try:
-        from db.models import User as _UserModel
         from sqlalchemy import select as _select
+
         from api.routes.referrals import maybe_award_first_purchase
+        from db.models import User as _UserModel
+
         result = await db.execute(_select(_UserModel).where(_UserModel.id == user_id))
         u = result.scalar_one_or_none()
         await maybe_award_first_purchase(
