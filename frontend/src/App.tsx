@@ -87,6 +87,11 @@ const Referral = lazy(() =>
     default: m.Referral,
   })),
 );
+const Purchases = lazy(() =>
+  import("@/components/screens/Purchases").then((m) => ({
+    default: m.Purchases,
+  })),
+);
 
 function SplashScreen() {
   return (
@@ -263,6 +268,7 @@ export default function App() {
             {screen === "news" && <News />}
             {screen === "news_detail" && <NewsDetail />}
             {screen === "referral" && <Referral />}
+            {screen === "purchases" && <Purchases />}
           </motion.div>
         </Suspense>
 

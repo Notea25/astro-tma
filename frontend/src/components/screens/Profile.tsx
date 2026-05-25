@@ -119,24 +119,9 @@ function BirthDateInput({
   );
 }
 
-function formatPurchaseDate(iso: string | null): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-  const day = d.getDate();
-  const month = MONTHS_RU_GENITIVE[d.getMonth()];
-  return `${day} ${month} ${d.getFullYear()}`;
-}
-
-function formatExpiresRu(iso: string | null): string | null {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  const day = d.getDate();
-  return `до ${day} ${MONTHS_RU_GENITIVE[d.getMonth()]} ${d.getFullYear()}`;
-}
-
 function PurchasesCard() {
+  const { setScreen } = useAppStore();
+  const { impact } = useHaptic();
   const { data, isLoading } = useQuery({
     queryKey: ["my-purchases"],
     queryFn: usersApi.getPurchases,
@@ -146,42 +131,38 @@ function PurchasesCard() {
   if (isLoading) return null;
   const purchases = data?.purchases ?? [];
   const active = data?.active_subscription ?? null;
+  const totalCount = purchases.length + (active ? 1 : 0);
+  if (totalCount === 0) return null;
 
-  if (purchases.length === 0 && !active) return null;
+  const previewLabel = active
+    ? "Премиум-подписка активна"
+    : `${totalCount} ${
+        totalCount === 1
+          ? "покупка"
+          : totalCount < 5
+            ? "покупки"
+            : "покупок"
+      }`;
 
   return (
-    <motion.div
-      className="natal-card"
+    <motion.button
+      type="button"
+      className="premium-status-card purchases-card-button"
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.11 }}
+      onClick={() => {
+        impact("light");
+        setScreen("purchases");
+      }}
     >
-      <div className="natal-card__tag">✦ Мои покупки</div>
-      {active && (
-        <div className="purchase-row purchase-row--active">
-          <div className="purchase-row__main">
-            <div className="purchase-row__title">
-              Премиум подписка
-            </div>
-            <div className="purchase-row__meta">
-              {formatExpiresRu(active.expires_at) ?? "активна"}
-            </div>
-          </div>
-          <div className="purchase-row__stars">{active.stars_paid} ⭐</div>
-        </div>
-      )}
-      {purchases.map((p, idx) => (
-        <div key={`${p.product_id}-${idx}`} className="purchase-row">
-          <div className="purchase-row__main">
-            <div className="purchase-row__title">{p.product_name}</div>
-            <div className="purchase-row__meta">
-              {formatPurchaseDate(p.created_at)}
-            </div>
-          </div>
-          <div className="purchase-row__stars">{p.stars_amount} ⭐</div>
-        </div>
-      ))}
-    </motion.div>
+      <span className="premium-status-card__star" aria-hidden="true">✦</span>
+      <span className="premium-status-card__main">
+        <span className="premium-status-card__title">Мои покупки</span>
+        <span className="premium-status-card__desc">{previewLabel}</span>
+      </span>
+      <span className="premium-status-card__arrow" aria-hidden="true">›</span>
+    </motion.button>
   );
 }
 
@@ -381,27 +362,31 @@ export function Profile() {
           )}
         </motion.div>
 
-        {/* Premium status card */}
-        {user?.is_premium && (
-          <motion.button
-            type="button"
-            className="premium-status-card"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 }}
-            onClick={() => {
-              impact("light");
-              useAppStore.getState().setScreen("premium");
-            }}
-          >
-            <span className="premium-status-card__star" aria-hidden="true">★</span>
-            <span className="premium-status-card__main">
-              <span className="premium-status-card__title">Премиум-доступ</span>
-              <span className="premium-status-card__desc">Активен</span>
+        {/* Premium status card — active or upsell */}
+        <motion.button
+          type="button"
+          className={`premium-status-card ${user?.is_premium ? "" : "premium-status-card--upsell"}`}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          onClick={() => {
+            impact("light");
+            useAppStore.getState().setScreen("premium");
+          }}
+        >
+          <span className="premium-status-card__star" aria-hidden="true">★</span>
+          <span className="premium-status-card__main">
+            <span className="premium-status-card__title">
+              {user?.is_premium ? "Премиум-доступ" : "Открыть Premium"}
             </span>
-            <span className="premium-status-card__arrow" aria-hidden="true">›</span>
-          </motion.button>
-        )}
+            <span className="premium-status-card__desc">
+              {user?.is_premium
+                ? "Активен"
+                : "Все интерпретации, прогнозы и Таро · от 199 ⭐ / мес"}
+            </span>
+          </span>
+          <span className="premium-status-card__arrow" aria-hidden="true">›</span>
+        </motion.button>
 
         {/* Birth data section */}
         <motion.div

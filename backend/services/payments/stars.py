@@ -32,13 +32,20 @@ log = get_logger(__name__)
 # Launch monetization v1.1: horoscope_*, tarot_week, transits_*_preview were
 # retired (gateways moved to the subscription). Existing rows in `purchases`
 # for those product_ids stay in the DB for historical accuracy.
+# Russian display names for retired SKUs — purchase rows for these still
+# live in the DB and need a humane title on the "Мои покупки" screen.
+LEGACY_PRODUCT_NAMES_RU: dict[str, str] = {
+    "horoscope_tomorrow":       "Гороскоп на завтра",
+    "horoscope_week":           "Гороскоп на неделю",
+    "horoscope_month":          "Гороскоп на месяц",
+    "tarot_celtic":             "Расклад Кельтский Крест",
+    "tarot_week":               "Карты на неделю",
+    "transits_week_preview":    "Транзиты на неделю",
+    "transits_month_preview":   "Транзиты на месяц",
+}
+
+
 PRODUCTS: dict[str, dict] = {
-    "tarot_celtic": {
-        "name": "Расклад Кельтский Крест",
-        "description": "10-карточный расклад с глубокой LLM-интерпретацией. Первые 2 расклада в подарок.",
-        "stars": settings.PRICE_TAROT_CELTIC,
-        "type": "one_time",
-    },
     "natal_full": {
         "name": "Полная натальная карта",
         "description": "Длинные интерпретации планет/домов/аспектов + персональный портрет + PDF",
