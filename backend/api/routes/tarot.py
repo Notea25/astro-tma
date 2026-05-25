@@ -112,33 +112,16 @@ async def draw_tarot(
     """
     Draw a tarot spread.
     Free spreads: three_card (once per day).
-    Premium spreads: celtic_cross, week, relationship.
+    All spread types are free for every user — the lifetime/subscription
+    paywall on Tarot was removed by product. (PREMIUM_SPREADS / celtic
+    lifetime-limit checks intentionally skipped here.)
     """
     spread_type = body.spread_type
     user = await user_repo.get_by_id(db, tg_user["id"])
     if not user:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
 
-    # Access control — launch monetization v1.1:
-    # • celtic_cross: lifetime 2 free, then tarot_celtic purchase OR Premium
-    # • week / relationship: subscription-only (no standalone product)
-    if spread_type == "celtic_cross":
-        from services.tarot.limits import can_user_do_celtic_for_free
-        is_prem = await user_repo.is_premium(db, user.id)
-        has_purchase = await user_repo.has_purchased(db, user.id, "tarot_celtic")
-        can_free = await can_user_do_celtic_for_free(db, user.id)
-        if not (is_prem or has_purchase or can_free):
-            raise HTTPException(
-                status.HTTP_402_PAYMENT_REQUIRED,
-                "Free расклад: использовано 2/2. Купите за 29⭐ или оформите Premium.",
-            )
-    elif spread_type in PREMIUM_SPREADS:
-        is_prem = await user_repo.is_premium(db, user.id)
-        if not is_prem:
-            raise HTTPException(
-                status.HTTP_402_PAYMENT_REQUIRED,
-                f"{spread_type} доступен только в Premium-подписке",
-            )
+    from services.ratelimit import LIMITS, enforce_monthly_limit
 
     period_type = period_type_for_tarot(spread_type)
     latest_result = await db.execute(
@@ -153,6 +136,11 @@ async def draw_tarot(
     latest = latest_result.scalar_one_or_none()
     if latest and is_active_period(latest.created_at, period_type, now=now_utc()):
         return await _build_spread_response(db, latest, reused_existing=True)
+
+    # Monthly fair-use cap (don't count reused readings — only fresh draws).
+    await enforce_monthly_limit(
+        user.id, "tarot_draw", LIMITS["tarot_draw"], feature_ru="расклады Таро",
+    )
 
     # Load all card IDs
     result = await db.execute(select(TarotCard.id))
@@ -182,23 +170,15 @@ async def get_celtic_status(
     tg_user: dict = Depends(get_tg_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Lifetime free-tries counter for the Celtic Cross spread + entitlement
-    flags. Used by the Tarot screen to show the "N из 2 бесплатных" hint
-    and decide whether the gate should appear at all."""
-    from services.tarot.limits import (
-        CELTIC_FREE_LIFETIME_LIMIT,
-        celtic_free_remaining,
-    )
-    user_id = tg_user["id"]
-    is_prem = await user_repo.is_premium(db, user_id)
-    has_purchase = await user_repo.has_purchased(db, user_id, "tarot_celtic")
-    remaining = await celtic_free_remaining(db, user_id)
+    """Kept for frontend back-compat after the Celtic Cross paywall was
+    removed. Always reports that the spread is free and the gate is off."""
+    _ = tg_user, db  # parameters retained for the dependency contract
     return {
-        "free_remaining": remaining,
-        "free_limit": CELTIC_FREE_LIFETIME_LIMIT,
-        "has_purchased": has_purchase,
-        "is_premium": is_prem,
-        "needs_gate": not (is_prem or has_purchase) and remaining <= 0,
+        "free_remaining": 99,
+        "free_limit": 99,
+        "has_purchased": False,
+        "is_premium": False,
+        "needs_gate": False,
     }
 
 

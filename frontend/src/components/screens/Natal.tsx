@@ -27,6 +27,9 @@ import {
   type ElementId,
 } from "@/components/NatalChart/CosmicElementOrb";
 import { NatalDescriptionSheet } from "./NatalDescriptionSheet";
+import { useEntitlement } from "@/hooks/useEntitlement";
+import { usePayment } from "@/hooks/usePayment";
+import { useProductPrice } from "@/hooks/useProductPrice";
 import {
   ASPECT_FALLBACK_DESC,
   ASPECT_PAIR_FALLBACK_HINT,
@@ -1656,34 +1659,73 @@ function NatalBirthDetails({
 }
 
 function NatalPdfCard({
-  full,
+  hasChart,
   isDownloading,
   error,
   onDownload,
 }: {
-  full: NatalFullResponse | undefined;
+  hasChart: boolean;
   isDownloading: boolean;
   error: string | null;
   onDownload: () => void;
 }) {
-  if (!full) return null;
+  const entitled = useEntitlement("natal_full");
+  const price = useProductPrice("natal_full") ?? 149;
+  const {
+    purchase,
+    activating,
+    phase,
+    error: payError,
+  } = usePayment();
+  const paying = phase === "opening" || phase === "activating";
+
+  const handleClick = async () => {
+    if (!hasChart) return;
+    if (entitled) {
+      onDownload();
+      return;
+    }
+    const ok = await purchase("natal_full");
+    if (ok) onDownload();
+  };
+
+  const busy = isDownloading || paying;
+  let label: string;
+  if (!hasChart) {
+    label = "Сначала заполните данные рождения";
+  } else if (activating) {
+    label = "Активируем доступ…";
+  } else if (paying) {
+    label = "Открываем оплату…";
+  } else if (isDownloading) {
+    label = "Готовим PDF…";
+  } else if (entitled) {
+    label = "Скачать полный отчёт (PDF)";
+  } else {
+    label = `Открыть отчёт — ${price} ⭐`;
+  }
 
   return (
     <section className={styles.pdfCard}>
       <motion.button
         type="button"
         className={styles.pdfButton}
-        onClick={onDownload}
-        disabled={isDownloading}
-        aria-busy={isDownloading}
-        whileTap={{ scale: isDownloading ? 1 : 0.98 }}
+        onClick={handleClick}
+        disabled={!hasChart || busy}
+        aria-busy={busy}
+        whileTap={{ scale: busy || !hasChart ? 1 : 0.98 }}
       >
         <IconDownload />
-        <span>
-          {isDownloading ? "Готовим PDF..." : "Скачать полный отчёт (PDF)"}
-        </span>
+        <span>{label}</span>
       </motion.button>
-      {error && <p className={styles.downloadError}>{error}</p>}
+      {!entitled && hasChart && !paying && (
+        <p className={styles.pdfHint}>
+          Премиум-доступ ко всей карте + PDF-отчёт. Также входит в Premium-подписку.
+        </p>
+      )}
+      {(error || payError) && (
+        <p className={styles.downloadError}>{error ?? payError}</p>
+      )}
     </section>
   );
 }
@@ -2095,13 +2137,13 @@ function NatalAspectsPanel({
               );
               const name1 = aspectDisplayName(aspect.p1);
               const name2 = aspectDisplayName(aspect.p2);
-              const heading = `${name1} ${meta.symbol} ${name2} · орб ${aspect.orb.toFixed(1)}°`;
+              const heading = `**${name1} ${meta.symbol} ${name2} · орб ${aspect.orb.toFixed(1)}°**`;
               const hint =
                 ASPECT_PAIR_FALLBACK_HINT[type] ??
                 "взаимодействуют между собой";
               const fallback = `${name1} и ${name2} ${hint}. Подробнее эта пара раскроется в полном PDF-отчёте.`;
               const text = desc?.short ?? fallback;
-              blocks.push(`${heading}\n${text}`);
+              blocks.push(`${heading}\n\n${text}`);
             }
 
             return blocks.join("\n\n").trim() || null;
@@ -2480,7 +2522,7 @@ export function Natal() {
 
           <NatalBirthDetails summary={summary} />
           <NatalPdfCard
-            full={full}
+            hasChart={summary?.has_chart ?? false}
             isDownloading={isPdfDownloading}
             error={pdfDownloadError}
             onDownload={handlePdfDownload}
@@ -2507,7 +2549,7 @@ export function Natal() {
             onSelect={setSelectedDesc}
           />
           <NatalPdfCard
-            full={full}
+            hasChart={summary?.has_chart ?? false}
             isDownloading={isPdfDownloading}
             error={pdfDownloadError}
             onDownload={handlePdfDownload}
@@ -2520,7 +2562,7 @@ export function Natal() {
       <>
         {renderFullPanel()}
         <NatalPdfCard
-          full={full}
+          hasChart={summary?.has_chart ?? false}
           isDownloading={isPdfDownloading}
           error={pdfDownloadError}
           onDownload={handlePdfDownload}

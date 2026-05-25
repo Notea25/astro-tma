@@ -1,8 +1,7 @@
 import { useState, useCallback } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import WebApp from "@twa-dev/sdk";
-import { PremiumGate } from "@/components/ui/PremiumGate";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { HeaderAvatarButton } from "@/components/ui/HeaderAvatarButton";
 import { SpreadIntro } from "./SpreadIntro";
@@ -10,7 +9,7 @@ import { CelticCrossFlow } from "@/components/tarot/CelticCrossFlow";
 import { DrawSpreadFlow } from "@/components/tarot/DrawSpreadFlow";
 import { SpreadReading } from "@/components/tarot/SpreadReading";
 import { TarotHistory } from "@/components/tarot/TarotHistory";
-import { tarotApi } from "@/services/api";
+import { ApiError, tarotApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
 import { useTelegramBackButton } from "@/hooks/useTelegram";
@@ -23,44 +22,13 @@ interface SpreadOption {
   id: SpreadType;
   name: string;
   cardCount: number;
-  premium: boolean;
-  productId: string;
-  stars: number;
 }
 
 const SPREADS: SpreadOption[] = [
-  {
-    id: "three_card",
-    name: "Прошлое · Настоящее · Будущее",
-    cardCount: 3,
-    premium: false,
-    productId: "",
-    stars: 0,
-  },
-  {
-    id: "celtic_cross",
-    name: "Кельтский Крест",
-    cardCount: 10,
-    premium: true,
-    productId: "tarot_celtic",
-    stars: 29,
-  },
-  {
-    id: "week",
-    name: "Карты на неделю",
-    cardCount: 7,
-    premium: true,
-    productId: "subscription_month",
-    stars: 199,
-  },
-  {
-    id: "relationship",
-    name: "Отношения",
-    cardCount: 5,
-    premium: true,
-    productId: "subscription_month",
-    stars: 199,
-  },
+  { id: "three_card",   name: "Прошлое · Настоящее · Будущее", cardCount: 3 },
+  { id: "celtic_cross", name: "Кельтский Крест",               cardCount: 10 },
+  { id: "week",         name: "Карты на неделю",               cardCount: 7 },
+  { id: "relationship", name: "Отношения",                     cardCount: 5 },
 ];
 
 export function Tarot() {
@@ -71,12 +39,6 @@ export function Tarot() {
   const [showInfo, setShowInfo] = useState(true);
   const [allFlipped, setAllFlipped] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-
-  const { data: celticStatus } = useQuery({
-    queryKey: ["tarot-celtic-status"],
-    queryFn: tarotApi.celticStatus,
-    staleTime: 1000 * 60,
-  });
 
   const drawMutation = useMutation({
     mutationFn: tarotApi.draw,
@@ -205,46 +167,19 @@ export function Tarot() {
           <HeaderAvatarButton />
         </div>
         <div className="screen-content">
-          {SPREADS.map((spread) => {
-            const isCeltic = spread.id === "celtic_cross";
-            // Celtic Cross: lifetime 2 free draws — only gate when the
-            // backend says they're out AND not entitled.
-            const locked = isCeltic
-              ? celticStatus?.needs_gate ?? false
-              : spread.premium;
-            const freeNote =
-              isCeltic && !celticStatus?.is_premium && !celticStatus?.has_purchased
-                ? celticStatus
-                  ? `Осталось ${celticStatus.free_remaining} из ${celticStatus.free_limit} бесплатных`
-                  : null
-                : null;
-            return (
-              <PremiumGate
-                key={spread.id}
-                locked={locked}
-                productId={spread.productId}
-                productName={spread.name}
-                stars={spread.stars}
-              >
-                <motion.div
-                  className="spread-option"
-                  onClick={() => handleSelectSpread(spread)}
-                  whileTap={{ scale: 0.97 }}
-                >
-                  <div className="spread-option__info">
-                    <div className="spread-option__name">{spread.name}</div>
-                    <div className="spread-option__count">
-                      {spread.cardCount} карт
-                      {freeNote ? ` · ${freeNote}` : ""}
-                    </div>
-                  </div>
-                  {spread.premium && (
-                    <span className="premium-badge">✦ Pro</span>
-                  )}
-                </motion.div>
-              </PremiumGate>
-            );
-          })}
+          {SPREADS.map((spread) => (
+            <motion.div
+              key={spread.id}
+              className="spread-option"
+              onClick={() => handleSelectSpread(spread)}
+              whileTap={{ scale: 0.97 }}
+            >
+              <div className="spread-option__info">
+                <div className="spread-option__name">{spread.name}</div>
+                <div className="spread-option__count">{spread.cardCount} карт</div>
+              </div>
+            </motion.div>
+          ))}
 
           <motion.div
             className="spread-option"
@@ -325,35 +260,44 @@ export function Tarot() {
           <LoadingSpinner message="Тасуем колоду..." />
         )}
 
-        {drawMutation.isError && (
-          <div className="error-state">
-            <svg
-              width="32"
-              height="32"
-              viewBox="0 0 32 32"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              opacity="0.5"
-            >
-              <circle cx="16" cy="16" r="13" />
-              <line x1="16" y1="10" x2="16" y2="17" />
-              <circle cx="16" cy="21" r="1" fill="currentColor" stroke="none" />
-            </svg>
-            <p>Не удалось загрузить расклад. Попробуйте ещё раз.</p>
-            <button
-              className="btn-ghost"
-              onClick={() => {
-                drawMutation.reset();
-                handleDraw();
-              }}
-            >
-              Повторить
-            </button>
-          </div>
-        )}
+        {drawMutation.isError && (() => {
+          const err = drawMutation.error;
+          const isRateLimit = err instanceof ApiError && err.status === 429;
+          const message = isRateLimit && err instanceof ApiError
+            ? err.message
+            : "Не удалось загрузить расклад. Попробуйте ещё раз.";
+          return (
+            <div className="error-state">
+              <svg
+                width="32"
+                height="32"
+                viewBox="0 0 32 32"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity="0.5"
+              >
+                <circle cx="16" cy="16" r="13" />
+                <line x1="16" y1="10" x2="16" y2="17" />
+                <circle cx="16" cy="21" r="1" fill="currentColor" stroke="none" />
+              </svg>
+              <p>{message}</p>
+              {!isRateLimit && (
+                <button
+                  className="btn-ghost"
+                  onClick={() => {
+                    drawMutation.reset();
+                    handleDraw();
+                  }}
+                >
+                  Повторить
+                </button>
+              )}
+            </div>
+          );
+        })()}
 
         {reading && selectedSpread === "celtic_cross" && (
           <CelticCrossFlow
