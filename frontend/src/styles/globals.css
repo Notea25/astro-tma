@@ -2133,9 +2133,9 @@ body::after {
 .spread-slot__placeholder {
   position: absolute;
   inset: 0;
-  border: 1px dashed rgba(201, 168, 76, 0.28);
-  border-radius: 8px;
-  background: rgba(201, 168, 76, 0.04);
+  border: 1px solid rgba(201, 168, 76, 0.16);
+  border-radius: 7px;
+  background: rgba(201, 168, 76, 0.025);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2200,7 +2200,7 @@ body::after {
   inset: 0;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  border-radius: 10px;
+  border-radius: 7px;
   overflow: hidden;
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.7);
 }
@@ -2224,7 +2224,7 @@ body::after {
 /* Face-up: card image */
 .spread-slot__front {
   transform: rotateY(180deg);
-  border: 1.5px solid rgba(212, 178, 84, 0.45);
+  border: 0;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 }
 .spread-slot__img {
@@ -4095,11 +4095,26 @@ body::after {
   align-items: stretch;
   margin-top: 10px;
 }
+.tarot-day-card__split--wrap-text {
+  display: block;
+}
+.tarot-day-card__split--wrap-text::after {
+  content: "";
+  display: block;
+  clear: both;
+}
 .tarot-day-card__visual {
   flex: 0 0 44%;
   max-width: 44%;
   min-width: 0;
   display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+.tarot-day-card__split--wrap-text .tarot-day-card__visual {
+  width: 44%;
+  max-width: 44%;
+  margin: 0 auto 14px;
 }
 .tarot-day-card__text {
   flex: 1;
@@ -4109,6 +4124,9 @@ body::after {
   justify-content: center;
   gap: 8px;
   text-align: left;
+}
+.tarot-day-card__split--wrap-text .tarot-day-card__text {
+  display: block;
 }
 .tarot-day-card__hint-title {
   font-family: var(--tarot-font-display);
@@ -4130,15 +4148,18 @@ body::after {
 .tarot-flip {
   width: 100%;
 }
+.tarot-day-card__split--wrap-text .tarot-flip {
+  margin: 0 auto;
+}
 .tarot-flip__inner {
   width: 100%;
   position: relative;
-  aspect-ratio: 86 / 130;
+  aspect-ratio: 600 / 1075;
   transform-style: preserve-3d;
   -webkit-transform-style: preserve-3d;
 }
 .tarot-flip__inner--revealed {
-  aspect-ratio: 86 / 130;
+  aspect-ratio: 600 / 1075;
 }
 .tarot-flip__inner--revealed .tarot-flip__face--front {
   position: absolute;
@@ -4294,15 +4315,20 @@ body::after {
   height: 100%;
   position: relative;
   display: block;
-  border-radius: 12px;
+  border-radius: 0;
   overflow: hidden;
-  border: 1px solid rgba(201, 168, 76, 0.25);
+  border: 0;
+  background: transparent;
 }
 .tarot-flip__img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
+  background: transparent;
+}
+.tarot-flip__img--reversed {
+  transform: rotate(180deg);
 }
 .tarot-flip__img-fallback {
   width: 100%;
@@ -4341,6 +4367,12 @@ body::after {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+.tarot-day-card__split--wrap-text .tarot-flip__info {
+  display: block;
+}
+.tarot-day-card__split--wrap-text .tarot-flip__info > * + * {
+  margin-top: 6px;
 }
 .tarot-flip__arcana {
   font-family: var(--tarot-font-display);
@@ -5171,10 +5203,6 @@ body::after {
   font-size: var(--fs-sm);
   color: var(--text-dim);
   line-height: 1.45;
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 .meaning-styled__topic {
   display: flex;

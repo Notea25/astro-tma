@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import math
 import os
+from datetime import datetime
 from io import BytesIO
 from typing import Any
 
@@ -23,6 +25,8 @@ TEXT = HexColor("#f0ecf8")
 TEXT_DIM = HexColor("#b6afca")
 BG = HexColor("#07060f")
 SURFACE = HexColor("#0e0b20")
+SURFACE_2 = HexColor("#171129")
+LINE = HexColor("#2c2540")
 
 SIGN_SYMBOLS = {
     "aries": "♈", "taurus": "♉", "gemini": "♊", "cancer": "♋",
@@ -82,6 +86,49 @@ ASPECT_TOPICS = {
     "quincunx": "требуют тонкой перенастройки привычек и взгляда на ситуацию",
 }
 
+ELEMENT_COPY = {
+    "fire": (
+        "Действие, инициатива, страсть. Энергия просыпается, когда есть цель, риск и право проявиться.",
+        ("Смелый", "Энергичный", "Прямой", "Импульсивный", "Лидер"),
+    ),
+    "earth": (
+        "Практичность, телесность, упорство. Важны видимый результат, надежность и опора на реальность.",
+        ("Надежный", "Собранный", "Практичный", "Терпеливый", "Материальный"),
+    ),
+    "air": (
+        "Идеи, общение, легкость. Карта оживает через слова, связи, обучение и обмен смыслами.",
+        ("Умный", "Общительный", "Гибкий", "Любознательный", "Свободный"),
+    ),
+    "water": (
+        "Чувства, интуиция, глубина. Внутренние переживания становятся главным навигатором.",
+        ("Чуткий", "Глубокий", "Интуитивный", "Памятливый", "Тонкий"),
+    ),
+}
+
+HOUSE_LABELS = {
+    1: "ЛИЧНОСТЬ И ОБЛИК",
+    2: "ДЕНЬГИ И ЦЕННОСТИ",
+    3: "ОБЩЕНИЕ И ОБУЧЕНИЕ",
+    4: "ДОМ И КОРНИ",
+    5: "ТВОРЧЕСТВО И ЛЮБОВЬ",
+    6: "РАБОТА И ЗДОРОВЬЕ",
+    7: "ПАРТНЕРСТВО",
+    8: "ПЕРЕМЕНЫ И РЕСУРСЫ",
+    9: "ФИЛОСОФИЯ И ПУТЕШЕСТВИЯ",
+    10: "КАРЬЕРА И РЕПУТАЦИЯ",
+    11: "СООБЩЕСТВО И ЦЕЛИ",
+    12: "ВНУТРЕННЯЯ ЖИЗНЬ",
+}
+
+GLOSSARY = (
+    ("Планета", "Небесное тело, отвечающее за определенную сферу психики и жизни."),
+    ("Знак зодиака", "Один из 12 30-градусных секторов эклиптики."),
+    ("Дом", "Сектор карты, отвечающий за конкретную сферу жизни."),
+    ("Аспект", "Угловая связь между двумя планетами."),
+    ("Асцендент", "Знак на восточном горизонте в момент рождения."),
+    ("Ретроградность", "Период, когда планета движется обратно относительно Земли."),
+)
+
 
 def _register_fonts() -> None:
     """Register a Cyrillic-capable font when available, with safe built-in fallback."""
@@ -93,6 +140,9 @@ def _register_fonts() -> None:
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/dejavu/DejaVuSans.ttf",
         "/Library/Fonts/DejaVuSans.ttf",
+        "/Library/Fonts/Arial Unicode.ttf",
+        "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+        "/System/Library/Fonts/Supplemental/NotoSans-Regular.ttf",
         os.path.join(_FONT_DIR, "DejaVuSans.ttf"),
     ]
     for regular_path in regular_candidates:
@@ -101,6 +151,8 @@ def _register_fonts() -> None:
         try:
             pdfmetrics.registerFont(TTFont("DejaVu", regular_path))
             bold_path = regular_path.replace("DejaVuSans.ttf", "DejaVuSans-Bold.ttf")
+            if regular_path.endswith("Arial Unicode.ttf"):
+                bold_path = regular_path
             pdfmetrics.registerFont(
                 TTFont("DejaVu-Bold", bold_path if os.path.exists(bold_path) else regular_path)
             )
@@ -207,6 +259,117 @@ def _wrap_paragraph(
         c.drawString(x, y, line)
         y -= line_h
     return y
+
+
+def _lines(text: str, max_chars: int, max_lines: int | None = None) -> list[str]:
+    words = str(text or "").replace("\n", " ").split()
+    result: list[str] = []
+    line = ""
+    for word in words:
+        test = f"{line} {word}".strip()
+        if len(test) > max_chars and line:
+            result.append(line)
+            line = word
+            if max_lines and len(result) >= max_lines:
+                break
+        else:
+            line = test
+    if line and (not max_lines or len(result) < max_lines):
+        result.append(line)
+    if max_lines and len(result) == max_lines and len(" ".join(words)) > len(" ".join(result)):
+        result[-1] = result[-1].rstrip(" .") + "."
+    return result
+
+
+def _draw_wrapped_static(
+    c: canvas.Canvas,
+    text: str,
+    x: float,
+    y: float,
+    max_chars: int,
+    line_h: int,
+    max_lines: int | None = None,
+) -> float:
+    for line in _lines(text, max_chars, max_lines):
+        c.drawString(x, y, line)
+        y -= line_h
+    return y
+
+
+def _compact_description(entry: Any, fallback: str, *, words: int = 42) -> str:
+    if isinstance(entry, dict):
+        source = str(entry.get("short") or entry.get("full") or "").strip()
+    else:
+        source = ""
+    source = source or fallback
+    parts = source.split()
+    if len(parts) <= words:
+        return source
+    return " ".join(parts[:words]).rstrip(" .,;:") + "."
+
+
+def _roman(num: int) -> str:
+    values = (
+        (10, "X"), (9, "IX"), (8, "VIII"), (7, "VII"), (6, "VI"),
+        (5, "V"), (4, "IV"), (1, "I"),
+    )
+    out = ""
+    rest = num
+    for value, glyph in values:
+        while rest >= value:
+            out += glyph
+            rest -= value
+    return out
+
+
+def _page_footer(c: canvas.Canvas, w: float, page: int, total: int | None = None) -> None:
+    c.setFillColor(TEXT_DIM)
+    _set_font(c, False, 8)
+    suffix = f"{page} / {total}" if total else str(page)
+    c.drawCentredString(w / 2, 32, f"ASTRO TMA · НАТАЛЬНАЯ КАРТА {suffix}")
+
+
+def _aspect_kind(aspect_type: str) -> str:
+    if aspect_type in ("trine", "sextile"):
+        return "harmonious"
+    if aspect_type in ("square", "opposition"):
+        return "challenging"
+    return "neutral"
+
+
+def _element_percentages(planets: dict[str, dict[str, Any]]) -> dict[str, int]:
+    counts = _element_counts(planets)
+    total = max(sum(counts.values()), 1)
+    return {key: round(value / total * 100) for key, value in counts.items()}
+
+
+def _sign_abs_degree(sign: Any) -> float:
+    sign_order = list(SIGN_RU.keys())
+    key = _key(sign)
+    return float(sign_order.index(key) * 30) if key in sign_order else 0.0
+
+
+def _chart_abs_degree(point: dict[str, Any]) -> float:
+    if "degree" in point and point.get("degree") is not None:
+        return float(point.get("degree") or 0) % 360
+    return (_sign_abs_degree(point.get("sign")) + float(point.get("sign_degree") or 0)) % 360
+
+
+def _ascendant_degree(houses: list[dict[str, Any]], asc_sign: str | None) -> float:
+    for house in houses:
+        if int(house.get("number") or 0) == 1:
+            return _chart_abs_degree(house)
+    return _sign_abs_degree(asc_sign)
+
+
+def _wheel_angle(abs_degree: float, ascendant_degree: float) -> float:
+    # Match the app's reference wheel: the Ascendant sits at 9 o'clock.
+    return 180 + (abs_degree - ascendant_degree)
+
+
+def _polar_point(cx: float, cy: float, radius: float, angle_deg: float) -> tuple[float, float]:
+    angle = math.radians(angle_deg)
+    return cx + math.cos(angle) * radius, cy + math.sin(angle) * radius
 
 
 def _draw_title(c: canvas.Canvas, title: str, w: float, h: float, subtitle: str | None = None) -> float:
@@ -341,276 +504,491 @@ def generate_natal_pdf(
     c = canvas.Canvas(buf, pagesize=A4)
     w, h = A4
 
-    # Cover and contents.
-    _new_page(c, w, h)
-    c.setFillColor(GOLD)
-    _set_font(c, True, 28)
-    c.drawCentredString(w / 2, h - 165, "НАТАЛЬНАЯ КАРТА")
-    c.setFillColor(TEXT)
-    _set_font(c, False, 14)
-    c.drawCentredString(w / 2, h - 200, "Полный персональный отчёт")
-    c.setFillColor(TEXT_DIM)
-    _set_font(c, False, 11)
-    c.drawCentredString(w / 2, h - 248, user_name or "Пользователь")
-    c.drawCentredString(w / 2, h - 266, f"{birth_date or 'Дата не указана'}  {birth_time or ''}".strip())
-    c.drawCentredString(w / 2, h - 284, birth_city or "Город не указан")
+    page = 1
+    total_hint = None
+    planet_desc = (descriptions or {}).get("planets") or {}
+    house_desc = (descriptions or {}).get("houses") or {}
+    aspect_desc = _aspect_description_map(descriptions)
 
-    c.setFillColor(GOLD)
-    _set_font(c, True, 15)
-    signs = [f"☉ {_sign_ru(sun_sign)}", f"☽ {_sign_ru(moon_sign)}"]
-    if asc_sign:
-        signs.append(f"AC {_sign_ru(asc_sign)}")
-    c.drawCentredString(w / 2, h - 345, " · ".join(filter(None, signs)))
+    def finish_page() -> None:
+        nonlocal page
+        _page_footer(c, w, page, total_hint)
+        c.showPage()
+        page += 1
 
-    c.setFillColor(TEXT_DIM)
-    _set_font(c, False, 10)
-    contents = [
-        "В отчёте: данные рождения и ключевые точки карты",
-        "Баланс стихий и общий энергетический профиль",
-        "Все планеты в знаках",
-        "Все 12 домов гороскопа",
-        "Все найденные аспекты между планетами",
-        "Подробные описания и персональная интерпретация",
-    ]
-    y = h - 430
-    for item in contents:
-        c.drawString(118, y, f"• {item}")
-        y -= 22
-    _draw_footer(c, w)
-    c.showPage()
-
-    # Birth details and elements.
-    y = _draw_title(c, "Ключевые данные карты", w, h, "Краткая навигация по основным точкам натальной карты.")
-    rows = [
-        ("Имя", user_name or "—"),
-        ("Дата рождения", birth_date or "—"),
-        ("Время рождения", birth_time or "не указано"),
-        ("Город рождения", birth_city or "—"),
-        ("Солнце", _sign_ru(sun_sign)),
-        ("Луна", _sign_ru(moon_sign)),
-        ("Асцендент", _sign_ru(asc_sign) if asc_sign else "не рассчитан"),
-    ]
-    c.setFillColor(SURFACE)
-    c.roundRect(40, y - 170, w - 80, 180, 10, fill=1, stroke=0)
-    y -= 24
-    for label, value in rows:
-        c.setFillColor(GOLD_DIM)
-        _set_font(c, True, 10)
-        c.drawString(62, y, label)
-        c.setFillColor(TEXT)
-        _set_font(c, False, 10)
-        c.drawString(190, y, value)
-        y -= 21
-
-    y -= 32
-    c.setFillColor(GOLD)
-    _set_font(c, True, 16)
-    c.drawString(40, y, "Баланс стихий")
-    y -= 28
-    total_planets = max(len(planets), 1)
-    for element, count in _element_counts(planets).items():
-        label = ELEMENTS[element][0]
-        c.setFillColor(TEXT)
-        _set_font(c, True, 11)
-        c.drawString(58, y, label)
+    def title_page(title: str, subtitle: str) -> float:
+        _new_page(c, w, h)
+        c.setFillColor(GOLD)
+        _set_font(c, True, 22)
+        c.drawString(40, h - 58, title)
         c.setFillColor(TEXT_DIM)
         _set_font(c, False, 10)
-        c.drawString(190, y, f"{count} из {total_planets} планет")
-        y -= 20
-    _draw_footer(c, w)
-    c.showPage()
+        c.drawString(40, h - 80, subtitle)
+        return h - 118
 
-    # Planet table.
-    y = _draw_title(c, "Планеты в знаках", w, h, "Таблица показывает знаки, градусы и дома основных планет вашей карты.")
-    for name in PLANET_ORDER:
-        planet = planets.get(name)
-        if not planet:
-            continue
-        y = _ensure_space(c, y, 28, w, h)
-        sign = _key(planet.get("sign"))
-        sign_degree = planet.get("sign_degree", planet.get("degree", 0))
-        retro = " ℞" if planet.get("retrograde") else ""
+    def draw_wheel(cx: float, cy: float, radius: float) -> None:
+        asc_deg = _ascendant_degree(houses, asc_sign)
+        outer_r = radius
+        middle_r = radius * 0.82
+        inner_r = radius * 0.61
+        aspect_outer_r = inner_r - 10
+        aspect_inner_r = inner_r - 76
+        aspect_r = inner_r - 58
+        planet_band_r = (aspect_outer_r + aspect_inner_r) / 2
+
+        # Outer reference-wheel ornament, matching the app's "Моя карта" rhythm.
+        c.setStrokeColor(GOLD)
+        c.setLineWidth(1.2)
+        c.circle(cx, cy, outer_r + 38, stroke=1, fill=0)
+        c.setStrokeColor(GOLD_DIM)
+        c.setLineWidth(0.65)
+        c.circle(cx, cy, outer_r + 28, stroke=1, fill=0)
+        c.setStrokeColor(LINE)
+        c.circle(cx, cy, outer_r + 9, stroke=1, fill=0)
+
+        # Degree ticks every 5 degrees, longer at sign boundaries.
+        for degree in range(0, 360, 5):
+            angle = _wheel_angle(degree, asc_deg)
+            is_major = degree % 30 == 0
+            p1 = _polar_point(cx, cy, outer_r + 28, angle)
+            p2 = _polar_point(cx, cy, outer_r + (38 if is_major else 34), angle)
+            c.setStrokeColor(GOLD_DIM)
+            c.setLineWidth(0.55 if is_major else 0.3)
+            c.line(*p1, *p2)
+
+        # Master circles.
+        c.setStrokeColor(TEXT_DIM)
+        c.setLineWidth(0.9)
+        c.circle(cx, cy, outer_r, stroke=1, fill=0)
+        c.circle(cx, cy, middle_r, stroke=1, fill=0)
+        c.setLineWidth(0.75)
+        c.circle(cx, cy, inner_r, stroke=1, fill=0)
+
+        # Zodiac ring boundaries and glyphs.
+        sign_keys = list(SIGN_RU.keys())
+        for i, sign in enumerate(sign_keys):
+            boundary = _wheel_angle(i * 30, asc_deg)
+            p1 = _polar_point(cx, cy, middle_r, boundary)
+            p2 = _polar_point(cx, cy, outer_r + 28, boundary)
+            c.setStrokeColor(TEXT_DIM)
+            c.setLineWidth(0.65)
+            c.line(*p1, *p2)
+
+            mid = _wheel_angle(i * 30 + 15, asc_deg)
+            gx, gy = _polar_point(cx, cy, (outer_r + middle_r) / 2, mid)
+            c.setFillColor(TEXT_DIM)
+            _set_font(c, False, 14)
+            c.drawCentredString(gx, gy - 5, SIGN_SYMBOLS.get(sign, ""))
+
+        # House cusps and roman numerals.
+        ordered_houses = sorted(
+            [house for house in houses if int(house.get("number") or 0)],
+            key=lambda house: int(house.get("number") or 0),
+        )
+        for index, house in enumerate(ordered_houses):
+            num = int(house.get("number") or 0)
+            cusp_degree = _chart_abs_degree(house)
+            angle = _wheel_angle(cusp_degree, asc_deg)
+            p1 = _polar_point(cx, cy, inner_r, angle)
+            p2 = _polar_point(cx, cy, middle_r, angle)
+            is_axis = num in (1, 4, 7, 10)
+            c.setStrokeColor(GOLD if is_axis else LINE)
+            c.setLineWidth(0.9 if is_axis else 0.45)
+            c.line(*p1, *p2)
+
+            next_house = ordered_houses[(index + 1) % len(ordered_houses)] if ordered_houses else house
+            next_degree = _chart_abs_degree(next_house)
+            span = (next_degree - cusp_degree) % 360
+            mid_degree = (cusp_degree + span / 2) % 360
+            tx, ty = _polar_point(cx, cy, (middle_r + inner_r) / 2, _wheel_angle(mid_degree, asc_deg))
+            c.setFillColor(TEXT_DIM)
+            _set_font(c, False, 8)
+            c.drawCentredString(tx, ty - 3, _roman(num))
+
+        # Planet band with equal display slots, like the reference wheel.
+        planet_items = [name for name in PLANET_ORDER if planets.get(name)]
+        slot_count = max(len(planet_items), 1)
+        c.setStrokeColor(GOLD_DIM)
+        c.setLineWidth(0.35)
+        c.circle(cx, cy, aspect_outer_r, stroke=1, fill=0)
+        c.circle(cx, cy, aspect_inner_r, stroke=1, fill=0)
+        for index in range(slot_count):
+            angle = _wheel_angle(index * (360 / slot_count), asc_deg)
+            p1 = _polar_point(cx, cy, aspect_inner_r, angle)
+            p2 = _polar_point(cx, cy, aspect_outer_r, angle)
+            c.setStrokeColor(GOLD_DIM)
+            c.setLineWidth(0.25)
+            c.line(*p1, *p2)
+
+        planet_points: dict[str, tuple[float, float]] = {}
+        for index, name in enumerate(planet_items):
+            display_degree = index * (360 / slot_count)
+            angle = _wheel_angle(display_degree, asc_deg)
+            px, py = _polar_point(cx, cy, planet_band_r, angle)
+            planet_points[name] = _polar_point(cx, cy, aspect_r, angle)
+            c.setFillColor(BG)
+            c.setStrokeColor(GOLD_DIM)
+            c.setLineWidth(0.45)
+            c.circle(px, py, 11, stroke=1, fill=1)
+            c.setFillColor(GOLD)
+            _set_font(c, True, 12)
+            c.drawCentredString(px, py - 4, PLANET_SYMBOLS.get(name, ""))
+            if planets[name].get("retrograde"):
+                c.setFillColor(TEXT_DIM)
+                _set_font(c, False, 5)
+                c.drawCentredString(px + 10, py + 8, "℞")
+
+        # Only the strongest aspect lines inside the center, to keep the wheel readable.
+        c.setLineWidth(0.6)
+        for aspect in sorted(aspects, key=lambda a: float(a.get("orb") or 99))[:6]:
+            p1 = _planet_key(aspect.get("p1"))
+            p2 = _planet_key(aspect.get("p2"))
+            if p1 not in planet_points or p2 not in planet_points:
+                continue
+            c.setStrokeColor(GOLD_DIM)
+            c.line(*planet_points[p1], *planet_points[p2])
+            c.setFillColor(GOLD)
+            c.circle(*planet_points[p1], 1.1, stroke=0, fill=1)
+            c.circle(*planet_points[p2], 1.1, stroke=0, fill=1)
+
+        # Center seal.
+        c.setFillColor(BG)
+        c.setStrokeColor(GOLD)
+        c.setLineWidth(0.8)
+        c.circle(cx, cy, 28, stroke=1, fill=1)
+        c.setStrokeColor(GOLD_DIM)
+        c.setLineWidth(0.35)
+        c.circle(cx, cy, 22, stroke=1, fill=0)
         c.setFillColor(GOLD)
+        _set_font(c, True, 22)
+        c.drawCentredString(cx, cy - 7, SIGN_SYMBOLS.get(_key(asc_sign), "✦"))
+
+    # 1. Cover.
+    _new_page(c, w, h)
+    c.setStrokeColor(GOLD_DIM)
+    c.setLineWidth(1)
+    c.circle(w / 2, h - 210, 98, stroke=1, fill=0)
+    c.circle(w / 2, h - 210, 66, stroke=1, fill=0)
+    c.setFillColor(GOLD)
+    _set_font(c, True, 36)
+    c.drawCentredString(w / 2, h - 222, "✦")
+    _set_font(c, True, 28)
+    c.drawCentredString(w / 2, h - 330, "НАТАЛЬНАЯ КАРТА")
+    c.setFillColor(TEXT)
+    _set_font(c, False, 13)
+    c.drawCentredString(w / 2, h - 358, "Персональный астрологический отчёт")
+    c.setFillColor(TEXT_DIM)
+    _set_font(c, False, 11)
+    c.drawCentredString(w / 2, h - 410, user_name or "Пользователь")
+    c.drawCentredString(w / 2, h - 430, f"{birth_date or 'Дата не указана'} · {birth_time or 'время не указано'}")
+    c.drawCentredString(w / 2, h - 450, birth_city or "Город не указан")
+    key_points = [("☉ СОЛНЦЕ", _sign_ru(sun_sign)), ("☽ ЛУНА", _sign_ru(moon_sign))]
+    if asc_sign:
+        key_points.append(("↑ ВОСХОД", _sign_ru(asc_sign)))
+    x = 118
+    for label, value in key_points:
+        c.setFillColor(GOLD)
+        _set_font(c, True, 10)
+        c.drawCentredString(x, h - 525, label)
+        c.setFillColor(TEXT)
+        _set_font(c, True, 14)
+        c.drawCentredString(x, h - 548, value)
+        x += 180
+    c.setFillColor(TEXT_DIM)
+    _set_font(c, False, 8)
+    c.drawCentredString(w / 2, 52, f"ASTRO TMA · MADE FOR {(user_name or 'USER').upper()}")
+    c.showPage()
+    page += 1
+
+    # 2. Contents.
+    y = title_page("Содержание", "Что внутри отчёта")
+    contents = (
+        ("I", "Ключевые точки карты"),
+        ("II", "Натальное колесо"),
+        ("III", "Баланс стихий и характер"),
+        ("IV", "Планеты в знаках"),
+        ("V", "Дома гороскопа"),
+        ("VI", "Аспекты — связи между планетами"),
+        ("VII", "Персональная интерпретация"),
+    )
+    for idx, title in contents:
+        c.setFillColor(GOLD_DIM)
         _set_font(c, True, 11)
-        c.drawString(40, y, f"{PLANET_SYMBOLS[name]} {PLANET_RU[name]}")
+        c.drawString(62, y, idx)
         c.setFillColor(TEXT)
-        _set_font(c, False, 10)
-        c.drawString(185, y, f"{SIGN_SYMBOLS.get(sign, '')} {_sign_ru(sign)} {_deg_str(sign_degree)}{retro}")
-        c.drawString(390, y, f"Дом {planet.get('house') or '—'}")
-        y -= 22
-    _draw_footer(c, w)
-    c.showPage()
+        _set_font(c, False, 12)
+        c.drawString(100, y, title)
+        y -= 42
+    finish_page()
 
-    planet_desc = (descriptions or {}).get("planets") or {}
-    planet_items: list[tuple[str, str]] = []
-    for name in PLANET_ORDER:
-        planet = planets.get(name)
-        if not planet:
-            continue
-        sign = _key(planet.get("sign"))
-        header = f"{PLANET_SYMBOLS[name]} {PLANET_RU[name]} в {_sign_ru(sign)}"
-        planet_items.append((header, _description(planet_desc.get(name), _planet_fallback(name, planet))))
-    if planet_items:
-        _render_items_section(
-            c,
-            w,
-            h,
-            "Планеты в знаках — подробные описания",
-            "Каждая планета описывает отдельную психологическую функцию, а знак показывает стиль её проявления.",
-            planet_items,
-        )
-
-    # Houses.
-    y = _draw_title(c, "Дома гороскопа", w, h, "12 домов показывают жизненные сферы, где раскрываются темы карты.")
-    axis_labels = {1: "Асцендент", 4: "IC", 7: "Десцендент", 10: "MC"}
-    for house in houses:
-        num = int(house.get("number") or 0)
-        if not num:
-            continue
-        y = _ensure_space(c, y, 28, w, h)
-        sign = _key(house.get("sign"))
-        c.setFillColor(GOLD if num in axis_labels else TEXT_DIM)
-        _set_font(c, bool(num in axis_labels), 10)
-        c.drawString(40, y, f"Дом {num}")
+    # 3. Key points.
+    y = title_page("Ключевые точки", "Три центра, через которые читается ваша карта")
+    card_w = 160
+    card_h = 245
+    cards = [
+        ("☉", "СОЛНЦЕ", _sign_ru(sun_sign), "Как я сияю", "Солнце показывает волю, главный вектор личности и способ быть видимым."),
+        ("☽", "ЛУНА", _sign_ru(moon_sign), "Что я чувствую", "Луна описывает эмоции, привычные реакции и внутренний способ восстанавливаться."),
+        ("↑", "ВОСХОД", _sign_ru(asc_sign) if asc_sign else "не рассчитан", "Как меня видят", "Асцендент показывает первое впечатление, стиль входа в мир и телесный образ."),
+    ]
+    for i, (glyph, label, value, quote, text) in enumerate(cards):
+        x = 40 + i * (card_w + 18)
+        c.setFillColor(SURFACE)
+        c.roundRect(x, y - card_h, card_w, card_h, 8, fill=1, stroke=0)
+        c.setFillColor(GOLD)
+        _set_font(c, True, 26)
+        c.drawString(x + 18, y - 42, glyph)
+        _set_font(c, True, 9)
+        c.drawString(x + 60, y - 30, label)
         c.setFillColor(TEXT)
+        _set_font(c, True, 17)
+        c.drawString(x + 18, y - 78, value)
+        c.setFillColor(GOLD_DIM)
         _set_font(c, False, 10)
-        c.drawString(125, y, f"{SIGN_SYMBOLS.get(sign, '')} {_sign_ru(sign)}")
-        c.drawString(260, y, _deg_str(house.get("degree"), within_sign=False))
-        if num in axis_labels:
-            c.setFillColor(GOLD_DIM)
-            c.drawString(340, y, f"({axis_labels[num]})")
-        y -= 21
-    _draw_footer(c, w)
-    c.showPage()
+        c.drawString(x + 18, y - 112, f"«{quote}»")
+        c.setFillColor(TEXT_DIM)
+        _set_font(c, False, 9)
+        _draw_wrapped_static(c, text, x + 18, y - 142, 24, 13, 5)
+    perc = _element_percentages(planets)
+    dominant = max(perc, key=perc.get) if perc else "fire"
+    dom_label = ELEMENTS[dominant][0]
+    c.setFillColor(GOLD)
+    _set_font(c, True, 13)
+    c.drawString(48, 208, f"△ Доминирует {dom_label.lower()}")
+    c.setFillColor(TEXT)
+    _set_font(c, True, 12)
+    c.drawString(48, 184, f"{perc.get(dominant, 0)}% карты")
+    c.setFillColor(TEXT_DIM)
+    _set_font(c, False, 10)
+    _draw_wrapped_static(c, ELEMENT_COPY[dominant][0], 48, 160, 92, 14, 3)
+    finish_page()
 
-    house_desc = (descriptions or {}).get("houses") or {}
-    house_items: list[tuple[str, str]] = []
-    for house in houses:
-        num = int(house.get("number") or 0)
-        if not num:
-            continue
-        sign = _key(house.get("sign"))
-        house_items.append((
-            f"Дом {num} — {_sign_ru(sign)}",
-            _description(house_desc.get(str(num)), _house_fallback(house)),
-        ))
-    if house_items:
-        _render_items_section(
-            c,
-            w,
-            h,
-            "Дома — подробные описания",
-            "Этот раздел раскрывает, как знаки на куспидах окрашивают разные сферы жизни.",
-            house_items,
-        )
+    # 4. Wheel.
+    y = title_page("Натальное колесо", "Карта неба в момент вашего рождения")
+    draw_wheel(w / 2, y - 220, 190)
+    c.setFillColor(TEXT_DIM)
+    _set_font(c, False, 9)
+    legend_y = 120
+    legends = (
+        ("☌", "Соединение · слияние"),
+        ("△", "Трин · поток"),
+        ("⚹", "Секстиль · возможность"),
+        ("□", "Квадрат · вызов"),
+        ("☍", "Оппозиция · противостояние"),
+        ("⚻", "Квинконс · пересборка"),
+    )
+    for i, (glyph, label) in enumerate(legends):
+        c.drawString(80 + (i % 2) * 240, legend_y - (i // 2) * 20, f"{glyph} {label}")
+    finish_page()
 
-    # Aspects.
-    y = _draw_title(c, "Аспекты между планетами", w, h, "Аспекты показывают связи, напряжения и таланты между частями карты.")
-    for aspect_type in ASPECT_ORDER:
-        group = [a for a in aspects if _aspect_key(a.get("aspect")) == aspect_type]
-        if not group:
-            continue
-        y = _ensure_space(c, y, 48, w, h)
+    # 5. Elements.
+    y = title_page("Баланс стихий", "Как распределена энергия вашей карты")
+    for element in ELEMENTS:
+        label = ELEMENTS[element][0]
+        pct = perc.get(element, 0)
+        c.setFillColor(TEXT)
+        _set_font(c, True, 12)
+        c.drawString(58, y, label)
+        c.drawRightString(156, y, f"{pct}%")
+        c.setFillColor(LINE)
+        c.roundRect(180, y - 5, 300, 8, 4, fill=1, stroke=0)
+        c.setFillColor(GOLD)
+        c.roundRect(180, y - 5, 300 * pct / 100, 8, 4, fill=1, stroke=0)
+        y -= 42
+    y -= 10
+    for element in ELEMENTS:
+        label = ELEMENTS[element][0]
+        pct = perc.get(element, 0)
         c.setFillColor(GOLD)
         _set_font(c, True, 12)
-        c.drawString(40, y, f"{ASPECT_SYMBOLS.get(aspect_type, '')} {ASPECT_RU[aspect_type]}")
-        y -= 19
+        c.drawString(58, y, f"{label} {pct}%")
+        c.setFillColor(TEXT_DIM)
+        _set_font(c, False, 10)
+        y = _draw_wrapped_static(c, ELEMENT_COPY[element][0], 58, y - 20, 70, 14, 3)
+        y -= 12
+    tags = ELEMENT_COPY[dominant][1]
+    x = 58
+    for tag in tags:
+        c.setFillColor(SURFACE_2)
+        c.roundRect(x, 72, len(tag) * 6.2 + 18, 22, 11, fill=1, stroke=0)
+        c.setFillColor(TEXT)
+        _set_font(c, False, 9)
+        c.drawCentredString(x + len(tag) * 3.1 + 9, 79, tag)
+        x += len(tag) * 6.2 + 26
+    finish_page()
+
+    # 6-7. Planets, two pages.
+    planet_items = [name for name in PLANET_ORDER if planets.get(name)]
+    for chunk_index, start in enumerate((0, 6)):
+        chunk = planet_items[start:start + 6]
+        if not chunk:
+            continue
+        y = title_page(f"Планеты в знаках {chunk_index + 1} / 2", "Где находится каждая планета и что это значит")
+        for name in chunk:
+            planet = planets[name]
+            sign = _key(planet.get("sign"))
+            sign_degree = planet.get("sign_degree", planet.get("degree", 0))
+            retro = " ℞ РЕТРО" if planet.get("retrograde") else ""
+            c.setFillColor(GOLD)
+            _set_font(c, True, 15)
+            c.drawString(54, y, f"{PLANET_SYMBOLS[name]} {PLANET_RU[name]} в {_sign_ru(sign)}")
+            if retro:
+                c.setFillColor(GOLD_DIM)
+                _set_font(c, True, 8)
+                c.drawString(54, y - 15, retro.strip())
+            c.setFillColor(TEXT_DIM)
+            _set_font(c, False, 9)
+            c.drawString(54, y - 30, f"{_roman(int(planet.get('house') or 0))} дом · {_deg_str(sign_degree)}")
+            text = _compact_description(planet_desc.get(name), _planet_fallback(name, planet), words=34)
+            c.setFillColor(TEXT)
+            _set_font(c, False, 10)
+            _draw_wrapped_static(c, text, 54, y - 50, 58, 13, 4)
+            y -= 105
+        finish_page()
+
+    # Houses.
+    y = title_page("Дома гороскопа", "12 сфер жизни и их обстановка")
+    axis_labels = {1: "Асцендент", 4: "Основание (IC)", 7: "Десцендент", 10: "Середина неба (MC)"}
+    col_x = (42, 305)
+    for idx, house in enumerate(houses):
+        num = int(house.get("number") or 0)
+        if not num:
+            continue
+        if idx == 6:
+            y = h - 118
+        x = col_x[0 if idx < 6 else 1]
+        sign = _key(house.get("sign"))
+        c.setFillColor(GOLD)
+        _set_font(c, True, 12)
+        c.drawString(x, y, f"{_roman(num)} {SIGN_SYMBOLS.get(sign, '')} {_sign_ru(sign)}")
+        c.setFillColor(TEXT_DIM)
+        _set_font(c, False, 8)
+        c.drawString(x + 112, y, _deg_str(house.get("degree"), within_sign=False))
+        if num in axis_labels:
+            c.drawString(x, y - 13, axis_labels[num])
+        c.setFillColor(TEXT)
+        _set_font(c, True, 8)
+        c.drawString(x, y - 30, HOUSE_LABELS.get(num, f"ДОМ {num}"))
+        text = _compact_description(house_desc.get(str(num)), _house_fallback(house), words=24)
+        c.setFillColor(TEXT_DIM)
+        _set_font(c, False, 8)
+        _draw_wrapped_static(c, text, x, y - 45, 38, 11, 4)
+        y -= 105
+    finish_page()
+
+    # Aspects, paginated.
+    grouped = [(atype, [a for a in aspects if _aspect_key(a.get("aspect")) == atype]) for atype in ASPECT_ORDER]
+    grouped = [(atype, group) for atype, group in grouped if group]
+    total_aspects = sum(len(group) for _, group in grouped)
+    harm = sum(1 for a in aspects if _aspect_kind(_aspect_key(a.get("aspect"))) == "harmonious")
+    chall = sum(1 for a in aspects if _aspect_kind(_aspect_key(a.get("aspect"))) == "challenging")
+    neutral = max(total_aspects - harm - chall, 0)
+    y = title_page("Аспекты", "Связи между планетами вашей карты")
+    for x, value, label in ((54, total_aspects, "ВСЕГО"), (178, harm, "ГАРМОНИЧНЫХ"), (328, chall, "НАПРЯЖЕННЫХ"), (470, neutral, "НЕЙТРАЛЬНЫХ")):
+        c.setFillColor(GOLD)
+        _set_font(c, True, 18)
+        c.drawCentredString(x, y, str(value))
+        c.setFillColor(TEXT_DIM)
+        _set_font(c, True, 7)
+        c.drawCentredString(x, y - 14, label)
+    y -= 55
+    for aspect_type, group in grouped:
+        if y < 132:
+            finish_page()
+            y = title_page("Аспекты", "Продолжение списка связей между планетами")
+        c.setFillColor(GOLD)
+        _set_font(c, True, 12)
+        c.drawString(48, y, f"{ASPECT_SYMBOLS.get(aspect_type, '')} {ASPECT_RU[aspect_type].upper()} — {ASPECT_TOPICS.get(aspect_type, 'связь энергий')}")
+        y -= 24
         for aspect in group:
-            y = _ensure_space(c, y, 22, w, h)
+            if y < 112:
+                finish_page()
+                y = title_page("Аспекты", "Продолжение списка связей между планетами")
             p1_key = _planet_key(aspect.get("p1"))
             p2_key = _planet_key(aspect.get("p2"))
             orb = float(aspect.get("orb") or 0)
             c.setFillColor(TEXT)
-            _set_font(c, False, 10)
+            _set_font(c, True, 10)
             c.drawString(
-                60,
+                58,
                 y,
-                f"{PLANET_SYMBOLS.get(p1_key, '')} {PLANET_RU.get(p1_key, aspect.get('p1', ''))}  "
-                f"{ASPECT_SYMBOLS.get(aspect_type, '')}  "
+                f"{PLANET_SYMBOLS.get(p1_key, '')} {PLANET_RU.get(p1_key, aspect.get('p1', ''))} "
+                f"{ASPECT_SYMBOLS.get(aspect_type, '')} "
                 f"{PLANET_SYMBOLS.get(p2_key, '')} {PLANET_RU.get(p2_key, aspect.get('p2', ''))}",
             )
             c.setFillColor(TEXT_DIM)
-            c.drawString(388, y, f"орб {orb:.1f}°")
+            _set_font(c, False, 9)
+            c.drawRightString(w - 48, y, f"орб {orb:.1f}°")
             y -= 16
+            desc = _compact_description(aspect_desc.get((p1_key, p2_key, aspect_type)), _aspect_fallback(aspect), words=30)
+            c.setFillColor(TEXT_DIM)
+            _set_font(c, False, 8)
+            y = _draw_wrapped_static(c, desc, 58, y, 84, 11, 3)
+            y -= 10
         y -= 8
-    _draw_footer(c, w)
-    c.showPage()
+    finish_page()
 
-    aspect_desc = _aspect_description_map(descriptions)
-    aspect_items: list[tuple[str, str]] = []
-    for aspect in aspects:
-        p1_key = _planet_key(aspect.get("p1"))
-        p2_key = _planet_key(aspect.get("p2"))
-        aspect_type = _aspect_key(aspect.get("aspect"))
-        if not p1_key or not p2_key or not aspect_type:
-            continue
-        header = (
-            f"{PLANET_RU.get(p1_key, aspect.get('p1', ''))} "
-            f"{ASPECT_SYMBOLS.get(aspect_type, '')} "
-            f"{PLANET_RU.get(p2_key, aspect.get('p2', ''))} — "
-            f"{ASPECT_RU.get(aspect_type, aspect_type)}"
-        )
-        aspect_items.append((
-            header,
-            _description(aspect_desc.get((p1_key, p2_key, aspect_type)), _aspect_fallback(aspect)),
-        ))
-    if aspect_items:
-        _render_items_section(
-            c,
-            w,
-            h,
-            "Аспекты — подробные описания",
-            "Здесь собраны трактовки всех аспектов, найденных в натальной карте.",
-            aspect_items,
-        )
-
+    # Reading.
     final_reading = str(reading or "").strip()
     if not final_reading:
         final_reading = (
-            f"Ваша карта соединяет солнечный знак {_sign_ru(sun_sign)}, лунный знак "
-            f"{_sign_ru(moon_sign)}"
-            f"{' и асцендент ' + _sign_ru(asc_sign) if asc_sign else ''}. "
-            "Солнце показывает главный вектор личности и то, где важно проявлять волю. "
-            "Луна описывает эмоциональные потребности, привычные реакции и способ "
-            "восстанавливать внутренний баланс. Дома показывают, в каких сферах жизни "
-            "эти качества раскрываются заметнее всего, а аспекты объясняют внутренние "
-            "связи между разными частями характера. Читайте отчёт как карту внимания: "
-            "он не фиксирует судьбу, а помогает увидеть сильные стороны, зоны роста и "
-            "темы, с которыми стоит обращаться бережно и осознанно."
+            f"Ваша карта соединяет солнечный знак {_sign_ru(sun_sign)}, лунный знак {_sign_ru(moon_sign)}"
+            f"{' и асцендент ' + _sign_ru(asc_sign) if asc_sign else ''}. Солнце показывает главный "
+            "вектор личности, Луна описывает эмоциональные потребности, а дома показывают сферы, "
+            "где качества карты раскрываются заметнее всего. Аспекты связывают разные части характера: "
+            "одни дают талант и естественный поток, другие требуют взросления, честности и настройки поведения. "
+            "Читайте отчёт как карту внимания: он не фиксирует судьбу, а помогает увидеть сильные стороны, "
+            "зоны роста и темы, с которыми стоит обращаться бережно и осознанно."
         )
-
-    if final_reading:
-        y = _draw_title(c, "Персональная интерпретация", w, h, "Итоговое чтение карты в цельном тексте.")
-        c.setFillColor(TEXT)
-        _set_font(c, False, 10)
-        for raw_line in final_reading.split("\n"):
-            line = raw_line.strip()
-            if not line:
-                y -= 10
-                continue
-            if line.startswith("**") and line.endswith("**"):
-                y = _ensure_space(c, y, 28, w, h)
-                c.setFillColor(GOLD)
-                _set_font(c, True, 11)
-                c.drawString(40, y, line.strip("* "))
-                y -= 18
+    y = title_page("Персональная интерпретация", "Написано специально для вас")
+    c.setFillColor(GOLD_DIM)
+    _set_font(c, False, 10)
+    c.drawString(48, y, "«Каждый рисунок звезд раскрывается только через того, кто его носит»")
+    y -= 35
+    c.setFillColor(TEXT)
+    _set_font(c, False, 10)
+    for raw_line in final_reading.split("\n"):
+        line = raw_line.strip()
+        if not line:
+            y -= 10
+            continue
+        if line.startswith("**") and line.endswith("**"):
+            if y < 110:
+                finish_page()
+                y = title_page("Персональная интерпретация", "Продолжение")
+            c.setFillColor(GOLD)
+            _set_font(c, True, 12)
+            c.drawString(48, y, "✦ " + line.strip("* "))
+            y -= 22
+            c.setFillColor(TEXT)
+            _set_font(c, False, 10)
+            continue
+        for wrapped_line in _lines(line, 92):
+            if y < 90:
+                finish_page()
+                y = title_page("Персональная интерпретация", "Продолжение")
                 c.setFillColor(TEXT)
                 _set_font(c, False, 10)
-                continue
-            y = _wrap_paragraph(c, line, 40, y, 95, 14, 58, w, h)
-        _draw_footer(c, w)
-        c.showPage()
+            c.drawString(48, y, wrapped_line)
+            y -= 15
+    finish_page()
 
-    _new_page(c, w, h)
+    # Glossary.
+    y = title_page("✦ Этот отчёт создан для вашего понимания", "личного космического рисунка")
     c.setFillColor(GOLD)
-    _set_font(c, True, 18)
-    c.drawCentredString(w / 2, h / 2 + 40, "Спасибо")
+    _set_font(c, True, 16)
+    c.drawString(48, y, "Краткий справочник")
+    y -= 42
+    for term, definition in GLOSSARY:
+        c.setFillColor(TEXT)
+        _set_font(c, True, 11)
+        c.drawString(58, y, term)
+        c.setFillColor(TEXT_DIM)
+        _set_font(c, False, 10)
+        y = _draw_wrapped_static(c, definition, 220, y, 42, 13, 3)
+        y -= 24
     c.setFillColor(TEXT_DIM)
-    _set_font(c, False, 11)
-    c.drawCentredString(w / 2, h / 2, "Этот отчёт создан для вашего понимания")
-    c.drawCentredString(w / 2, h / 2 - 16, "личного космического рисунка.")
-    _draw_footer(c, w)
-
-    c.showPage()
+    _set_font(c, False, 8)
+    c.drawCentredString(w / 2, 58, f"ASTRO TMA · СОЗДАНО {datetime.now().strftime('%d.%m.%Y')}")
+    finish_page()
     c.save()
     return buf.getvalue()

@@ -612,21 +612,127 @@ export const natalApi = {
 };
 
 // ── Tarot ──────────────────────────────────────────────────────────────────────
-// Rewrite backend's webp image URL to local /tarot/<folder>/card-NN-<slug>.svg
-function localTarotImage(remoteUrl: string | null | undefined): string | null {
-  if (!remoteUrl) return null;
-  const filename = remoteUrl.split("/").pop() ?? "";
-  // Pattern: NN_Some_Card_Name.webp  →  NN, Some_Card_Name
-  const m = filename.match(/^(\d{2})_(.+)\.(webp|png|jpe?g|svg)$/i);
-  if (!m) return remoteUrl; // fallback to original
-  const [, num, namePart] = m;
-  const folder = parseInt(num, 10) < 22 ? "majors" : "minors";
-  const slug = namePart.toLowerCase().replace(/^the_/, "").replace(/_/g, "-");
-  return `/tarot/${folder}/card-${num}-${slug}.svg`;
+// Prefer backend's full card art. Local SVGs are fallback-only.
+const TAROT_IMAGE_BASE =
+  "https://ip-194-99-21-53-142250.vps.hosted-by-mvps.net/static/tarot/";
+
+const TAROT_CARD_ORDER = [
+  "The Fool",
+  "The Magician",
+  "The High Priestess",
+  "The Empress",
+  "The Emperor",
+  "The Hierophant",
+  "The Lovers",
+  "The Chariot",
+  "Strength",
+  "The Hermit",
+  "Wheel of Fortune",
+  "Justice",
+  "The Hanged Man",
+  "Death",
+  "Temperance",
+  "The Devil",
+  "The Tower",
+  "The Star",
+  "The Moon",
+  "The Sun",
+  "Judgement",
+  "The World",
+  "Ace of Wands",
+  "Two of Wands",
+  "Three of Wands",
+  "Four of Wands",
+  "Five of Wands",
+  "Six of Wands",
+  "Seven of Wands",
+  "Eight of Wands",
+  "Nine of Wands",
+  "Ten of Wands",
+  "Page of Wands",
+  "Knight of Wands",
+  "Queen of Wands",
+  "King of Wands",
+  "Ace of Cups",
+  "Two of Cups",
+  "Three of Cups",
+  "Four of Cups",
+  "Five of Cups",
+  "Six of Cups",
+  "Seven of Cups",
+  "Eight of Cups",
+  "Nine of Cups",
+  "Ten of Cups",
+  "Page of Cups",
+  "Knight of Cups",
+  "Queen of Cups",
+  "King of Cups",
+  "Ace of Swords",
+  "Two of Swords",
+  "Three of Swords",
+  "Four of Swords",
+  "Five of Swords",
+  "Six of Swords",
+  "Seven of Swords",
+  "Eight of Swords",
+  "Nine of Swords",
+  "Ten of Swords",
+  "Page of Swords",
+  "Knight of Swords",
+  "Queen of Swords",
+  "King of Swords",
+  "Ace of Pentacles",
+  "Two of Pentacles",
+  "Three of Pentacles",
+  "Four of Pentacles",
+  "Five of Pentacles",
+  "Six of Pentacles",
+  "Seven of Pentacles",
+  "Eight of Pentacles",
+  "Nine of Pentacles",
+  "Ten of Pentacles",
+  "Page of Pentacles",
+  "Knight of Pentacles",
+  "Queen of Pentacles",
+  "King of Pentacles",
+] as const;
+
+function tarotSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/^the(?:[_\s]+)?/, "")
+    .replace(/judgement/g, "judgment")
+    .replace(/[_\s]+/g, "-");
 }
 
-function rewriteCardImage<T extends { image_url?: string | null }>(card: T): T {
-  return { ...card, image_url: localTarotImage(card.image_url ?? undefined) };
+function localTarotImageByName(nameEn: string | null | undefined): string | null {
+  if (!nameEn) return null;
+  const idx = TAROT_CARD_ORDER.indexOf(nameEn as (typeof TAROT_CARD_ORDER)[number]);
+  if (idx < 0) return null;
+  const folder = idx < 22 ? "majors" : "minors";
+  return `/tarot/${folder}/card-${String(idx).padStart(2, "0")}-${tarotSlug(nameEn)}.svg`;
+}
+
+function remoteTarotImageByName(nameEn: string | null | undefined): string | null {
+  if (!nameEn) return null;
+  const idx = TAROT_CARD_ORDER.indexOf(nameEn as (typeof TAROT_CARD_ORDER)[number]);
+  if (idx < 0) return null;
+  return `${TAROT_IMAGE_BASE}${String(idx).padStart(2, "0")}_${nameEn.replace(/ /g, "_")}.webp`;
+}
+
+function rewriteCardImage<
+  T extends { image_url?: string | null; name_en?: string | null },
+>(card: T): T {
+  const remoteImage = remoteTarotImageByName(card.name_en);
+  const imageUrl =
+    card.image_url && !card.image_url.startsWith("/tarot/")
+      ? card.image_url
+      : remoteImage ?? localTarotImageByName(card.name_en);
+
+  return {
+    ...card,
+    image_url: imageUrl,
+  };
 }
 
 function rewriteSpread<T extends { cards: { image_url?: string | null }[] }>(
