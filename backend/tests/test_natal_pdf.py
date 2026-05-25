@@ -197,6 +197,58 @@ async def test_natal_pdf_token_download_does_not_require_telegram_auth(monkeypat
 
 
 @pytest.mark.asyncio
+async def test_build_natal_pdf_response_does_not_block_on_llm(monkeypatch):
+    from api.routes import natal
+    from services import natal_pdf
+
+    chart = SimpleNamespace(
+        chart_data={
+            "planets": {"sun": {"sign": "scorpio"}},
+            "houses": [],
+            "aspects": [],
+        },
+        sun_sign="scorpio",
+        moon_sign="aries",
+        ascendant_sign="capricorn",
+    )
+    user = SimpleNamespace(
+        id=1001,
+        tg_first_name="Андрей",
+        birth_date=None,
+        birth_time_known=False,
+        birth_city="Минск",
+        natal_chart=chart,
+    )
+    calls = {}
+
+    async def fail_descriptions(*_args, **_kwargs):
+        raise AssertionError("download must not generate descriptions")
+
+    async def fail_reading(*_args, **_kwargs):
+        raise AssertionError("download must not generate reading")
+
+    async def fake_cache_get(key):
+        calls["cache_key"] = key
+        return None
+
+    def fake_generate_natal_pdf(**kwargs):
+        calls["pdf_kwargs"] = kwargs
+        return b"%PDF-fast"
+
+    monkeypatch.setattr(natal, "_get_or_generate_descriptions", fail_descriptions)
+    monkeypatch.setattr(natal, "_get_or_generate_pdf_reading", fail_reading)
+    monkeypatch.setattr(natal, "cache_get", fake_cache_get)
+    monkeypatch.setattr(natal_pdf, "generate_natal_pdf", fake_generate_natal_pdf)
+
+    response = await natal._build_natal_pdf_response(db=object(), user=user)
+
+    assert response.body == b"%PDF-fast"
+    assert calls["cache_key"] == "natal:1001"
+    assert calls["pdf_kwargs"]["descriptions"] == natal._empty_descriptions()
+    assert calls["pdf_kwargs"]["reading"] is None
+
+
+@pytest.mark.asyncio
 async def test_pdf_reading_is_generated_when_full_chart_cache_is_cold(monkeypatch):
     from api.routes import natal
 

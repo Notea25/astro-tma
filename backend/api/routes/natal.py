@@ -160,6 +160,30 @@ async def _get_or_generate_pdf_reading(
     return reading
 
 
+async def _get_cached_pdf_reading(user) -> str | None:
+    cached = await cache_get(key_natal(user.id))
+    if isinstance(cached, dict):
+        reading = cached.get("reading")
+        if isinstance(reading, str) and reading.strip():
+            return reading
+    return None
+
+
+def _get_stored_descriptions(user) -> dict[str, Any]:
+    if not user.natal_chart:
+        return _empty_descriptions()
+
+    chart_data = user.natal_chart.chart_data or {}
+    stored = chart_data.get("descriptions")
+    if (
+        isinstance(stored, dict)
+        and stored.get("_version") == NATAL_DESCRIPTIONS_VERSION
+        and _has_any(stored)
+    ):
+        return stored
+    return _empty_descriptions()
+
+
 async def _build_natal_pdf_response(db: AsyncSession, user) -> Response:
     from services.natal_pdf import generate_natal_pdf
 
@@ -172,8 +196,11 @@ async def _build_natal_pdf_response(db: AsyncSession, user) -> Response:
         for a in aspects_raw
     ]
 
-    descriptions = await _get_or_generate_descriptions(db, user)
-    reading = await _get_or_generate_pdf_reading(user, chart, planets, aspects)
+    # PDF downloads must stay comfortably under reverse-proxy timeouts.
+    # Use already persisted/cached LLM text when it exists; otherwise the PDF
+    # generator has local fallback copy and can respond immediately.
+    descriptions = _get_stored_descriptions(user)
+    reading = await _get_cached_pdf_reading(user)
 
     pdf_bytes = generate_natal_pdf(
         user_name=user.tg_first_name or "User",
