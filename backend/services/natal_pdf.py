@@ -21,10 +21,15 @@ FONT_BOLD = "Helvetica-Bold"
 
 GOLD = HexColor("#d4b254")
 GOLD_DIM = HexColor("#8a7a3a")
+FIRE = HexColor("#ff6b35")
+AIR = HexColor("#9b5cff")
+WATER = HexColor("#29c4b5")
+EARTH = HexColor("#78b65a")
 TEXT = HexColor("#f0ecf8")
 TEXT_DIM = HexColor("#b6afca")
 BG = HexColor("#07060f")
 BG_PANEL = HexColor("#100b22")
+WHEEL_BG = HexColor("#0d132b")
 SURFACE = HexColor("#0e0b20")
 SURFACE_2 = HexColor("#171129")
 LINE = HexColor("#2c2540")
@@ -64,6 +69,12 @@ ELEMENTS = {
     "earth": ("Земля", ("taurus", "virgo", "capricorn")),
     "air": ("Воздух", ("gemini", "libra", "aquarius")),
     "water": ("Вода", ("cancer", "scorpio", "pisces")),
+}
+ELEMENT_COLORS = {
+    "fire": FIRE,
+    "earth": EARTH,
+    "air": AIR,
+    "water": WATER,
 }
 HOUSE_TOPICS = {
     1: "личность, тело, первое впечатление и способ начинать новое",
@@ -177,6 +188,29 @@ def _sign_ru(sign: Any) -> str:
     return SIGN_RU.get(key, str(sign or ""))
 
 
+def _sign_symbol(sign: Any) -> str:
+    key = _key(sign)
+    if key not in SIGN_SYMBOLS:
+        reverse = {v.lower(): k for k, v in SIGN_RU.items()}
+        key = reverse.get(key, key)
+    return SIGN_SYMBOLS.get(key, "")
+
+
+def _sign_element(sign: Any) -> str:
+    sign_key = _key(sign)
+    if sign_key not in SIGN_SYMBOLS:
+        reverse = {v.lower(): k for k, v in SIGN_RU.items()}
+        sign_key = reverse.get(sign_key, sign_key)
+    for element, (_, signs) in ELEMENTS.items():
+        if sign_key in signs:
+            return element
+    return "fire"
+
+
+def _spaced(text: str) -> str:
+    return " ".join(str(text or "").upper())
+
+
 def _planet_key(name: Any) -> str:
     raw = _key(name)
     reverse = {
@@ -209,21 +243,10 @@ def _new_page(c: canvas.Canvas, w: float, h: float) -> None:
     c.setFillColor(BG)
     c.rect(0, 0, w, h, fill=1, stroke=0)
     c.saveState()
-    c.setStrokeColor(LINE_SOFT)
-    c.setLineWidth(0.8)
-    c.roundRect(26, 28, w - 52, h - 56, 18, stroke=1, fill=0)
-    c.setStrokeColor(GOLD_DIM)
-    c.setLineWidth(0.35)
-    c.roundRect(34, 36, w - 68, h - 72, 14, stroke=1, fill=0)
-    c.setFillColor(SURFACE)
-    c.circle(w - 92, h - 96, 72, stroke=0, fill=1)
-    c.setStrokeColor(LINE)
-    c.circle(w - 92, h - 96, 48, stroke=1, fill=0)
     c.setFillColor(GOLD_DIM)
     for sx, sy, size in (
-        (72, h - 94, 1.4), (126, h - 148, 0.9), (w - 128, h - 174, 1.1),
-        (w - 72, h - 252, 0.8), (88, 180, 0.9), (154, 116, 0.7),
-        (w - 118, 162, 1.0), (w - 64, 92, 0.7),
+        (78, h - 108, 1.1), (145, h - 160, 0.7), (w - 145, h - 194, 0.9),
+        (w - 78, h - 266, 0.7), (92, 142, 0.7), (w - 110, 118, 0.8),
     ):
         c.circle(sx, sy, size, stroke=0, fill=1)
     c.restoreState()
@@ -555,20 +578,16 @@ def generate_natal_pdf(
 
     def title_page(title: str, subtitle: str) -> float:
         _new_page(c, w, h)
-        c.setFillColor(BG_PANEL)
-        c.roundRect(42, h - 102, w - 84, 62, 12, stroke=0, fill=1)
-        c.setStrokeColor(LINE_SOFT)
-        c.setLineWidth(0.5)
-        c.roundRect(42, h - 102, w - 84, 62, 12, stroke=1, fill=0)
-        c.setFillColor(GOLD_DIM)
-        c.circle(58, h - 61, 2.2, stroke=0, fill=1)
         c.setFillColor(GOLD)
-        _set_font(c, True, 22)
-        c.drawString(72, h - 63, title)
+        _set_font(c, True, 21)
+        c.drawString(58, h - 82, title)
+        c.setStrokeColor(GOLD_DIM)
+        c.setLineWidth(0.5)
+        c.line(58, h - 101, w - 58, h - 101)
         c.setFillColor(TEXT_DIM)
         _set_font(c, False, 10)
-        c.drawString(72, h - 84, subtitle)
-        return h - 132
+        c.drawString(58, h - 130, subtitle)
+        return h - 174
 
     def draw_wheel(cx: float, cy: float, radius: float) -> None:
         asc_deg = _ascendant_degree(houses, asc_sign)
@@ -687,10 +706,26 @@ def generate_natal_pdf(
         for aspect in sorted(aspects, key=lambda a: float(a.get("orb") or 99))[:6]:
             p1_key = _planet_key(aspect.get("p1"))
             p2_key = _planet_key(aspect.get("p2"))
+            aspect_type = _aspect_key(aspect.get("aspect"))
             if p1_key not in planet_points or p2_key not in planet_points:
                 continue
-            c.setStrokeColor(GOLD_DIM)
+            if aspect_type == "trine":
+                c.setStrokeColor(WATER)
+                c.setDash()
+            elif aspect_type == "square":
+                c.setStrokeColor(FIRE)
+                c.setDash()
+            elif aspect_type == "opposition":
+                c.setStrokeColor(AIR)
+                c.setDash(2, 3)
+            elif aspect_type == "sextile":
+                c.setStrokeColor(EARTH)
+                c.setDash(2, 2)
+            else:
+                c.setStrokeColor(GOLD_DIM)
+                c.setDash()
             c.line(*planet_points[p1_key], *planet_points[p2_key])
+            c.setDash()
             c.setFillColor(GOLD)
             c.circle(*planet_points[p1_key], 1.1, stroke=0, fill=1)
             c.circle(*planet_points[p2_key], 1.1, stroke=0, fill=1)
@@ -709,78 +744,73 @@ def generate_natal_pdf(
 
     # 1. Cover.
     _new_page(c, w, h)
-    c.setFillColor(BG_PANEL)
-    c.roundRect(72, 118, w - 144, h - 236, 28, stroke=0, fill=1)
-    c.setStrokeColor(LINE_SOFT)
-    c.setLineWidth(0.8)
-    c.roundRect(72, 118, w - 144, h - 236, 28, stroke=1, fill=0)
     c.setStrokeColor(GOLD_DIM)
-    c.setLineWidth(0.5)
-    c.roundRect(86, 132, w - 172, h - 264, 22, stroke=1, fill=0)
-    c.setStrokeColor(GOLD_DIM)
-    c.setLineWidth(1)
-    c.circle(w / 2, h - 210, 98, stroke=1, fill=0)
-    c.circle(w / 2, h - 210, 66, stroke=1, fill=0)
+    c.setLineWidth(0.75)
+    c.circle(w / 2, h - 176, 86, stroke=1, fill=0)
+    c.setLineWidth(0.45)
+    c.circle(w / 2, h - 176, 56, stroke=1, fill=0)
+    for angle in range(0, 360, 30):
+        x1, y1 = _polar_point(w / 2, h - 176, 62, angle)
+        x2, y2 = _polar_point(w / 2, h - 176, 82, angle)
+        c.line(x1, y1, x2, y2)
     c.setFillColor(GOLD)
     _set_font(c, True, 36)
-    c.drawCentredString(w / 2, h - 222, "✦")
-    _set_font(c, True, 28)
-    c.drawCentredString(w / 2, h - 330, "НАТАЛЬНАЯ КАРТА")
+    c.drawCentredString(w / 2, h - 188, "✦")
+    _set_font(c, True, 25)
+    c.drawCentredString(w / 2, h - 304, _spaced("Натальная карта"))
     c.setFillColor(TEXT)
     _set_font(c, False, 13)
-    c.drawCentredString(w / 2, h - 358, "Персональный астрологический отчёт")
+    c.drawCentredString(w / 2, h - 334, "Персональный астрологический отчёт")
     c.setFillColor(TEXT_DIM)
     _set_font(c, False, 11)
-    c.drawCentredString(w / 2, h - 410, user_name or "Пользователь")
-    c.drawCentredString(w / 2, h - 430, f"{birth_date or 'Дата не указана'} · {birth_time or 'время не указано'}")
-    c.drawCentredString(w / 2, h - 450, birth_city or "Город не указан")
+    c.drawCentredString(w / 2, h - 398, user_name or "Пользователь")
+    c.drawCentredString(w / 2, h - 420, f"{birth_date or 'Дата не указана'} · {birth_time or 'время не указано'}")
+    c.drawCentredString(w / 2, h - 442, birth_city or "Город не указан")
     key_points = [("☉ СОЛНЦЕ", _sign_ru(sun_sign)), ("☽ ЛУНА", _sign_ru(moon_sign))]
     if asc_sign:
         key_points.append(("↑ ВОСХОД", _sign_ru(asc_sign)))
-    key_point_x = 128
+    key_point_x = 120
     for point_label, point_value in key_points:
-        c.setFillColor(SURFACE_2)
-        c.roundRect(key_point_x - 56, h - 575, 112, 72, 12, stroke=0, fill=1)
-        c.setStrokeColor(LINE)
-        c.setLineWidth(0.45)
-        c.roundRect(key_point_x - 56, h - 575, 112, 72, 12, stroke=1, fill=0)
         c.setFillColor(GOLD)
-        _set_font(c, True, 10)
-        c.drawCentredString(key_point_x, h - 528, point_label)
+        _set_font(c, True, 18)
+        c.drawCentredString(key_point_x, h - 523, point_label.split()[0])
+        _set_font(c, False, 9)
+        c.drawCentredString(key_point_x, h - 552, _spaced(point_label.split(maxsplit=1)[1]))
         c.setFillColor(TEXT)
-        _set_font(c, True, 14)
-        c.drawCentredString(key_point_x, h - 553, point_value)
-        key_point_x += 170
+        _set_font(c, False, 15)
+        c.drawCentredString(key_point_x, h - 580, point_value)
+        key_point_x += 178
     c.setFillColor(TEXT_DIM)
     _set_font(c, False, 8)
-    c.drawCentredString(w / 2, 52, f"ASTRO TMA · MADE FOR {(user_name or 'USER').upper()}")
+    c.drawCentredString(w / 2, 52, f"A S T R O  T M A  ·  M A D E  F O R  {_spaced(user_name or 'USER')}")
     c.showPage()
     page += 1
 
     # 2. Contents.
     y = title_page("Содержание", "Что внутри отчёта")
     contents = (
-        ("I", "Ключевые точки карты"),
-        ("II", "Натальное колесо"),
-        ("III", "Баланс стихий и характер"),
-        ("IV", "Планеты в знаках"),
-        ("V", "Дома гороскопа"),
-        ("VI", "Аспекты — связи между планетами"),
-        ("VII", "Персональная интерпретация"),
+        ("I", "Ключевые точки карты", "3"),
+        ("II", "Натальное колесо", "4"),
+        ("III", "Баланс стихий и характер", "5"),
+        ("IV", "Планеты в знаках", "6"),
+        ("V", "Дома гороскопа", "8"),
+        ("VI", "Аспекты — связи между планетами", "9"),
+        ("VII", "Персональная интерпретация", "10"),
     )
-    for content_marker, content_title in contents:
-        c.setFillColor(SURFACE)
-        c.roundRect(54, y - 15, w - 108, 34, 8, stroke=0, fill=1)
+    for content_marker, content_title, content_page in contents:
         c.setStrokeColor(LINE)
-        c.setLineWidth(0.35)
-        c.roundRect(54, y - 15, w - 108, 34, 8, stroke=1, fill=0)
+        c.setLineWidth(0.25)
+        c.line(58, y - 22, w - 58, y - 22)
         c.setFillColor(GOLD_DIM)
         _set_font(c, True, 11)
-        c.drawString(70, y - 2, content_marker)
+        c.drawString(58, y - 2, content_marker)
         c.setFillColor(TEXT)
         _set_font(c, False, 12)
-        c.drawString(112, y - 2, content_title)
-        y -= 46
+        c.drawString(94, y - 2, content_title)
+        c.setFillColor(TEXT_DIM)
+        _set_font(c, False, 10)
+        c.drawRightString(w - 58, y - 2, content_page)
+        y -= 50
     finish_page()
 
     # 3. Key points.
@@ -795,46 +825,86 @@ def generate_natal_pdf(
     for i, (glyph, card_label, card_value, quote, text) in enumerate(cards):
         card_x = 40 + i * (card_w + 18)
         c.setFillColor(SURFACE)
-        c.roundRect(card_x, y - card_h, card_w, card_h, 8, fill=1, stroke=0)
+        c.roundRect(card_x, y - card_h, card_w, card_h, 9, fill=1, stroke=0)
         c.setStrokeColor(LINE_SOFT)
         c.setLineWidth(0.45)
-        c.roundRect(card_x, y - card_h, card_w, card_h, 8, fill=0, stroke=1)
-        c.setStrokeColor(GOLD_DIM)
-        c.line(card_x + 18, y - 58, card_x + card_w - 18, y - 58)
+        c.roundRect(card_x, y - card_h, card_w, card_h, 9, fill=0, stroke=1)
         c.setFillColor(GOLD)
-        _set_font(c, True, 26)
-        c.drawString(card_x + 18, y - 42, glyph)
-        _set_font(c, True, 9)
-        c.drawString(card_x + 60, y - 30, card_label)
+        _set_font(c, True, 25)
+        c.drawCentredString(card_x + card_w / 2, y - 42, glyph)
+        _set_font(c, True, 8)
+        c.drawCentredString(card_x + card_w / 2, y - 74, _spaced(card_label))
+        element = _sign_element(card_value)
+        c.setFillColor(ELEMENT_COLORS[element])
+        c.circle(card_x + card_w / 2, y - 105, 12, stroke=0, fill=1)
         c.setFillColor(TEXT)
-        _set_font(c, True, 17)
-        c.drawString(card_x + 18, y - 78, card_value)
+        _set_font(c, True, 15)
+        c.drawCentredString(card_x + card_w / 2, y - 110, _sign_symbol(card_value))
+        c.setFillColor(TEXT)
+        _set_font(c, False, 15)
+        c.drawCentredString(card_x + card_w / 2, y - 140, card_value)
+        c.setStrokeColor(GOLD_DIM)
+        c.setLineWidth(0.35)
+        c.line(card_x + 58, y - 162, card_x + card_w - 58, y - 162)
         c.setFillColor(GOLD_DIM)
-        _set_font(c, False, 10)
-        c.drawString(card_x + 18, y - 112, f"«{quote}»")
-        c.setFillColor(TEXT_DIM)
+        _set_font(c, False, 8)
+        c.drawCentredString(card_x + card_w / 2, y - 184, f"«{quote}»")
+        c.setFillColor(TEXT)
         _set_font(c, False, 9)
-        _draw_wrapped_static(c, text, card_x + 18, y - 142, 24, 13, 5)
+        _draw_wrapped_static(c, text, card_x + 16, y - 210, 25, 13, 4)
     perc = _element_percentages(planets)
     dominant = max(perc, key=lambda element: perc[element]) if perc else "fire"
     dom_label = ELEMENTS[dominant][0]
+    c.setFillColor(SURFACE)
+    c.roundRect(58, 148, w - 116, 112, 8, stroke=0, fill=1)
+    c.setStrokeColor(LINE)
+    c.setLineWidth(0.4)
+    c.roundRect(58, 148, w - 116, 112, 8, stroke=1, fill=0)
+    c.setStrokeColor(GOLD)
+    c.setLineWidth(1.3)
+    c.line(58, 148, 58, 260)
+    c.setFillColor(ELEMENT_COLORS.get(dominant, GOLD))
+    _set_font(c, True, 20)
+    c.drawString(82, 213, "△")
     c.setFillColor(GOLD)
     _set_font(c, True, 13)
-    c.drawString(48, 208, f"△ Доминирует {dom_label.lower()}")
+    c.drawString(132, 224, f"Доминирует {dom_label.lower()}")
     c.setFillColor(TEXT)
-    _set_font(c, True, 12)
-    c.drawString(48, 184, f"{perc.get(dominant, 0)}% карты")
+    _set_font(c, False, 10)
+    c.drawString(132, 204, f"{perc.get(dominant, 0)}% карты")
     c.setFillColor(TEXT_DIM)
     _set_font(c, False, 10)
-    _draw_wrapped_static(c, ELEMENT_COPY[dominant][0], 48, 160, 92, 14, 3)
+    _draw_wrapped_static(c, ELEMENT_COPY[dominant][0], 78, 178, 84, 14, 2)
     finish_page()
 
     # 4. Wheel.
     y = title_page("Натальное колесо", "Карта неба в момент вашего рождения")
-    draw_wheel(w / 2, y - 220, 190)
+    wheel_size = 488
+    wheel_x = (w - wheel_size) / 2
+    wheel_y = 160
+    c.setFillColor(WHEEL_BG)
+    c.rect(wheel_x, wheel_y, wheel_size, wheel_size, stroke=0, fill=1)
+    c.saveState()
+    try:
+        c.setFillAlpha(0.18)
+    except Exception:
+        pass
+    c.setFillColor(HexColor("#23324f"))
+    for angle in (18, 78, 138, 198, 258, 318):
+        p0 = _polar_point(w / 2, wheel_y + wheel_size / 2, 70, angle)
+        p1 = _polar_point(w / 2, wheel_y + wheel_size / 2, 222, angle - 14)
+        p2 = _polar_point(w / 2, wheel_y + wheel_size / 2, 222, angle + 14)
+        path = c.beginPath()
+        path.moveTo(*p0)
+        path.lineTo(*p1)
+        path.lineTo(*p2)
+        path.close()
+        c.drawPath(path, stroke=0, fill=1)
+    c.restoreState()
+    draw_wheel(w / 2, wheel_y + wheel_size / 2, 176)
     c.setFillColor(TEXT_DIM)
     _set_font(c, False, 9)
-    legend_y = 120
+    legend_y = 104
     legends = (
         ("☌", "Соединение · слияние"),
         ("△", "Трин · поток"),
@@ -922,7 +992,7 @@ def generate_natal_pdf(
         if not num:
             continue
         if house_index == 6:
-            y = h - 118
+            y = h - 174
         house_x = col_x[0 if house_index < 6 else 1]
         sign = _key(house.get("sign"))
         c.setFillColor(GOLD)
