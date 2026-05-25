@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import os
 import math
+import os
 from datetime import datetime
 from io import BytesIO
 from typing import Any

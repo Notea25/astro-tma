@@ -717,7 +717,7 @@ function remoteTarotImageByName(nameEn: string | null | undefined): string | nul
   if (!nameEn) return null;
   const idx = TAROT_CARD_ORDER.indexOf(nameEn as (typeof TAROT_CARD_ORDER)[number]);
   if (idx < 0) return null;
-  return `${TAROT_IMAGE_BASE}${String(idx).padStart(2, "0")}_${nameEn.replaceAll(" ", "_")}.webp`;
+  return `${TAROT_IMAGE_BASE}${String(idx).padStart(2, "0")}_${nameEn.replace(/ /g, "_")}.webp`;
 }
 
 function rewriteCardImage<
