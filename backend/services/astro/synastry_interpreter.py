@@ -13,6 +13,7 @@ caller gets either real text or a generic fallback.
 
 import hashlib
 import json
+import re
 from typing import Any
 
 from sqlalchemy import select, tuple_
@@ -38,6 +39,25 @@ _ASPECT_FALLBACK: dict[str, str] = {
     "square": "Квадрат вносит напряжение, требующее осознанной работы.",
     "opposition": "Оппозиция показывает противоположности, которые нужно балансировать.",
 }
+
+
+# Characters / tokens we strip from user-controlled names before feeding them
+# to an LLM prompt. Defense against prompt injection (SECURITY_AUDIT.md H5).
+_PROMPT_INJECTION_BLOCKERS = re.compile(
+    r"[-<>{}\[\]\\`]"  # control chars, fence brackets, backticks
+    r"|ignore (previous|all|the)|игнорируй|system\s*:|assistant\s*:|user\s*:",
+    flags=re.IGNORECASE,
+)
+
+
+def _safe_name(raw: str | None, *, fallback: str, max_len: int = 40) -> str:
+    """Return a user-supplied name that's safe to inline into an LLM prompt."""
+    if not raw:
+        return fallback
+    cleaned = _PROMPT_INJECTION_BLOCKERS.sub(" ", raw)
+    cleaned = " ".join(cleaned.split())
+    cleaned = cleaned[:max_len].strip()
+    return cleaned or fallback
 
 
 def _normalize_key(p1: str, p2: str) -> tuple[str, str]:
@@ -240,8 +260,8 @@ async def get_or_generate_pair_summary(
         f"общая совместимость {scores.get('overall', 0)}."
     )
 
-    name_a = initiator_name or "первый партнёр"
-    name_b = partner_name or "второй партнёр"
+    name_a = _safe_name(initiator_name, fallback="первый партнёр")
+    name_b = _safe_name(partner_name, fallback="второй партнёр")
 
     prompt = f"""Ты пишешь короткий портрет пары для популярного приложения с астрологией. Читатели — обычные люди, не астрологи.
 
