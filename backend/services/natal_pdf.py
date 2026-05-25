@@ -550,11 +550,11 @@ def generate_natal_pdf(
         for degree in range(0, 360, 5):
             angle = _wheel_angle(degree, asc_deg)
             is_major = degree % 30 == 0
-            p1 = _polar_point(cx, cy, outer_r + 28, angle)
-            p2 = _polar_point(cx, cy, outer_r + (38 if is_major else 34), angle)
+            tick_start = _polar_point(cx, cy, outer_r + 28, angle)
+            tick_end = _polar_point(cx, cy, outer_r + (38 if is_major else 34), angle)
             c.setStrokeColor(GOLD_DIM)
             c.setLineWidth(0.55 if is_major else 0.3)
-            c.line(*p1, *p2)
+            c.line(*tick_start, *tick_end)
 
         # Master circles.
         c.setStrokeColor(TEXT_DIM)
@@ -568,11 +568,11 @@ def generate_natal_pdf(
         sign_keys = list(SIGN_RU.keys())
         for i, sign in enumerate(sign_keys):
             boundary = _wheel_angle(i * 30, asc_deg)
-            p1 = _polar_point(cx, cy, middle_r, boundary)
-            p2 = _polar_point(cx, cy, outer_r + 28, boundary)
+            boundary_start = _polar_point(cx, cy, middle_r, boundary)
+            boundary_end = _polar_point(cx, cy, outer_r + 28, boundary)
             c.setStrokeColor(TEXT_DIM)
             c.setLineWidth(0.65)
-            c.line(*p1, *p2)
+            c.line(*boundary_start, *boundary_end)
 
             mid = _wheel_angle(i * 30 + 15, asc_deg)
             gx, gy = _polar_point(cx, cy, (outer_r + middle_r) / 2, mid)
@@ -589,12 +589,12 @@ def generate_natal_pdf(
             num = int(house.get("number") or 0)
             cusp_degree = _chart_abs_degree(house)
             angle = _wheel_angle(cusp_degree, asc_deg)
-            p1 = _polar_point(cx, cy, inner_r, angle)
-            p2 = _polar_point(cx, cy, middle_r, angle)
+            cusp_start = _polar_point(cx, cy, inner_r, angle)
+            cusp_end = _polar_point(cx, cy, middle_r, angle)
             is_axis = num in (1, 4, 7, 10)
             c.setStrokeColor(GOLD if is_axis else LINE)
             c.setLineWidth(0.9 if is_axis else 0.45)
-            c.line(*p1, *p2)
+            c.line(*cusp_start, *cusp_end)
 
             next_house = ordered_houses[(index + 1) % len(ordered_houses)] if ordered_houses else house
             next_degree = _chart_abs_degree(next_house)
@@ -614,11 +614,11 @@ def generate_natal_pdf(
         c.circle(cx, cy, aspect_inner_r, stroke=1, fill=0)
         for index in range(slot_count):
             angle = _wheel_angle(index * (360 / slot_count), asc_deg)
-            p1 = _polar_point(cx, cy, aspect_inner_r, angle)
-            p2 = _polar_point(cx, cy, aspect_outer_r, angle)
+            slot_start = _polar_point(cx, cy, aspect_inner_r, angle)
+            slot_end = _polar_point(cx, cy, aspect_outer_r, angle)
             c.setStrokeColor(GOLD_DIM)
             c.setLineWidth(0.25)
-            c.line(*p1, *p2)
+            c.line(*slot_start, *slot_end)
 
         planet_points: dict[str, tuple[float, float]] = {}
         for index, name in enumerate(planet_items):
@@ -641,15 +641,15 @@ def generate_natal_pdf(
         # Only the strongest aspect lines inside the center, to keep the wheel readable.
         c.setLineWidth(0.6)
         for aspect in sorted(aspects, key=lambda a: float(a.get("orb") or 99))[:6]:
-            p1 = _planet_key(aspect.get("p1"))
-            p2 = _planet_key(aspect.get("p2"))
-            if p1 not in planet_points or p2 not in planet_points:
+            p1_key = _planet_key(aspect.get("p1"))
+            p2_key = _planet_key(aspect.get("p2"))
+            if p1_key not in planet_points or p2_key not in planet_points:
                 continue
             c.setStrokeColor(GOLD_DIM)
-            c.line(*planet_points[p1], *planet_points[p2])
+            c.line(*planet_points[p1_key], *planet_points[p2_key])
             c.setFillColor(GOLD)
-            c.circle(*planet_points[p1], 1.1, stroke=0, fill=1)
-            c.circle(*planet_points[p2], 1.1, stroke=0, fill=1)
+            c.circle(*planet_points[p1_key], 1.1, stroke=0, fill=1)
+            c.circle(*planet_points[p2_key], 1.1, stroke=0, fill=1)
 
         # Center seal.
         c.setFillColor(BG)
@@ -685,15 +685,15 @@ def generate_natal_pdf(
     key_points = [("☉ СОЛНЦЕ", _sign_ru(sun_sign)), ("☽ ЛУНА", _sign_ru(moon_sign))]
     if asc_sign:
         key_points.append(("↑ ВОСХОД", _sign_ru(asc_sign)))
-    x = 118
-    for label, value in key_points:
+    key_point_x = 118
+    for point_label, point_value in key_points:
         c.setFillColor(GOLD)
         _set_font(c, True, 10)
-        c.drawCentredString(x, h - 525, label)
+        c.drawCentredString(key_point_x, h - 525, point_label)
         c.setFillColor(TEXT)
         _set_font(c, True, 14)
-        c.drawCentredString(x, h - 548, value)
-        x += 180
+        c.drawCentredString(key_point_x, h - 548, point_value)
+        key_point_x += 180
     c.setFillColor(TEXT_DIM)
     _set_font(c, False, 8)
     c.drawCentredString(w / 2, 52, f"ASTRO TMA · MADE FOR {(user_name or 'USER').upper()}")
@@ -711,13 +711,13 @@ def generate_natal_pdf(
         ("VI", "Аспекты — связи между планетами"),
         ("VII", "Персональная интерпретация"),
     )
-    for idx, title in contents:
+    for content_marker, content_title in contents:
         c.setFillColor(GOLD_DIM)
         _set_font(c, True, 11)
-        c.drawString(62, y, idx)
+        c.drawString(62, y, content_marker)
         c.setFillColor(TEXT)
         _set_font(c, False, 12)
-        c.drawString(100, y, title)
+        c.drawString(100, y, content_title)
         y -= 42
     finish_page()
 
@@ -730,26 +730,26 @@ def generate_natal_pdf(
         ("☽", "ЛУНА", _sign_ru(moon_sign), "Что я чувствую", "Луна описывает эмоции, привычные реакции и внутренний способ восстанавливаться."),
         ("↑", "ВОСХОД", _sign_ru(asc_sign) if asc_sign else "не рассчитан", "Как меня видят", "Асцендент показывает первое впечатление, стиль входа в мир и телесный образ."),
     ]
-    for i, (glyph, label, value, quote, text) in enumerate(cards):
-        x = 40 + i * (card_w + 18)
+    for i, (glyph, card_label, card_value, quote, text) in enumerate(cards):
+        card_x = 40 + i * (card_w + 18)
         c.setFillColor(SURFACE)
-        c.roundRect(x, y - card_h, card_w, card_h, 8, fill=1, stroke=0)
+        c.roundRect(card_x, y - card_h, card_w, card_h, 8, fill=1, stroke=0)
         c.setFillColor(GOLD)
         _set_font(c, True, 26)
-        c.drawString(x + 18, y - 42, glyph)
+        c.drawString(card_x + 18, y - 42, glyph)
         _set_font(c, True, 9)
-        c.drawString(x + 60, y - 30, label)
+        c.drawString(card_x + 60, y - 30, card_label)
         c.setFillColor(TEXT)
         _set_font(c, True, 17)
-        c.drawString(x + 18, y - 78, value)
+        c.drawString(card_x + 18, y - 78, card_value)
         c.setFillColor(GOLD_DIM)
         _set_font(c, False, 10)
-        c.drawString(x + 18, y - 112, f"«{quote}»")
+        c.drawString(card_x + 18, y - 112, f"«{quote}»")
         c.setFillColor(TEXT_DIM)
         _set_font(c, False, 9)
-        _draw_wrapped_static(c, text, x + 18, y - 142, 24, 13, 5)
+        _draw_wrapped_static(c, text, card_x + 18, y - 142, 24, 13, 5)
     perc = _element_percentages(planets)
-    dominant = max(perc, key=perc.get) if perc else "fire"
+    dominant = max(perc, key=lambda element: perc[element]) if perc else "fire"
     dom_label = ELEMENTS[dominant][0]
     c.setFillColor(GOLD)
     _set_font(c, True, 13)
@@ -783,11 +783,11 @@ def generate_natal_pdf(
     # 5. Elements.
     y = title_page("Баланс стихий", "Как распределена энергия вашей карты")
     for element in ELEMENTS:
-        label = ELEMENTS[element][0]
+        element_label = ELEMENTS[element][0]
         pct = perc.get(element, 0)
         c.setFillColor(TEXT)
         _set_font(c, True, 12)
-        c.drawString(58, y, label)
+        c.drawString(58, y, element_label)
         c.drawRightString(156, y, f"{pct}%")
         c.setFillColor(LINE)
         c.roundRect(180, y - 5, 300, 8, 4, fill=1, stroke=0)
@@ -796,24 +796,24 @@ def generate_natal_pdf(
         y -= 42
     y -= 10
     for element in ELEMENTS:
-        label = ELEMENTS[element][0]
+        element_label = ELEMENTS[element][0]
         pct = perc.get(element, 0)
         c.setFillColor(GOLD)
         _set_font(c, True, 12)
-        c.drawString(58, y, f"{label} {pct}%")
+        c.drawString(58, y, f"{element_label} {pct}%")
         c.setFillColor(TEXT_DIM)
         _set_font(c, False, 10)
         y = _draw_wrapped_static(c, ELEMENT_COPY[element][0], 58, y - 20, 70, 14, 3)
         y -= 12
     tags = ELEMENT_COPY[dominant][1]
-    x = 58
+    tag_x = 58.0
     for tag in tags:
         c.setFillColor(SURFACE_2)
-        c.roundRect(x, 72, len(tag) * 6.2 + 18, 22, 11, fill=1, stroke=0)
+        c.roundRect(tag_x, 72, len(tag) * 6.2 + 18, 22, 11, fill=1, stroke=0)
         c.setFillColor(TEXT)
         _set_font(c, False, 9)
-        c.drawCentredString(x + len(tag) * 3.1 + 9, 79, tag)
-        x += len(tag) * 6.2 + 26
+        c.drawCentredString(tag_x + len(tag) * 3.1 + 9, 79, tag)
+        tag_x += len(tag) * 6.2 + 26
     finish_page()
 
     # 6-7. Planets, two pages.
@@ -849,29 +849,29 @@ def generate_natal_pdf(
     y = title_page("Дома гороскопа", "12 сфер жизни и их обстановка")
     axis_labels = {1: "Асцендент", 4: "Основание (IC)", 7: "Десцендент", 10: "Середина неба (MC)"}
     col_x = (42, 305)
-    for idx, house in enumerate(houses):
+    for house_index, house in enumerate(houses):
         num = int(house.get("number") or 0)
         if not num:
             continue
-        if idx == 6:
+        if house_index == 6:
             y = h - 118
-        x = col_x[0 if idx < 6 else 1]
+        house_x = col_x[0 if house_index < 6 else 1]
         sign = _key(house.get("sign"))
         c.setFillColor(GOLD)
         _set_font(c, True, 12)
-        c.drawString(x, y, f"{_roman(num)} {SIGN_SYMBOLS.get(sign, '')} {_sign_ru(sign)}")
+        c.drawString(house_x, y, f"{_roman(num)} {SIGN_SYMBOLS.get(sign, '')} {_sign_ru(sign)}")
         c.setFillColor(TEXT_DIM)
         _set_font(c, False, 8)
-        c.drawString(x + 112, y, _deg_str(house.get("degree"), within_sign=False))
+        c.drawString(house_x + 112, y, _deg_str(house.get("degree"), within_sign=False))
         if num in axis_labels:
-            c.drawString(x, y - 13, axis_labels[num])
+            c.drawString(house_x, y - 13, axis_labels[num])
         c.setFillColor(TEXT)
         _set_font(c, True, 8)
-        c.drawString(x, y - 30, HOUSE_LABELS.get(num, f"ДОМ {num}"))
+        c.drawString(house_x, y - 30, HOUSE_LABELS.get(num, f"ДОМ {num}"))
         text = _compact_description(house_desc.get(str(num)), _house_fallback(house), words=24)
         c.setFillColor(TEXT_DIM)
         _set_font(c, False, 8)
-        _draw_wrapped_static(c, text, x, y - 45, 38, 11, 4)
+        _draw_wrapped_static(c, text, house_x, y - 45, 38, 11, 4)
         y -= 105
     finish_page()
 
@@ -883,13 +883,13 @@ def generate_natal_pdf(
     chall = sum(1 for a in aspects if _aspect_kind(_aspect_key(a.get("aspect"))) == "challenging")
     neutral = max(total_aspects - harm - chall, 0)
     y = title_page("Аспекты", "Связи между планетами вашей карты")
-    for x, value, label in ((54, total_aspects, "ВСЕГО"), (178, harm, "ГАРМОНИЧНЫХ"), (328, chall, "НАПРЯЖЕННЫХ"), (470, neutral, "НЕЙТРАЛЬНЫХ")):
+    for metric_x, metric_value, metric_label in ((54, total_aspects, "ВСЕГО"), (178, harm, "ГАРМОНИЧНЫХ"), (328, chall, "НАПРЯЖЕННЫХ"), (470, neutral, "НЕЙТРАЛЬНЫХ")):
         c.setFillColor(GOLD)
         _set_font(c, True, 18)
-        c.drawCentredString(x, y, str(value))
+        c.drawCentredString(metric_x, y, str(metric_value))
         c.setFillColor(TEXT_DIM)
         _set_font(c, True, 7)
-        c.drawCentredString(x, y - 14, label)
+        c.drawCentredString(metric_x, y - 14, metric_label)
     y -= 55
     for aspect_type, group in grouped:
         if y < 132:
