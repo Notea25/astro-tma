@@ -9765,20 +9765,22 @@ body::before {
 .destiny-chakras__head,
 .destiny-chakras__row {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) repeat(3, 36px);
+  grid-template-columns: minmax(0, 1fr) repeat(3, 48px);
   align-items: center;
-  gap: 6px;
-  padding: 9px 6px;
+  gap: 8px;
+  padding: 9px 4px;
 }
 .destiny-chakras__head {
   color: var(--text-mute);
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
   border-bottom: 1px solid rgba(212, 178, 84, 0.18);
 }
 .destiny-chakras__head > span {
   text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .destiny-chakras__row {
   border-bottom: 1px dashed rgba(212, 178, 84, 0.14);

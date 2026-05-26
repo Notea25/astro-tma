@@ -35,7 +35,7 @@ export function DestinyChakras({ positions }: Props) {
       <div className="destiny-chakras__table">
         <div className="destiny-chakras__head">
           <span />
-          <span>Физика</span>
+          <span>Тело</span>
           <span>Энергия</span>
           <span>Эмоция</span>
         </div>
