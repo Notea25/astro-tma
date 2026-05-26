@@ -9427,6 +9427,32 @@ body::before {
   align-items: stretch;
 }
 
+.destiny-reading__birth {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 16px 14px;
+  text-align: center;
+}
+.destiny-reading__birth-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+}
+.destiny-reading__birth-date {
+  font-family: "Playfair Display", serif;
+  font-size: 1.4rem;
+  font-weight: 500;
+  color: var(--gold);
+  background: linear-gradient(180deg, #f3d989 0%, #c79a42 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 0.01em;
+}
+
 .destiny-reading__chart-wrap {
   display: flex;
   justify-content: center;

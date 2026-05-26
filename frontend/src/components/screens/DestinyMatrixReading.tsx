@@ -26,6 +26,18 @@ const NODE_TITLES_RU: Record<string, string> = {
   I: "Род · низ слева — линия мужчин рода",
 };
 
+const MONTHS_RU_GEN = [
+  "января", "февраля", "марта", "апреля", "мая", "июня",
+  "июля", "августа", "сентября", "октября", "ноября", "декабря",
+];
+
+function formatBirthDateRu(iso: string): string {
+  // Accept both "YYYY-MM-DD" and full ISO datetime — only the date part matters.
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  if (!y || !m || !d) return iso;
+  return `${d} ${MONTHS_RU_GEN[m - 1]} ${y}`;
+}
+
 const NODE_CONTEXT: Record<string, string> = {
   A: "personality",
   B: "personality",
@@ -148,6 +160,18 @@ export function DestinyMatrixReading() {
 
         {reading && !showCalcAnim && !calcMutation.isPending && (
           <>
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="destiny-reading__birth"
+            >
+              <span className="destiny-reading__birth-label">Дата рождения</span>
+              <span className="destiny-reading__birth-date">
+                {formatBirthDateRu(reading.birth_date)}
+              </span>
+            </motion.div>
+
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
