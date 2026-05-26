@@ -887,4 +887,56 @@ export const paymentsApi = {
     ),
 };
 
+// ── Destiny Matrix ──────────────────────────────────────────────────────────
+
+export interface DestinyMatrixChakraRow {
+  physics: number;
+  energy: number;
+  emotion: number;
+}
+
+export interface DestinyMatrixPositions {
+  A: number; B: number; C: number; D: number; E: number;
+  F: number; G: number; H: number; I: number;
+  line_earth: number;
+  line_sky: number;
+  purpose_personal: number;
+  purpose_social: number;
+  purpose_spiritual: number;
+  chakras: Record<string, DestinyMatrixChakraRow>;
+  line_karma: number[];
+  line_mission: number[];
+  line_money: number[];
+  line_love: number[];
+  line_health: number[];
+  karmic_tail_male: number;
+  karmic_tail_female: number;
+  point_comfort: number;
+  point_socialization: number;
+  point_love: number;
+}
+
+export interface DestinyMatrixResponse {
+  positions: DestinyMatrixPositions;
+  birth_date: string;
+  computed_at: string;
+  has_full_access: boolean;
+}
+
+export interface ArcanaResponse {
+  arcana_num: number;
+  arcana_name: string;
+  keywords: string[];
+  contexts: Record<string, string>;
+}
+
+export const destinyApi = {
+  calculate: () =>
+    request<DestinyMatrixResponse>("POST", "/destiny-matrix/calculate"),
+  getMe: () =>
+    request<DestinyMatrixResponse>("GET", "/destiny-matrix/me"),
+  getArcana: (num: number) =>
+    request<ArcanaResponse>("GET", `/destiny-matrix/arcana/${num}`),
+};
+
 export { ApiError };

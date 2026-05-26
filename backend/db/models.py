@@ -4,14 +4,19 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import (
+    ARRAY,
     JSON,
     BigInteger,
     Boolean,
+    CheckConstraint,
+    Date,
     DateTime,
     Enum,
     Float,
     ForeignKey,
+    Index,
     Integer,
+    SmallInteger,
     String,
     Text,
     UniqueConstraint,
@@ -414,3 +419,66 @@ class ReferralReward(TimestampMixin, Base):
     )
     event_type: Mapped[str] = mapped_column(String(32))
     days_granted: Mapped[int] = mapped_column(Integer)
+
+
+# ── Destiny Matrix ────────────────────────────────────────────────────────────
+
+
+class ArcanaMeaning(Base):
+    """22 arcana × 8 contexts = 176 text blocks for the Destiny Matrix
+    interpretation. Filled by infra/scripts/seed_destiny_arcana.py.
+
+    Numbering follows the Marseille tradition (8 = Justice, 11 = Strength),
+    which is what the Destiny Matrix methodology uses. The tarot module
+    uses Rider-Waite (8 = Strength, 11 = Justice) — keep these tables
+    separate to avoid mixing the two numbering systems.
+    """
+    __tablename__ = "arcana_meanings"
+    __table_args__ = (
+        CheckConstraint("arcana_num BETWEEN 1 AND 22", name="ck_arcana_num_range"),
+        UniqueConstraint("arcana_num", "context", name="uq_arcana_num_context"),
+        Index("idx_arcana_num_ctx", "arcana_num", "context"),
+    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    arcana_num: Mapped[int] = mapped_column(SmallInteger)
+    arcana_name: Mapped[str] = mapped_column(Text)
+    context: Mapped[str] = mapped_column(String(32))
+    meaning: Mapped[str] = mapped_column(Text)
+    keywords: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
+
+
+class DestinyMatrixReading(Base):
+    """Per-user computed Destiny Matrix. Idempotent on (user_id, birth_date).
+    Stored numbers — interpretation text lives in a separate table."""
+    __tablename__ = "destiny_matrix_readings"
+    __table_args__ = (
+        UniqueConstraint("user_id", "birth_date", name="uq_dm_user_birthdate"),
+        Index("idx_dm_user", "user_id"),
+    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"),
+    )
+    birth_date: Mapped[Any] = mapped_column(Date)
+    positions: Mapped[dict[str, Any]] = mapped_column(JSON)
+    computed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(),
+    )
+
+
+class DestinyMatrixInterpretation(Base):
+    """Cached LLM narrative for one Destiny Matrix reading. Lazily generated
+    on first /interpretation request, cached forever per reading_id."""
+    __tablename__ = "destiny_matrix_interpretations"
+    __table_args__ = (
+        UniqueConstraint("reading_id", name="uq_dm_interp_reading"),
+    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    reading_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("destiny_matrix_readings.id", ondelete="CASCADE"),
+    )
+    sections: Mapped[dict[str, Any]] = mapped_column(JSON)
+    model: Mapped[str] = mapped_column(String(64))
+    generated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(),
+    )
