@@ -10,6 +10,9 @@ import {
   DestinyOctagram,
   type DestinyNodeMeta,
 } from "@/components/destiny/DestinyOctagram";
+import { DestinyNarrative } from "@/components/destiny/DestinyNarrative";
+import { DestinyLifeLines } from "@/components/destiny/DestinyLifeLines";
+import { DestinyChakras } from "@/components/destiny/DestinyChakras";
 
 const NODE_TITLES_RU: Record<string, string> = {
   A: "Энергия дня — что я получил при рождении",
@@ -173,8 +176,9 @@ export function DestinyMatrixReading() {
               <section className="destiny-reading__upsell">
                 <h4>Откройте полный разбор</h4>
                 <p>
-                  Описание линий, чакр, кармических хвостов и LLM-нарратив —
-                  всё для одного раза за {price} ⭐. Доступ остаётся навсегда.
+                  Личный 7-секционный разбор, 5 линий судьбы, 7 чакр и
+                  кармические хвосты. Один раз за {price} ⭐, доступ остаётся
+                  навсегда.
                 </p>
                 <button
                   type="button"
@@ -189,6 +193,14 @@ export function DestinyMatrixReading() {
                     : `Открыть за ${price} ⭐`}
                 </button>
               </section>
+            )}
+
+            {reading.has_full_access && (
+              <>
+                <DestinyNarrative enabled={reading.has_full_access} />
+                <DestinyLifeLines positions={reading.positions} />
+                <DestinyChakras positions={reading.positions} />
+              </>
             )}
           </>
         )}

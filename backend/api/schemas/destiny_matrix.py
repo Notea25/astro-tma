@@ -71,3 +71,11 @@ class ArcanaResponse(BaseModel):
     arcana_name: str
     keywords: list[str]
     contexts: dict[str, str]   # context_key → meaning_ru
+
+
+class InterpretationResponse(BaseModel):
+    """LLM-generated 7-section narrative. Cached per reading_id."""
+    reading_id: int
+    sections: dict[str, str]   # key (who_you_are, mission, ...) → 100-word paragraph
+    model: str
+    generated_at: datetime

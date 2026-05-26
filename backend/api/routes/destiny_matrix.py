@@ -14,10 +14,16 @@ from api.schemas.destiny_matrix import (
     ArcanaResponse,
     DestinyMatrixPositions,
     DestinyMatrixResponse,
+    InterpretationResponse,
 )
 from core.logging import get_logger
+from core.settings import settings
 from db.database import get_db
-from db.models import ArcanaMeaning, DestinyMatrixReading
+from db.models import (
+    ArcanaMeaning,
+    DestinyMatrixInterpretation,
+    DestinyMatrixReading,
+)
 from services.destiny_matrix.arcana_names import (
     ARCANA_KEYWORDS_RU,
     CONTEXTS,
@@ -25,6 +31,7 @@ from services.destiny_matrix.arcana_names import (
     arcana_name,
 )
 from services.destiny_matrix.calculator import calculate_matrix
+from services.destiny_matrix.interpreter import generate_interpretation
 from services.users import repository as user_repo
 
 router = APIRouter(prefix="/destiny-matrix", tags=["destiny-matrix"])
@@ -172,4 +179,97 @@ async def get_arcana(
         arcana_name=name_db or arcana_name(num),
         keywords=ARCANA_KEYWORDS_RU.get(num, []),
         contexts=contexts,
+    )
+
+
+@router.get("/interpretation", response_model=InterpretationResponse)
+async def get_interpretation(
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """LLM-generated 7-section personal narrative. Premium-gated.
+    Lazily generated on first request, cached per reading_id forever."""
+    user = await user_repo.get_by_id(db, tg_user["id"])
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+
+    if not await _has_full_access(db, user.id):
+        raise HTTPException(
+            status.HTTP_402_PAYMENT_REQUIRED,
+            "Полный разбор Матрицы доступен в Premium или после покупки",
+        )
+
+    if not user.birth_date:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Заполните дату рождения в профиле",
+        )
+
+    birth_date = user.birth_date.date() if hasattr(user.birth_date, "date") else user.birth_date
+
+    # Find the user's current reading (must exist — frontend always calls
+    # /calculate before /interpretation).
+    result = await db.execute(
+        select(DestinyMatrixReading).where(
+            DestinyMatrixReading.user_id == user.id,
+            DestinyMatrixReading.birth_date == birth_date,
+        )
+    )
+    reading = result.scalar_one_or_none()
+    if reading is None:
+        # Edge case: race with /calculate. Build one now.
+        positions = calculate_matrix(birth_date)
+        reading = DestinyMatrixReading(
+            user_id=user.id,
+            birth_date=birth_date,
+            positions=positions,
+        )
+        db.add(reading)
+        await db.flush()
+
+    # Cached interpretation?
+    cached_result = await db.execute(
+        select(DestinyMatrixInterpretation).where(
+            DestinyMatrixInterpretation.reading_id == reading.id,
+        )
+    )
+    cached = cached_result.scalar_one_or_none()
+    if cached:
+        return InterpretationResponse(
+            reading_id=reading.id,
+            sections=cached.sections,
+            model=cached.model,
+            generated_at=cached.generated_at,
+        )
+
+    # First time — call LLM.
+    sections, model = await generate_interpretation(
+        positions=reading.positions,
+        first_name=user.tg_first_name,
+        api_key=settings.ANTHROPIC_API_KEY,
+    )
+    interp = DestinyMatrixInterpretation(
+        reading_id=reading.id,
+        sections=sections,
+        model=model,
+    )
+    db.add(interp)
+    try:
+        await db.flush()
+        await db.refresh(interp)
+    except IntegrityError:
+        # Lost a race with a parallel request — fetch the winner.
+        await db.rollback()
+        cached_result = await db.execute(
+            select(DestinyMatrixInterpretation).where(
+                DestinyMatrixInterpretation.reading_id == reading.id,
+            )
+        )
+        interp = cached_result.scalar_one()
+
+    return InterpretationResponse(
+        reading_id=reading.id,
+        sections=interp.sections,
+        model=interp.model,
+        generated_at=interp.generated_at,
     )

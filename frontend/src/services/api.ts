@@ -930,6 +930,13 @@ export interface ArcanaResponse {
   contexts: Record<string, string>;
 }
 
+export interface DestinyMatrixInterpretation {
+  reading_id: number;
+  sections: Record<string, string>;
+  model: string;
+  generated_at: string;
+}
+
 export const destinyApi = {
   calculate: () =>
     request<DestinyMatrixResponse>("POST", "/destiny-matrix/calculate"),
@@ -937,6 +944,8 @@ export const destinyApi = {
     request<DestinyMatrixResponse>("GET", "/destiny-matrix/me"),
   getArcana: (num: number) =>
     request<ArcanaResponse>("GET", `/destiny-matrix/arcana/${num}`),
+  getInterpretation: () =>
+    request<DestinyMatrixInterpretation>("GET", "/destiny-matrix/interpretation"),
 };
 
 export { ApiError };
