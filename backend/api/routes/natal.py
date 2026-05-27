@@ -186,6 +186,7 @@ def _get_stored_descriptions(user) -> dict[str, Any]:
 
 async def _build_natal_pdf_response(db: AsyncSession, user) -> Response:
     from services.natal_pdf import generate_natal_pdf
+    from services.natal_pdf_html import generate_natal_pdf_html
 
     chart = user.natal_chart
     planets = chart.chart_data.get("planets", {})
@@ -202,24 +203,29 @@ async def _build_natal_pdf_response(db: AsyncSession, user) -> Response:
     descriptions = _get_stored_descriptions(user)
     reading = await _get_cached_pdf_reading(user)
 
-    pdf_bytes = generate_natal_pdf(
-        user_name=user.tg_first_name or "User",
-        birth_date=str(user.birth_date) if user.birth_date else "",
-        birth_time=(
+    pdf_kwargs = {
+        "user_name": user.tg_first_name or "User",
+        "birth_date": str(user.birth_date) if user.birth_date else "",
+        "birth_time": (
             user.birth_date.strftime("%H:%M")
             if user.birth_date and user.birth_time_known
             else None
         ),
-        birth_city=user.birth_city or "",
-        sun_sign=chart.sun_sign or "",
-        moon_sign=chart.moon_sign or "",
-        asc_sign=chart.ascendant_sign,
-        planets=planets,
-        houses=houses,
-        aspects=aspects,
-        reading=reading,
-        descriptions=descriptions,
-    )
+        "birth_city": user.birth_city or "",
+        "sun_sign": chart.sun_sign or "",
+        "moon_sign": chart.moon_sign or "",
+        "asc_sign": chart.ascendant_sign,
+        "planets": planets,
+        "houses": houses,
+        "aspects": aspects,
+        "reading": reading,
+        "descriptions": descriptions,
+    }
+    try:
+        pdf_bytes = await generate_natal_pdf_html(**pdf_kwargs)
+    except Exception as e:  # noqa: BLE001
+        log.error("natal.pdf_html_failed_fallback_reportlab", user_id=user.id, error=str(e))
+        pdf_bytes = generate_natal_pdf(**pdf_kwargs)
 
     filename = _natal_pdf_filename(user)
     return Response(
