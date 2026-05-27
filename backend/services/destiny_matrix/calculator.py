@@ -16,7 +16,6 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
-
 # ── Universal folding rule (§3.1) ─────────────────────────────────────────────
 
 
@@ -192,8 +191,8 @@ def _life_lines(big: dict[str, int], small: dict[str, int]) -> dict[str, list[in
     diagonal F↔H. Karma rides the personal axis, mission rides the sky-
     of-purpose, health rides the earth-of-body.
     """
-    a, b, c, d, e = big["A"], big["B"], big["C"], big["D"], big["E"]
-    f, g, h, i = small["F"], small["G"], small["H"], small["I"]
+    a, b, c, d = big["A"], big["B"], big["C"], big["D"]
+    f, h = small["F"], small["H"]
 
     # TODO: validate vs gadalkindom.ru — money/love line nodes are §4.3-§4.4.
     return {

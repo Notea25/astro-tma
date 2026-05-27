@@ -5,8 +5,7 @@ from types import SimpleNamespace
 import pytest
 from fastapi.responses import Response
 
-from services import natal_pdf
-from services import natal_pdf_html
+from services import natal_pdf, natal_pdf_html
 from services.astro import natal_descriptions
 from services.natal_pdf import generate_natal_pdf
 
@@ -227,8 +226,7 @@ async def test_natal_pdf_token_download_does_not_require_telegram_auth(monkeypat
 @pytest.mark.asyncio
 async def test_build_natal_pdf_response_does_not_block_on_llm(monkeypatch):
     from api.routes import natal
-    from services import natal_pdf
-    from services import natal_pdf_html
+    from services import natal_pdf, natal_pdf_html
 
     chart = SimpleNamespace(
         chart_data={
