@@ -697,42 +697,20 @@ const TAROT_CARD_ORDER = [
   "King of Pentacles",
 ] as const;
 
-function tarotSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/^the(?:[_\s]+)?/, "")
-    .replace(/judgement/g, "judgment")
-    .replace(/[_\s]+/g, "-");
-}
-
-function localTarotImageByName(nameEn: string | null | undefined): string | null {
-  if (!nameEn) return null;
-  const idx = TAROT_CARD_ORDER.indexOf(nameEn as (typeof TAROT_CARD_ORDER)[number]);
-  if (idx < 0) return null;
-  const folder = idx < 22 ? "majors" : "minors";
-  return `/tarot/${folder}/card-${String(idx).padStart(2, "0")}-${tarotSlug(nameEn)}.svg`;
-}
-
 function remoteTarotImageByName(nameEn: string | null | undefined): string | null {
   if (!nameEn) return null;
   const idx = TAROT_CARD_ORDER.indexOf(nameEn as (typeof TAROT_CARD_ORDER)[number]);
   if (idx < 0) return null;
-  return `${TAROT_IMAGE_BASE}${String(idx).padStart(2, "0")}_${nameEn.replace(/ /g, "_")}.webp`;
+  return `${TAROT_IMAGE_BASE}${String(idx).padStart(2, "0")}_${nameEn.replace(/ /g, "_")}.svg`;
 }
 
 function rewriteCardImage<
   T extends { image_url?: string | null; name_en?: string | null },
 >(card: T): T {
-  const remoteImage = remoteTarotImageByName(card.name_en);
-  const imageUrl =
-    card.image_url && !card.image_url.startsWith("/tarot/")
-      ? card.image_url
-      : remoteImage ?? localTarotImageByName(card.name_en);
-
-  return {
-    ...card,
-    image_url: imageUrl,
-  };
+  // Prefer backend-supplied URL; fall back to name-based reconstruction only
+  // if backend didn't set one (e.g. legacy reading rows).
+  const imageUrl = card.image_url ?? remoteTarotImageByName(card.name_en);
+  return { ...card, image_url: imageUrl };
 }
 
 function rewriteSpread<T extends { cards: { image_url?: string | null }[] }>(

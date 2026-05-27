@@ -103,7 +103,7 @@ function getDailyTarotFaceUrl(nameEn?: string | null): string | null {
     nameEn as (typeof DAILY_TAROT_CARD_ORDER)[number],
   );
   if (index < 0) return null;
-  return `${TAROT_IMAGE_BASE}${String(index).padStart(2, "0")}_${nameEn.replace(/ /g, "_")}.webp`;
+  return `${TAROT_IMAGE_BASE}${String(index).padStart(2, "0")}_${nameEn.replace(/ /g, "_")}.svg`;
 }
 
 function getTodayKey(): string {
