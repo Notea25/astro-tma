@@ -374,7 +374,7 @@ def _donut_svg(percentages: dict[str, int], dominant: str) -> str:
 def _css() -> str:
     return f"""
 @page {{ size: A4; margin: 0; }}
-* {{ box-sizing: border-box; }}
+* {{ box-sizing: border-box; overflow-wrap: anywhere; }}
 html, body {{ margin: 0; padding: 0; background: {BG}; color: {TEXT}; }}
 body {{ font-family: "DejaVu Sans", Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
 .page {{ position: relative; display: block; width: 210mm; height: 297mm; overflow: hidden; padding: 22mm 18mm 17mm; background: {BG}; break-after: page; page-break-after: always; break-inside: avoid; }}
@@ -457,6 +457,7 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .aspect-group h3 em {{ color: {TEXT_DIM}; text-transform: none; font-size: 8px; letter-spacing: 0; margin-left: 3mm; }}
 .aspect-row {{ margin-bottom: 3.5mm; }}
 .aspect-title {{ display: flex; justify-content: space-between; gap: 4mm; color: {TEXT}; font-size: 8.8px; }}
+.aspect-title span:first-child {{ min-width: 0; }}
 .orb {{ color: {TEXT_DIM}; }}
 .aspect-row p {{ margin: 1.5mm 0 0; color: {TEXT_DIM}; line-height: 1.35; font-size: 8px; }}
 .reading {{ padding-right: 4mm; }}
