@@ -93,6 +93,77 @@ def test_generate_natal_pdf_does_not_require_dejavu_bold(monkeypatch):
     assert pdf.startswith(b"%PDF-")
 
 
+def test_generate_natal_pdf_handles_long_reading_and_many_aspects():
+    planets, houses, _aspects = _sample_chart()
+    planets.update(
+        {
+            "venus": {"sign": "Cancer", "sign_ru": "Рак", "degree": 91.0, "house": 8},
+            "mars": {"sign": "Libra", "sign_ru": "Весы", "degree": 183.0, "house": 11},
+            "jupiter": {
+                "sign": "Gemini",
+                "sign_ru": "Близнецы",
+                "degree": 73.0,
+                "house": 7,
+                "retrograde": True,
+            },
+            "saturn": {"sign": "Gemini", "sign_ru": "Близнецы", "degree": 77.0, "house": 7},
+            "uranus": {"sign": "Aquarius", "sign_ru": "Водолей", "degree": 318.0, "house": 5},
+            "neptune": {"sign": "Aquarius", "sign_ru": "Водолей", "degree": 309.0, "house": 5},
+            "pluto": {"sign": "Sagittarius", "sign_ru": "Стрелец", "degree": 252.0, "house": 2},
+        }
+    )
+    aspects = [
+        {"p1": "Sun", "p2": "Venus", "aspect": "conjunction", "orb": 6.9},
+        {"p1": "Sun", "p2": "Jupiter", "aspect": "trine", "orb": 6.3},
+        {"p1": "Sun", "p2": "Uranus", "aspect": "trine", "orb": 0.3},
+        {"p1": "Moon", "p2": "Mercury", "aspect": "trine", "orb": 1.2},
+        {"p1": "Jupiter", "p2": "Uranus", "aspect": "trine", "orb": 6.0},
+        {"p1": "Jupiter", "p2": "Neptune", "aspect": "trine", "orb": 7.2},
+        {"p1": "Saturn", "p2": "Neptune", "aspect": "trine", "orb": 3.5},
+        {"p1": "Sun", "p2": "Pluto", "aspect": "sextile", "orb": 6.5},
+        {"p1": "Mercury", "p2": "Mars", "aspect": "sextile", "orb": 2.4},
+        {"p1": "Venus", "p2": "Mars", "aspect": "sextile", "orb": 4.5},
+        {"p1": "Uranus", "p2": "Pluto", "aspect": "sextile", "orb": 6.2},
+        {"p1": "Moon", "p2": "Jupiter", "aspect": "square", "orb": 6.0},
+        {"p1": "Moon", "p2": "Pluto", "aspect": "square", "orb": 0.2},
+        {"p1": "Mercury", "p2": "Uranus", "aspect": "square", "orb": 4.8},
+        {"p1": "Venus", "p2": "Uranus", "aspect": "square", "orb": 2.1},
+        {"p1": "Mars", "p2": "Jupiter", "aspect": "square", "orb": 3.6},
+        {"p1": "Mars", "p2": "Pluto", "aspect": "square", "orb": 3.8},
+        {"p1": "Moon", "p2": "Mars", "aspect": "opposition", "orb": 3.6},
+        {"p1": "Jupiter", "p2": "Pluto", "aspect": "opposition", "orb": 0.2},
+    ]
+    reading = "\n".join(
+        [
+            "**Ядро личности**",
+            "Вы человек противоречивый, и это ваша изюминка. " * 18,
+            "**Ум и общение**",
+            "Меркурий показывает точность речи, наблюдательность и умение держать фокус. " * 16,
+            "**Любовь и ценности**",
+            "Венера описывает глубину привязанностей, осторожность и сильные чувства. " * 16,
+            "**Удача и вызовы**",
+            "Юпитер и Сатурн требуют дисциплины, повторного изучения и взрослой настройки. " * 18,
+        ]
+    )
+
+    pdf = generate_natal_pdf(
+        user_name="Andrey",
+        birth_date="2000-10-10 12:00:00",
+        birth_time=None,
+        birth_city="Санкт-Петербург, Россия",
+        sun_sign="Libra",
+        moon_sign="Pisces",
+        asc_sign="Scorpio",
+        planets=planets,
+        houses=houses,
+        aspects=aspects,
+        reading=reading,
+    )
+
+    assert pdf.startswith(b"%PDF-")
+    assert len(pdf) > 10_000
+
+
 def test_build_natal_pdf_html_contains_reference_layout_sections():
     planets, houses, aspects = _sample_chart()
 
@@ -117,6 +188,7 @@ def test_build_natal_pdf_html_contains_reference_layout_sections():
     assert "Дома гороскопа" in document
     assert "Персональная интерпретация" in document
     assert "wheel-svg" in document
+    assert 'r="36"' not in document
     assert "@page" in document
 
 

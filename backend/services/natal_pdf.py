@@ -340,6 +340,42 @@ def _draw_wrapped_static(
     return y
 
 
+def _lines_for_width(
+    c: canvas.Canvas,
+    text: str,
+    max_width: float,
+    *,
+    bold: bool,
+    size: float,
+    max_lines: int | None = None,
+) -> list[str]:
+    font_name = FONT_BOLD if bold else FONT
+    words = str(text or "").replace("\n", " ").split()
+    result: list[str] = []
+    line = ""
+    for word in words:
+        test = f"{line} {word}".strip()
+        if line and c.stringWidth(test, font_name, size) > max_width:
+            result.append(line)
+            line = word
+            if max_lines and len(result) >= max_lines:
+                break
+        else:
+            line = test
+    if line and (not max_lines or len(result) < max_lines):
+        result.append(line)
+    if max_lines and len(result) == max_lines and len(" ".join(words)) > len(" ".join(result)):
+        result[-1] = result[-1].rstrip(" .,:;—-") + "."
+    return result
+
+
+def _limit_words(text: str, words: int) -> str:
+    parts = str(text or "").split()
+    if len(parts) <= words:
+        return " ".join(parts)
+    return " ".join(parts[:words]).rstrip(" .,:;—-") + "."
+
+
 def _draw_card_frame(c: canvas.Canvas, x: float, y: float, width: float, height: float) -> None:
     c.setFillColor(SURFACE)
     c.roundRect(x, y - height, width, height, 10, stroke=0, fill=1)
@@ -579,15 +615,22 @@ def generate_natal_pdf(
     def title_page(title: str, subtitle: str) -> float:
         _new_page(c, w, h)
         c.setFillColor(GOLD)
-        _set_font(c, True, 21)
-        c.drawString(58, h - 82, title)
+        _set_font(c, True, 18)
+        title_y = h - 82
+        for line in _lines_for_width(c, title, w - 116, bold=True, size=18, max_lines=2):
+            c.drawString(58, title_y, line)
+            title_y -= 22
         c.setStrokeColor(GOLD_DIM)
         c.setLineWidth(0.5)
-        c.line(58, h - 101, w - 58, h - 101)
+        rule_y = title_y + 6
+        c.line(58, rule_y, w - 58, rule_y)
         c.setFillColor(TEXT_DIM)
-        _set_font(c, False, 10)
-        c.drawString(58, h - 130, subtitle)
-        return h - 174
+        _set_font(c, False, 8.5)
+        subtitle_y = rule_y - 29
+        for line in _lines_for_width(c, subtitle, w - 116, bold=False, size=8.5, max_lines=2):
+            c.drawString(58, subtitle_y, line)
+            subtitle_y -= 12
+        return subtitle_y - 32
 
     def draw_wheel(cx: float, cy: float, radius: float) -> None:
         asc_deg = _ascendant_degree(houses, asc_sign)
@@ -729,18 +772,6 @@ def generate_natal_pdf(
             c.setFillColor(GOLD)
             c.circle(*planet_points[p1_key], 1.1, stroke=0, fill=1)
             c.circle(*planet_points[p2_key], 1.1, stroke=0, fill=1)
-
-        # Center seal.
-        c.setFillColor(BG)
-        c.setStrokeColor(GOLD)
-        c.setLineWidth(0.8)
-        c.circle(cx, cy, 28, stroke=1, fill=1)
-        c.setStrokeColor(GOLD_DIM)
-        c.setLineWidth(0.35)
-        c.circle(cx, cy, 22, stroke=1, fill=0)
-        c.setFillColor(GOLD)
-        _set_font(c, True, 22)
-        c.drawCentredString(cx, cy - 7, SIGN_SYMBOLS.get(_key(asc_sign), "✦"))
 
     # 1. Cover.
     _new_page(c, w, h)
@@ -1030,43 +1061,56 @@ def generate_natal_pdf(
         c.drawCentredString(metric_x, y - 14, metric_label)
     y -= 55
     for aspect_type, group in grouped:
-        if y < 132:
+        group_title = f"{ASPECT_SYMBOLS.get(aspect_type, '')} {ASPECT_RU[aspect_type].upper()} — {ASPECT_TOPICS.get(aspect_type, 'связь энергий')}"
+        group_lines = _lines_for_width(c, group_title, w - 96, bold=True, size=9.5, max_lines=2)
+        group_height = 12 * len(group_lines) + 10
+        if y - group_height < 86:
             finish_page()
             y = title_page("Аспекты", "Продолжение списка связей между планетами")
         c.setFillColor(GOLD)
-        _set_font(c, True, 12)
-        c.drawString(48, y, f"{ASPECT_SYMBOLS.get(aspect_type, '')} {ASPECT_RU[aspect_type].upper()} — {ASPECT_TOPICS.get(aspect_type, 'связь энергий')}")
-        y -= 24
+        _set_font(c, True, 9.5)
+        for line in group_lines:
+            c.drawString(48, y, line)
+            y -= 12
+        y -= 8
         for aspect in group:
-            if y < 126:
-                finish_page()
-                y = title_page("Аспекты", "Продолжение списка связей между планетами")
-            c.setFillColor(SURFACE)
-            c.roundRect(52, y - 63, w - 104, 76, 8, stroke=0, fill=1)
-            c.setStrokeColor(LINE)
-            c.setLineWidth(0.35)
-            c.roundRect(52, y - 63, w - 104, 76, 8, stroke=1, fill=0)
             p1_key = _planet_key(aspect.get("p1"))
             p2_key = _planet_key(aspect.get("p2"))
             orb = float(aspect.get("orb") or 0)
-            c.setFillColor(TEXT)
-            _set_font(c, True, 10)
-            c.drawString(
-                58,
-                y,
+            card_x = 52
+            card_w = w - 104
+            title = (
                 f"{PLANET_SYMBOLS.get(p1_key, '')} {PLANET_RU.get(p1_key, aspect.get('p1', ''))} "
                 f"{ASPECT_SYMBOLS.get(aspect_type, '')} "
-                f"{PLANET_SYMBOLS.get(p2_key, '')} {PLANET_RU.get(p2_key, aspect.get('p2', ''))}",
+                f"{PLANET_SYMBOLS.get(p2_key, '')} {PLANET_RU.get(p2_key, aspect.get('p2', ''))}"
             )
-            c.setFillColor(TEXT_DIM)
-            _set_font(c, False, 9)
-            c.drawRightString(w - 48, y, f"орб {orb:.1f}°")
-            y -= 16
-            desc = _compact_description(aspect_desc.get((p1_key, p2_key, aspect_type)), _aspect_fallback(aspect), words=30)
+            title_lines = _lines_for_width(c, title, card_w - 82, bold=True, size=8.5, max_lines=2)
+            desc = _compact_description(aspect_desc.get((p1_key, p2_key, aspect_type)), _aspect_fallback(aspect), words=22)
+            desc_lines = _lines_for_width(c, desc, card_w - 28, bold=False, size=7, max_lines=3)
+            card_h = 20 + 11 * len(title_lines) + 9 * len(desc_lines)
+            if y - card_h < 66:
+                finish_page()
+                y = title_page("Аспекты", "Продолжение списка связей между планетами")
+            c.setFillColor(SURFACE)
+            c.roundRect(card_x, y - card_h, card_w, card_h, 8, stroke=0, fill=1)
+            c.setStrokeColor(LINE)
+            c.setLineWidth(0.35)
+            c.roundRect(card_x, y - card_h, card_w, card_h, 8, stroke=1, fill=0)
+            c.setFillColor(TEXT)
+            _set_font(c, True, 8.5)
+            text_y = y - 13
+            for line in title_lines:
+                c.drawString(card_x + 12, text_y, line)
+                text_y -= 11
             c.setFillColor(TEXT_DIM)
             _set_font(c, False, 8)
-            y = _draw_wrapped_static(c, desc, 64, y, 82, 11, 3)
-            y -= 16
+            c.drawRightString(card_x + card_w - 10, y - 13, f"орб {orb:.1f}°")
+            _set_font(c, False, 7)
+            text_y -= 3
+            for line in desc_lines:
+                c.drawString(card_x + 12, text_y, line)
+                text_y -= 9
+            y -= card_h + 6
         y -= 8
     finish_page()
 
@@ -1084,45 +1128,46 @@ def generate_natal_pdf(
         )
     y = title_page("Персональная интерпретация", "Написано специально для вас")
     c.setFillColor(GOLD_DIM)
-    _set_font(c, False, 10)
-    c.drawString(48, y, "«Каждый рисунок звезд раскрывается только через того, кто его носит»")
-    y -= 35
+    _set_font(c, False, 8)
+    quote_lines = _lines_for_width(c, "«Каждый рисунок звезд раскрывается только через того, кто его носит»", w - 116, bold=False, size=8, max_lines=2)
+    for quote_line in quote_lines:
+        c.drawString(58, y, quote_line)
+        y -= 11
+    y -= 18
     c.setFillColor(TEXT)
-    _set_font(c, False, 10)
+    _set_font(c, False, 8)
     for raw_line in final_reading.split("\n"):
         line = raw_line.strip()
         if not line:
             continue
         if line.startswith("**") and line.endswith("**"):
-            if y < 110:
+            header_lines = _lines_for_width(c, "✦ " + line.strip("* "), w - 116, bold=True, size=10, max_lines=2)
+            header_h = 14 * len(header_lines) + 8
+            if y - header_h < 64:
                 finish_page()
                 y = title_page("Персональная интерпретация", "Продолжение")
             c.setFillColor(GOLD)
-            _set_font(c, True, 12)
-            c.drawString(48, y, "✦ " + line.strip("* "))
-            y -= 22
+            _set_font(c, True, 10)
+            for header_line in header_lines:
+                c.drawString(58, y, header_line)
+                y -= 14
+            y -= 8
             c.setFillColor(TEXT)
-            _set_font(c, False, 10)
+            _set_font(c, False, 8)
             continue
-        paragraph_lines = _lines(line, 86)
-        block_h = 30 + len(paragraph_lines) * 15
-        if y - block_h < 74:
+        paragraph = _limit_words(line, 95)
+        paragraph_lines = _lines_for_width(c, paragraph, w - 116, bold=False, size=8, max_lines=9)
+        block_h = 13 * len(paragraph_lines) + 10
+        if y - block_h < 64:
             finish_page()
             y = title_page("Персональная интерпретация", "Продолжение")
-        c.setFillColor(SURFACE)
-        c.roundRect(44, y + 12 - block_h, w - 88, block_h, 10, stroke=0, fill=1)
-        c.setStrokeColor(LINE)
-        c.setLineWidth(0.35)
-        c.roundRect(44, y + 12 - block_h, w - 88, block_h, 10, stroke=1, fill=0)
-        c.setFillColor(GOLD_DIM)
-        c.circle(62, y - 6, 2, stroke=0, fill=1)
         c.setFillColor(TEXT)
-        _set_font(c, False, 10)
-        text_y = y - 2
+        _set_font(c, False, 8)
+        text_y = y
         for wrapped_line in paragraph_lines:
-            c.drawString(78, text_y, wrapped_line)
-            text_y -= 15
-        y -= block_h + 12
+            c.drawString(58, text_y, wrapped_line)
+            text_y -= 13
+        y -= block_h
     finish_page()
 
     # Glossary.
