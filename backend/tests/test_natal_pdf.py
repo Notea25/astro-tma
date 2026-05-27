@@ -6,6 +6,7 @@ import pytest
 from fastapi.responses import Response
 
 from services import natal_pdf
+from services import natal_pdf_html
 from services.astro import natal_descriptions
 from services.natal_pdf import generate_natal_pdf
 
@@ -91,6 +92,33 @@ def test_generate_natal_pdf_does_not_require_dejavu_bold(monkeypatch):
     )
 
     assert pdf.startswith(b"%PDF-")
+
+
+def test_build_natal_pdf_html_contains_reference_layout_sections():
+    planets, houses, aspects = _sample_chart()
+
+    document = natal_pdf_html.build_natal_pdf_html(
+        user_name="Андрей",
+        birth_date="2000-10-20",
+        birth_time="12:00",
+        birth_city="Минск",
+        sun_sign="Scorpio",
+        moon_sign="Aquarius",
+        asc_sign="Aries",
+        planets=planets,
+        houses=houses,
+        aspects=aspects,
+    )
+
+    assert "Натальная карта" in document
+    assert "Содержание" in document
+    assert "Натальное колесо" in document
+    assert "Баланс стихий" in document
+    assert "Планеты в знаках" in document
+    assert "Дома гороскопа" in document
+    assert "Персональная интерпретация" in document
+    assert "wheel-svg" in document
+    assert "@page" in document
 
 
 def test_planet_description_prompt_prioritises_sign_over_house():
@@ -200,6 +228,7 @@ async def test_natal_pdf_token_download_does_not_require_telegram_auth(monkeypat
 async def test_build_natal_pdf_response_does_not_block_on_llm(monkeypatch):
     from api.routes import natal
     from services import natal_pdf
+    from services import natal_pdf_html
 
     chart = SimpleNamespace(
         chart_data={
@@ -235,9 +264,13 @@ async def test_build_natal_pdf_response_does_not_block_on_llm(monkeypatch):
         calls["pdf_kwargs"] = kwargs
         return b"%PDF-fast"
 
+    async def fake_generate_natal_pdf_html(**_kwargs):
+        raise RuntimeError("chromium unavailable")
+
     monkeypatch.setattr(natal, "_get_or_generate_descriptions", fail_descriptions)
     monkeypatch.setattr(natal, "_get_or_generate_pdf_reading", fail_reading)
     monkeypatch.setattr(natal, "cache_get", fake_cache_get)
+    monkeypatch.setattr(natal_pdf_html, "generate_natal_pdf_html", fake_generate_natal_pdf_html)
     monkeypatch.setattr(natal_pdf, "generate_natal_pdf", fake_generate_natal_pdf)
 
     response = await natal._build_natal_pdf_response(db=object(), user=user)
