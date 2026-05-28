@@ -23,6 +23,11 @@ type NatalPdfLinkResponse = {
   expires_in: number;
 };
 
+type NatalPdfSendResponse = {
+  status: "sent";
+  filename: string;
+};
+
 type UserProfile = import("@/types").UserProfile;
 type NatalSummaryResponse = import("@/types").NatalSummaryResponse;
 type NatalFullResponse = import("@/types").NatalFullResponse;
@@ -65,10 +70,6 @@ function apiUrl(path: string): string {
   if (/^https?:\/\//i.test(path)) return path;
   const suffix = path.startsWith("/") ? path : `/${path}`;
   return `${BASE_URL}${suffix}`;
-}
-
-function absoluteUrl(url: string): string {
-  return new URL(url, window.location.origin).toString();
 }
 
 function openDownloadWindow(): Window | null {
@@ -424,24 +425,14 @@ async function requestLocalDevFixture<T>(
     } as T;
   }
 
-  return undefined;
-}
-
-async function openTemporaryPdfLink(filename: string): Promise<void> {
-  const link = await request<NatalPdfLinkResponse>("POST", "/natal/pdf-link");
-  const downloadUrl = apiUrl(link.download_url);
-  const absoluteDownloadUrl = absoluteUrl(downloadUrl);
-
-  if (canUseTelegramOpenLink()) {
-    try {
-      WebApp.openLink(absoluteDownloadUrl);
-      return;
-    } catch {
-      // Fall through to a browser-style download if Telegram rejects the link.
-    }
+  if (path === "/natal/pdf-send" && method === "POST") {
+    return {
+      status: "sent",
+      filename: "natal-chart-dev.pdf",
+    } as T;
   }
 
-  triggerDownload(downloadUrl, link.filename || filename);
+  return undefined;
 }
 
 async function request<T>(
@@ -577,7 +568,8 @@ export const natalApi = {
     const filename = "natal-chart.pdf";
 
     if (canUseTelegramOpenLink()) {
-      await openTemporaryPdfLink(filename);
+      await request<NatalPdfSendResponse>("POST", "/natal/pdf-send");
+      WebApp.showAlert?.("PDF-отчёт отправлен вам в чат с ботом.");
       return;
     }
 

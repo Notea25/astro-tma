@@ -1,9 +1,11 @@
 """Natal chart endpoints — full chart retrieval and SVG generation."""
 
+from io import BytesIO
 from secrets import token_urlsafe
 from typing import Any
 from urllib.parse import quote
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -184,7 +186,7 @@ def _get_stored_descriptions(user) -> dict[str, Any]:
     return _empty_descriptions()
 
 
-async def _build_natal_pdf_response(db: AsyncSession, user) -> Response:
+async def _build_natal_pdf_bytes(db: AsyncSession, user) -> bytes:
     from services.natal_pdf import generate_natal_pdf
     from services.natal_pdf_html import generate_natal_pdf_html
 
@@ -227,6 +229,11 @@ async def _build_natal_pdf_response(db: AsyncSession, user) -> Response:
         log.error("natal.pdf_html_failed_fallback_reportlab", user_id=user.id, error=str(e))
         pdf_bytes = generate_natal_pdf(**pdf_kwargs)
 
+    return pdf_bytes
+
+
+async def _build_natal_pdf_response(db: AsyncSession, user) -> Response:
+    pdf_bytes = await _build_natal_pdf_bytes(db, user)
     filename = _natal_pdf_filename(user)
     return Response(
         content=pdf_bytes,
@@ -240,6 +247,52 @@ async def _build_natal_pdf_response(db: AsyncSession, user) -> Response:
             "X-Content-Type-Options": "nosniff",
         },
     )
+
+
+async def _send_natal_pdf_document(user, pdf_bytes: bytes) -> None:
+    filename = _natal_pdf_filename(user)
+    url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendDocument"
+    data = {
+        "chat_id": str(user.id),
+        "caption": "Ваш полный PDF-отчёт по натальной карте.",
+    }
+    files = {
+        "document": (
+            filename,
+            BytesIO(pdf_bytes),
+            "application/pdf",
+        )
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(url, data=data, files=files)
+        payload = response.json()
+    except Exception as e:  # noqa: BLE001
+        log.error("natal.pdf_send_failed", user_id=user.id, error=str(e))
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            "Не удалось отправить PDF в Telegram. Попробуйте ещё раз.",
+        ) from e
+
+    if response.status_code == 403:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Сначала откройте чат с ботом и нажмите /start, затем попробуйте снова.",
+        )
+
+    if not response.is_success or not payload.get("ok"):
+        description = str(payload.get("description") or response.text)
+        log.error(
+            "natal.pdf_send_rejected",
+            user_id=user.id,
+            status_code=response.status_code,
+            error=description[:500],
+        )
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            "Telegram не принял PDF. Попробуйте ещё раз.",
+        )
 
 
 @router.get("/summary")
@@ -473,6 +526,18 @@ async def create_natal_pdf_link(
         "filename": _natal_pdf_filename(user),
         "expires_in": _PDF_DOWNLOAD_TTL_SECONDS,
     }
+
+
+@router.post("/pdf-send")
+async def send_natal_pdf_to_telegram(
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Generate a natal PDF and send it to the user's Telegram chat as a document."""
+    user = await _get_pdf_user_or_error(db, tg_user["id"])
+    pdf_bytes = await _build_natal_pdf_bytes(db, user)
+    await _send_natal_pdf_document(user, pdf_bytes)
+    return {"status": "sent", "filename": _natal_pdf_filename(user)}
 
 
 @router.get("/pdf-download/{token}")
