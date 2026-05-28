@@ -230,13 +230,14 @@ async def _build_natal_pdf_response(db: AsyncSession, user) -> Response:
     filename = _natal_pdf_filename(user)
     return Response(
         content=pdf_bytes,
-        media_type="application/pdf",
+        media_type="application/octet-stream",
         headers={
             "Cache-Control": "no-store",
             "Content-Disposition": (
                 f"attachment; filename=\"natal-chart.pdf\"; "
                 f"filename*=UTF-8''{quote(filename)}"
             ),
+            "X-Content-Type-Options": "nosniff",
         },
     )
 
