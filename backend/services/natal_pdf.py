@@ -252,7 +252,7 @@ def _new_page(c: canvas.Canvas, w: float, h: float) -> None:
     c.restoreState()
 
 
-def _set_font(c: canvas.Canvas, bold: bool, size: int) -> None:
+def _set_font(c: canvas.Canvas, bold: bool, size: int | float) -> None:
     c.setFont(FONT_BOLD if bold else FONT, size)
 
 
