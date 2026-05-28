@@ -296,6 +296,36 @@ async def test_natal_pdf_token_download_does_not_require_telegram_auth(monkeypat
 
 
 @pytest.mark.asyncio
+async def test_send_natal_pdf_to_telegram_generates_and_sends_document(monkeypatch):
+    from api.routes import natal
+
+    user = SimpleNamespace(id=1001, tg_first_name="Андрей")
+    calls = {}
+
+    async def fake_get_user(_db, user_id):
+        assert user_id == 1001
+        return user
+
+    async def fake_build_pdf(_db, pdf_user):
+        assert pdf_user is user
+        calls["generated"] = True
+        return b"%PDF-test"
+
+    async def fake_send(pdf_user, pdf_bytes):
+        assert pdf_user is user
+        calls["sent_bytes"] = pdf_bytes
+
+    monkeypatch.setattr(natal, "_get_pdf_user_or_error", fake_get_user)
+    monkeypatch.setattr(natal, "_build_natal_pdf_bytes", fake_build_pdf)
+    monkeypatch.setattr(natal, "_send_natal_pdf_document", fake_send)
+
+    payload = await natal.send_natal_pdf_to_telegram(tg_user={"id": 1001}, db=object())
+
+    assert payload == {"status": "sent", "filename": "natal_Андрей.pdf"}
+    assert calls == {"generated": True, "sent_bytes": b"%PDF-test"}
+
+
+@pytest.mark.asyncio
 async def test_build_natal_pdf_response_does_not_block_on_llm(monkeypatch):
     from api.routes import natal
     from services import natal_pdf, natal_pdf_html
