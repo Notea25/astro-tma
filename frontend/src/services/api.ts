@@ -568,8 +568,20 @@ export const natalApi = {
     const filename = "natal-chart.pdf";
 
     if (canUseTelegramOpenLink()) {
-      await request<NatalPdfSendResponse>("POST", "/natal/pdf-send");
-      WebApp.showAlert?.("PDF-отчёт отправлен вам в чат с ботом.");
+      try {
+        await request<NatalPdfSendResponse>("POST", "/natal/pdf-send");
+        WebApp.showAlert?.("PDF-отчёт отправлен вам в чат с ботом.");
+      } catch (error) {
+        if (!(error instanceof ApiError) || error.status !== 404) {
+          throw error;
+        }
+
+        const blob = await requestBlob("/natal/pdf");
+        triggerBlobDownload(blob, filename);
+        WebApp.showAlert?.(
+          "Отправка в чат появится после обновления сервера. Сейчас PDF подготовлен для скачивания.",
+        );
+      }
       return;
     }
 
