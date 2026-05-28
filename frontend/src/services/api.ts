@@ -578,9 +578,6 @@ export const natalApi = {
 
         const blob = await requestBlob("/natal/pdf");
         triggerBlobDownload(blob, filename);
-        WebApp.showAlert?.(
-          "Отправка в чат появится после обновления сервера. Сейчас PDF подготовлен для скачивания.",
-        );
       }
       return;
     }
