@@ -31,7 +31,16 @@ const NODE_TITLES_RU: Record<DestinyNodeId, string> = {
   top_right:    "Как вы общаетесь, ваша подача себя",
   bottom_right: "Как улучшить поток денег в жизнь",
   bottom_left:  "Желания сердца — от чего вы радуетесь",
-  // Ancestral channels
+  // Axis channels inside the diamond
+  month_mid:  "Главный талант — работа",
+  month_in:   "Что вдохновляет — итог талантов",
+  year_mid:   "Финансовый поток — работа",
+  year_in:    "Откуда приходят деньги (вход в канал)",
+  bottom_mid: "Кармический хвост — что прорабатываете",
+  bottom_in:  "Главный урок этой жизни",
+  day_mid:    "Детско-родительский канал — работа",
+  day_in:     "Желания сердца — отношения",
+  // Diagonal ancestral channels
   aft_in:  "Род отца · таланты — работа канала",
   aft_out: "Духовная карма по роду отца",
   amt_in:  "Род матери · таланты — работа канала",
@@ -40,13 +49,6 @@ const NODE_TITLES_RU: Record<DestinyNodeId, string> = {
   amk_out: "Материальная карма по роду матери",
   afk_in:  "Род отца · карма — работа канала",
   afk_out: "Материальная карма по роду отца",
-  // Karmic tail extension
-  kt_mid: "Кармический хвост — что прорабатываете",
-  kt_out: "Главный урок этой жизни",
-  // Inner energy icons
-  talents_mid:       "Что вдохновляет — ваши таланты",
-  relationships_mid: "Образ партнёра и урок отношений",
-  finance_mid:       "Откуда приходят деньги",
 };
 
 // Which `arcana_meanings.context` row to pull for the bottom-sheet copy
@@ -61,6 +63,16 @@ const NODE_CONTEXT: Record<DestinyNodeId, string> = {
   top_right:    "ancestral",
   bottom_right: "ancestral",
   bottom_left:  "ancestral",
+  // Axis channels — each axis carries a specific life domain
+  month_mid:  "talents",
+  month_in:   "talents",
+  year_mid:   "finance",
+  year_in:    "material_karma",
+  bottom_mid: "karmic_tail",
+  bottom_in:  "karmic_tail",
+  day_mid:    "parental",
+  day_in:     "relationships",
+  // Diagonal ancestral channels
   aft_in:  "ancestral",
   aft_out: "ancestral",
   amt_in:  "ancestral",
@@ -69,11 +81,6 @@ const NODE_CONTEXT: Record<DestinyNodeId, string> = {
   amk_out: "ancestral",
   afk_in:  "ancestral",
   afk_out: "ancestral",
-  kt_mid: "karmic_tail",
-  kt_out: "karmic_tail",
-  talents_mid:       "talents",
-  relationships_mid: "relationships",
-  finance_mid:       "finance",
 };
 
 interface ActiveTap {
