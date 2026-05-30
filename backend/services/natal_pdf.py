@@ -14,6 +14,8 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 
+from services.astro.sign_cases import sign_ru as _sign_case_ru
+
 _FONT_DIR = os.path.join(os.path.dirname(__file__), "..", "fonts")
 _FONT_REGISTERED = False
 FONT = "Helvetica"
@@ -184,8 +186,15 @@ def _key(value: Any) -> str:
 
 
 def _sign_ru(sign: Any) -> str:
-    key = _key(sign)
-    return SIGN_RU.get(key, str(sign or ""))
+    return _sign_case_ru(sign)
+
+
+def _sign_ru_case(sign: Any, case: str) -> str:
+    if case == "prep":
+        return _sign_case_ru(sign, "prep")
+    if case == "gen":
+        return _sign_case_ru(sign, "gen")
+    return _sign_case_ru(sign)
 
 
 def _sign_symbol(sign: Any) -> str:
@@ -495,24 +504,28 @@ def _description(entry: Any, fallback: str) -> str:
 
 def _planet_fallback(name: str, planet: dict[str, Any]) -> str:
     ru = PLANET_RU.get(name, name)
-    sign = _sign_ru(planet.get("sign_ru") or planet.get("sign"))
+    sign = planet.get("sign_ru") or planet.get("sign")
+    sign_prep = _sign_ru_case(sign, "prep")
+    sign_gen = _sign_ru_case(sign, "gen")
     house = planet.get("house") or "?"
     retro = " Ретроградность делает проявление более внутренним и требует времени на осмысление." if planet.get("retrograde") else ""
     return (
-        f"{ru} в знаке {sign} показывает, как эта часть личности проявляется в вашем "
-        f"характере и повседневных выборах. Положение в {house}-м доме связывает тему "
-        f"планеты с конкретной сферой жизни, где она становится особенно заметной. "
-        f"Обращайте внимание на ситуации, в которых качества {ru.lower()} требуют "
-        f"осознанности, зрелости и бережного отношения к себе.{retro}"
+        f"{ru} в {sign_prep} показывает, как эта часть личности проявляется в характере, "
+        f"повседневных выборах, отношениях и делах. В знаке {sign_gen} планета раскрывает "
+        f"свой стиль через привычные реакции, сильные стороны, уязвимости и повторяющиеся "
+        f"жизненные сценарии. Положение в {house}-м доме связывает эту тему с конкретной "
+        f"сферой жизни, где она становится особенно заметной и требует осознанности.{retro}"
     )
 
 
 def _house_fallback(house: dict[str, Any]) -> str:
     num = int(house.get("number") or 0)
-    sign = _sign_ru(house.get("sign_ru") or house.get("sign"))
+    sign = house.get("sign_ru") or house.get("sign")
+    sign_nom = _sign_ru(sign)
+    sign_prep = _sign_ru_case(sign, "prep")
     topic = HOUSE_TOPICS.get(num, "важную сферу жизненного опыта")
     return (
-        f"{num}-й дом описывает {topic}. Знак {sign} на куспиде показывает, в каком "
+        f"{num}-й дом описывает {topic}. Знак на куспиде — {sign_nom}; дом в {sign_prep} показывает, в каком "
         f"стиле эта область раскрывается: через привычные реакции, выборы и повторяющиеся "
         f"жизненные обстоятельства. Этот раздел помогает увидеть, где стоит действовать "
         f"смелее, а где полезнее сохранять устойчивость и наблюдательность."
@@ -1010,7 +1023,7 @@ def generate_natal_pdf(
             c.setFillColor(TEXT_DIM)
             _set_font(c, False, 10.5)
             c.drawRightString(w - 62, y, f"{_roman(int(planet.get('house') or 0))} дом · {_deg_str(sign_degree)}")
-            text = _compact_description(planet_desc.get(name), _planet_fallback(name, planet), words=56)
+            text = _compact_description(planet_desc.get(name), _planet_fallback(name, planet), words=90)
             c.setFillColor(TEXT)
             _set_font(c, False, 11.3)
             _draw_wrapped_static(c, text, 62, y - 46, 68, 13, 5)
@@ -1041,7 +1054,7 @@ def generate_natal_pdf(
             c.setFillColor(TEXT)
             _set_font(c, True, 10)
             c.drawString(house_x, y - 30, HOUSE_LABELS.get(num, f"ДОМ {num}"))
-            text = _compact_description(house_desc.get(str(num)), _house_fallback(house), words=42)
+            text = _compact_description(house_desc.get(str(num)), _house_fallback(house), words=64)
             c.setFillColor(TEXT_DIM)
             _set_font(c, False, 10.5)
             _draw_wrapped_static(c, text, house_x, y - 45, 29, 12, 6)
@@ -1089,7 +1102,7 @@ def generate_natal_pdf(
                 f"{PLANET_SYMBOLS.get(p2_key, '')} {PLANET_RU.get(p2_key, aspect.get('p2', ''))}"
             )
             title_lines = _lines_for_width(c, title, card_w - 92, bold=True, size=12, max_lines=2)
-            desc = _compact_description(aspect_desc.get((p1_key, p2_key, aspect_type)), _aspect_fallback(aspect), words=32)
+            desc = _compact_description(aspect_desc.get((p1_key, p2_key, aspect_type)), _aspect_fallback(aspect), words=76)
             desc_lines = _lines_for_width(c, desc, card_w - 34, bold=False, size=11, max_lines=4)
             card_h = 32 + 15 * len(title_lines) + 13 * len(desc_lines)
             if y - card_h < 66:

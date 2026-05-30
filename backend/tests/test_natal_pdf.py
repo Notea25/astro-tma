@@ -8,6 +8,7 @@ from fastapi.responses import Response
 
 from services import natal_pdf, natal_pdf_html
 from services.astro import llm_interpreter, natal_descriptions
+from services.astro.sign_cases import sign_ru
 from services.natal_pdf import generate_natal_pdf
 
 
@@ -306,8 +307,70 @@ def test_planet_description_prompt_prioritises_sign_over_house():
 
     assert "Планеты в знаках" in prompt
     assert "центр разбора — связка планета + знак" in prompt
+    assert "Солнце в Козероге" in prompt
+    assert "в знаке Козерога" in prompt
+    assert "140-190 слов" in prompt
+    assert "отношения, работа/дела, привычки" in prompt
     assert "full" in prompt
     assert "6-9 предложений" not in prompt
+
+
+def test_sign_declensions_for_common_pdf_phrases():
+    assert f"Солнце в {sign_ru('scorpio', 'prep')}" == "Солнце в Скорпионе"
+    assert f"Луна в {sign_ru('aquarius', 'prep')}" == "Луна в Водолее"
+    assert f"Меркурий в {sign_ru('sagittarius', 'prep')}" == "Меркурий в Стрельце"
+    assert f"в знаке {sign_ru('scorpio', 'gen')}" == "в знаке Скорпиона"
+    assert f"в знаке {sign_ru('aries', 'gen')}" == "в знаке Овна"
+    assert f"дом в {sign_ru('libra', 'prep')}" == "дом в Весах"
+
+
+def test_house_description_prompt_requests_scenarios_and_declension():
+    prompt = natal_descriptions._house_one_prompt(7, "Весы")
+
+    assert "знак на куспиде — Весы" in prompt
+    assert "дом в Весах" in prompt
+    assert "90-130 слов" in prompt
+    assert "типичные жизненные сценарии" in prompt
+    assert "сильная сторона" in prompt
+
+
+def test_aspect_description_prompt_requests_full_interaction():
+    prompt = natal_descriptions._aspect_one_prompt("sun", "moon", "square")
+
+    assert "Солнце — квадрат — Луна" in prompt
+    assert "110-160 слов" in prompt
+    assert "взаимодействуют" in prompt
+    assert "отношениях/делах" in prompt
+    assert "зоны роста" in prompt
+
+
+def test_html_pdf_uses_full_description_before_short():
+    planets, houses, aspects = _sample_chart()
+    document = natal_pdf_html.build_natal_pdf_html(
+        user_name="Андрей",
+        birth_date="2000-10-20",
+        birth_time="12:00",
+        birth_city="Минск",
+        sun_sign="Scorpio",
+        moon_sign="Aquarius",
+        asc_sign="Aries",
+        planets=planets,
+        houses=houses,
+        aspects=aspects,
+        descriptions={
+            "planets": {
+                "sun": {
+                    "short": "КОРОТКИЙ_ТЕКСТ",
+                    "full": "ПОЛНЫЙ_ТЕКСТ для проверки приоритета.",
+                }
+            },
+            "houses": {},
+            "aspects": [],
+        },
+    )
+
+    assert "ПОЛНЫЙ_ТЕКСТ" in document
+    assert "КОРОТКИЙ_ТЕКСТ" not in document
 
 
 @pytest.mark.asyncio
@@ -338,6 +401,7 @@ async def test_get_or_generate_descriptions_regenerates_stale_cached_text(monkey
     descriptions = await natal._get_or_generate_descriptions(db, user)
 
     assert descriptions["planets"]["sun"]["full"] == "Новый полный справочный текст."
+    assert descriptions["_version"] == 3
     assert descriptions["_version"] == natal.NATAL_DESCRIPTIONS_VERSION
     assert chart.chart_data["descriptions"] == descriptions
     assert db.committed is True
