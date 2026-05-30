@@ -60,10 +60,8 @@ const NODE_TITLES_RU: Record<DestinyNodeId, string> = {
   comfort_a: "Зона комфорта — ближе к центру",
   comfort_b: "Зона комфорта — ближе к деньгам",
   cross_p:   "Точка пересечения денег и отношений",
-  // Money diagonal (dashed)
-  money_diag_1: "Денежная диагональ — точка у угла",
-  money_diag_2: "Денежная диагональ — середина (cross)",
-  money_diag_3: "Денежная диагональ — точка входа денег",
+  // Money diagonal — внешняя точка (cross + money)
+  money_diag_1: "Денежная диагональ — сила потока (cross + деньги)",
 };
 
 // Which `arcana_meanings.context` row to pull for the bottom-sheet copy
@@ -107,8 +105,6 @@ const NODE_CONTEXT: Record<DestinyNodeId, string> = {
   comfort_b: "personality",
   cross_p:   "finance",
   money_diag_1: "finance",
-  money_diag_2: "finance",
-  money_diag_3: "finance",
 };
 
 interface ActiveTap {

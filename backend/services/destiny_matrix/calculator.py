@@ -326,12 +326,16 @@ def _health_map(sky: ChakraSet, earth: ChakraSet) -> dict[str, Any]:
 def _comfort_pair(d: int, m_: int, c: int) -> list[int]:
     """Две точки «зоны комфорта» справа от центра на горизонтальной оси.
 
-    Правило: `X = M если M == C иначе D`. Возвращает `[X+C, X+2C]` —
-    vishuddha и anahata «активной» горизонтальной линии (Sky если M=C,
-    Earth иначе). Проверено на 3 датах (30.04.1997 D=C; 30.05.1997 M=C;
-    01.09.1993 ни одна не совпадает с C)."""
-    x = m_ if m_ == c else d
-    return [reduce(x + c), reduce(x + 2 * c)]
+    Возвращает `[near_center_val, near_money_val]` — порядок такой, в каком
+    matritsa-sudbi.ru их рисует от центра наружу. Правило:
+      X = M если M == C иначе D
+      если X == M (Sky-линия):  near_center = X+C,   near_money = X+2C
+      иначе (Earth-линия):       near_center = X+2C,  near_money = X+C
+    Проверено на 30.04.1997 (X=D → 9, 6), 30.05.1997 (X=M → 10, 15),
+    01.09.1993 (X=D → 21, 11)."""
+    if m_ == c:
+        return [reduce(m_ + c), reduce(m_ + 2 * c)]
+    return [reduce(d + 2 * c), reduce(d + c)]
 
 
 def to_dict(m: DestinyMatrix) -> dict[str, Any]:
