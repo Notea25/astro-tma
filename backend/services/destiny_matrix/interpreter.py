@@ -10,7 +10,7 @@ LLM failure (caller gets either real text or a generic fallback).
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from core.logging import get_logger
 from services.destiny_matrix.arcana_names import ARCANA_NAMES_RU
@@ -199,17 +199,21 @@ async def generate_interpretation(
         return _fallback_sections(positions), "fallback"
 
     import anthropic
+    from anthropic.types import MessageParam, ToolChoiceToolParam, ToolParam
 
     user_prompt = _build_user_prompt(positions, first_name)
     try:
         client = anthropic.AsyncAnthropic(api_key=api_key)
+        tools = cast(list[ToolParam], [_PUBLISH_TOOL])
+        tool_choice: ToolChoiceToolParam = {"type": "tool", "name": "publish_reading"}
+        messages: list[MessageParam] = [{"role": "user", "content": user_prompt}]
         message = await client.messages.create(
             model=_MODEL,
             max_tokens=3000,
             system=_SYSTEM_PROMPT,
-            tools=[_PUBLISH_TOOL],
-            tool_choice={"type": "tool", "name": "publish_reading"},
-            messages=[{"role": "user", "content": user_prompt}],
+            tools=tools,
+            tool_choice=tool_choice,
+            messages=messages,
         )
         # Find the tool_use block — model is forced to it via tool_choice.
         tool_input: dict[str, Any] | None = None

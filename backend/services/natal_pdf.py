@@ -990,11 +990,11 @@ def generate_natal_pdf(
     # 6-8. Planets, paginated for longer descriptions.
     planet_items = [name for name in PLANET_ORDER if planets.get(name)]
     planet_chunks = [planet_items[index:index + 4] for index in range(0, len(planet_items), 4)]
-    for chunk_index, chunk in enumerate(planet_chunks, start=1):
-        if not chunk:
+    for chunk_index, planet_chunk in enumerate(planet_chunks, start=1):
+        if not planet_chunk:
             continue
         y = title_page(f"Планеты в знаках {chunk_index} / {len(planet_chunks)}", "Где находится каждая планета и что это значит")
-        for name in chunk:
+        for name in planet_chunk:
             planet = planets[name]
             sign = _key(planet.get("sign"))
             sign_degree = planet.get("sign_degree", planet.get("degree", 0))
@@ -1022,9 +1022,9 @@ def generate_natal_pdf(
     col_x = (42, 305)
     house_items = [house for house in houses if int(house.get("number") or 0)]
     house_chunks = [house_items[index:index + 6] for index in range(0, len(house_items), 6)]
-    for chunk_index, chunk in enumerate(house_chunks, start=1):
+    for chunk_index, house_chunk in enumerate(house_chunks, start=1):
         y = title_page(f"Дома гороскопа {chunk_index} / {len(house_chunks)}", "12 сфер жизни и их обстановка")
-        for house_index, house in enumerate(chunk):
+        for house_index, house in enumerate(house_chunk):
             num = int(house.get("number") or 0)
             if house_index == 3:
                 y = h - 174
