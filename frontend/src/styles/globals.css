@@ -10278,3 +10278,34 @@ body::before {
   text-align: center;
   line-height: 1.45;
 }
+
+/* ── Synastry biwheel ─────────────────────────────────────────── */
+
+.synastry-biwheel__legend {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+}
+.synastry-biwheel__legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.synastry-biwheel__legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid var(--natal-accent, #e8c862);
+}
+.synastry-biwheel__legend-dot--inner {
+  background: var(--natal-primary, #d4b254);
+}
+.synastry-biwheel__legend-dot--outer {
+  background: transparent;
+}
