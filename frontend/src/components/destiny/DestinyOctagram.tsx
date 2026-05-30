@@ -30,13 +30,7 @@ export type DestinyNodeId =
   | "cross_p"                      // между центром и mid нижнего луча
   // Money diagonal — одна внешняя точка (cross+money), пунктир к money point
   | "money_diag_1"
-  | "love_diag_1"                  // зеркало money_diag_1 — под сердечком
-  // Family lines — 8 точек на цветных стрелках (мужская TL↔BR синяя,
-  // женская TR↔BL красная). По 2 точки на полудиагонали [near_center, near_corner].
-  | "male_upper_nc" | "male_upper_nv"
-  | "male_lower_nc" | "male_lower_nv"
-  | "female_upper_nc" | "female_upper_nv"
-  | "female_lower_nc" | "female_lower_nv";
+  | "love_diag_1";                 // зеркало money_diag_1 — под сердечком
 
 export interface NodeMeta {
   nodeId: DestinyNodeId;
@@ -165,21 +159,9 @@ const LOVE_DIAG_OUTER:  [number, number] = [349, 429];
 const HEART_POS: [number, number] = [345, 400];
 const DOLLAR_POS: [number, number] = [392, 345];
 
-// Family-line dots: 8 точек на цветных стрелках через центр.
-// Мужская диагональ (TL↔BR, синяя): полудиагонали к TL и BR.
-// Женская (TR↔BL, красная): полудиагонали к TR и BL.
-// Расстояние от центра: 30 px (near_center) и 70 px (near_corner).
-// Coord = 30/√2 ≈ 21.2, 70/√2 ≈ 49.5.
-const FAM_NC = 21.2;   // near-center offset по каждой координате
-const FAM_NV = 49.5;   // near-corner offset
-const POS_MALE_UPPER_NC: [number, number] = [CX - FAM_NC, CY - FAM_NC];  // к TL
-const POS_MALE_UPPER_NV: [number, number] = [CX - FAM_NV, CY - FAM_NV];
-const POS_MALE_LOWER_NC: [number, number] = [CX + FAM_NC, CY + FAM_NC];  // к BR
-const POS_MALE_LOWER_NV: [number, number] = [CX + FAM_NV, CY + FAM_NV];
-const POS_FEMALE_UPPER_NC: [number, number] = [CX + FAM_NC, CY - FAM_NC];  // к TR
-const POS_FEMALE_UPPER_NV: [number, number] = [CX + FAM_NV, CY - FAM_NV];
-const POS_FEMALE_LOWER_NC: [number, number] = [CX - FAM_NC, CY + FAM_NC];  // к BL
-const POS_FEMALE_LOWER_NV: [number, number] = [CX - FAM_NV, CY + FAM_NV];
+// Family-line dot позиции убраны: значения линий рода дублируют
+// aft_*/afk_*/amt_*/amk_* на диагональных лучах. Данные остаются
+// доступными в API (positions.family_lines), но визуально не рисуются.
 
 type NodeKind = "main-lg" | "main-md" | "dot";
 
@@ -230,13 +212,8 @@ function buildNodes(p: DestinyMatrixPositions): NodeDef[] {
   const loveDiagVal = sp?.love_diag_1 ?? 0;
   const moneyDiag  = p.money_diagonal ?? [0, 0, 0];
   const [valNearC, valNearMid] = comfortArr;
-  // Линии рода: 4 полудиагонали, каждая по [near_center, near_corner].
-  const fl = p.family_lines;
-  const get2 = (arr?: number[]): [number, number] => [arr?.[0] ?? 0, arr?.[1] ?? 0];
-  const [maleUpNc, maleUpNv] = get2(fl?.male_upper);
-  const [maleLoNc, maleLoNv] = get2(fl?.male_lower);
-  const [femUpNc, femUpNv]   = get2(fl?.female_upper);
-  const [femLoNc, femLoNv]   = get2(fl?.female_lower);
+  // Family lines данные приходят в `p.family_lines`, но визуально не
+  // рисуются (дублируют aft_*/afk_*/amt_*/amk_*). Доступны через API.
 
   // Helper: a small dot.
   //   rayTier 1 — у углов октаграммы (крупная R=R_DOT_1)
@@ -306,15 +283,9 @@ function buildNodes(p: DestinyMatrixPositions): NodeDef[] {
     // ── Love diagonal: зеркало money_diag_1, под сердечком ──
     dot("love_diag_1", loveDiagVal, LOVE_DIAG_OUTER, 3, COLOR_DOT_PINK),
 
-    // ── Family lines: 8 точек на цветных диагональных стрелках ──
-    dot("male_upper_nc",   maleUpNc, POS_MALE_UPPER_NC,   3, COLOR_FATHER),
-    dot("male_upper_nv",   maleUpNv, POS_MALE_UPPER_NV,   3, COLOR_FATHER),
-    dot("male_lower_nc",   maleLoNc, POS_MALE_LOWER_NC,   3, COLOR_FATHER),
-    dot("male_lower_nv",   maleLoNv, POS_MALE_LOWER_NV,   3, COLOR_FATHER),
-    dot("female_upper_nc", femUpNc,  POS_FEMALE_UPPER_NC, 3, COLOR_MOTHER),
-    dot("female_upper_nv", femUpNv,  POS_FEMALE_UPPER_NV, 3, COLOR_MOTHER),
-    dot("female_lower_nc", femLoNc,  POS_FEMALE_LOWER_NC, 3, COLOR_MOTHER),
-    dot("female_lower_nv", femLoNv,  POS_FEMALE_LOWER_NV, 3, COLOR_MOTHER),
+    // ── Family lines: УБРАНЫ — дублируют значения aft_*/afk_*/amt_*/amk_*
+    // на диагональных лучах. Цветные стрелки остаются как декоративные.
+    // Данные family_lines из бэка по прежнему доступны в API.
   ];
 }
 
