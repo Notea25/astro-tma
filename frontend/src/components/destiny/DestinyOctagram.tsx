@@ -14,16 +14,16 @@ import type { DestinyMatrixPositions } from "@/services/api";
 export type DestinyNodeId =
   | "day" | "month" | "year" | "bottom" | "center"
   | "top_left" | "top_right" | "bottom_right" | "bottom_left"
-  // 3 точки на каждом из 4 cardinal лучей
-  | "month_1" | "month_2" | "month_3"
-  | "day_1"   | "day_2"   | "day_3"
-  | "year_1"  | "year_2"  | "year_3"
-  | "bottom_1" | "bottom_2" | "bottom_3"
-  // 3 dots per diagonal
-  | "aft_1" | "aft_2" | "aft_3"   // father talents — TL
-  | "amt_1" | "amt_2" | "amt_3"   // mother talents — TR
-  | "afk_1" | "afk_2" | "afk_3"   // father karma — BR
-  | "amk_1" | "amk_2" | "amk_3"   // mother karma — BL
+  // 2 точки на каждом из 4 cardinal лучей (3-я пока убрана)
+  | "month_1" | "month_2"
+  | "day_1"   | "day_2"
+  | "year_1"  | "year_2"
+  | "bottom_1" | "bottom_2"
+  // 2 dots per diagonal (3-я пока убрана)
+  | "aft_1" | "aft_2"   // father talents — TL
+  | "amt_1" | "amt_2"   // mother talents — TR
+  | "afk_1" | "afk_2"   // father karma — BR
+  | "amk_1" | "amk_2"   // mother karma — BL
   // Special points near center (variant C)
   | "comfort_a" | "comfort_b"     // [near_center, near_money] — порядок с бэка
   | "cross_p"                      // между центром и mid нижнего луча
@@ -90,12 +90,10 @@ function along(v: [number, number], t: number): [number, number] {
   return [v[0] + t * (CX - v[0]), v[1] + t * (CY - v[1])];
 }
 
-// Radii мелких «кружочков» по 3 ярусам. Чем ближе к центру — тем меньше.
-const R_DOT_1 = 13;  // первая точка — самая большая из мелких
-const R_DOT_2 = 10;  // вторая точка
-const R_DOT_3 = 7;   // третья точка — самая маленькая
-// Legacy alias на случай рендера без явного tier.
-const R_DOT = R_DOT_2;
+// Radii мелких «кружочков». 3-й ярус (R_DOT_3) пока не используется.
+const R_DOT_1 = 13;  // первая точка (у угла) — самая крупная
+const R_DOT_2 = 10;  // вторая точка (середина луча) — меньше
+const R_DOT = R_DOT_2;  // default для точек без явного tier
 
 // Ray dots positioning.
 //   t1 = 0.09 — первая точка, 10 px зазор от кончика угла.
@@ -122,17 +120,8 @@ const BR_2 = along(BR, RAY_T[1]);
 const BL_1 = along(BL, RAY_T[0]);
 const BL_2 = along(BL, RAY_T[1]);
 
-// 3rd points — на пересечении луча с ближайшей границей октаграммы.
-// Cardinal лучи пересекают сторону квадрата (TL=140,140 — BR=460,460),
-// diagonal лучи пересекают сторону ромба (вершины 70/300, 300/70 и т.д.).
-const TOP_3:  [number, number] = [300, 140];  // на стороне квадрата TL-TR
-const LEFT_3: [number, number] = [140, 300];  // на стороне квадрата TL-BL
-const RIGHT_3:[number, number] = [460, 300];  // на стороне квадрата TR-BR
-const BOT_3:  [number, number] = [300, 460];  // на стороне квадрата BL-BR
-const TL_3:   [number, number] = [185, 185];  // на стороне ромба LEFT-TOP (x+y=370)
-const TR_3:   [number, number] = [415, 185];  // на стороне ромба TOP-RIGHT (x-y=230)
-const BR_3:   [number, number] = [415, 415];  // на стороне ромба RIGHT-BOTTOM (x+y=830)
-const BL_3:   [number, number] = [185, 415];  // на стороне ромба BOTTOM-LEFT (y-x=230)
+// 3-й ярус (точки на периметре октаграммы) временно убран — значения
+// channel[2] показываются на 2-м ярусе в средней позиции (t=0.4).
 
 // ── Palette ────────────────────────────────────────────────────────────
 const COLOR_LINE      = "rgba(200, 195, 180, 0.6)";   // thin grey lines
@@ -192,18 +181,18 @@ function buildNodes(p: DestinyMatrixPositions): NodeDef[] {
     return [a[0] ?? 0, a[1] ?? 0, a[2] ?? 0];
   };
 
-  // Cardinal axes — все 4 рендерят 3 точки. Третья сидит на ближайшей
-  // стороне прямого квадрата (для cardinal) — там же где comfort/cross
-  // визуально, но cross/comfort это отдельные смысловые точки.
-  const [t1, t2, t3] = get3(ch.talents);          // top — M ↔ C
-  const [d1, d2, d3] = get3(ch.parental);         // left — D ↔ C
-  const [r1, r2, r3] = get3(ch.material_karma);   // right — Y ↔ C
-  const [b1, b2, b3] = get3(ch.karmic_tail);      // bottom — B ↔ C
-  // Diagonals — все 3 точки
-  const [aft1, aft2, aft3] = get3(ch.ancestral_father_talents); // TL
-  const [amt1, amt2, amt3] = get3(ch.ancestral_mother_talents); // TR
-  const [afk1, afk2, afk3] = get3(ch.ancestral_father_karma);   // BR
-  const [amk1, amk2, amk3] = get3(ch.ancestral_mother_karma);   // BL
+  // На фронте рисуем 2 точки на луч: ближе к углу (channel[0]) и
+  // ближе к центру (channel[2]). channel[1] (= mid луча, e.g. talent/
+  // money/love/character) пока не отображается отдельной точкой.
+  const [t1, , t3] = get3(ch.talents);          // top — M ↔ C
+  const [d1, , d3] = get3(ch.parental);         // left — D ↔ C
+  const [r1, , r3] = get3(ch.material_karma);   // right — Y ↔ C
+  const [b1, , b3] = get3(ch.karmic_tail);      // bottom — B ↔ C
+  // Diagonals — берём только [0] и [2]
+  const [aft1, , aft3] = get3(ch.ancestral_father_talents); // TL
+  const [amt1, , amt3] = get3(ch.ancestral_mother_talents); // TR
+  const [afk1, , afk3] = get3(ch.ancestral_father_karma);   // BR
+  const [amk1, , amk3] = get3(ch.ancestral_mother_karma);   // BL
 
   // Семантические точки из бэка (вариант C). Fallback на 0 если backend
   // вернул запись в старом формате — она будет пересчитана на следующем
@@ -215,17 +204,18 @@ function buildNodes(p: DestinyMatrixPositions): NodeDef[] {
   const moneyDiag  = p.money_diagonal ?? [0, 0, 0];
   const [valNearC, valNearMid] = comfortArr;
 
-  // Helper: a small dot. tier = 1/2/3 определяет размер кружка.
+  // Helper: a small dot. rayTier 1 = ближе к углу (крупнее),
+  // rayTier 2 = ближе к центру (меньше).
   const dot = (
     nodeId: DestinyNodeId,
     num: number,
     point: [number, number],
-    rayTier: 1 | 2 | 3,
+    rayTier: 1 | 2,
     color?: string,
   ): NodeDef => ({
     nodeId, num, tier: "premium",
     x: point[0], y: point[1], kind: "dot", color,
-    radius: rayTier === 1 ? R_DOT_1 : rayTier === 2 ? R_DOT_2 : R_DOT_3,
+    radius: rayTier === 1 ? R_DOT_1 : R_DOT_2,
   });
 
   return [
@@ -243,33 +233,27 @@ function buildNodes(p: DestinyMatrixPositions): NodeDef[] {
     { nodeId: "bottom_right", num: sq.bottom_right, tier: "premium", x: NODE_BR[0], y: NODE_BR[1], kind: "main-lg", color: COLOR_BASE },
     { nodeId: "bottom_left",  num: sq.bottom_left,  tier: "premium", x: NODE_BL[0], y: NODE_BL[1], kind: "main-lg", color: COLOR_BASE },
 
-    // ── 4 cardinal лучa: 3 точки каждый ──
+    // ── 4 cardinal лучa: 2 точки. На 2-м ярусе (t=0.4) — channel[2]
+    // (значение которое раньше было на периметре). 3-й ярус (периметр)
+    // временно убран. ──
     dot("month_1", t1, TOP_1, 1),
-    dot("month_2", t2, TOP_2, 2),
-    dot("month_3", t3, TOP_3, 3),
+    dot("month_2", t3, TOP_2, 2),
     dot("day_1",   d1, LEFT_1, 1),
-    dot("day_2",   d2, LEFT_2, 2),
-    dot("day_3",   d3, LEFT_3, 3),
+    dot("day_2",   d3, LEFT_2, 2),
     dot("year_1",  r1, RIGHT_1, 1),
-    dot("year_2",  r2, RIGHT_2, 2, COLOR_DOT_ORANGE),  // mid = money
-    dot("year_3",  r3, RIGHT_3, 3),
+    dot("year_2",  r3, RIGHT_2, 2, COLOR_DOT_ORANGE),
     dot("bottom_1", b1, BOT_1, 1, COLOR_DOT_RED),
-    dot("bottom_2", b2, BOT_2, 2, COLOR_DOT_ORANGE),   // mid = love
-    dot("bottom_3", b3, BOT_3, 3),
+    dot("bottom_2", b3, BOT_2, 2, COLOR_DOT_ORANGE),
 
-    // ── 4 diagonal лучa: 3 точки каждый ──
+    // ── 4 diagonal лучa: то же самое — 2 точки, channel[2] на 2-м ярусе ──
     dot("aft_1", aft1, TL_1, 1),
-    dot("aft_2", aft2, TL_2, 2),
-    dot("aft_3", aft3, TL_3, 3),
+    dot("aft_2", aft3, TL_2, 2),
     dot("amt_1", amt1, TR_1, 1),
-    dot("amt_2", amt2, TR_2, 2),
-    dot("amt_3", amt3, TR_3, 3),
+    dot("amt_2", amt3, TR_2, 2),
     dot("afk_1", afk1, BR_1, 1),
-    dot("afk_2", afk2, BR_2, 2),
-    dot("afk_3", afk3, BR_3, 3),
+    dot("afk_2", afk3, BR_2, 2),
     dot("amk_1", amk1, BL_1, 1),
-    dot("amk_2", amk2, BL_2, 2),
-    dot("amk_3", amk3, BL_3, 3),
+    dot("amk_2", amk3, BL_2, 2),
 
     // ── Special points near center (variant C) ──
     dot("comfort_a", valNearC,   COMFORT_NEAR_C,   2, COLOR_DOT_PINK),
@@ -465,10 +449,10 @@ interface Props {
 //   "none"    — нет точек, только шаблон
 //   "main"    — только 9 больших узлов (D, M, Y, B, C + 4 угла квадрата)
 //   "rays1"   — main + первая точка каждого луча (8 шт.)
-//   "rays12"  — main + первая и вторая точки каждого луча (16 шт.)
-//   "rays123" — main + все 3 точки каждого луча (24 шт.)
+//   "rays12"  — main + первая и вторая точки (16 шт., 2-й ярус несёт
+//                channel[2] = «третьи точки»)
 //   "all"     — все точки (включая comfort, cross, money_diag)
-const RENDER_MODE: "none" | "main" | "rays1" | "rays12" | "rays123" | "all" = "rays123";
+const RENDER_MODE: "none" | "main" | "rays1" | "rays12" | "all" = "rays12";
 
 // Node IDs точек каждого луча по ярусам.
 const RAY_1_IDS: ReadonlySet<DestinyNodeId> = new Set<DestinyNodeId>([
@@ -478,10 +462,6 @@ const RAY_1_IDS: ReadonlySet<DestinyNodeId> = new Set<DestinyNodeId>([
 const RAY_2_IDS: ReadonlySet<DestinyNodeId> = new Set<DestinyNodeId>([
   "month_2", "day_2", "year_2", "bottom_2",
   "aft_2", "amt_2", "afk_2", "amk_2",
-]);
-const RAY_3_IDS: ReadonlySet<DestinyNodeId> = new Set<DestinyNodeId>([
-  "month_3", "day_3", "year_3", "bottom_3",
-  "aft_3", "amt_3", "afk_3", "amk_3",
 ]);
 
 export function DestinyOctagram({
@@ -501,12 +481,6 @@ export function DestinyOctagram({
       return allNodes.filter((n) =>
         n.kind === "main-lg" || n.kind === "main-md" ||
         RAY_1_IDS.has(n.nodeId) || RAY_2_IDS.has(n.nodeId),
-      );
-    }
-    if (RENDER_MODE === "rays123") {
-      return allNodes.filter((n) =>
-        n.kind === "main-lg" || n.kind === "main-md" ||
-        RAY_1_IDS.has(n.nodeId) || RAY_2_IDS.has(n.nodeId) || RAY_3_IDS.has(n.nodeId),
       );
     }
     return allNodes;
