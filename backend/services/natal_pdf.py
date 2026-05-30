@@ -996,7 +996,7 @@ def generate_natal_pdf(
             sign = _key(planet.get("sign"))
             sign_degree = planet.get("sign_degree", planet.get("degree", 0))
             retro = " ℞ РЕТРО" if planet.get("retrograde") else ""
-            _draw_card_frame(c, 44, y + 18, w - 88, 92)
+            _draw_card_frame(c, 44, y + 18, w - 88, 96)
             c.setFillColor(GOLD)
             _set_font(c, True, 15)
             c.drawString(62, y, f"{PLANET_SYMBOLS[name]} {PLANET_RU[name]} в {_sign_ru(sign)}")
@@ -1010,8 +1010,8 @@ def generate_natal_pdf(
             text = _compact_description(planet_desc.get(name), _planet_fallback(name, planet), words=34)
             c.setFillColor(TEXT)
             _set_font(c, False, 10)
-            _draw_wrapped_static(c, text, 62, y - 46, 78, 13, 3)
-            y -= 105
+            _draw_wrapped_static(c, text, 62, y - 46, 78, 12, 3)
+            y -= 108
         finish_page()
 
     # Houses.
@@ -1040,7 +1040,7 @@ def generate_natal_pdf(
         text = _compact_description(house_desc.get(str(num)), _house_fallback(house), words=24)
         c.setFillColor(TEXT_DIM)
         _set_font(c, False, 8)
-        _draw_wrapped_static(c, text, house_x, y - 45, 38, 11, 4)
+        _draw_wrapped_static(c, text, house_x, y - 45, 38, 10, 4)
         y -= 105
     finish_page()
 
@@ -1086,8 +1086,8 @@ def generate_natal_pdf(
             )
             title_lines = _lines_for_width(c, title, card_w - 82, bold=True, size=8.5, max_lines=2)
             desc = _compact_description(aspect_desc.get((p1_key, p2_key, aspect_type)), _aspect_fallback(aspect), words=22)
-            desc_lines = _lines_for_width(c, desc, card_w - 28, bold=False, size=7, max_lines=3)
-            card_h = 20 + 11 * len(title_lines) + 9 * len(desc_lines)
+            desc_lines = _lines_for_width(c, desc, card_w - 34, bold=False, size=7, max_lines=3)
+            card_h = 26 + 11 * len(title_lines) + 10 * len(desc_lines)
             if y - card_h < 66:
                 finish_page()
                 y = title_page("Аспекты", "Продолжение списка связей между планетами")
@@ -1100,17 +1100,17 @@ def generate_natal_pdf(
             _set_font(c, True, 8.5)
             text_y = y - 13
             for line in title_lines:
-                c.drawString(card_x + 12, text_y, line)
+                c.drawString(card_x + 16, text_y, line)
                 text_y -= 11
             c.setFillColor(TEXT_DIM)
             _set_font(c, False, 8)
-            c.drawRightString(card_x + card_w - 10, y - 13, f"орб {orb:.1f}°")
+            c.drawRightString(card_x + card_w - 14, y - 13, f"орб {orb:.1f}°")
             _set_font(c, False, 7)
             text_y -= 3
             for line in desc_lines:
-                c.drawString(card_x + 12, text_y, line)
-                text_y -= 9
-            y -= card_h + 6
+                c.drawString(card_x + 16, text_y, line)
+                text_y -= 10
+            y -= card_h + 8
         y -= 8
     finish_page()
 
@@ -1157,7 +1157,7 @@ def generate_natal_pdf(
             continue
         paragraph = _limit_words(line, 95)
         paragraph_lines = _lines_for_width(c, paragraph, w - 116, bold=False, size=8, max_lines=9)
-        block_h = 13 * len(paragraph_lines) + 10
+        block_h = 14 * len(paragraph_lines) + 16
         if y - block_h < 64:
             finish_page()
             y = title_page("Персональная интерпретация", "Продолжение")
@@ -1166,7 +1166,7 @@ def generate_natal_pdf(
         text_y = y
         for wrapped_line in paragraph_lines:
             c.drawString(58, text_y, wrapped_line)
-            text_y -= 13
+            text_y -= 14
         y -= block_h
     finish_page()
 
