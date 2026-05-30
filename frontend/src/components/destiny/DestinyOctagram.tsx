@@ -82,12 +82,15 @@ function along(v: [number, number], t: number): [number, number] {
   return [v[0] + t * (CX - v[0]), v[1] + t * (CY - v[1])];
 }
 
-// Ray dots positioning. Первая точка стоит с 10 px зазором от кончика
-// угла октаграммы: dot_center на (10 + dot_radius=4) = 14 px от вершины,
-// что = 14/230 ≈ 0.06 для cardinal (длина луча 230) и 14/226 ≈ 0.062 для
-// diagonal (длина 226). Остальные две — середина внешней половины и на
-// краю внутреннего круга.
-const RAY_T = [0.06, 0.4, 0.55] as const;
+// Radius мелкого «кружочка» (не main-lg=26 / main-md=22 центра).
+const R_DOT = 11;
+
+// Ray dots positioning. Первая точка стоит с 10 px зазором между своим
+// внешним краем и кончиком угла октаграммы: dot_center на (10 + R_DOT)
+// = 21 px от вершины, что = 21/230 ≈ 0.09 для cardinal (длина луча 230)
+// и 21/226 ≈ 0.093 для diagonal (длина 226). Остальные две — середина
+// внешней половины и на краю внутреннего круга.
+const RAY_T = [0.09, 0.4, 0.55] as const;
 const TOP_1 = along(TOP, RAY_T[0]);
 const TOP_2 = along(TOP, RAY_T[1]);
 const TOP_3 = along(TOP, RAY_T[2]);
@@ -323,7 +326,7 @@ interface RenderedNodeProps {
 
 function RenderedNode({ node, locked, active, faded, onTap }: RenderedNodeProps) {
   const isMain = node.kind === "main-lg" || node.kind === "main-md";
-  const radius = node.kind === "main-lg" ? 26 : node.kind === "main-md" ? 22 : 4;
+  const radius = node.kind === "main-lg" ? 26 : node.kind === "main-md" ? 22 : R_DOT;
   const tapR = Math.max(radius + 6, 18);
 
   const baseStroke = node.color ?? COLOR_BASE;
@@ -337,28 +340,21 @@ function RenderedNode({ node, locked, active, faded, onTap }: RenderedNodeProps)
     (faded ? " is-faded" : "") +
     (locked ? " is-locked" : "");
 
-  // Small dots: show the number BESIDE the dot, not inside.
+  // Small dots: маленький обведённый кружок с числом ВНУТРИ (как
+  // miniature версия большого узла).
   if (!isMain) {
-    // Offset the label outward from center, perpendicular to the radial.
-    const dx = node.x - CX;
-    const dy = node.y - CY;
-    const len = Math.hypot(dx, dy) || 1;
-    // perpendicular vector (rotate 90°): (-dy, dx) normalized
-    const px = -dy / len;
-    const py = dx / len;
-    const labelX = node.x + px * 9;
-    const labelY = node.y + py * 9;
+    const dotStroke = node.color ?? COLOR_BASE;
     return (
       <g className={className} onClick={() => onTap(node)} style={{ cursor: "pointer" }}>
         <circle cx={node.x} cy={node.y} r={radius}
-          fill={locked ? "#0e0b20" : fill}
-          stroke={locked ? "rgba(232,200,98,0.45)" : "none"}
-          strokeWidth={locked ? 1 : 0} />
+          fill="#0e0b20"
+          stroke={active ? COLOR_CENTER : (locked ? "rgba(232,200,98,0.45)" : dotStroke)}
+          strokeWidth={active ? 2 : 1.4} />
         {!locked && (
-          <text x={labelX} y={labelY}
+          <text x={node.x} y={node.y}
             textAnchor="middle" dominantBaseline="central"
             fontSize="11" fill={node.color ?? "rgba(232,200,98,0.95)"}
-            fontWeight={500}
+            fontWeight={600}
             style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
             {node.num}
           </text>
