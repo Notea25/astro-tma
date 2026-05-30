@@ -32,15 +32,17 @@ const NODE_TITLES_RU: Record<DestinyNodeId, string> = {
   top_right:    "Как вы общаетесь, ваша подача себя",
   bottom_right: "Как улучшить поток денег в жизнь",
   bottom_left:  "Желания сердца — от чего вы радуетесь",
-  // Cardinal axis: 2 dots from corner toward center
+  // Cardinal axis: top/left имеют 3 точки, right/bottom — 2
   month_1: "Канал талантов — точка у угла",
-  month_2: "Канал талантов — точка у центра",
+  month_2: "Канал талантов — талант (mid)",
+  month_3: "Канал талантов — точка у центра",
   year_1:  "Материальная карма — точка у угла",
-  year_2:  "Материальная карма — точка у центра",
+  year_2:  "Точка входа денег (money)",
   bottom_1: "Кармический хвост — точка у угла",
-  bottom_2: "Кармический хвост — точка у центра",
+  bottom_2: "Точка любви / входа партнёра",
   day_1: "Детско-родительский — точка у угла",
-  day_2: "Детско-родительский — точка у центра",
+  day_2: "Детско-родительский — характер (mid)",
+  day_3: "Детско-родительский — точка у центра",
   // Diagonals: 2 dots from corner toward center
   aft_1: "Род отца · таланты — точка у угла",
   aft_2: "Род отца · таланты — точка у центра",
@@ -84,12 +86,14 @@ const NODE_CONTEXT: Record<DestinyNodeId, string> = {
   // Cardinal axes — domain per axis
   month_1: "talents",
   month_2: "talents",
+  month_3: "talents",
   year_1:  "material_karma",
-  year_2:  "material_karma",
+  year_2:  "finance",  // mid = money entry
   bottom_1: "karmic_tail",
-  bottom_2: "karmic_tail",
+  bottom_2: "relationships",  // mid = love entry
   day_1: "parental",
   day_2: "parental",
+  day_3: "parental",
   // Diagonals
   aft_1: "ancestral",
   aft_2: "ancestral",
