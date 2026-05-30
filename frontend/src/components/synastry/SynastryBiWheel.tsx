@@ -84,6 +84,12 @@ const GLYPH_SIZE_B = 22;
 const GLYPH_SIZE_A = 20;
 const ZODIAC_GLYPH = 24;
 
+// Two visually distinct colors for the two charts so it's obvious at a
+// glance which planet belongs to whom. Gold (you) vs cool blue (partner)
+// reads cleanly on the dark backdrop.
+const COLOR_INNER = "#e8c862";   // you  — gold
+const COLOR_OUTER = "#7ec6f0";   // partner — cool blue
+
 /** Astrological convention: 0° Aries at the left, going CCW.
  *  SVG y goes down, so we flip the angle. */
 function polar(deg: number, r: number): { x: number; y: number } {
@@ -129,6 +135,11 @@ export function SynastryBiWheel({
 }: Props) {
   const adjustedA = spreadGlyphs(planetsA);
   const adjustedB = spreadGlyphs(planetsB);
+
+  // Single uppercase letter shown beside each planet so the reader knows
+  // whose it is. Defaults to "Я" / "П" if no name was provided.
+  const initialA = (initiatorName?.trim().charAt(0) || "Я").toUpperCase();
+  const initialB = (partnerName?.trim().charAt(0) || "П").toUpperCase();
 
   // Aspect chords — from A's real degree to B's real degree (lines stay
   // honest to actual positions, glyph nudging is purely visual).
@@ -229,53 +240,71 @@ export function SynastryBiWheel({
           );
         })}
 
-        {/* ── Outer planet ring (partner B) ─────────────────────── */}
+        {/* ── Outer planet ring (partner B — BLUE) ──────────────── */}
+        {/* faint background tint of the ring, blue */}
         <circle cx={CX} cy={CY} r={R_PLANET_B}
-          fill="none" stroke="rgba(212,178,84,0.18)" strokeWidth="0.4" />
+          fill="none" stroke={COLOR_OUTER} strokeOpacity="0.35" strokeWidth="0.9" />
         {planetsB.map((p, i) => {
           const a = adjustedB[i] ?? p.degree;
           const pos = polar(a, R_PLANET_B);
+          // Initial pushed outward, away from center, along the same ray.
+          const initialPos = polar(a, R_PLANET_B + 14);
           const tick1 = polar(p.degree, R_PLANET_B_TICK_OUT);
           const tick2 = polar(p.degree, R_PLANET_B_TICK_IN);
           const planetKey = PLANET_NAME_MAP[p.name.toLowerCase()];
           return (
             <g key={`b-${p.name}-${i}`}>
-              {/* tick from real position to glyph */}
               <line x1={tick1.x} y1={tick1.y} x2={tick2.x} y2={tick2.y}
-                stroke="rgba(232,200,98,0.55)" strokeWidth="0.6" />
+                stroke={COLOR_OUTER} strokeOpacity="0.75" strokeWidth="0.7" />
               {planetKey ? (
                 <g transform={`translate(${pos.x - GLYPH_SIZE_B / 2}, ${pos.y - GLYPH_SIZE_B / 2})`}
-                   style={{ color: "var(--natal-accent, #e8c862)" }}>
-                  <PlanetSymbolIcon planet={planetKey} size={GLYPH_SIZE_B} strokeWidth={1.8} />
+                   style={{ color: COLOR_OUTER }}>
+                  <PlanetSymbolIcon planet={planetKey} size={GLYPH_SIZE_B} strokeWidth={1.9} />
                 </g>
               ) : (
-                <circle cx={pos.x} cy={pos.y} r="4" fill="var(--natal-accent, #e8c862)" />
+                <circle cx={pos.x} cy={pos.y} r="4" fill={COLOR_OUTER} />
               )}
+              {/* Initial letter so it's obvious whose planet this is */}
+              <text x={initialPos.x} y={initialPos.y}
+                fill={COLOR_OUTER} fontSize="9" fontWeight="700"
+                textAnchor="middle" dominantBaseline="central"
+                style={{ letterSpacing: "0.04em" }}>
+                {initialB}
+              </text>
             </g>
           );
         })}
 
-        {/* ── Inner planet ring (initiator A) ───────────────────── */}
+        {/* ── Inner planet ring (initiator A — GOLD) ────────────── */}
         <circle cx={CX} cy={CY} r={R_PLANET_A}
-          fill="none" stroke="rgba(212,178,84,0.18)" strokeWidth="0.4" />
+          fill="none" stroke={COLOR_INNER} strokeOpacity="0.35" strokeWidth="0.9" />
         {planetsA.map((p, i) => {
           const a = adjustedA[i] ?? p.degree;
           const pos = polar(a, R_PLANET_A);
+          // Initial pushed inward toward center for A so it doesn't
+          // collide with the outer ring's tick marks.
+          const initialPos = polar(a, R_PLANET_A - 14);
           const tick1 = polar(p.degree, R_PLANET_A_TICK_OUT);
           const tick2 = polar(p.degree, R_PLANET_A_TICK_IN);
           const planetKey = PLANET_NAME_MAP[p.name.toLowerCase()];
           return (
             <g key={`a-${p.name}-${i}`}>
               <line x1={tick1.x} y1={tick1.y} x2={tick2.x} y2={tick2.y}
-                stroke="rgba(212,178,84,0.55)" strokeWidth="0.6" />
+                stroke={COLOR_INNER} strokeOpacity="0.75" strokeWidth="0.7" />
               {planetKey ? (
                 <g transform={`translate(${pos.x - GLYPH_SIZE_A / 2}, ${pos.y - GLYPH_SIZE_A / 2})`}
-                   style={{ color: "var(--natal-primary, #d4b254)" }}>
-                  <PlanetSymbolIcon planet={planetKey} size={GLYPH_SIZE_A} strokeWidth={1.8} />
+                   style={{ color: COLOR_INNER }}>
+                  <PlanetSymbolIcon planet={planetKey} size={GLYPH_SIZE_A} strokeWidth={1.9} />
                 </g>
               ) : (
-                <circle cx={pos.x} cy={pos.y} r="3.5" fill="var(--natal-primary, #d4b254)" />
+                <circle cx={pos.x} cy={pos.y} r="3.5" fill={COLOR_INNER} />
               )}
+              <text x={initialPos.x} y={initialPos.y}
+                fill={COLOR_INNER} fontSize="9" fontWeight="700"
+                textAnchor="middle" dominantBaseline="central"
+                style={{ letterSpacing: "0.04em" }}>
+                {initialA}
+              </text>
             </g>
           );
         })}
@@ -293,18 +322,24 @@ export function SynastryBiWheel({
           fill="rgba(232,200,98,0.6)" stroke="var(--natal-accent, #e8c862)" strokeWidth="0.6" />
       </svg>
 
-      {(initiatorName || partnerName) && (
-        <div className="synastry-biwheel__legend">
-          <span>
-            <span className="synastry-biwheel__legend-dot synastry-biwheel__legend-dot--inner" />
-            Внутри: {initiatorName ?? "вы"}
+      <div className="synastry-biwheel__legend">
+        <span className="synastry-biwheel__legend-item synastry-biwheel__legend-item--inner">
+          <span className="synastry-biwheel__legend-badge"
+                style={{ background: COLOR_INNER, color: "#0a0906" }}>
+            {initialA}
           </span>
-          <span>
-            <span className="synastry-biwheel__legend-dot synastry-biwheel__legend-dot--outer" />
-            Снаружи: {partnerName ?? "партнёр"}
+          <span>{initiatorName ?? "Вы"}</span>
+          <span className="synastry-biwheel__legend-where">— внутреннее кольцо</span>
+        </span>
+        <span className="synastry-biwheel__legend-item synastry-biwheel__legend-item--outer">
+          <span className="synastry-biwheel__legend-badge"
+                style={{ background: COLOR_OUTER, color: "#0a0906" }}>
+            {initialB}
           </span>
-        </div>
-      )}
+          <span>{partnerName ?? "Партнёр"}</span>
+          <span className="synastry-biwheel__legend-where">— внешнее кольцо</span>
+        </span>
+      </div>
     </div>
   );
 }
