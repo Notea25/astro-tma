@@ -389,9 +389,12 @@ def _draw_card_frame(c: canvas.Canvas, x: float, y: float, width: float, height:
 
 def _compact_description(entry: Any, fallback: str, *, words: int = 42) -> str:
     if isinstance(entry, dict):
-        source = str(entry.get("short") or entry.get("full") or "").strip()
+        source = str(entry.get("full") or entry.get("short") or "").strip()
     else:
         source = ""
+    fallback = str(fallback or "").strip()
+    if source and fallback and len(source.split()) < max(18, words // 2):
+        source = f"{source} {fallback}"
     source = source or fallback
     parts = source.split()
     if len(parts) <= words:
@@ -824,9 +827,9 @@ def generate_natal_pdf(
         ("II", "Натальное колесо", "4"),
         ("III", "Баланс стихий и характер", "5"),
         ("IV", "Планеты в знаках", "6"),
-        ("V", "Дома гороскопа", "8"),
-        ("VI", "Аспекты — связи между планетами", "9"),
-        ("VII", "Персональная интерпретация", "10"),
+        ("V", "Дома гороскопа", "9"),
+        ("VI", "Аспекты — связи между планетами", "11"),
+        ("VII", "Персональная интерпретация", "12"),
     )
     for content_marker, content_title, content_page in contents:
         c.setStrokeColor(LINE)
@@ -984,19 +987,19 @@ def generate_natal_pdf(
         tag_x += len(tag) * 6.2 + 26
     finish_page()
 
-    # 6-7. Planets, two pages.
+    # 6-8. Planets, paginated for longer descriptions.
     planet_items = [name for name in PLANET_ORDER if planets.get(name)]
-    for chunk_index, start in enumerate((0, 6)):
-        chunk = planet_items[start:start + 6]
+    planet_chunks = [planet_items[index:index + 4] for index in range(0, len(planet_items), 4)]
+    for chunk_index, chunk in enumerate(planet_chunks, start=1):
         if not chunk:
             continue
-        y = title_page(f"Планеты в знаках {chunk_index + 1} / 2", "Где находится каждая планета и что это значит")
+        y = title_page(f"Планеты в знаках {chunk_index} / {len(planet_chunks)}", "Где находится каждая планета и что это значит")
         for name in chunk:
             planet = planets[name]
             sign = _key(planet.get("sign"))
             sign_degree = planet.get("sign_degree", planet.get("degree", 0))
             retro = " ℞ РЕТРО" if planet.get("retrograde") else ""
-            _draw_card_frame(c, 44, y + 18, w - 88, 96)
+            _draw_card_frame(c, 44, y + 18, w - 88, 124)
             c.setFillColor(GOLD)
             _set_font(c, True, 15)
             c.drawString(62, y, f"{PLANET_SYMBOLS[name]} {PLANET_RU[name]} в {_sign_ru(sign)}")
@@ -1007,42 +1010,43 @@ def generate_natal_pdf(
             c.setFillColor(TEXT_DIM)
             _set_font(c, False, 10.5)
             c.drawRightString(w - 62, y, f"{_roman(int(planet.get('house') or 0))} дом · {_deg_str(sign_degree)}")
-            text = _compact_description(planet_desc.get(name), _planet_fallback(name, planet), words=34)
+            text = _compact_description(planet_desc.get(name), _planet_fallback(name, planet), words=56)
             c.setFillColor(TEXT)
             _set_font(c, False, 11.3)
-            _draw_wrapped_static(c, text, 62, y - 46, 68, 13, 3)
-            y -= 108
+            _draw_wrapped_static(c, text, 62, y - 46, 68, 13, 5)
+            y -= 138
         finish_page()
 
     # Houses.
-    y = title_page("Дома гороскопа", "12 сфер жизни и их обстановка")
     axis_labels = {1: "Асцендент", 4: "Основание (IC)", 7: "Десцендент", 10: "Середина неба (MC)"}
     col_x = (42, 305)
-    for house_index, house in enumerate(houses):
-        num = int(house.get("number") or 0)
-        if not num:
-            continue
-        if house_index == 6:
-            y = h - 174
-        house_x = col_x[0 if house_index < 6 else 1]
-        sign = _key(house.get("sign"))
-        c.setFillColor(GOLD)
-        _set_font(c, True, 14)
-        c.drawString(house_x, y, f"{_roman(num)} {SIGN_SYMBOLS.get(sign, '')} {_sign_ru(sign)}")
-        c.setFillColor(TEXT_DIM)
-        _set_font(c, False, 10)
-        c.drawString(house_x + 112, y, _deg_str(house.get("degree"), within_sign=False))
-        if num in axis_labels:
-            c.drawString(house_x, y - 13, axis_labels[num])
-        c.setFillColor(TEXT)
-        _set_font(c, True, 10)
-        c.drawString(house_x, y - 30, HOUSE_LABELS.get(num, f"ДОМ {num}"))
-        text = _compact_description(house_desc.get(str(num)), _house_fallback(house), words=24)
-        c.setFillColor(TEXT_DIM)
-        _set_font(c, False, 10.5)
-        _draw_wrapped_static(c, text, house_x, y - 45, 29, 12, 4)
-        y -= 105
-    finish_page()
+    house_items = [house for house in houses if int(house.get("number") or 0)]
+    house_chunks = [house_items[index:index + 6] for index in range(0, len(house_items), 6)]
+    for chunk_index, chunk in enumerate(house_chunks, start=1):
+        y = title_page(f"Дома гороскопа {chunk_index} / {len(house_chunks)}", "12 сфер жизни и их обстановка")
+        for house_index, house in enumerate(chunk):
+            num = int(house.get("number") or 0)
+            if house_index == 3:
+                y = h - 174
+            house_x = col_x[0 if house_index < 3 else 1]
+            sign = _key(house.get("sign"))
+            c.setFillColor(GOLD)
+            _set_font(c, True, 14)
+            c.drawString(house_x, y, f"{_roman(num)} {SIGN_SYMBOLS.get(sign, '')} {_sign_ru(sign)}")
+            c.setFillColor(TEXT_DIM)
+            _set_font(c, False, 10)
+            c.drawString(house_x + 112, y, _deg_str(house.get("degree"), within_sign=False))
+            if num in axis_labels:
+                c.drawString(house_x, y - 13, axis_labels[num])
+            c.setFillColor(TEXT)
+            _set_font(c, True, 10)
+            c.drawString(house_x, y - 30, HOUSE_LABELS.get(num, f"ДОМ {num}"))
+            text = _compact_description(house_desc.get(str(num)), _house_fallback(house), words=42)
+            c.setFillColor(TEXT_DIM)
+            _set_font(c, False, 10.5)
+            _draw_wrapped_static(c, text, house_x, y - 45, 29, 12, 6)
+            y -= 135
+        finish_page()
 
     # Aspects, paginated.
     grouped = [(atype, [a for a in aspects if _aspect_key(a.get("aspect")) == atype]) for atype in ASPECT_ORDER]
@@ -1085,8 +1089,8 @@ def generate_natal_pdf(
                 f"{PLANET_SYMBOLS.get(p2_key, '')} {PLANET_RU.get(p2_key, aspect.get('p2', ''))}"
             )
             title_lines = _lines_for_width(c, title, card_w - 92, bold=True, size=12, max_lines=2)
-            desc = _compact_description(aspect_desc.get((p1_key, p2_key, aspect_type)), _aspect_fallback(aspect), words=18)
-            desc_lines = _lines_for_width(c, desc, card_w - 34, bold=False, size=11, max_lines=2)
+            desc = _compact_description(aspect_desc.get((p1_key, p2_key, aspect_type)), _aspect_fallback(aspect), words=32)
+            desc_lines = _lines_for_width(c, desc, card_w - 34, bold=False, size=11, max_lines=4)
             card_h = 32 + 15 * len(title_lines) + 13 * len(desc_lines)
             if y - card_h < 66:
                 finish_page()

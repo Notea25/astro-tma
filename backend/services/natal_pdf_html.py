@@ -177,19 +177,29 @@ def _split_words(text: str, max_words: int) -> list[str]:
 
 def _description(entry: Any, fallback: str, *, words: int) -> str:
     if isinstance(entry, dict):
-        source = str(entry.get("short") or entry.get("full") or "").strip()
+        source = str(entry.get("full") or entry.get("short") or "").strip()
     else:
         source = ""
-    return _lines(source or fallback, words)
+    fallback = str(fallback or "").strip()
+    if source and fallback and _word_count(source) < max(18, words // 2):
+        source = f"{source} {fallback}"
+    if not source:
+        source = fallback
+    return _lines(source, words)
 
 
 def _planet_fallback(name: str, planet: dict[str, Any]) -> str:
     ru = PLANET_RU.get(name, name)
     sign = _sign_ru(planet.get("sign_ru") or planet.get("sign"))
     house = planet.get("house") or "?"
+    retro = " Если планета ретроградна, её тема чаще проживается внутренне: через пересмотр привычек, задержки, возвращение к старым сюжетам и более внимательное отношение к собственным реакциям." if planet.get("retrograde") else ""
     return (
-        f"{ru} в {sign}: эта часть характера проявляется через стиль знака. "
-        f"{house}-й дом показывает сферу, где качество заметнее всего."
+        f"{ru} в знаке {sign} показывает, каким стилем раскрывается эта часть личности: "
+        f"как вы реагируете, выбираете, проявляете инициативу и встречаете похожие ситуации. "
+        f"{house}-й дом показывает сферу, где качество планеты заметнее всего: там чаще возникают "
+        f"события, люди и задачи, через которые эта энергия становится практической. "
+        f"В жизни это можно отслеживать по повторяющимся сценариям: где вы быстро включаетесь, "
+        f"где сомневаетесь, а где чувствуете естественную силу и интерес.{retro}"
     )
 
 
@@ -197,14 +207,26 @@ def _house_fallback(house: dict[str, Any]) -> str:
     num = int(house.get("number") or 0)
     sign = _sign_ru(house.get("sign_ru") or house.get("sign"))
     topic = HOUSE_TOPICS.get(num, "важную сферу жизни")
-    return f"{num}-й дом описывает {topic}. Знак {sign} показывает ваш способ действовать в этой области."
+    return (
+        f"{num}-й дом описывает {topic}. Знак {sign} показывает, каким способом эта область "
+        f"обычно раскрывается: спокойно или резко, через инициативу или ожидание, через контакт "
+        f"с людьми или личную самостоятельность. Этот дом полезно читать как карту повседневных "
+        f"сценариев: где вы чаще берёте ответственность, где ищете поддержку, где растёте через "
+        f"опыт и где важно не повторять старые автоматические реакции."
+    )
 
 
 def _aspect_fallback(aspect: dict[str, Any]) -> str:
     p1 = PLANET_RU.get(_planet_key(aspect.get("p1")), str(aspect.get("p1") or "Планета"))
     p2 = PLANET_RU.get(_planet_key(aspect.get("p2")), str(aspect.get("p2") or "Планета"))
     topic = ASPECT_TOPICS.get(_aspect_key(aspect.get("aspect")), "создают важную внутреннюю связь")
-    return f"{p1} и {p2} {topic}. Чем точнее орб, тем заметнее эта тема в характере и выборе."
+    return (
+        f"{p1} и {p2} {topic}. Этот аспект показывает, как две разные части характера "
+        f"взаимодействуют между собой: где они помогают друг другу, а где создают напряжение "
+        f"или внутренний спор. В повседневности он может проявляться через повторяющийся выбор, "
+        f"тип реакции, стиль общения и способ принимать решения. Чем точнее орб, тем заметнее "
+        f"эта тема в характере, отношениях и личных разворотах."
+    )
 
 
 def _aspect_description_map(descriptions: dict[str, Any] | None) -> dict[tuple[str, str, str], dict[str, Any]]:
@@ -451,11 +473,11 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .element-card h3 {{ color: var(--element-color); }}
 .tags {{ margin-top: 8mm; display: flex; gap: 3mm; flex-wrap: wrap; }}
 .tag {{ border: 1px solid rgba(224,91,48,.35); color: #d99072; background: rgba(224,91,48,.13); border-radius: 999px; padding: 1.5mm 5mm; font-size: 11px; }}
-.planet-card {{ min-height: 53mm; }}
+.planet-card {{ min-height: 79mm; }}
 .planet-card .card-icon {{ font-size: 27px; color: var(--planet-color); }}
 .retro {{ display: inline-block; margin-left: 3mm; padding: 1mm 3mm; border: 1px solid {GOLD_DIM}; border-radius: 999px; color: {GOLD}; font-size: 11px; letter-spacing: 1px; }}
 .houses-grid {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 3.4mm 4.5mm; }}
-.house-card {{ min-height: 34mm; padding: 5mm; }}
+.house-card {{ min-height: 59mm; padding: 5mm; }}
 .house-card.angle {{ border-left: 3px solid {GOLD}; background: {PANEL_DARK}; }}
 .house-top {{ display: flex; justify-content: space-between; align-items: baseline; gap: 4mm; }}
 .house-num {{ color: {GOLD}; font: 15.5px "DejaVu Serif", Georgia, serif; margin-right: 2mm; }}
@@ -489,15 +511,15 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 """
 
 
-def _content_page() -> str:
+def _content_page(*, planets_page: int, houses_page: int, aspects_page: int, reading_page: int) -> str:
     rows = [
         ("I", "Ключевые точки карты", "3"),
         ("II", "Натальное колесо", "4"),
         ("III", "Баланс стихий и характер", "5"),
-        ("IV", "Планеты в знаках", "6"),
-        ("V", "Дома гороскопа", "8"),
-        ("VI", "Аспекты — связи между планетами", "9"),
-        ("VII", "Персональная интерпретация", "11"),
+        ("IV", "Планеты в знаках", str(planets_page)),
+        ("V", "Дома гороскопа", str(houses_page)),
+        ("VI", "Аспекты — связи между планетами", str(aspects_page)),
+        ("VII", "Персональная интерпретация", str(reading_page)),
     ]
     body = _section_header("Содержание", "Что внутри отчёта")
     body += '<div class="toc-list">' + "".join(
@@ -599,12 +621,13 @@ def _elements_page(planets: dict[str, dict[str, Any]]) -> str:
     return _page(5, body)
 
 
-def _planet_pages(planets: dict[str, dict[str, Any]], descriptions: dict[str, Any] | None) -> list[str]:
+def _planet_pages(planets: dict[str, dict[str, Any]], descriptions: dict[str, Any] | None, *, start_page: int) -> list[str]:
     planet_desc = (descriptions or {}).get("planets") or {}
     items = [name for name in PLANET_ORDER if planets.get(name)]
+    chunks = [items[index:index + 4] for index in range(0, len(items), 4)]
     pages = []
-    for idx, chunk in enumerate((items[:6], items[6:]), start=1):
-        body = _section_header("Планеты в знаках", "Где находится каждая планета и что это значит", f"{idx} / 2")
+    for idx, chunk in enumerate(chunks, start=1):
+        body = _section_header("Планеты в знаках", "Где находится каждая планета и что это значит", f"{idx} / {len(chunks)}")
         body += '<div class="grid-2">'
         for name in chunk:
             planet = planets[name]
@@ -613,40 +636,43 @@ def _planet_pages(planets: dict[str, dict[str, Any]], descriptions: dict[str, An
             meta = f'{_roman(int(planet.get("house") or 0))} дом · {_deg_str(planet.get("sign_degree", planet.get("degree", 0)))}'
             body += _card(
                 f'{PLANET_RU[name]} в {_sign_ru(sign)} {retro}',
-                _e(_description(planet_desc.get(name), _planet_fallback(name, planet), words=22)),
+                _e(_description(planet_desc.get(name), _planet_fallback(name, planet), words=46)),
                 class_name="planet-card",
                 meta=meta,
                 icon=f'<span style="color:{PLANET_COLORS.get(name, GOLD)}">{PLANET_SYMBOLS.get(name, "")}</span>',
             )
         body += "</div>"
-        pages.append(_page(5 + idx, body))
+        pages.append(_page(start_page + idx - 1, body))
     return pages
 
 
-def _houses_page(houses: list[dict[str, Any]], descriptions: dict[str, Any] | None) -> str:
+def _houses_pages(houses: list[dict[str, Any]], descriptions: dict[str, Any] | None, *, start_page: int) -> list[str]:
     house_desc = (descriptions or {}).get("houses") or {}
     axis = {1: "Асцендент", 4: "Основание (IC)", 7: "Десцендент", 10: "Середина неба (MC)"}
-    body = _section_header("Дома гороскопа", "12 сфер жизни и их обстановка")
-    body += '<div class="houses-grid">'
-    for house in houses:
-        num = int(house.get("number") or 0)
-        if not num:
-            continue
-        sign = house.get("sign_ru") or house.get("sign")
-        angle_cls = " angle" if num in axis else ""
-        axis_html = f'<div class="card-meta" style="color:{GOLD}">{axis[num]}</div>' if num in axis else ""
-        body += (
-            f'<article class="card house-card{angle_cls}"><div class="house-top"><div>'
-            f'<span class="house-num">{_roman(num)}</span><span class="house-sign">{_sign_symbol(sign)} {_e(_sign_ru(sign))}</span></div>'
-            f'<div class="house-degree">{_deg_str(house.get("degree"), within_sign=False)}</div></div>{axis_html}'
-            f'<div class="house-label">{_e(HOUSE_LABELS.get(num, f"ДОМ {num}"))}</div>'
-            f'<p>{_e(_description(house_desc.get(str(num)), _house_fallback(house), words=16))}</p></article>'
-        )
-    body += "</div>"
-    return _page(8, body)
+    items = [house for house in houses if int(house.get("number") or 0)]
+    chunks = [items[index:index + 6] for index in range(0, len(items), 6)]
+    pages = []
+    for idx, chunk in enumerate(chunks, start=1):
+        body = _section_header("Дома гороскопа", "12 сфер жизни и их обстановка", f"{idx} / {len(chunks)}")
+        body += '<div class="houses-grid">'
+        for house in chunk:
+            num = int(house.get("number") or 0)
+            sign = house.get("sign_ru") or house.get("sign")
+            angle_cls = " angle" if num in axis else ""
+            axis_html = f'<div class="card-meta" style="color:{GOLD}">{axis[num]}</div>' if num in axis else ""
+            body += (
+                f'<article class="card house-card{angle_cls}"><div class="house-top"><div>'
+                f'<span class="house-num">{_roman(num)}</span><span class="house-sign">{_sign_symbol(sign)} {_e(_sign_ru(sign))}</span></div>'
+                f'<div class="house-degree">{_deg_str(house.get("degree"), within_sign=False)}</div></div>{axis_html}'
+                f'<div class="house-label">{_e(HOUSE_LABELS.get(num, f"ДОМ {num}"))}</div>'
+                f'<p>{_e(_description(house_desc.get(str(num)), _house_fallback(house), words=34))}</p></article>'
+            )
+        body += "</div>"
+        pages.append(_page(start_page + idx - 1, body))
+    return pages
 
 
-def _aspect_pages(aspects: list[dict[str, Any]], descriptions: dict[str, Any] | None) -> list[str]:
+def _aspect_pages(aspects: list[dict[str, Any]], descriptions: dict[str, Any] | None, *, start_page: int) -> list[str]:
     aspect_desc = _aspect_description_map(descriptions)
     groups = [(atype, [a for a in aspects if _aspect_key(a.get("aspect")) == atype]) for atype in ASPECT_ORDER]
     groups = [(atype, group) for atype, group in groups if group]
@@ -662,18 +688,28 @@ def _aspect_pages(aspects: list[dict[str, Any]], descriptions: dict[str, Any] | 
         f'<div class="metric" style="--metric-color:{TEXT_DIM}"><strong>{neutral}</strong><span>Нейтральных</span></div>'
         '</div>'
     )
-    chunks: list[list[tuple[str, list[dict[str, Any]]]]] = [[], []]
-    line_count = 0
-    for group in groups:
-        weight = 1 + len(group[1])
-        bucket = 0 if line_count + weight <= 8 else 1
-        chunks[bucket].append(group)
-        if bucket == 0:
-            line_count += weight
+    chunks: list[list[tuple[str, list[dict[str, Any]]]]] = []
+    current: list[tuple[str, list[dict[str, Any]]]] = []
+    current_weight = 0
+    max_weight = 4
+    for atype, group_items in groups:
+        for index in range(0, len(group_items), 4):
+            group_chunk = group_items[index:index + 4]
+            weight = 1 + len(group_chunk)
+            if current and current_weight + weight > max_weight:
+                chunks.append(current)
+                current = []
+                current_weight = 0
+                max_weight = 5
+            current.append((atype, group_chunk))
+            current_weight += weight
+    if current:
+        chunks.append(current)
     pages = []
-    for page_index, chunk in enumerate(chunks, start=9):
+    for idx, chunk in enumerate(chunks, start=1):
+        page_index = start_page + idx - 1
         body = _section_header("Аспекты", "Связи между планетами вашей карты")
-        if page_index == 9:
+        if idx == 1:
             body += metric_html
         for atype, group_items in chunk:
             color = ASPECT_COLORS.get(atype, GOLD)
@@ -681,7 +717,7 @@ def _aspect_pages(aspects: list[dict[str, Any]], descriptions: dict[str, Any] | 
             for aspect in group_items:
                 p1 = _planet_key(aspect.get("p1"))
                 p2 = _planet_key(aspect.get("p2"))
-                desc = _description(aspect_desc.get((p1, p2, atype)), _aspect_fallback(aspect), words=14)
+                desc = _description(aspect_desc.get((p1, p2, atype)), _aspect_fallback(aspect), words=30)
                 body += (
                     f'<div class="aspect-row"><div class="aspect-title"><span>{PLANET_SYMBOLS.get(p1, "")} {_e(PLANET_RU.get(p1, p1))} '
                     f'{ASPECT_SYMBOLS.get(atype, "")} {PLANET_SYMBOLS.get(p2, "")} {_e(PLANET_RU.get(p2, p2))}</span>'
@@ -779,15 +815,26 @@ def build_natal_pdf_html(
     reading: str | None = None,
     descriptions: dict[str, Any] | None = None,
 ) -> str:
+    planet_pages = _planet_pages(planets, descriptions, start_page=6)
+    houses_start = 6 + len(planet_pages)
+    house_pages = _houses_pages(houses, descriptions, start_page=houses_start)
+    aspects_start = houses_start + len(house_pages)
+    aspect_pages = _aspect_pages(aspects, descriptions, start_page=aspects_start)
+    reading_start = aspects_start + len(aspect_pages)
     pages = [
         _cover_page(user_name, birth_date, birth_time, birth_city, sun_sign, moon_sign, asc_sign),
-        _content_page(),
+        _content_page(
+            planets_page=6,
+            houses_page=houses_start,
+            aspects_page=aspects_start,
+            reading_page=reading_start,
+        ),
         _key_points_page(planets, sun_sign, moon_sign, asc_sign, descriptions),
         _wheel_page(planets, houses, aspects, asc_sign),
         _elements_page(planets),
-        *_planet_pages(planets, descriptions),
-        _houses_page(houses, descriptions),
-        *_aspect_pages(aspects, descriptions),
+        *planet_pages,
+        *house_pages,
+        *aspect_pages,
         *_reading_pages(reading, sun_sign, moon_sign, asc_sign),
     ]
     pages.append(_final_page(len(pages) + 1))
