@@ -376,16 +376,19 @@ function RenderedNode({ node, locked, active, faded, onTap }: RenderedNodeProps)
   }
 
   // Main nodes: number inside the circle.
+  // Используем dy="0.35em" + textAnchor="middle" для геометрической центровки
+  // глифа в SVG — `dominantBaseline="central"` иногда даёт смещение из-за
+  // метрик шрифта Playfair Display.
   const fontSize = node.kind === "main-md" ? 26 : 22;
   return (
     <g className={className} onClick={() => onTap(node)} style={{ cursor: "pointer" }}>
       <circle cx={node.x} cy={node.y} r={radius}
         fill={fill} stroke={stroke} strokeWidth={strokeWidth} />
       {locked ? (
-        <text x={node.x} y={node.y} textAnchor="middle" dominantBaseline="central"
+        <text x={node.x} y={node.y} dy="0.35em" textAnchor="middle"
           fontSize="16" fill="rgba(232,200,98,0.55)">?</text>
       ) : (
-        <text x={node.x} y={node.y} textAnchor="middle" dominantBaseline="central"
+        <text x={node.x} y={node.y} dy="0.35em" textAnchor="middle"
           fontSize={fontSize} fill={node.color ?? COLOR_CENTER} fontWeight={600}
           style={{ fontFamily: "Playfair Display, serif" }}>
           {node.num}
