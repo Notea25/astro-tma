@@ -9460,9 +9460,12 @@ body::before {
 }
 .destiny-octagram {
   width: 100%;
-  max-width: 380px;
+  max-width: 420px;
   height: auto;
   user-select: none;
+}
+.destiny-octagram__chnode text {
+  font-family: "Playfair Display", serif;
 }
 .destiny-octagram__node.is-faded {
   opacity: 0.32;
