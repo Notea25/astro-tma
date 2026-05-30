@@ -67,11 +67,11 @@ function along(v: [number, number], t: number): [number, number] {
   return [v[0] + t * (CX - v[0]), v[1] + t * (CY - v[1])];
 }
 
-// Ray dots positioned in outer half of each ray так, чтобы все 3 точки
-// оставались снаружи внутреннего круга (R_INNER=100): t=0.2 (близко к
-// углу), t=0.4 (середина внешней половины), t=0.55 (на краю внутреннего
-// круга). Это совпадает с эталонным расположением на matritsa-sudbi.ru.
-const RAY_T = [0.2, 0.4, 0.55] as const;
+// Ray dots positioning. Первая точка касается кончиком угла (расстояние
+// от центра угла = corner_radius 26 + dot_radius 4 = 30 px; делим на длину
+// луча 230 для cardinal / 226 для diagonal → t ≈ 0.13). Остальные две —
+// середина внешней половины и на краю внутреннего круга.
+const RAY_T = [0.13, 0.4, 0.55] as const;
 const TOP_1 = along(TOP, RAY_T[0]);
 const TOP_2 = along(TOP, RAY_T[1]);
 const TOP_3 = along(TOP, RAY_T[2]);
