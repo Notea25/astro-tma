@@ -38,8 +38,10 @@ const NODE_TITLES_RU: Record<DestinyNodeId, string> = {
   month_3: "Канал талантов — точка 3 (у центра)",
   year_1:  "Материальная карма — точка у угла",
   year_2:  "Точка входа денег (mid)",
+  year_3:  "Материальная карма — точка у центра",
   bottom_1: "Кармический хвост — точка у угла",
   bottom_2: "Точка входа партнёра / любовь (mid)",
+  bottom_3: "Кармический хвост — точка у центра",
   day_1: "Детско-родительский — точка 1",
   day_2: "Детско-родительский — точка 2",
   day_3: "Детско-родительский — точка 3 (у центра)",
@@ -82,8 +84,10 @@ const NODE_CONTEXT: Record<DestinyNodeId, string> = {
   month_3: "talents",
   year_1:  "material_karma",
   year_2:  "finance",  // mid = money entry
+  year_3:  "material_karma",
   bottom_1: "karmic_tail",
   bottom_2: "relationships",  // mid = love entry
+  bottom_3: "karmic_tail",
   day_1: "parental",
   day_2: "parental",
   day_3: "parental",

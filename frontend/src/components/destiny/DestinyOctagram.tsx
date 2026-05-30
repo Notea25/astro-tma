@@ -14,13 +14,11 @@ import type { DestinyMatrixPositions } from "@/services/api";
 export type DestinyNodeId =
   | "day" | "month" | "year" | "bottom" | "center"
   | "top_left" | "top_right" | "bottom_right" | "bottom_left"
-  // Top + left cardinal axes render all 3 ray dots
+  // 3 точки на каждом из 4 cardinal лучей
   | "month_1" | "month_2" | "month_3"
   | "day_1"   | "day_2"   | "day_3"
-  // Right + bottom render only 2 (near_corner, mid) — third is replaced
-  // by comfort pair / cross point near the center
-  | "year_1"  | "year_2"
-  | "bottom_1" | "bottom_2"
+  | "year_1"  | "year_2"  | "year_3"
+  | "bottom_1" | "bottom_2" | "bottom_3"
   // 3 dots per diagonal
   | "aft_1" | "aft_2" | "aft_3"   // father talents — TL
   | "amt_1" | "amt_2" | "amt_3"   // mother talents — TR
@@ -92,38 +90,49 @@ function along(v: [number, number], t: number): [number, number] {
   return [v[0] + t * (CX - v[0]), v[1] + t * (CY - v[1])];
 }
 
-// Radius мелкого «кружочка» (не main-lg=26 / main-md=22 центра).
-const R_DOT = 11;
+// Radii мелких «кружочков» по 3 ярусам. Чем ближе к центру — тем меньше.
+const R_DOT_1 = 13;  // первая точка — самая большая из мелких
+const R_DOT_2 = 10;  // вторая точка
+const R_DOT_3 = 7;   // третья точка — самая маленькая
+// Legacy alias на случай рендера без явного tier.
+const R_DOT = R_DOT_2;
 
-// Ray dots positioning. Первая точка стоит с 10 px зазором между своим
-// внешним краем и кончиком угла октаграммы: dot_center на (10 + R_DOT)
-// = 21 px от вершины, что = 21/230 ≈ 0.09 для cardinal (длина луча 230)
-// и 21/226 ≈ 0.093 для diagonal (длина 226). Остальные две — середина
-// внешней половины и на краю внутреннего круга.
-const RAY_T = [0.09, 0.4, 0.55] as const;
+// Ray dots positioning.
+//   t1 = 0.09 — первая точка, 10 px зазор от кончика угла.
+//   t2 = 0.4  — вторая точка, ~середина внешней половины луча.
+//   3-я точка стоит НЕ на t, а на ближайшей границе:
+//     - cardinal (M/D/Y/B → center): на стороне прямого квадрата
+//     - diagonal (atl/atr/abr/abl → center): на стороне ромба
+const RAY_T = [0.09, 0.4] as const;
 const TOP_1 = along(TOP, RAY_T[0]);
 const TOP_2 = along(TOP, RAY_T[1]);
-const TOP_3 = along(TOP, RAY_T[2]);
 const RIGHT_1 = along(RIGHT, RAY_T[0]);
 const RIGHT_2 = along(RIGHT, RAY_T[1]);
 const BOT_1 = along(BOTTOM, RAY_T[0]);
 const BOT_2 = along(BOTTOM, RAY_T[1]);
 const LEFT_1 = along(LEFT, RAY_T[0]);
 const LEFT_2 = along(LEFT, RAY_T[1]);
-const LEFT_3 = along(LEFT, RAY_T[2]);
-// Diagonal axis points
+// Diagonal axis points — first two via t, third on diamond edge.
 const TL_1 = along(TL, RAY_T[0]);
 const TL_2 = along(TL, RAY_T[1]);
-const TL_3 = along(TL, RAY_T[2]);
 const TR_1 = along(TR, RAY_T[0]);
 const TR_2 = along(TR, RAY_T[1]);
-const TR_3 = along(TR, RAY_T[2]);
 const BR_1 = along(BR, RAY_T[0]);
 const BR_2 = along(BR, RAY_T[1]);
-const BR_3 = along(BR, RAY_T[2]);
 const BL_1 = along(BL, RAY_T[0]);
 const BL_2 = along(BL, RAY_T[1]);
-const BL_3 = along(BL, RAY_T[2]);
+
+// 3rd points — на пересечении луча с ближайшей границей октаграммы.
+// Cardinal лучи пересекают сторону квадрата (TL=140,140 — BR=460,460),
+// diagonal лучи пересекают сторону ромба (вершины 70/300, 300/70 и т.д.).
+const TOP_3:  [number, number] = [300, 140];  // на стороне квадрата TL-TR
+const LEFT_3: [number, number] = [140, 300];  // на стороне квадрата TL-BL
+const RIGHT_3:[number, number] = [460, 300];  // на стороне квадрата TR-BR
+const BOT_3:  [number, number] = [300, 460];  // на стороне квадрата BL-BR
+const TL_3:   [number, number] = [185, 185];  // на стороне ромба LEFT-TOP (x+y=370)
+const TR_3:   [number, number] = [415, 185];  // на стороне ромба TOP-RIGHT (x-y=230)
+const BR_3:   [number, number] = [415, 415];  // на стороне ромба RIGHT-BOTTOM (x+y=830)
+const BL_3:   [number, number] = [185, 415];  // на стороне ромба BOTTOM-LEFT (y-x=230)
 
 // ── Palette ────────────────────────────────────────────────────────────
 const COLOR_LINE      = "rgba(200, 195, 180, 0.6)";   // thin grey lines
@@ -165,6 +174,9 @@ interface NodeDef {
   y: number;
   kind: NodeKind;
   color?: string;
+  /** Override default radius (R_DOT for dots, fixed for main). Used to
+   *  размер по yarусам: 1-я точка крупнее, 3-я меньше. */
+  radius?: number;
 }
 
 function buildNodes(p: DestinyMatrixPositions): NodeDef[] {
@@ -180,12 +192,13 @@ function buildNodes(p: DestinyMatrixPositions): NodeDef[] {
     return [a[0] ?? 0, a[1] ?? 0, a[2] ?? 0];
   };
 
-  // Cardinal axes — top/left render all 3, right/bottom only [near, mid]
-  // (третья позиция занята comfort/cross — отдельные узлы рядом с центром)
-  const [t1, t2, t3] = get3(ch.talents);          // top — M ↔ C (full 3)
-  const [d1, d2, d3] = get3(ch.parental);         // left — D ↔ C (full 3)
-  const [r1, r2]     = get3(ch.material_karma);   // right — Y ↔ C (2 only)
-  const [b1, b2]     = get3(ch.karmic_tail);      // bottom — B ↔ C (2 only)
+  // Cardinal axes — все 4 рендерят 3 точки. Третья сидит на ближайшей
+  // стороне прямого квадрата (для cardinal) — там же где comfort/cross
+  // визуально, но cross/comfort это отдельные смысловые точки.
+  const [t1, t2, t3] = get3(ch.talents);          // top — M ↔ C
+  const [d1, d2, d3] = get3(ch.parental);         // left — D ↔ C
+  const [r1, r2, r3] = get3(ch.material_karma);   // right — Y ↔ C
+  const [b1, b2, b3] = get3(ch.karmic_tail);      // bottom — B ↔ C
   // Diagonals — все 3 точки
   const [aft1, aft2, aft3] = get3(ch.ancestral_father_talents); // TL
   const [amt1, amt2, amt3] = get3(ch.ancestral_mother_talents); // TR
@@ -202,15 +215,17 @@ function buildNodes(p: DestinyMatrixPositions): NodeDef[] {
   const moneyDiag  = p.money_diagonal ?? [0, 0, 0];
   const [valNearC, valNearMid] = comfortArr;
 
-  // Helper: a small dot
+  // Helper: a small dot. tier = 1/2/3 определяет размер кружка.
   const dot = (
     nodeId: DestinyNodeId,
     num: number,
     point: [number, number],
+    rayTier: 1 | 2 | 3,
     color?: string,
   ): NodeDef => ({
     nodeId, num, tier: "premium",
     x: point[0], y: point[1], kind: "dot", color,
+    radius: rayTier === 1 ? R_DOT_1 : rayTier === 2 ? R_DOT_2 : R_DOT_3,
   });
 
   return [
@@ -228,42 +243,43 @@ function buildNodes(p: DestinyMatrixPositions): NodeDef[] {
     { nodeId: "bottom_right", num: sq.bottom_right, tier: "premium", x: NODE_BR[0], y: NODE_BR[1], kind: "main-lg", color: COLOR_BASE },
     { nodeId: "bottom_left",  num: sq.bottom_left,  tier: "premium", x: NODE_BL[0], y: NODE_BL[1], kind: "main-lg", color: COLOR_BASE },
 
-    // ── Cardinal axes: top/left — 3 dots, right/bottom — 2 dots ──
-    dot("month_1", t1, TOP_1),
-    dot("month_2", t2, TOP_2),
-    dot("month_3", t3, TOP_3),
-    dot("day_1",   d1, LEFT_1),
-    dot("day_2",   d2, LEFT_2),
-    dot("day_3",   d3, LEFT_3),
-    dot("year_1",  r1, RIGHT_1),
-    dot("year_2",  r2, RIGHT_2, COLOR_DOT_ORANGE),  // mid = money
-    dot("bottom_1", b1, BOT_1, COLOR_DOT_RED),
-    dot("bottom_2", b2, BOT_2, COLOR_DOT_ORANGE),   // mid = love
+    // ── 4 cardinal лучa: 3 точки каждый ──
+    dot("month_1", t1, TOP_1, 1),
+    dot("month_2", t2, TOP_2, 2),
+    dot("month_3", t3, TOP_3, 3),
+    dot("day_1",   d1, LEFT_1, 1),
+    dot("day_2",   d2, LEFT_2, 2),
+    dot("day_3",   d3, LEFT_3, 3),
+    dot("year_1",  r1, RIGHT_1, 1),
+    dot("year_2",  r2, RIGHT_2, 2, COLOR_DOT_ORANGE),  // mid = money
+    dot("year_3",  r3, RIGHT_3, 3),
+    dot("bottom_1", b1, BOT_1, 1, COLOR_DOT_RED),
+    dot("bottom_2", b2, BOT_2, 2, COLOR_DOT_ORANGE),   // mid = love
+    dot("bottom_3", b3, BOT_3, 3),
 
-    // ── Diagonal channels — 3 dots, square corner→center ──
-    dot("aft_1", aft1, TL_1),
-    dot("aft_2", aft2, TL_2),
-    dot("aft_3", aft3, TL_3),
-    dot("amt_1", amt1, TR_1),
-    dot("amt_2", amt2, TR_2),
-    dot("amt_3", amt3, TR_3),
-    dot("afk_1", afk1, BR_1),
-    dot("afk_2", afk2, BR_2),
-    dot("afk_3", afk3, BR_3),
-    dot("amk_1", amk1, BL_1),
-    dot("amk_2", amk2, BL_2),
-    dot("amk_3", amk3, BL_3),
+    // ── 4 diagonal лучa: 3 точки каждый ──
+    dot("aft_1", aft1, TL_1, 1),
+    dot("aft_2", aft2, TL_2, 2),
+    dot("aft_3", aft3, TL_3, 3),
+    dot("amt_1", amt1, TR_1, 1),
+    dot("amt_2", amt2, TR_2, 2),
+    dot("amt_3", amt3, TR_3, 3),
+    dot("afk_1", afk1, BR_1, 1),
+    dot("afk_2", afk2, BR_2, 2),
+    dot("afk_3", afk3, BR_3, 3),
+    dot("amk_1", amk1, BL_1, 1),
+    dot("amk_2", amk2, BL_2, 2),
+    dot("amk_3", amk3, BL_3, 3),
 
     // ── Special points near center (variant C) ──
-    dot("comfort_a", valNearC,   COMFORT_NEAR_C,   COLOR_DOT_PINK),
-    dot("comfort_b", valNearMid, COMFORT_NEAR_MID, COLOR_DOT_PINK),
-    dot("cross_p",   crossVal,   CROSS_POS,        COLOR_DOT_ORANGE),
+    dot("comfort_a", valNearC,   COMFORT_NEAR_C,   2, COLOR_DOT_PINK),
+    dot("comfort_b", valNearMid, COMFORT_NEAR_MID, 2, COLOR_DOT_PINK),
+    dot("cross_p",   crossVal,   CROSS_POS,        2, COLOR_DOT_ORANGE),
 
-    // ── Money diagonal: одна внешняя точка (cross+money) ──
-    // money_diag[1]=cross уже отрисован как cross_p, а money_diag[2]=money
-    // совпадает с year_2 — оба дубля убраны. Сам пунктир рисуется как
-    // SVG path в main render.
-    dot("money_diag_1", moneyDiag[0], MONEY_DIAG_OUTER, COLOR_DOT_ORANGE),
+    // ── Money diagonal: одна внешняя точка (cross+money). Пунктир
+    // рисуется как SVG path в main render. money_diag[1]=cross и
+    // money_diag[2]=money — оба дублируют другие точки. ──
+    dot("money_diag_1", moneyDiag[0], MONEY_DIAG_OUTER, 2, COLOR_DOT_ORANGE),
   ];
 }
 
@@ -336,7 +352,8 @@ interface RenderedNodeProps {
 
 function RenderedNode({ node, locked, active, faded, onTap }: RenderedNodeProps) {
   const isMain = node.kind === "main-lg" || node.kind === "main-md";
-  const radius = node.kind === "main-lg" ? 26 : node.kind === "main-md" ? 22 : R_DOT;
+  const defaultRadius = node.kind === "main-lg" ? 26 : node.kind === "main-md" ? 22 : R_DOT;
+  const radius = node.radius ?? defaultRadius;
   const tapR = Math.max(radius + 6, 18);
 
   const baseStroke = node.color ?? COLOR_BASE;
@@ -445,14 +462,15 @@ interface Props {
 }
 
 // Iterative render mode while we align with the matritsa-sudbi.ru template:
-//   "none"   — нет точек, только шаблон
-//   "main"   — только 9 больших узлов (D, M, Y, B, C + 4 угла квадрата)
-//   "rays1"  — main + первая точка каждого луча (8 шт.)
-//   "rays12" — main + первая и вторая точки каждого луча (16 шт.)
-//   "all"    — все точки (включая lazy comfort, cross, money_diag)
-const RENDER_MODE: "none" | "main" | "rays1" | "rays12" | "all" = "rays12";
+//   "none"    — нет точек, только шаблон
+//   "main"    — только 9 больших узлов (D, M, Y, B, C + 4 угла квадрата)
+//   "rays1"   — main + первая точка каждого луча (8 шт.)
+//   "rays12"  — main + первая и вторая точки каждого луча (16 шт.)
+//   "rays123" — main + все 3 точки каждого луча (24 шт.)
+//   "all"     — все точки (включая comfort, cross, money_diag)
+const RENDER_MODE: "none" | "main" | "rays1" | "rays12" | "rays123" | "all" = "rays123";
 
-// Node IDs первых и вторых точек каждого из 8 лучей.
+// Node IDs точек каждого луча по ярусам.
 const RAY_1_IDS: ReadonlySet<DestinyNodeId> = new Set<DestinyNodeId>([
   "month_1", "day_1", "year_1", "bottom_1",
   "aft_1", "amt_1", "afk_1", "amk_1",
@@ -460,6 +478,10 @@ const RAY_1_IDS: ReadonlySet<DestinyNodeId> = new Set<DestinyNodeId>([
 const RAY_2_IDS: ReadonlySet<DestinyNodeId> = new Set<DestinyNodeId>([
   "month_2", "day_2", "year_2", "bottom_2",
   "aft_2", "amt_2", "afk_2", "amk_2",
+]);
+const RAY_3_IDS: ReadonlySet<DestinyNodeId> = new Set<DestinyNodeId>([
+  "month_3", "day_3", "year_3", "bottom_3",
+  "aft_3", "amt_3", "afk_3", "amk_3",
 ]);
 
 export function DestinyOctagram({
@@ -479,6 +501,12 @@ export function DestinyOctagram({
       return allNodes.filter((n) =>
         n.kind === "main-lg" || n.kind === "main-md" ||
         RAY_1_IDS.has(n.nodeId) || RAY_2_IDS.has(n.nodeId),
+      );
+    }
+    if (RENDER_MODE === "rays123") {
+      return allNodes.filter((n) =>
+        n.kind === "main-lg" || n.kind === "main-md" ||
+        RAY_1_IDS.has(n.nodeId) || RAY_2_IDS.has(n.nodeId) || RAY_3_IDS.has(n.nodeId),
       );
     }
     return allNodes;
