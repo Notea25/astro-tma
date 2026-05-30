@@ -45,7 +45,8 @@ const VIEW = 600;
 const CX = 300;
 const CY = 300;
 
-// Diamond vertices
+// Diamond vertices (используются как кончики октаграммы — линии и лучи
+// заканчиваются здесь)
 const TOP:    [number, number] = [300,  70];
 const RIGHT:  [number, number] = [530, 300];
 const BOTTOM: [number, number] = [300, 530];
@@ -55,6 +56,20 @@ const TL: [number, number] = [140, 140];
 const TR: [number, number] = [460, 140];
 const BR: [number, number] = [460, 460];
 const BL: [number, number] = [140, 460];
+
+// Позиции 8 больших узлов — вынесены ЗА октаграмму, так что внутренняя
+// кромка узла (radius=26) касается кончика угла. По cardinal смещение =
+// 26 px; по diagonal = 26/√2 ≈ 18.4 px (под 45°).
+const NODE_OFF = 26;
+const NODE_OFF_D = NODE_OFF / Math.SQRT2;
+const NODE_TOP:    [number, number] = [TOP[0],               TOP[1] - NODE_OFF];
+const NODE_RIGHT:  [number, number] = [RIGHT[0] + NODE_OFF,  RIGHT[1]];
+const NODE_BOTTOM: [number, number] = [BOTTOM[0],            BOTTOM[1] + NODE_OFF];
+const NODE_LEFT:   [number, number] = [LEFT[0] - NODE_OFF,   LEFT[1]];
+const NODE_TL: [number, number] = [TL[0] - NODE_OFF_D, TL[1] - NODE_OFF_D];
+const NODE_TR: [number, number] = [TR[0] + NODE_OFF_D, TR[1] - NODE_OFF_D];
+const NODE_BR: [number, number] = [BR[0] + NODE_OFF_D, BR[1] + NODE_OFF_D];
+const NODE_BL: [number, number] = [BL[0] - NODE_OFF_D, BL[1] + NODE_OFF_D];
 
 // Age ring sits outside the octagram
 const R_AGE_RING  = 268;
@@ -186,15 +201,18 @@ function buildNodes(p: DestinyMatrixPositions): NodeDef[] {
 
   return [
     // ── Main 9 nodes ──
-    { nodeId: "day",    num: per.day,    tier: "free", x: LEFT[0],   y: LEFT[1],   kind: "main-lg", color: COLOR_BASE },
-    { nodeId: "month",  num: per.month,  tier: "free", x: TOP[0],    y: TOP[1],    kind: "main-lg", color: COLOR_BASE },
-    { nodeId: "year",   num: per.year,   tier: "free", x: RIGHT[0],  y: RIGHT[1],  kind: "main-lg", color: COLOR_BASE },
-    { nodeId: "bottom", num: per.bottom, tier: "free", x: BOTTOM[0], y: BOTTOM[1], kind: "main-lg", color: COLOR_KARMA },
-    { nodeId: "center", num: per.center, tier: "free", x: CX,        y: CY,        kind: "main-md", color: COLOR_CENTER },
-    { nodeId: "top_left",     num: sq.top_left,     tier: "premium", x: TL[0], y: TL[1], kind: "main-lg", color: COLOR_BASE },
-    { nodeId: "top_right",    num: sq.top_right,    tier: "premium", x: TR[0], y: TR[1], kind: "main-lg", color: COLOR_BASE },
-    { nodeId: "bottom_right", num: sq.bottom_right, tier: "premium", x: BR[0], y: BR[1], kind: "main-lg", color: COLOR_BASE },
-    { nodeId: "bottom_left",  num: sq.bottom_left,  tier: "premium", x: BL[0], y: BL[1], kind: "main-lg", color: COLOR_BASE },
+    // 8 угловых узлов используют NODE_* — позиции ВЫНЕСЕНЫ за октаграмму
+    // так что внутренняя кромка узла касается кончика угла. Центр остаётся
+    // на (CX, CY).
+    { nodeId: "day",    num: per.day,    tier: "free", x: NODE_LEFT[0],   y: NODE_LEFT[1],   kind: "main-lg", color: COLOR_BASE },
+    { nodeId: "month",  num: per.month,  tier: "free", x: NODE_TOP[0],    y: NODE_TOP[1],    kind: "main-lg", color: COLOR_BASE },
+    { nodeId: "year",   num: per.year,   tier: "free", x: NODE_RIGHT[0],  y: NODE_RIGHT[1],  kind: "main-lg", color: COLOR_BASE },
+    { nodeId: "bottom", num: per.bottom, tier: "free", x: NODE_BOTTOM[0], y: NODE_BOTTOM[1], kind: "main-lg", color: COLOR_KARMA },
+    { nodeId: "center", num: per.center, tier: "free", x: CX,             y: CY,             kind: "main-md", color: COLOR_CENTER },
+    { nodeId: "top_left",     num: sq.top_left,     tier: "premium", x: NODE_TL[0], y: NODE_TL[1], kind: "main-lg", color: COLOR_BASE },
+    { nodeId: "top_right",    num: sq.top_right,    tier: "premium", x: NODE_TR[0], y: NODE_TR[1], kind: "main-lg", color: COLOR_BASE },
+    { nodeId: "bottom_right", num: sq.bottom_right, tier: "premium", x: NODE_BR[0], y: NODE_BR[1], kind: "main-lg", color: COLOR_BASE },
+    { nodeId: "bottom_left",  num: sq.bottom_left,  tier: "premium", x: NODE_BL[0], y: NODE_BL[1], kind: "main-lg", color: COLOR_BASE },
 
     // ── Cardinal axes: top/left — 3 dots, right/bottom — 2 dots ──
     dot("month_1", t1, TOP_1),
@@ -432,7 +450,7 @@ export function DestinyOctagram({
 
   return (
     <svg
-      viewBox={`0 0 ${VIEW} ${VIEW}`}
+      viewBox={`-40 -40 ${VIEW + 80} ${VIEW + 80}`}
       className="destiny-octagram"
       role="img"
       aria-label="Октаграмма матрицы судьбы"
@@ -460,23 +478,23 @@ export function DestinyOctagram({
         fill="none" stroke={COLOR_LINE_ACC} strokeWidth="1.3"
       />
 
-      {/* ── Side-of-world labels (outside the figure) ── */}
-      <text x={TOP[0]} y={TOP[1] - 32} textAnchor="middle"
+      {/* ── Side-of-world labels (выше/ниже/сбоку новых вынесенных узлов) ── */}
+      <text x={NODE_TOP[0]} y={NODE_TOP[1] - 36} textAnchor="middle"
         fontSize="14" fill={COLOR_LABEL_DIM}
         style={{ fontFamily: "Inter, system-ui, sans-serif", letterSpacing: "0.06em" }}>
         небо
       </text>
-      <text x={BOTTOM[0]} y={BOTTOM[1] + 38} textAnchor="middle"
+      <text x={NODE_BOTTOM[0]} y={NODE_BOTTOM[1] + 42} textAnchor="middle"
         fontSize="14" fill={COLOR_LABEL_DIM}
         style={{ fontFamily: "Inter, system-ui, sans-serif", letterSpacing: "0.06em" }}>
         небо
       </text>
-      <text x={LEFT[0] - 30} y={LEFT[1]} textAnchor="end" dominantBaseline="central"
+      <text x={NODE_LEFT[0] - 30} y={NODE_LEFT[1]} textAnchor="end" dominantBaseline="central"
         fontSize="14" fill={COLOR_LABEL_DIM}
         style={{ fontFamily: "Inter, system-ui, sans-serif", letterSpacing: "0.06em" }}>
         земля
       </text>
-      <text x={RIGHT[0] + 30} y={RIGHT[1]} textAnchor="start" dominantBaseline="central"
+      <text x={NODE_RIGHT[0] + 30} y={NODE_RIGHT[1]} textAnchor="start" dominantBaseline="central"
         fontSize="14" fill={COLOR_LABEL_DIM}
         style={{ fontFamily: "Inter, system-ui, sans-serif", letterSpacing: "0.06em" }}>
         земля
