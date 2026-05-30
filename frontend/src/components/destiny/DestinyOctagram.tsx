@@ -177,18 +177,18 @@ function buildNodes(p: DestinyMatrixPositions): NodeDef[] {
     return [a[0] ?? 0, a[1] ?? 0, a[2] ?? 0];
   };
 
-  // На фронте рисуем 2 точки на луч: ближе к углу (channel[0]) и
-  // ближе к центру (channel[2]). channel[1] (= mid луча, e.g. talent/
-  // money/love/character) пока не отображается отдельной точкой.
-  const [t1, , t3] = get3(ch.talents);          // top — M ↔ C
-  const [d1, , d3] = get3(ch.parental);         // left — D ↔ C
-  const [r1, , r3] = get3(ch.material_karma);   // right — Y ↔ C
-  const [b1, , b3] = get3(ch.karmic_tail);      // bottom — B ↔ C
-  // Diagonals — берём только [0] и [2]
-  const [aft1, , aft3] = get3(ch.ancestral_father_talents); // TL
-  const [amt1, , amt3] = get3(ch.ancestral_mother_talents); // TR
-  const [afk1, , afk3] = get3(ch.ancestral_father_karma);   // BR
-  const [amk1, , amk3] = get3(ch.ancestral_mother_karma);   // BL
+  // 2 точки на луч: ближе к углу (channel[0]) и mid (channel[1] =
+  // talent/character/money/love и mids диагоналей). channel[2] временно
+  // не используется.
+  const [t1, t2] = get3(ch.talents);          // top — M ↔ C
+  const [d1, d2] = get3(ch.parental);         // left — D ↔ C
+  const [r1, r2] = get3(ch.material_karma);   // right — Y ↔ C
+  const [b1, b2] = get3(ch.karmic_tail);      // bottom — B ↔ C
+  // Diagonals — берём [0] и [1]
+  const [aft1, aft2] = get3(ch.ancestral_father_talents); // TL
+  const [amt1, amt2] = get3(ch.ancestral_mother_talents); // TR
+  const [afk1, afk2] = get3(ch.ancestral_father_karma);   // BR
+  const [amk1, amk2] = get3(ch.ancestral_mother_karma);   // BL
 
   // Семантические точки из бэка (вариант C). Fallback на 0 если backend
   // вернул запись в старом формате — она будет пересчитана на следующем
@@ -229,27 +229,28 @@ function buildNodes(p: DestinyMatrixPositions): NodeDef[] {
     { nodeId: "bottom_right", num: sq.bottom_right, tier: "premium", x: NODE_BR[0], y: NODE_BR[1], kind: "main-lg", color: COLOR_BASE },
     { nodeId: "bottom_left",  num: sq.bottom_left,  tier: "premium", x: NODE_BL[0], y: NODE_BL[1], kind: "main-lg", color: COLOR_BASE },
 
-    // ── 4 cardinal лучa: 2 точки. На 2-м ярусе (t=0.4) — channel[2]
-    // (значение которое раньше было на периметре). 3-й ярус (периметр)
-    // временно убран. ──
+    // ── 4 cardinal лучa: 2 точки.
+    //   1-й ярус (у угла) — channel[0]
+    //   2-й ярус (на периметре) — channel[1] = mid (talent/character/
+    //   money/love)
     dot("month_1", t1, TOP_1, 1),
-    dot("month_2", t3, TOP_2, 2),
+    dot("month_2", t2, TOP_2, 2),
     dot("day_1",   d1, LEFT_1, 1),
-    dot("day_2",   d3, LEFT_2, 2),
+    dot("day_2",   d2, LEFT_2, 2),
     dot("year_1",  r1, RIGHT_1, 1),
-    dot("year_2",  r3, RIGHT_2, 2, COLOR_DOT_ORANGE),
+    dot("year_2",  r2, RIGHT_2, 2, COLOR_DOT_ORANGE),  // = money
     dot("bottom_1", b1, BOT_1, 1, COLOR_DOT_RED),
-    dot("bottom_2", b3, BOT_2, 2, COLOR_DOT_ORANGE),
+    dot("bottom_2", b2, BOT_2, 2, COLOR_DOT_ORANGE),  // = love
 
-    // ── 4 diagonal лучa: то же самое — 2 точки, channel[2] на 2-м ярусе ──
+    // ── 4 diagonal лучa: то же — channel[0] и channel[1] (mid) ──
     dot("aft_1", aft1, TL_1, 1),
-    dot("aft_2", aft3, TL_2, 2),
+    dot("aft_2", aft2, TL_2, 2),
     dot("amt_1", amt1, TR_1, 1),
-    dot("amt_2", amt3, TR_2, 2),
+    dot("amt_2", amt2, TR_2, 2),
     dot("afk_1", afk1, BR_1, 1),
-    dot("afk_2", afk3, BR_2, 2),
+    dot("afk_2", afk2, BR_2, 2),
     dot("amk_1", amk1, BL_1, 1),
-    dot("amk_2", amk3, BL_2, 2),
+    dot("amk_2", amk2, BL_2, 2),
 
     // ── Special points near center (variant C) ──
     dot("comfort_a", valNearC,   COMFORT_NEAR_C,   2, COLOR_DOT_PINK),
