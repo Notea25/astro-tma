@@ -916,6 +916,55 @@ export interface DestinyVarna {
   expression: number;
 }
 
+export interface DestinyCenters {
+  personal: number;
+  lineage: number;
+  holistic: number;
+}
+
+export interface DestinyPurposesFull {
+  sky_personal: number;
+  earth_personal: number;
+  holistic_personal: number;
+  father_line: number;
+  mother_line: number;
+  holistic_lineage: number;
+  personal_divine: number;
+  divine_mission: number;
+}
+
+export interface DestinyChakraSet {
+  sahasrara: number;
+  adjna: number;
+  vishuddha: number;
+  anahata: number;
+  manipura: number;
+  svadhisthana: number;
+  muladhara: number;
+}
+
+export interface DestinyChakras {
+  sky: DestinyChakraSet;
+  earth: DestinyChakraSet;
+}
+
+export interface DestinyHealthRow {
+  chakra: string;
+  energy: number;
+  physics: number;
+  key: number;
+}
+
+export interface DestinyHealthMap {
+  rows: DestinyHealthRow[];
+  system: { energy: number; physics: number; key: number };
+}
+
+export interface DestinyEntries {
+  money: number;
+  partner: number;
+}
+
 export interface DestinyMatrixPositions {
   personality: DestinyPersonality;
   ancestral_square: DestinyAncestralSquare;
@@ -923,6 +972,12 @@ export interface DestinyMatrixPositions {
   purposes: DestinyPurposes;
   channels: DestinyChannels;
   varna: DestinyVarna;
+  /** Новые поля по спеке Ладини — опциональные на время миграции */
+  centers?: DestinyCenters;
+  purposes_full?: DestinyPurposesFull;
+  chakras?: DestinyChakras;
+  health_map?: DestinyHealthMap;
+  entries?: DestinyEntries;
 }
 
 export interface DestinyMatrixResponse {

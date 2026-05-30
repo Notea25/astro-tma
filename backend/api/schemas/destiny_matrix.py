@@ -66,6 +66,66 @@ class VarnaBlock(BaseModel):
     expression: int
 
 
+class CentersBlock(BaseModel):
+    """Три центра силы по методике Ладини."""
+    personal: int       # центр диагонали
+    lineage: int        # центр родового квадрата = reduce(tl+tr+br+bl)
+    holistic: int       # reduce(personal + lineage)
+
+
+class PurposesFullBlock(BaseModel):
+    """8 предназначений по спеке Ладини."""
+    sky_personal: int
+    earth_personal: int
+    holistic_personal: int
+    father_line: int
+    mother_line: int
+    holistic_lineage: int
+    personal_divine: int
+    divine_mission: int
+
+
+class ChakraSetBlock(BaseModel):
+    sahasrara: int
+    adjna: int
+    vishuddha: int
+    anahata: int
+    manipura: int
+    svadhisthana: int
+    muladhara: int
+
+
+class ChakrasBlock(BaseModel):
+    """7 чакр × 2 линии (Небо / Земля)."""
+    sky: ChakraSetBlock
+    earth: ChakraSetBlock
+
+
+class HealthMapRow(BaseModel):
+    chakra: str
+    energy: int
+    physics: int
+    key: int
+
+
+class HealthMapSystem(BaseModel):
+    energy: int
+    physics: int
+    key: int
+
+
+class HealthMapBlock(BaseModel):
+    """Карта здоровья — 7 строк × (energy, physics, key) + системный итог."""
+    rows: list[HealthMapRow]
+    system: HealthMapSystem
+
+
+class EntriesBlock(BaseModel):
+    """Денежный и партнёрский «вход» — точки на линии Земли/Неба."""
+    money: int
+    partner: int
+
+
 class DestinyMatrixPositions(BaseModel):
     personality: PersonalityBlock
     ancestral_square: AncestralSquareBlock
@@ -73,6 +133,13 @@ class DestinyMatrixPositions(BaseModel):
     purposes: PurposesBlock
     channels: ChannelsBlock
     varna: VarnaBlock
+    # Новые блоки по спеке Ладини. Делаем опциональными — старые записи
+    # без них (если такие случайно остались) не упадут на десериализации.
+    centers: CentersBlock | None = None
+    purposes_full: PurposesFullBlock | None = None
+    chakras: ChakrasBlock | None = None
+    health_map: HealthMapBlock | None = None
+    entries: EntriesBlock | None = None
 
 
 # ── Ответы эндпоинтов ───────────────────────────────────────────────────────

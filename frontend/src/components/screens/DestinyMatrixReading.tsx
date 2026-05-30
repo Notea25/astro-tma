@@ -15,6 +15,7 @@ import { DestinyNarrative } from "@/components/destiny/DestinyNarrative";
 import { DestinyPurposes } from "@/components/destiny/DestinyPurposes";
 import { DestinyChannels } from "@/components/destiny/DestinyChannels";
 import { DestinyVarna } from "@/components/destiny/DestinyVarna";
+import { DestinyHealthMap } from "@/components/destiny/DestinyHealthMap";
 
 // Human-friendly title shown in the bottom-sheet header for each tap-target.
 // Wording follows the canonical Russian Destiny Matrix cheat-sheet so users
@@ -293,12 +294,19 @@ export function DestinyMatrixReading() {
               <>
                 <DestinyPurposes
                   purposes={reading.positions.purposes}
+                  purposesFull={reading.positions.purposes_full}
                   onTap={openTap}
                 />
                 <DestinyChannels
                   channels={reading.positions.channels}
                   onTap={openTap}
                 />
+                {reading.positions.health_map && (
+                  <DestinyHealthMap
+                    healthMap={reading.positions.health_map}
+                    onTap={openTap}
+                  />
+                )}
                 <DestinyVarna varna={reading.positions.varna} />
                 <DestinyNarrative enabled={reading.has_full_access} />
               </>

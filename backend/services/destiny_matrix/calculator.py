@@ -73,6 +73,18 @@ class Channel:
 
 
 @dataclass
+class ChakraSet:
+    """7 чакр на одной из линий (Небо или Земля)."""
+    sahasrara: int
+    adjna: int
+    vishuddha: int
+    anahata: int
+    manipura: int
+    svadhisthana: int
+    muladhara: int
+
+
+@dataclass
 class DestinyMatrix:
     # §1 Личностный (диагональный) ромб
     day: int
@@ -86,16 +98,20 @@ class DestinyMatrix:
     anc_top_right: int
     anc_bottom_right: int
     anc_bottom_left: int
+    # Центр родового квадрата (4 угла + reduce) — спека Ладини
+    center_lineage: int
+    # Целостный центр силы — слияние личного и родового
+    center_holistic: int
 
-    # §3 Линии и предназначения
+    # §3 Линии и предназначения (4 базовых)
     sky: int
     earth: int
     line_father: int
     line_mother: int
-    purpose_personal: int
-    purpose_social: int
-    purpose_spiritual: int
-    purpose_planetary: int
+    purpose_personal: int      # 3-е по спеке: holisticPersonal
+    purpose_social: int        # 6-е по спеке: holisticLineage
+    purpose_spiritual: int     # 7-е по спеке: personalDivine
+    purpose_planetary: int     # 8-е по спеке: divineMission
 
     # §4 Каналы (3 энергии каждый)
     karmic_tail: Channel
@@ -108,6 +124,12 @@ class DestinyMatrix:
     ancestral_father2: Channel  # карма по линии отца (ABR)
     ancestral_mother: Channel   # таланты по линии матери (ATR)
     ancestral_mother2: Channel  # карма по линии матери (ABL)
+
+    # §5 Чакры по двум линиям + точки денег/партнёра
+    chakras_sky: ChakraSet
+    chakras_earth: ChakraSet
+    money_entry: int     # Свадхистана по Земле = reduce(center + year)
+    partner_entry: int   # Свадхистана по Небу = reduce(center + bottom)
 
     # Дополнительные точки
     cross_point: int
@@ -170,10 +192,43 @@ def calculate(birth: date) -> DestinyMatrix:
     am1 = reduce(atr + C); am2 = reduce(atr + am1)
     am3 = reduce(abl + C); am4 = reduce(abl + am3)
 
+    # §5 Чакры (Небо: M-C-B; Земля: D-C-Y)
+    # Свадхистана = ключевая точка пути по линии: партнёр (Небо), деньги (Земля)
+    sky_vishuddha = reduce(M + C)
+    sky_anahata = reduce(sky_vishuddha + C)
+    sky_svadhisthana = reduce(C + B)
+    chakras_sky = ChakraSet(
+        sahasrara=M,
+        adjna=reduce(M + sky_vishuddha),
+        vishuddha=sky_vishuddha,
+        anahata=sky_anahata,
+        manipura=C,
+        svadhisthana=sky_svadhisthana,
+        muladhara=B,
+    )
+    earth_vishuddha = reduce(D + C)
+    earth_anahata = reduce(earth_vishuddha + C)
+    earth_svadhisthana = reduce(C + Y)
+    chakras_earth = ChakraSet(
+        sahasrara=D,
+        adjna=reduce(D + earth_vishuddha),
+        vishuddha=earth_vishuddha,
+        anahata=earth_anahata,
+        manipura=C,
+        svadhisthana=earth_svadhisthana,
+        muladhara=Y,
+    )
+
+    # §6 Центр родовой силы и целостный центр
+    center_lineage = reduce(atl + atr + abr + abl)
+    center_holistic = reduce(C + center_lineage)
+
     return DestinyMatrix(
         day=D, month=M, year=Y, bottom=B, center=C,
         anc_top_left=atl, anc_top_right=atr,
         anc_bottom_right=abr, anc_bottom_left=abl,
+        center_lineage=center_lineage,
+        center_holistic=center_holistic,
         sky=sky, earth=earth,
         line_father=line_father, line_mother=line_mother,
         purpose_personal=lp, purpose_social=sp,
@@ -185,6 +240,10 @@ def calculate(birth: date) -> DestinyMatrix:
         ancestral_father2=Channel(abr, af3, af4),
         ancestral_mother=Channel(atr, am1, am2),
         ancestral_mother2=Channel(abl, am3, am4),
+        chakras_sky=chakras_sky,
+        chakras_earth=chakras_earth,
+        money_entry=earth_svadhisthana,
+        partner_entry=sky_svadhisthana,
         cross_point=cross, material_karma_point=mk_point,
     )
 
@@ -210,8 +269,49 @@ def calculate_varna(birth: date) -> dict:
     }
 
 
+def _chakra_dict(c: ChakraSet) -> dict[str, int]:
+    return {
+        "sahasrara": c.sahasrara, "adjna": c.adjna, "vishuddha": c.vishuddha,
+        "anahata": c.anahata, "manipura": c.manipura,
+        "svadhisthana": c.svadhisthana, "muladhara": c.muladhara,
+    }
+
+
+# Чакры (top→bottom) для построения «карты здоровья». Каждая чакра
+# даёт ключ здоровья = reduce(energy + physics).
+_CHAKRA_ORDER = (
+    "sahasrara", "adjna", "vishuddha", "anahata",
+    "manipura", "svadhisthana", "muladhara",
+)
+
+
+def _health_map(sky: ChakraSet, earth: ChakraSet) -> dict[str, Any]:
+    rows: list[dict[str, Any]] = []
+    sum_energy = 0
+    sum_physics = 0
+    sum_keys = 0
+    for key in _CHAKRA_ORDER:
+        energy = getattr(sky, key)
+        physics = getattr(earth, key)
+        k = reduce(energy + physics)
+        rows.append({"chakra": key, "energy": energy, "physics": physics, "key": k})
+        sum_energy += energy
+        sum_physics += physics
+        sum_keys += k
+    return {
+        "rows": rows,
+        "system": {
+            "energy": reduce(sum_energy),
+            "physics": reduce(sum_physics),
+            "key": reduce(sum_keys),
+        },
+    }
+
+
 def to_dict(m: DestinyMatrix) -> dict[str, Any]:
     """Сериализация в плоский dict для JSONB / API ответа."""
+    sky = _chakra_dict(m.chakras_sky)
+    earth = _chakra_dict(m.chakras_earth)
     return {
         "personality": {
             "day": m.day, "month": m.month, "year": m.year,
@@ -221,15 +321,32 @@ def to_dict(m: DestinyMatrix) -> dict[str, Any]:
             "top_left": m.anc_top_left, "top_right": m.anc_top_right,
             "bottom_right": m.anc_bottom_right, "bottom_left": m.anc_bottom_left,
         },
+        "centers": {
+            "personal": m.center,
+            "lineage": m.center_lineage,
+            "holistic": m.center_holistic,
+        },
         "lines": {
             "sky": m.sky, "earth": m.earth,
             "father": m.line_father, "mother": m.line_mother,
         },
+        # 4 базовых предназначения (совместимо со старой версией)
         "purposes": {
             "personal": m.purpose_personal,
             "social": m.purpose_social,
             "spiritual": m.purpose_spiritual,
             "planetary": m.purpose_planetary,
+        },
+        # 8 предназначений по спеке Ладини (новое)
+        "purposes_full": {
+            "sky_personal": m.sky,
+            "earth_personal": m.earth,
+            "holistic_personal": m.purpose_personal,
+            "father_line": m.line_father,
+            "mother_line": m.line_mother,
+            "holistic_lineage": m.purpose_social,
+            "personal_divine": m.purpose_spiritual,
+            "divine_mission": m.purpose_planetary,
         },
         "channels": {
             "karmic_tail": m.karmic_tail.as_list(),
@@ -242,6 +359,15 @@ def to_dict(m: DestinyMatrix) -> dict[str, Any]:
             "ancestral_father_karma": m.ancestral_father2.as_list(),
             "ancestral_mother_talents": m.ancestral_mother.as_list(),
             "ancestral_mother_karma": m.ancestral_mother2.as_list(),
+        },
+        "chakras": {
+            "sky": sky,
+            "earth": earth,
+        },
+        "health_map": _health_map(m.chakras_sky, m.chakras_earth),
+        "entries": {
+            "money": m.money_entry,
+            "partner": m.partner_entry,
         },
     }
 
