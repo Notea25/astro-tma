@@ -9457,13 +9457,16 @@ body::before {
   display: flex;
   justify-content: center;
   padding: 0;
-  /* viewBox 420×420 has ~40px of empty space above the top diamond node;
-     pull the SVG up so it sits flush with the birth-date block above. */
-  margin-top: -40px;
+  /* viewBox now 460×460 with the age ring; about 30px of empty space
+     above the top diamond node — pull the SVG up so it sits flush with
+     the birth-date block above. */
+  margin-top: -30px;
 }
 .destiny-octagram {
   width: 100%;
-  max-width: 420px;
+  /* Larger canvas so the chart matches the cheat-sheet density at a
+     comfortable size — fills almost the full mini-app width on mobile. */
+  max-width: 560px;
   height: auto;
   user-select: none;
 }
