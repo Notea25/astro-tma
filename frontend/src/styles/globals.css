@@ -9563,19 +9563,24 @@ body::before {
   background: rgba(6, 4, 21, 0.6);
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
-  z-index: 90;
+  /* Above the bottom-nav (z=100) so the whole UI dims when sheet is open. */
+  z-index: 110;
 }
 .destiny-sheet {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 100;
+  /* Above the bottom-nav so its content isn't obscured by the nav bar. */
+  z-index: 120;
   background: linear-gradient(180deg, #1a1428 0%, #0e0b20 100%);
   border-top: 1px solid rgba(232, 200, 98, 0.3);
   border-radius: 22px 22px 0 0;
-  padding: 12px 20px 32px;
-  max-height: 78vh;
+  /* Reserve space for the bottom-nav + iOS home indicator so the last
+     line of the description is never hidden behind them. */
+  padding: 12px 20px
+           calc(var(--nav-height, 64px) + var(--safe-bottom, 0px) + 20px);
+  max-height: 82vh;
   overflow-y: auto;
   box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5);
 }
