@@ -127,7 +127,6 @@ const BL_3 = along(BL, RAY_T[2]);
 
 // ── Palette ────────────────────────────────────────────────────────────
 const COLOR_LINE      = "rgba(200, 195, 180, 0.6)";   // thin grey lines
-const COLOR_LINE_ACC  = "rgba(232, 200, 98, 0.75)";   // accent for diamond outline
 const COLOR_CENTER    = "#e8c862";                    // gold — center
 const COLOR_BASE      = "#e8c862";                    // gold for base nodes
 const COLOR_KARMA     = "#e07b6a";                    // red — bottom/karma
