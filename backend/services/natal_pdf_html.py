@@ -321,7 +321,7 @@ def _natal_wheel_svg(
         x2, y2 = _polar(cx, cy, outer, start)
         parts.append(f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{GOLD_DIM}" stroke-width=".7" opacity=".7"/>')
         gx, gy = _polar(cx, cy, 286, _wheel_angle(i * 30 + 15, asc))
-        parts.append(f'<text x="{gx:.1f}" y="{gy:.1f}" text-anchor="middle" dominant-baseline="middle" fill="{GOLD}" font-size="26">{SIGN_SYMBOLS[sign]}</text>')
+        parts.append(f'<text x="{gx:.1f}" y="{gy:.1f}" text-anchor="middle" dominant-baseline="middle" fill="{GOLD}" font-size="30">{SIGN_SYMBOLS[sign]}</text>')
     ordered_houses = sorted([h for h in houses if int(h.get("number") or 0)], key=lambda h: int(h.get("number") or 0))
     for index, house in enumerate(ordered_houses):
         num = int(house.get("number") or 0)
@@ -334,7 +334,7 @@ def _natal_wheel_svg(
         next_house = ordered_houses[(index + 1) % len(ordered_houses)] if ordered_houses else house
         span = (_chart_abs_degree(next_house) - _chart_abs_degree(house)) % 360
         tx, ty = _polar(cx, cy, 210, _wheel_angle((_chart_abs_degree(house) + span / 2) % 360, asc))
-        parts.append(f'<text x="{tx:.1f}" y="{ty:.1f}" text-anchor="middle" dominant-baseline="middle" fill="{GOLD_DIM}" font-size="13">{_roman(num)}</text>')
+        parts.append(f'<text x="{tx:.1f}" y="{ty:.1f}" text-anchor="middle" dominant-baseline="middle" fill="{GOLD_DIM}" font-size="17">{_roman(num)}</text>')
     planet_points: dict[str, tuple[float, float]] = {}
     for name in PLANET_ORDER:
         planet = planets.get(name)
@@ -355,7 +355,7 @@ def _natal_wheel_svg(
         parts.append(f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{ASPECT_COLORS.get(atype, GOLD_DIM)}" stroke-width=".8" opacity=".55"{dash}/>')
     for name, (px, py) in planet_points.items():
         parts.append(f'<circle cx="{px:.1f}" cy="{py:.1f}" r="15" fill="{BG}" stroke="{GOLD_DIM}" stroke-width="1"/>')
-        parts.append(f'<text x="{px:.1f}" y="{py + 1:.1f}" text-anchor="middle" dominant-baseline="middle" fill="{PLANET_COLORS.get(name, GOLD)}" font-size="22">{PLANET_SYMBOLS.get(name, "")}</text>')
+        parts.append(f'<text x="{px:.1f}" y="{py + 1:.1f}" text-anchor="middle" dominant-baseline="middle" fill="{PLANET_COLORS.get(name, GOLD)}" font-size="26">{PLANET_SYMBOLS.get(name, "")}</text>')
     parts.append("</svg>")
     return "".join(parts)
 
@@ -394,98 +394,98 @@ html, body {{ margin: 0; padding: 0; background: {BG}; color: {TEXT}; }}
 body {{ font-family: "DejaVu Sans", Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
 .page {{ position: relative; display: block; width: 210mm; height: 297mm; overflow: hidden; padding: 22mm 18mm 17mm; background: {BG}; break-after: page; page-break-after: always; break-inside: avoid; }}
 .cover {{ display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 30mm; }}
-.mark {{ color: {GOLD}; font-size: 30px; margin-bottom: 34mm; line-height: 1; }}
+.mark {{ color: {GOLD}; font-size: 32px; margin-bottom: 34mm; line-height: 1; }}
 h1, h2, h3, .serif {{ font-family: "DejaVu Serif", Georgia, serif; font-weight: 400; }}
-h1 {{ margin: 0; color: {GOLD}; font-size: 32px; letter-spacing: 7px; text-transform: uppercase; }}
-.cover-subtitle {{ margin-top: 12mm; font: italic 13px "DejaVu Serif", Georgia, serif; color: {TEXT}; opacity: .92; }}
-.cover-name {{ margin-top: 36mm; font: italic 18px "DejaVu Serif", Georgia, serif; }}
-.cover-meta {{ margin-top: 10mm; color: {TEXT_DIM}; font-size: 10.5px; line-height: 1.8; }}
+h1 {{ margin: 0; color: {GOLD}; font-size: 34px; letter-spacing: 7px; text-transform: uppercase; }}
+.cover-subtitle {{ margin-top: 12mm; font: italic 16px "DejaVu Serif", Georgia, serif; color: {TEXT}; opacity: .92; }}
+.cover-name {{ margin-top: 36mm; font: italic 21px "DejaVu Serif", Georgia, serif; }}
+.cover-meta {{ margin-top: 10mm; color: {TEXT_DIM}; font-size: 13px; line-height: 1.72; }}
 .cover-points {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 19mm; margin-top: 6mm; width: 128mm; }}
 .cover-point .glyph {{ color: {GOLD}; font-size: 28px; line-height: 1; }}
-.cover-point .label {{ margin-top: 7mm; color: {TEXT_DIM}; font-size: 8px; letter-spacing: 3px; text-transform: uppercase; }}
-.cover-point .value {{ margin-top: 6mm; font: 12.5px "DejaVu Serif", Georgia, serif; }}
+.cover-point .label {{ margin-top: 7mm; color: {TEXT_DIM}; font-size: 10.5px; letter-spacing: 3px; text-transform: uppercase; }}
+.cover-point .value {{ margin-top: 6mm; font: 15px "DejaVu Serif", Georgia, serif; }}
 .cover-line {{ width: 32mm; height: 1px; background: {GOLD_DIM}; margin-top: 20mm; }}
-.cover-foot {{ margin-top: 8mm; color: #776f8c; font-size: 7px; letter-spacing: 3px; }}
+.cover-foot {{ margin-top: 8mm; color: #776f8c; font-size: 10px; letter-spacing: 3px; }}
 .section-head {{ display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8mm; }}
-h2 {{ margin: 0; color: {GOLD}; font-size: 22px; letter-spacing: 4px; }}
+h2 {{ margin: 0; color: {GOLD}; font-size: 24px; letter-spacing: 4px; }}
 .rule {{ height: 1px; width: 170mm; background: rgba(214,184,90,.2); margin: 6mm 0 5mm; }}
-.section-head p {{ margin: 0; color: {TEXT_DIM}; font: italic 9px "DejaVu Serif", Georgia, serif; }}
-.section-aside {{ color: #807894; font-size: 9.5px; margin-top: 5mm; }}
-footer {{ position: absolute; bottom: 7mm; left: 0; right: 0; text-align: center; color: #6d6680; font-size: 7px; letter-spacing: 3px; }}
+.section-head p {{ margin: 0; color: {TEXT_DIM}; font: italic 12px "DejaVu Serif", Georgia, serif; }}
+.section-aside {{ color: #807894; font-size: 12px; margin-top: 5mm; }}
+footer {{ position: absolute; bottom: 7mm; left: 0; right: 0; text-align: center; color: #6d6680; font-size: 10px; letter-spacing: 3px; }}
 footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .toc-list {{ margin-top: 22mm; }}
 .toc-row {{ display: grid; grid-template-columns: 12mm 1fr 14mm; align-items: center; min-height: 16mm; border-bottom: 1px solid rgba(255,255,255,.025); }}
-.toc-roman {{ color: {GOLD}; font: 12.5px "DejaVu Serif", Georgia, serif; }}
-.toc-title {{ font: 11.5px "DejaVu Serif", Georgia, serif; }}
-.toc-page {{ color: {TEXT_DIM}; text-align: right; font-size: 10.5px; }}
+.toc-roman {{ color: {GOLD}; font: 15px "DejaVu Serif", Georgia, serif; }}
+.toc-title {{ font: 14px "DejaVu Serif", Georgia, serif; }}
+.toc-page {{ color: {TEXT_DIM}; text-align: right; font-size: 13px; }}
 .cards-3 {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm; }}
 .grid-2 {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 4.5mm; }}
 .card {{ background: {PANEL}; border: 1px solid {BORDER}; border-radius: 8px; padding: 7mm 6mm; min-height: 39mm; }}
-.card h3 {{ margin: 0; color: {TEXT}; font-size: 12.4px; line-height: 1.28; }}
-.card p {{ margin: 4mm 0 0; font-size: 9px; line-height: 1.52; color: {TEXT}; }}
+.card h3 {{ margin: 0; color: {TEXT}; font-size: 15px; line-height: 1.25; }}
+.card p {{ margin: 4mm 0 0; font-size: 11.4px; line-height: 1.43; color: {TEXT}; }}
 .card-icon {{ color: {GOLD}; font-size: 25px; margin-bottom: 4mm; }}
-.card-meta {{ color: {TEXT_DIM}; font-size: 7.8px; letter-spacing: .8px; text-transform: uppercase; margin-top: 1.5mm; }}
+.card-meta {{ color: {TEXT_DIM}; font-size: 10px; letter-spacing: .8px; text-transform: uppercase; margin-top: 1.5mm; }}
 .mini-rule {{ width: 14mm; height: 1px; margin-top: 4mm; background: {GOLD_DIM}; }}
 .key-card {{ text-align: center; min-height: 86mm; padding: 8mm 6mm 7mm; }}
-.key-card .zodiac-dot {{ margin: 5mm auto 3mm; width: 7mm; height: 7mm; border-radius: 50%; display: grid; place-items: center; color: white; font-size: 12px; }}
-.key-card .quote {{ margin-top: 5mm; color: {TEXT_DIM}; font: italic 8px "DejaVu Serif", Georgia, serif; }}
+.key-card .zodiac-dot {{ margin: 5mm auto 3mm; width: 7mm; height: 7mm; border-radius: 50%; display: grid; place-items: center; color: white; font-size: 15px; }}
+.key-card .quote {{ margin-top: 5mm; color: {TEXT_DIM}; font: italic 11px "DejaVu Serif", Georgia, serif; }}
 .key-card p {{ text-align: left; }}
 .dominant-card {{ margin-top: 8mm; border-left: 3px solid {GOLD}; min-height: 35mm; display: grid; grid-template-columns: 12mm 1fr; gap: 5mm; align-items: center; }}
-.dominant-symbol {{ font-size: 24px; color: var(--element-color); }}
-.dominant-card h3 {{ color: {GOLD}; font-size: 14px; }}
+.dominant-symbol {{ font-size: 27px; color: var(--element-color); }}
+.dominant-card h3 {{ color: {GOLD}; font-size: 17px; }}
 .wheel-wrap {{ width: 164mm; height: 164mm; margin: 9mm auto 7mm; background: {WHEEL_BG}; }}
 .wheel-svg {{ width: 100%; height: 100%; display: block; }}
-.legend {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 3mm 24mm; width: 154mm; margin: 0 auto; color: {TEXT_DIM}; font-size: 8.5px; }}
+.legend {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 3mm 24mm; width: 154mm; margin: 0 auto; color: {TEXT_DIM}; font-size: 11.5px; }}
 .legend-line {{ display: inline-block; width: 13mm; height: 1px; margin-right: 4mm; vertical-align: middle; background: currentColor; }}
 .elements-layout {{ display: grid; grid-template-columns: 78mm 1fr; gap: 9mm; align-items: center; margin-top: 10mm; }}
 .donut {{ width: 72mm; height: 72mm; transform: rotate(-90deg); }}
 .donut text {{ transform: rotate(90deg); transform-origin: 110px 110px; font-family: "DejaVu Serif", Georgia, serif; }}
 .donut-seg {{ fill: none; stroke-width: 38; transform: rotate(-90deg); transform-origin: 110px 110px; }}
-.donut-kicker {{ fill: #73b568; font-size: 8px; letter-spacing: 2px; }}
-.donut-label {{ fill: {GOLD}; font-size: 14px; }}
+.donut-kicker {{ fill: #73b568; font-size: 11px; letter-spacing: 2px; }}
+.donut-label {{ fill: {GOLD}; font-size: 17px; }}
 .element-list {{ display: grid; gap: 3mm; }}
-.element-row {{ display: grid; grid-template-columns: 9mm 1fr 12mm; align-items: center; background: {PANEL}; border: 1px solid {BORDER}; border-radius: 7px; padding: 3.5mm 4mm; font: 11px "DejaVu Serif", Georgia, serif; }}
+.element-row {{ display: grid; grid-template-columns: 9mm 1fr 12mm; align-items: center; background: {PANEL}; border: 1px solid {BORDER}; border-radius: 7px; padding: 3.5mm 4mm; font: 14px "DejaVu Serif", Georgia, serif; }}
 .swatch {{ width: 6mm; height: 6mm; border-radius: 2px; background: var(--element-color); }}
 .percent {{ color: {GOLD}; text-align: right; font-family: "DejaVu Sans"; font-weight: 700; }}
 .element-cards {{ margin-top: 12mm; }}
 .element-card h3 {{ color: var(--element-color); }}
 .tags {{ margin-top: 8mm; display: flex; gap: 3mm; flex-wrap: wrap; }}
-.tag {{ border: 1px solid rgba(224,91,48,.35); color: #d99072; background: rgba(224,91,48,.13); border-radius: 999px; padding: 1.5mm 5mm; font-size: 8.5px; }}
+.tag {{ border: 1px solid rgba(224,91,48,.35); color: #d99072; background: rgba(224,91,48,.13); border-radius: 999px; padding: 1.5mm 5mm; font-size: 11px; }}
 .planet-card {{ min-height: 53mm; }}
 .planet-card .card-icon {{ font-size: 27px; color: var(--planet-color); }}
-.retro {{ display: inline-block; margin-left: 3mm; padding: 1mm 3mm; border: 1px solid {GOLD_DIM}; border-radius: 999px; color: {GOLD}; font-size: 8px; letter-spacing: 1px; }}
+.retro {{ display: inline-block; margin-left: 3mm; padding: 1mm 3mm; border: 1px solid {GOLD_DIM}; border-radius: 999px; color: {GOLD}; font-size: 11px; letter-spacing: 1px; }}
 .houses-grid {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 3.4mm 4.5mm; }}
 .house-card {{ min-height: 34mm; padding: 5mm; }}
 .house-card.angle {{ border-left: 3px solid {GOLD}; background: {PANEL_DARK}; }}
 .house-top {{ display: flex; justify-content: space-between; align-items: baseline; gap: 4mm; }}
-.house-num {{ color: {GOLD}; font: 14px "DejaVu Serif", Georgia, serif; margin-right: 2mm; }}
-.house-sign {{ font: 10.5px "DejaVu Serif", Georgia, serif; }}
-.house-degree {{ color: {TEXT_DIM}; font-size: 8px; }}
-.house-label {{ margin-top: 2mm; color: {TEXT_DIM}; font-size: 7.8px; letter-spacing: 1.4px; text-transform: uppercase; }}
-.house-card p {{ margin-top: 3mm; font-size: 8.2px; line-height: 1.42; }}
-.metrics {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 4mm; margin: 9mm 0 8mm; }}
-.metric {{ text-align: center; background: {PANEL}; border: 1px solid {BORDER}; border-radius: 7px; padding: 4.5mm 0 4mm; }}
-.metric strong {{ color: var(--metric-color, {GOLD}); display: block; font: 18px "DejaVu Serif", Georgia, serif; }}
-.metric span {{ color: {TEXT_DIM}; font-size: 7px; letter-spacing: 1.4px; text-transform: uppercase; }}
-.aspect-group {{ border-left: 3px solid var(--aspect-color); padding-left: 5mm; margin-top: 6mm; break-inside: avoid; }}
-.aspect-group h3 {{ color: var(--aspect-color); font-size: 12px; letter-spacing: 1.4px; text-transform: uppercase; margin: 0 0 3.5mm; }}
-.aspect-group h3 em {{ color: {TEXT_DIM}; text-transform: none; font-size: 8px; letter-spacing: 0; margin-left: 3mm; }}
-.aspect-row {{ margin-bottom: 4.5mm; }}
-.aspect-title {{ display: flex; justify-content: space-between; gap: 4mm; color: {TEXT}; font-size: 9.1px; }}
+.house-num {{ color: {GOLD}; font: 15.5px "DejaVu Serif", Georgia, serif; margin-right: 2mm; }}
+.house-sign {{ font: 12px "DejaVu Serif", Georgia, serif; }}
+.house-degree {{ color: {TEXT_DIM}; font-size: 11px; }}
+.house-label {{ margin-top: 2mm; color: {TEXT_DIM}; font-size: 10.5px; letter-spacing: 1.4px; text-transform: uppercase; }}
+.house-card p {{ margin-top: 3mm; font-size: 11px; line-height: 1.34; }}
+.metrics {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 4mm; margin: 8mm 0 7mm; }}
+.metric {{ text-align: center; background: {PANEL}; border: 1px solid {BORDER}; border-radius: 7px; padding: 4mm 0 3.5mm; }}
+.metric strong {{ color: var(--metric-color, {GOLD}); display: block; font: 22px "DejaVu Serif", Georgia, serif; }}
+.metric span {{ color: {TEXT_DIM}; font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; }}
+.aspect-group {{ border-left: 3px solid var(--aspect-color); padding-left: 5mm; margin-top: 5.5mm; break-inside: avoid; }}
+.aspect-group h3 {{ color: var(--aspect-color); font-size: 16.5px; letter-spacing: 1.2px; text-transform: uppercase; margin: 0 0 3mm; }}
+.aspect-group h3 em {{ color: {TEXT_DIM}; text-transform: none; font-size: 12.5px; letter-spacing: 0; margin-left: 3mm; }}
+.aspect-row {{ margin-bottom: 5mm; }}
+.aspect-title {{ display: flex; justify-content: space-between; gap: 4mm; color: {TEXT}; font-size: 13.5px; line-height: 1.2; }}
 .aspect-title span:first-child {{ min-width: 0; }}
 .orb {{ color: {TEXT_DIM}; }}
-.aspect-row p {{ margin: 2mm 0 0; color: {TEXT_DIM}; line-height: 1.42; font-size: 8.2px; }}
+.aspect-row p {{ margin: 2mm 0 0; color: {TEXT_DIM}; line-height: 1.32; font-size: 12.2px; }}
 .reading {{ padding-right: 4mm; }}
-.reading-quote {{ text-align: center; color: {TEXT_DIM}; font: italic 9.5px "DejaVu Serif", Georgia, serif; margin: 8mm 0 9mm; }}
-.reading h3 {{ color: {GOLD}; font-size: 13px; letter-spacing: 1.5px; margin: 0 0 3mm; }}
-.reading p {{ font-size: 9.2px; line-height: 1.6; margin: 0 0 7mm; }}
+.reading-quote {{ text-align: center; color: {TEXT_DIM}; font: italic 13px "DejaVu Serif", Georgia, serif; margin: 8mm 0 9mm; }}
+.reading h3 {{ color: {GOLD}; font-size: 17px; letter-spacing: 1.5px; margin: 0 0 3mm; }}
+.reading p {{ font-size: 13px; line-height: 1.48; margin: 0 0 7mm; }}
 .final {{ display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 76mm; }}
 .final .mark {{ margin-bottom: 20mm; }}
-.final-copy {{ font: italic 14px/1.7 "DejaVu Serif", Georgia, serif; width: 92mm; }}
+.final-copy {{ font: italic 16px/1.65 "DejaVu Serif", Georgia, serif; width: 92mm; }}
 .glossary {{ margin-top: 24mm; width: 130mm; text-align: left; display: grid; grid-template-columns: repeat(2, 1fr); gap: 6mm 18mm; }}
-.glossary-title {{ color: {GOLD}; font: 12px "DejaVu Serif", Georgia, serif; letter-spacing: 2px; margin-top: 20mm; }}
-.glossary dt {{ color: {GOLD}; font: 9px "DejaVu Serif", Georgia, serif; margin-bottom: 2mm; }}
-.glossary dd {{ margin: 0; color: {TEXT_DIM}; font-size: 8.5px; line-height: 1.35; }}
+.glossary-title {{ color: {GOLD}; font: 15px "DejaVu Serif", Georgia, serif; letter-spacing: 2px; margin-top: 20mm; }}
+.glossary dt {{ color: {GOLD}; font: 12px "DejaVu Serif", Georgia, serif; margin-bottom: 2mm; }}
+.glossary dd {{ margin: 0; color: {TEXT_DIM}; font-size: 11px; line-height: 1.28; }}
 """
 
 
@@ -666,7 +666,7 @@ def _aspect_pages(aspects: list[dict[str, Any]], descriptions: dict[str, Any] | 
     line_count = 0
     for group in groups:
         weight = 1 + len(group[1])
-        bucket = 0 if line_count + weight <= 11 else 1
+        bucket = 0 if line_count + weight <= 8 else 1
         chunks[bucket].append(group)
         if bucket == 0:
             line_count += weight
@@ -681,7 +681,7 @@ def _aspect_pages(aspects: list[dict[str, Any]], descriptions: dict[str, Any] | 
             for aspect in group_items:
                 p1 = _planet_key(aspect.get("p1"))
                 p2 = _planet_key(aspect.get("p2"))
-                desc = _description(aspect_desc.get((p1, p2, atype)), _aspect_fallback(aspect), words=18)
+                desc = _description(aspect_desc.get((p1, p2, atype)), _aspect_fallback(aspect), words=14)
                 body += (
                     f'<div class="aspect-row"><div class="aspect-title"><span>{PLANET_SYMBOLS.get(p1, "")} {_e(PLANET_RU.get(p1, p1))} '
                     f'{ASPECT_SYMBOLS.get(atype, "")} {PLANET_SYMBOLS.get(p2, "")} {_e(PLANET_RU.get(p2, p2))}</span>'
@@ -727,7 +727,7 @@ def _reading_pages(reading: str | None, sun_sign: str, moon_sign: str, asc_sign:
     page_chunks: list[list[tuple[str, str]]] = []
     current: list[tuple[str, str]] = []
     current_words = 0
-    limits = [300, 360]
+    limits = [150, 190]
     for title, paragraph in expanded_blocks:
         block_words = _word_count(paragraph) + 10
         limit = limits[min(len(page_chunks), len(limits) - 1)]
