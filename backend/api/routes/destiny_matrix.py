@@ -47,13 +47,18 @@ async def _has_full_access(db: AsyncSession, user_id: int) -> bool:
 
 
 def _is_stale_positions(positions: dict) -> bool:
-    """Detect old-format readings that need recompute. Two staleness markers:
+    """Detect old-format readings that need recompute. Staleness markers:
       (a) pre-ray-dots: channels.talents[0] equals personality.month (старый
           формат канала [corner, mid, end])
-      (b) отсутствует блок `specials` или `money_diagonal` (добавлены в
-          варианте C для точек комфорта/cross/денежной диагонали)
+      (b) отсутствует блок `specials`, `money_diagonal`, `family_lines`
+          (родовые линии добавлены вместе с новой формулой comfort)
+      (c) `specials.love_diag_1` отсутствует — введён вместе с family_lines
     """
     if "specials" not in positions or "money_diagonal" not in positions:
+        return True
+    if "family_lines" not in positions:
+        return True
+    if "love_diag_1" not in positions.get("specials", {}):
         return True
     try:
         ch = positions["channels"]

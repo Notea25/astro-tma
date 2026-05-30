@@ -135,7 +135,19 @@ class SpecialsBlock(BaseModel):
     money: int        # Y+C (mid правого луча)
     love: int         # B+C (mid нижнего луча)
     cross: int        # reduce(love + money)
-    comfort: list[int]  # [vishuddha, anahata] активной горизонтальной линии
+    comfort: list[int]  # [comfort_a, comfort_b] = [2B+2C, 2B+C]
+    love_diag_1: int | None = None  # reduce(cross + love); зеркало money_diag_1
+
+
+class FamilyLinesBlock(BaseModel):
+    """Линии рода: 4 полудиагонали, каждая по 2 точки [near_center, near_corner].
+
+    Мужская линия — TL ↔ центр ↔ BR (синяя стрелка).
+    Женская линия — TR ↔ центр ↔ BL (красная стрелка)."""
+    male_upper: list[int]    # к TL углу прямого квадрата
+    male_lower: list[int]    # к BR углу
+    female_upper: list[int]  # к TR углу
+    female_lower: list[int]  # к BL углу
 
 
 class DestinyMatrixPositions(BaseModel):
@@ -154,6 +166,7 @@ class DestinyMatrixPositions(BaseModel):
     entries: EntriesBlock | None = None
     specials: SpecialsBlock | None = None
     money_diagonal: list[int] | None = None
+    family_lines: FamilyLinesBlock | None = None
 
 
 # ── Ответы эндпоинтов ───────────────────────────────────────────────────────

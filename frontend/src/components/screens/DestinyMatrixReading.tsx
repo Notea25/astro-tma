@@ -56,6 +56,17 @@ const NODE_TITLES_RU: Record<DestinyNodeId, string> = {
   cross_p:   "Точка пересечения денег и отношений",
   // Money diagonal — внешняя точка (cross + money)
   money_diag_1: "Денежная диагональ — сила потока (cross + деньги)",
+  // Love diagonal — зеркало money_diag_1, под сердечком (cross + love)
+  love_diag_1: "Любовная диагональ — сила потока (cross + любовь)",
+  // Family lines — мужская TL↔BR (синяя), женская TR↔BL (красная)
+  male_upper_nc: "Линия отца — у центра (TL сторона)",
+  male_upper_nv: "Линия отца — у угла (TL сторона)",
+  male_lower_nc: "Линия отца — у центра (BR сторона)",
+  male_lower_nv: "Линия отца — у угла (BR сторона)",
+  female_upper_nc: "Линия матери — у центра (TR сторона)",
+  female_upper_nv: "Линия матери — у угла (TR сторона)",
+  female_lower_nc: "Линия матери — у центра (BL сторона)",
+  female_lower_nv: "Линия матери — у угла (BL сторона)",
 };
 
 // Which `arcana_meanings.context` row to pull for the bottom-sheet copy
@@ -93,6 +104,15 @@ const NODE_CONTEXT: Record<DestinyNodeId, string> = {
   comfort_b: "personality",
   cross_p:   "finance",
   money_diag_1: "finance",
+  love_diag_1: "relationships",
+  male_upper_nc: "ancestral",
+  male_upper_nv: "ancestral",
+  male_lower_nc: "ancestral",
+  male_lower_nv: "ancestral",
+  female_upper_nc: "ancestral",
+  female_upper_nv: "ancestral",
+  female_lower_nc: "ancestral",
+  female_lower_nv: "ancestral",
 };
 
 interface ActiveTap {

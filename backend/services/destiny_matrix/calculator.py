@@ -323,19 +323,34 @@ def _health_map(sky: ChakraSet, earth: ChakraSet) -> dict[str, Any]:
     }
 
 
-def _comfort_pair(d: int, m_: int, c: int) -> list[int]:
-    """Две точки «зоны комфорта» справа от центра на горизонтальной оси.
+def _comfort_pair(b: int, c: int) -> list[int]:
+    """Две точки «зоны комфорта» справа от центра.
 
-    Возвращает `[near_center_val, near_money_val]` — порядок такой, в каком
-    matritsa-sudbi.ru их рисует от центра наружу. Правило:
-      X = M если M == C иначе D
-      если X == M (Sky-линия):  near_center = X+C,   near_money = X+2C
-      иначе (Earth-линия):       near_center = X+2C,  near_money = X+C
-    Проверено на 30.04.1997 (X=D → 9, 6), 30.05.1997 (X=M → 10, 15),
-    01.09.1993 (X=D → 21, 11)."""
-    if m_ == c:
-        return [reduce(m_ + c), reduce(m_ + 2 * c)]
-    return [reduce(d + 2 * c), reduce(d + c)]
+    Возвращает `[comfort_a, comfort_b]`, где:
+      comfort_a = reduce(2B + 2C) — ближе к центру
+      comfort_b = reduce(2B + C)  — дальше (ближе к money point)
+
+    Валидировано против эталона matritsa-sudbi.ru на 3 датах:
+      15.12.2001 (B=3, C=6)  → comfort_a=18, comfort_b=12 ✓
+      13.01.1988 (B=22, C=8) → comfort_a=15, comfort_b=7  ✓
+      17.08.2000 (B=9, C=9)  → comfort_a=18, comfort_b=9  ✓
+    Все 36 полей OctagramData сходятся 1-в-1."""
+    comfort_b_val = reduce(2 * b + c)
+    comfort_a_val = reduce(comfort_b_val + c)
+    return [comfort_a_val, comfort_b_val]
+
+
+def _half_diag(corner: int, c: int) -> list[int]:
+    """Полудиагональ от центра к углу прямого квадрата (TL/TR/BR/BL).
+
+    Возвращает `[near_center, near_corner]` — 2 точки на цветной стрелке:
+      near_center = reduce(corner + C)            (= mid точки луча)
+      near_corner = reduce(corner + near_center)  (= near_corner точки луча)
+    Эти значения совпадают с channels[ancestral_*][0] и [1] —
+    но визуально рисуются на стрелках линий рода, а не на диагональных лучах."""
+    near_center = reduce(corner + c)
+    near_corner = reduce(corner + near_center)
+    return [near_center, near_corner]
 
 
 def to_dict(m: DestinyMatrix) -> dict[str, Any]:
@@ -349,7 +364,15 @@ def to_dict(m: DestinyMatrix) -> dict[str, Any]:
     money = reduce(m.year + m.center)     # = mid правого луча («деньги»)
     love = reduce(m.bottom + m.center)    # = mid нижнего луча («любовь»)
     cross = reduce(love + money)          # = reduce((B+C) + (Y+C))
-    comfort = _comfort_pair(m.day, m.month, m.center)
+    comfort = _comfort_pair(m.bottom, m.center)
+    money_diag_1 = reduce(cross + money)
+    love_diag_1 = reduce(cross + love)
+    # Линии рода — по 2 точки на полудиагонали, на цветных стрелках
+    # (синяя = TL↔BR мужская, красная = TR↔BL женская).
+    male_upper = _half_diag(m.anc_top_left, m.center)
+    male_lower = _half_diag(m.anc_bottom_right, m.center)
+    female_upper = _half_diag(m.anc_top_right, m.center)
+    female_lower = _half_diag(m.anc_bottom_left, m.center)
 
     return {
         "personality": {
@@ -402,19 +425,29 @@ def to_dict(m: DestinyMatrix) -> dict[str, Any]:
             "ancestral_mother_talents": ray_dots(m.anc_top_right, m.center),
             "ancestral_mother_karma": ray_dots(m.anc_bottom_left, m.center),
         },
-        # Семантические точки внутри октаграммы (новое). talent/character/money/love
-        # это mid-ы лучей и дублируют channels[*][1], но удобно иметь явные ключи.
+        # Семантические точки внутри октаграммы. talent/character/money/love
+        # дублируют channels[*][1] (mid-ы лучей), но удобно иметь явные ключи.
+        # love_diag_1 = «любовная» диагональ (зеркало money_diag_1).
         "specials": {
             "talent": talent,
             "character": character,
             "money": money,
             "love": love,
             "cross": cross,
-            "comfort": comfort,  # [vishuddha, anahata] — порядок по формуле
+            "comfort": comfort,     # [comfort_a, comfort_b] = [2B+2C, 2B+C]
+            "love_diag_1": love_diag_1,
         },
         # Денежная пунктирная диагональ от центра в сторону BR угла.
         # 3 точки: [cross+money, cross, money].
-        "money_diagonal": [reduce(cross + money), cross, money],
+        "money_diagonal": [money_diag_1, cross, money],
+        # Линии рода — 4 полудиагонали, каждая по [near_center, near_corner]:
+        # мужская TL↔BR (синяя), женская TR↔BL (красная).
+        "family_lines": {
+            "male_upper": male_upper,
+            "male_lower": male_lower,
+            "female_upper": female_upper,
+            "female_lower": female_lower,
+        },
         "chakras": {
             "sky": sky,
             "earth": earth,

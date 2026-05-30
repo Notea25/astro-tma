@@ -971,7 +971,15 @@ export interface DestinySpecials {
   money: number;
   love: number;
   cross: number;
-  comfort: number[]; // [vishuddha, anahata] = (X+C, X+2C)
+  comfort: number[]; // [comfort_a, comfort_b] = [reduce(2B+2C), reduce(2B+C)]
+  love_diag_1?: number; // reduce(cross + love) — зеркало money_diag_1
+}
+
+export interface DestinyFamilyLines {
+  male_upper: number[];   // [near_center, near_corner] к TL
+  male_lower: number[];   // [near_center, near_corner] к BR
+  female_upper: number[]; // [near_center, near_corner] к TR
+  female_lower: number[]; // [near_center, near_corner] к BL
 }
 
 export interface DestinyMatrixPositions {
@@ -989,6 +997,7 @@ export interface DestinyMatrixPositions {
   entries?: DestinyEntries;
   specials?: DestinySpecials;
   money_diagonal?: number[];
+  family_lines?: DestinyFamilyLines;
 }
 
 export interface DestinyMatrixResponse {
