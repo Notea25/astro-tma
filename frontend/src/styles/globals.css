@@ -10123,3 +10123,158 @@ body::before {
   font-family: "Playfair Display", serif;
   font-weight: 600;
 }
+
+/* ── Destiny Matrix info screen — extended explanation blocks ───── */
+
+.destiny-info__spheres {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.destiny-info__sphere {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(232, 200, 98, 0.18);
+  background: rgba(14, 11, 32, 0.55);
+}
+.destiny-info__sphere-icon {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(232, 200, 98, 0.12);
+  color: var(--gold);
+  font-size: 0.95rem;
+  margin-top: 2px;
+}
+.destiny-info__sphere-title {
+  font-family: "Playfair Display", serif;
+  color: var(--gold);
+  font-size: 0.98rem;
+  margin-bottom: 2px;
+}
+.destiny-info__sphere-text {
+  margin: 0;
+  color: var(--text);
+  opacity: 0.82;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.destiny-info__steps {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.destiny-info__step {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.destiny-info__step-num {
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(232, 200, 98, 0.12);
+  border: 1px solid rgba(232, 200, 98, 0.45);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Playfair Display", serif;
+  color: var(--gold);
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.destiny-info__step-title {
+  font-family: "Playfair Display", serif;
+  color: var(--gold);
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+.destiny-info__step-text {
+  margin: 0;
+  color: var(--text);
+  opacity: 0.85;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.destiny-info__tiers {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.destiny-info__tier {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.destiny-info__tier li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--text);
+  opacity: 0.92;
+}
+.destiny-info__tier-mark {
+  flex: 0 0 18px;
+  text-align: center;
+  color: var(--gold);
+  margin-top: 1px;
+}
+.destiny-info__tier--free .destiny-info__tier-mark { color: #8bc89b; }
+.destiny-info__tier--prem .destiny-info__tier-mark { color: var(--gold); }
+
+.destiny-info__tier-prem-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+.destiny-info__prem-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f3d989 0%, #c79a42 100%);
+  color: #0a0906;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.destiny-info__disclaimer {
+  margin: 18px 4px 0;
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: var(--text-mute);
+  opacity: 0.75;
+  text-align: center;
+}
+
+.destiny-info__cta-hint {
+  margin: 0 0 12px;
+  font-size: 0.82rem;
+  color: var(--text-mute);
+  text-align: center;
+  line-height: 1.45;
+}
