@@ -527,7 +527,7 @@ export function DestinyOctagram({
       </text>
 
       {/* Heart icon — внутри круга, справа-снизу от центра */}
-      <g transform={`translate(${CX + 22} ${CY + 35}) scale(0.5)`}>
+      <g transform={`translate(${CX + 22} ${CY + 60}) scale(0.5)`}>
         <path
           d="M 0 6 C -10 -4 -22 -4 -22 6 C -22 18 0 32 0 32 C 0 32 22 18 22 6 C 22 -4 10 -4 0 6 Z"
           fill="#e84545" />
