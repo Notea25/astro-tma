@@ -445,16 +445,21 @@ interface Props {
 }
 
 // Iterative render mode while we align with the matritsa-sudbi.ru template:
-//   "none"  — нет точек, только шаблон
-//   "main"  — только 9 больших узлов (D, M, Y, B, C + 4 угла квадрата)
-//   "rays1" — main + первая точка каждого луча (8 шт., ближе всего к углу)
-//   "all"   — все точки (включая лучи, comfort, cross, money_diag)
-const RENDER_MODE: "none" | "main" | "rays1" | "all" = "rays1";
+//   "none"   — нет точек, только шаблон
+//   "main"   — только 9 больших узлов (D, M, Y, B, C + 4 угла квадрата)
+//   "rays1"  — main + первая точка каждого луча (8 шт.)
+//   "rays12" — main + первая и вторая точки каждого луча (16 шт.)
+//   "all"    — все точки (включая lazy comfort, cross, money_diag)
+const RENDER_MODE: "none" | "main" | "rays1" | "rays12" | "all" = "rays12";
 
-// Node IDs первых точек каждого из 8 лучей.
+// Node IDs первых и вторых точек каждого из 8 лучей.
 const RAY_1_IDS: ReadonlySet<DestinyNodeId> = new Set<DestinyNodeId>([
   "month_1", "day_1", "year_1", "bottom_1",
   "aft_1", "amt_1", "afk_1", "amk_1",
+]);
+const RAY_2_IDS: ReadonlySet<DestinyNodeId> = new Set<DestinyNodeId>([
+  "month_2", "day_2", "year_2", "bottom_2",
+  "aft_2", "amt_2", "afk_2", "amk_2",
 ]);
 
 export function DestinyOctagram({
@@ -468,6 +473,12 @@ export function DestinyOctagram({
     if (RENDER_MODE === "rays1") {
       return allNodes.filter((n) =>
         n.kind === "main-lg" || n.kind === "main-md" || RAY_1_IDS.has(n.nodeId),
+      );
+    }
+    if (RENDER_MODE === "rays12") {
+      return allNodes.filter((n) =>
+        n.kind === "main-lg" || n.kind === "main-md" ||
+        RAY_1_IDS.has(n.nodeId) || RAY_2_IDS.has(n.nodeId),
       );
     }
     return allNodes;
