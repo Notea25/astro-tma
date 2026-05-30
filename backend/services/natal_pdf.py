@@ -1009,8 +1009,8 @@ def generate_natal_pdf(
             c.drawRightString(w - 62, y, f"{_roman(int(planet.get('house') or 0))} дом · {_deg_str(sign_degree)}")
             text = _compact_description(planet_desc.get(name), _planet_fallback(name, planet), words=34)
             c.setFillColor(TEXT)
-            _set_font(c, False, 10)
-            _draw_wrapped_static(c, text, 62, y - 46, 78, 12, 3)
+            _set_font(c, False, 10.3)
+            _draw_wrapped_static(c, text, 62, y - 46, 76, 12, 3)
             y -= 108
         finish_page()
 
@@ -1039,8 +1039,8 @@ def generate_natal_pdf(
         c.drawString(house_x, y - 30, HOUSE_LABELS.get(num, f"ДОМ {num}"))
         text = _compact_description(house_desc.get(str(num)), _house_fallback(house), words=24)
         c.setFillColor(TEXT_DIM)
-        _set_font(c, False, 8)
-        _draw_wrapped_static(c, text, house_x, y - 45, 38, 10, 4)
+        _set_font(c, False, 8.3)
+        _draw_wrapped_static(c, text, house_x, y - 45, 37, 10, 4)
         y -= 105
     finish_page()
 
@@ -1084,9 +1084,9 @@ def generate_natal_pdf(
                 f"{ASPECT_SYMBOLS.get(aspect_type, '')} "
                 f"{PLANET_SYMBOLS.get(p2_key, '')} {PLANET_RU.get(p2_key, aspect.get('p2', ''))}"
             )
-            title_lines = _lines_for_width(c, title, card_w - 82, bold=True, size=8.5, max_lines=2)
+            title_lines = _lines_for_width(c, title, card_w - 82, bold=True, size=8.8, max_lines=2)
             desc = _compact_description(aspect_desc.get((p1_key, p2_key, aspect_type)), _aspect_fallback(aspect), words=22)
-            desc_lines = _lines_for_width(c, desc, card_w - 34, bold=False, size=7, max_lines=3)
+            desc_lines = _lines_for_width(c, desc, card_w - 34, bold=False, size=7.3, max_lines=3)
             card_h = 26 + 11 * len(title_lines) + 10 * len(desc_lines)
             if y - card_h < 66:
                 finish_page()
@@ -1097,7 +1097,7 @@ def generate_natal_pdf(
             c.setLineWidth(0.35)
             c.roundRect(card_x, y - card_h, card_w, card_h, 8, stroke=1, fill=0)
             c.setFillColor(TEXT)
-            _set_font(c, True, 8.5)
+            _set_font(c, True, 8.8)
             text_y = y - 13
             for line in title_lines:
                 c.drawString(card_x + 16, text_y, line)
@@ -1105,7 +1105,7 @@ def generate_natal_pdf(
             c.setFillColor(TEXT_DIM)
             _set_font(c, False, 8)
             c.drawRightString(card_x + card_w - 14, y - 13, f"орб {orb:.1f}°")
-            _set_font(c, False, 7)
+            _set_font(c, False, 7.3)
             text_y -= 3
             for line in desc_lines:
                 c.drawString(card_x + 16, text_y, line)
@@ -1156,13 +1156,13 @@ def generate_natal_pdf(
             _set_font(c, False, 8)
             continue
         paragraph = _limit_words(line, 95)
-        paragraph_lines = _lines_for_width(c, paragraph, w - 116, bold=False, size=8, max_lines=9)
+        paragraph_lines = _lines_for_width(c, paragraph, w - 116, bold=False, size=8.4, max_lines=9)
         block_h = 14 * len(paragraph_lines) + 16
         if y - block_h < 64:
             finish_page()
             y = title_page("Персональная интерпретация", "Продолжение")
         c.setFillColor(TEXT)
-        _set_font(c, False, 8)
+        _set_font(c, False, 8.4)
         text_y = y
         for wrapped_line in paragraph_lines:
             c.drawString(58, text_y, wrapped_line)

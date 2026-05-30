@@ -406,10 +406,10 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .cards-3 {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm; }}
 .grid-2 {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 4.5mm; }}
 .card {{ background: {PANEL}; border: 1px solid {BORDER}; border-radius: 8px; padding: 7mm 6mm; min-height: 39mm; }}
-.card h3 {{ margin: 0; color: {TEXT}; font-size: 12px; line-height: 1.28; }}
-.card p {{ margin: 4mm 0 0; font-size: 8.6px; line-height: 1.54; color: {TEXT}; }}
+.card h3 {{ margin: 0; color: {TEXT}; font-size: 12.4px; line-height: 1.28; }}
+.card p {{ margin: 4mm 0 0; font-size: 9px; line-height: 1.52; color: {TEXT}; }}
 .card-icon {{ color: {GOLD}; font-size: 25px; margin-bottom: 4mm; }}
-.card-meta {{ color: {TEXT_DIM}; font-size: 7.5px; letter-spacing: .8px; text-transform: uppercase; margin-top: 1.5mm; }}
+.card-meta {{ color: {TEXT_DIM}; font-size: 7.8px; letter-spacing: .8px; text-transform: uppercase; margin-top: 1.5mm; }}
 .mini-rule {{ width: 14mm; height: 1px; margin-top: 4mm; background: {GOLD_DIM}; }}
 .key-card {{ text-align: center; min-height: 86mm; padding: 8mm 6mm 7mm; }}
 .key-card .zodiac-dot {{ margin: 5mm auto 3mm; width: 7mm; height: 7mm; border-radius: 50%; display: grid; place-items: center; color: white; font-size: 12px; }}
@@ -446,8 +446,8 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .house-num {{ color: {GOLD}; font: 14px "DejaVu Serif", Georgia, serif; margin-right: 2mm; }}
 .house-sign {{ font: 10.5px "DejaVu Serif", Georgia, serif; }}
 .house-degree {{ color: {TEXT_DIM}; font-size: 8px; }}
-.house-label {{ margin-top: 2mm; color: {TEXT_DIM}; font-size: 7.5px; letter-spacing: 1.4px; text-transform: uppercase; }}
-.house-card p {{ margin-top: 3mm; font-size: 7.8px; line-height: 1.44; }}
+.house-label {{ margin-top: 2mm; color: {TEXT_DIM}; font-size: 7.8px; letter-spacing: 1.4px; text-transform: uppercase; }}
+.house-card p {{ margin-top: 3mm; font-size: 8.2px; line-height: 1.42; }}
 .metrics {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 4mm; margin: 9mm 0 8mm; }}
 .metric {{ text-align: center; background: {PANEL}; border: 1px solid {BORDER}; border-radius: 7px; padding: 4.5mm 0 4mm; }}
 .metric strong {{ color: var(--metric-color, {GOLD}); display: block; font: 18px "DejaVu Serif", Georgia, serif; }}
@@ -456,14 +456,14 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .aspect-group h3 {{ color: var(--aspect-color); font-size: 12px; letter-spacing: 1.4px; text-transform: uppercase; margin: 0 0 3.5mm; }}
 .aspect-group h3 em {{ color: {TEXT_DIM}; text-transform: none; font-size: 8px; letter-spacing: 0; margin-left: 3mm; }}
 .aspect-row {{ margin-bottom: 4.5mm; }}
-.aspect-title {{ display: flex; justify-content: space-between; gap: 4mm; color: {TEXT}; font-size: 8.8px; }}
+.aspect-title {{ display: flex; justify-content: space-between; gap: 4mm; color: {TEXT}; font-size: 9.1px; }}
 .aspect-title span:first-child {{ min-width: 0; }}
 .orb {{ color: {TEXT_DIM}; }}
-.aspect-row p {{ margin: 2mm 0 0; color: {TEXT_DIM}; line-height: 1.44; font-size: 7.8px; }}
+.aspect-row p {{ margin: 2mm 0 0; color: {TEXT_DIM}; line-height: 1.42; font-size: 8.2px; }}
 .reading {{ padding-right: 4mm; }}
 .reading-quote {{ text-align: center; color: {TEXT_DIM}; font: italic 9.5px "DejaVu Serif", Georgia, serif; margin: 8mm 0 9mm; }}
 .reading h3 {{ color: {GOLD}; font-size: 13px; letter-spacing: 1.5px; margin: 0 0 3mm; }}
-.reading p {{ font-size: 8.8px; line-height: 1.64; margin: 0 0 7mm; }}
+.reading p {{ font-size: 9.2px; line-height: 1.6; margin: 0 0 7mm; }}
 .final {{ display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 76mm; }}
 .final .mark {{ margin-bottom: 20mm; }}
 .final-copy {{ font: italic 14px/1.7 "DejaVu Serif", Georgia, serif; width: 92mm; }}
