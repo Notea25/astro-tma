@@ -248,6 +248,19 @@ async def get_interpretation(
         first_name=user.tg_first_name,
         api_key=settings.ANTHROPIC_API_KEY,
     )
+
+    # Don't cache the static fallback — that locks every future request
+    # into the placeholder text. Return it once; the next visit retries
+    # the LLM.
+    if model == "fallback":
+        log.warning("destiny_matrix.interp.fallback_no_cache", reading_id=reading.id)
+        return InterpretationResponse(
+            reading_id=reading.id,
+            sections=sections,
+            model=model,
+            generated_at=datetime.utcnow(),
+        )
+
     interp = DestinyMatrixInterpretation(
         reading_id=reading.id,
         sections=sections,
