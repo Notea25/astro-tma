@@ -9431,8 +9431,8 @@ body::before {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 6px 16px 14px;
+  gap: 2px;
+  padding: 4px 16px 2px;
   text-align: center;
 }
 .destiny-reading__birth-label {
@@ -9456,7 +9456,10 @@ body::before {
 .destiny-reading__chart-wrap {
   display: flex;
   justify-content: center;
-  padding: 8px 0 0;
+  padding: 0;
+  /* viewBox 420×420 has ~40px of empty space above the top diamond node;
+     pull the SVG up so it sits flush with the birth-date block above. */
+  margin-top: -40px;
 }
 .destiny-octagram {
   width: 100%;
