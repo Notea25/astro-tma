@@ -471,7 +471,7 @@ export function Home() {
               className="home-tile"
               onClick={() => {
                 impact("light");
-                setScreen("synastry_invite");
+                setScreen("synastry");
               }}
             >
               <span className="home-tile__emoji" aria-hidden="true">
