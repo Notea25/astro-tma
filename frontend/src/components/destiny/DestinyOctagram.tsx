@@ -23,7 +23,9 @@ export type DestinyNodeId =
   | "aft_1" | "aft_2" | "aft_3"   // father talents — TL
   | "amt_1" | "amt_2" | "amt_3"   // mother talents — TR
   | "fin_1" | "fin_2" | "fin_3"   // finance — BR
-  | "afk_1" | "afk_2" | "afk_3";  // father karma — BL
+  | "afk_1" | "afk_2" | "afk_3"   // father karma — BL
+  // Comfort-of-soul point — separate from any ray, sits beside center
+  | "comfort_point";
 
 export interface NodeMeta {
   nodeId: DestinyNodeId;
@@ -115,34 +117,39 @@ function toArcana(n: number): number {
   return n || 22;
 }
 
+/** Recursively fill points along a line a→b. Each new point = sum of its
+ *  immediate neighbours, reduced to 1..22. Depth=2 yields three points in
+ *  order [near a, middle, near b]. Works for any ray of the octagram. */
+function fillLine(a: number, b: number, depth: number): number[] {
+  if (depth === 0) return [];
+  const mid = toArcana(a + b);
+  return [
+    ...fillLine(a, mid, depth - 1),
+    mid,
+    ...fillLine(mid, b, depth - 1),
+  ];
+}
+
 function buildNodes(p: DestinyMatrixPositions): NodeDef[] {
   const per = p.personality;
   const sq  = p.ancestral_square;
   const ch  = p.channels;
   const C   = per.center;
 
-  /** Compute the 3 axis points by recursive sum-and-reduce.
-   *  Given the corner value, returns numbers along the axis vertex→center:
-   *    [1] near corner    = corner + middle
-   *    [2] middle         = corner + center
-   *    [3] near center    = middle + center
-   *  Matches the canonical chart (e.g. for 30.04.1997 top axis with M=4,
-   *  C=3 the chart shows 11→7→10 = [4+7, 4+3, 7+3]). */
-  const recursive3 = (corner: number): [number, number, number] => {
-    const middle = toArcana(corner + C);
-    const near   = toArcana(corner + middle);
-    const close  = toArcana(middle + C);
-    return [near, middle, close];
-  };
+  // Each ray: 3 points from corner toward center, depth=2.
+  // fillLine(corner, center, 2) returns [near-corner, middle, near-center].
+  const [t1, t2, t3]   = fillLine(per.month,  C, 2);
+  const [r1, r2, r3]   = fillLine(per.year,   C, 2);
+  const [b1, b2, b3]   = fillLine(per.bottom, C, 2);
+  const [d1, d2, d3]   = fillLine(per.day,    C, 2);
+  const [aft1, aft2, aft3] = fillLine(sq.top_left,     C, 2);
+  const [amt1, amt2, amt3] = fillLine(sq.top_right,    C, 2);
+  const [fin1, fin2, fin3] = fillLine(sq.bottom_right, C, 2);
+  const [afk1, afk2, afk3] = fillLine(sq.bottom_left,  C, 2);
 
-  const [t1, t2, t3]   = recursive3(per.month);
-  const [r1, r2, r3]   = recursive3(per.year);
-  const [b1, b2, b3]   = recursive3(per.bottom);
-  const [d1, d2, d3]   = recursive3(per.day);
-  const [aft1, aft2, aft3] = recursive3(sq.top_left);
-  const [amt1, amt2, amt3] = recursive3(sq.top_right);
-  const [fin1, fin2, fin3] = recursive3(sq.bottom_right);
-  const [afk1, afk2, afk3] = recursive3(sq.bottom_left);
+  // Soul comfort point — separate from any ray, sits between center and
+  // the right vertex. Value = 2 × center, reduced.
+  const comfort = toArcana(C + C);
 
   // Helper: a small dot
   const dot = (
@@ -199,6 +206,9 @@ function buildNodes(p: DestinyMatrixPositions): NodeDef[] {
     dot("afk_1", afk1, BL_1),
     dot("afk_2", afk2, BL_2),
     dot("afk_3", afk3, BL_3),
+
+    // ── Soul comfort point — 2×center, not part of any ray ──
+    dot("comfort_point", comfort, [CX + 45, CY], COLOR_KARMA),
   ];
 }
 

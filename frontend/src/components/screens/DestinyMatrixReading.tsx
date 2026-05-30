@@ -58,6 +58,7 @@ const NODE_TITLES_RU: Record<DestinyNodeId, string> = {
   afk_1: "Род отца · карма — точка 1",
   afk_2: "Род отца · карма — точка 2",
   afk_3: "Род отца · карма — точка 3",
+  comfort_point: "Точка комфорта души",
 };
 
 // Which `arcana_meanings.context` row to pull for the bottom-sheet copy
@@ -98,6 +99,7 @@ const NODE_CONTEXT: Record<DestinyNodeId, string> = {
   afk_1: "ancestral",
   afk_2: "ancestral",
   afk_3: "ancestral",
+  comfort_point: "personality",
 };
 
 interface ActiveTap {
