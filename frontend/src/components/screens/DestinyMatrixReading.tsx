@@ -52,12 +52,12 @@ const NODE_TITLES_RU: Record<DestinyNodeId, string> = {
   amt_1: "Род матери · таланты — точка 1",
   amt_2: "Род матери · таланты — точка 2",
   amt_3: "Род матери · таланты — точка 3",
-  fin_1: "Вход денег — точка 1",
-  fin_2: "Вход денег — точка 2",
-  fin_3: "Вход денег — точка 3",
   afk_1: "Род отца · карма — точка 1",
   afk_2: "Род отца · карма — точка 2",
   afk_3: "Род отца · карма — точка 3",
+  amk_1: "Род матери · карма — точка 1",
+  amk_2: "Род матери · карма — точка 2",
+  amk_3: "Род матери · карма — точка 3",
   comfort_point: "Точка комфорта души",
 };
 
@@ -93,12 +93,12 @@ const NODE_CONTEXT: Record<DestinyNodeId, string> = {
   amt_1: "ancestral",
   amt_2: "ancestral",
   amt_3: "ancestral",
-  fin_1: "finance",
-  fin_2: "finance",
-  fin_3: "finance",
   afk_1: "ancestral",
   afk_2: "ancestral",
   afk_3: "ancestral",
+  amk_1: "ancestral",
+  amk_2: "ancestral",
+  amk_3: "ancestral",
   comfort_point: "personality",
 };
 
