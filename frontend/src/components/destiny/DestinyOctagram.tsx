@@ -71,6 +71,16 @@ const NODE_TR: [number, number] = [TR[0] + NODE_OFF_D, TR[1] - NODE_OFF_D];
 const NODE_BR: [number, number] = [BR[0] + NODE_OFF_D, BR[1] + NODE_OFF_D];
 const NODE_BL: [number, number] = [BL[0] - NODE_OFF_D, BL[1] + NODE_OFF_D];
 
+// Точки на внутреннем круге для каждой из 8 «спиц» — там обрываются
+// крестообразные линии идущие от центра к углам. Значение R_INNER
+// определяется ниже, поэтому используем функцию.
+function innerEdge(toward: [number, number]): [number, number] {
+  const dx = toward[0] - CX;
+  const dy = toward[1] - CY;
+  const len = Math.hypot(dx, dy) || 1;
+  return [CX + (dx / len) * R_INNER, CY + (dy / len) * R_INNER];
+}
+
 // Age ring sits outside the octagram
 const R_AGE_RING  = 268;
 const R_AGE_TICK  = 276;
@@ -469,15 +479,16 @@ export function DestinyOctagram({
     >
       <AgeRing />
 
-      {/* ── Crossing axes through center ── */}
-      <line x1={LEFT[0]} y1={LEFT[1]} x2={RIGHT[0]} y2={RIGHT[1]}
-        stroke={COLOR_LINE} strokeWidth="1" />
-      <line x1={TOP[0]} y1={TOP[1]} x2={BOTTOM[0]} y2={BOTTOM[1]}
-        stroke={COLOR_LINE} strokeWidth="1" />
-      <line x1={TL[0]} y1={TL[1]} x2={BR[0]} y2={BR[1]}
-        stroke={COLOR_LINE} strokeWidth="1" />
-      <line x1={TR[0]} y1={TR[1]} x2={BL[0]} y2={BL[1]}
-        stroke={COLOR_LINE} strokeWidth="1" />
+      {/* ── 8 спиц: от каждого угла внутрь до края внутреннего круга ── */}
+      {([LEFT, RIGHT, TOP, BOTTOM, TL, TR, BR, BL] as const).map((corner, i) => {
+        const edge = innerEdge(corner);
+        return (
+          <line key={`spoke-${i}`}
+            x1={corner[0]} y1={corner[1]}
+            x2={edge[0]} y2={edge[1]}
+            stroke={COLOR_LINE} strokeWidth="1" />
+        );
+      })}
 
       {/* ── Diamond (diagonal square) outline ── */}
       <path
