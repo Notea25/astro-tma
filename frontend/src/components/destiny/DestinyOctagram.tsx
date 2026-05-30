@@ -526,8 +526,8 @@ export function DestinyOctagram({
         ЗОНА КОМФОРТА
       </text>
 
-      {/* Heart icon под "ЗОНА КОМФОРТА" */}
-      <g transform={`translate(${CX} ${CY + 80}) scale(0.4)`}>
+      {/* Heart icon — внутри круга, слева от вертикальной оси, ниже центра */}
+      <g transform={`translate(${CX - 22} ${CY + 35}) scale(0.5)`}>
         <path
           d="M 0 6 C -10 -4 -22 -4 -22 6 C -22 18 0 32 0 32 C 0 32 22 18 22 6 C 22 -4 10 -4 0 6 Z"
           fill="#e84545" />
