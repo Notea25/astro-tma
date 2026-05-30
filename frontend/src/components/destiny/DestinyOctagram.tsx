@@ -162,7 +162,6 @@ function RenderedNode({ node, locked, active, faded, onTap }: RenderedNodeProps)
   const r = nodeRadius(node.variant);
   const tapR = Math.max(r + 6, 18);  // enlarged invisible hit area for touch
   const isCenter = node.nodeId === "center";
-  const isKtOut = node.variant === "kt-out";
 
   const fontSize =
     isCenter ? 26 :
@@ -175,13 +174,11 @@ function RenderedNode({ node, locked, active, faded, onTap }: RenderedNodeProps)
 
   const stroke = active
     ? "#e8c862"
-    : isKtOut
-      ? "#d44a4a"
-      : node.variant.startsWith("base") || isCenter
-        ? "rgba(232,200,98,0.85)"
-        : "rgba(232,200,98,0.55)";
+    : node.variant.startsWith("base") || isCenter
+      ? "rgba(232,200,98,0.85)"
+      : "rgba(232,200,98,0.55)";
 
-  const strokeWidth = active ? 2.4 : (isKtOut ? 1.4 : node.variant.startsWith("base") ? 1.5 : 1);
+  const strokeWidth = active ? 2.4 : (node.variant.startsWith("base") ? 1.5 : 1);
 
   return (
     <g

@@ -9489,6 +9489,9 @@ body::before {
   font-size: 0.78rem;
   color: var(--text-mute);
   justify-content: center;
+  /* Pull the legend further below the octagram so the karmic-tail outer
+     node (lowest point in the viewBox) stays clear of the text. */
+  margin-top: 16px;
 }
 .destiny-reading__legend-dot {
   display: inline-block;
