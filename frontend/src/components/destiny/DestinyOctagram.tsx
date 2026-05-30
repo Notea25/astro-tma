@@ -266,7 +266,7 @@ export function DestinyOctagram({
 
   return (
     <svg
-      viewBox="0 0 420 420"
+      viewBox="0 0 420 432"
       className="destiny-octagram"
       role="img"
       aria-label="Октаграмма матрицы судьбы"
