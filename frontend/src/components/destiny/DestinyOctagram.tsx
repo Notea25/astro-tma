@@ -395,10 +395,10 @@ export function DestinyOctagram({
       <AgeRing />
 
       {/* Diagonal guide rays from center to each square corner */}
-      <line x1={CX} y1={CY} x2={TLX} y2={TLY} stroke="rgba(232,200,98,0.18)" strokeWidth="0.6" strokeDasharray="2 4" />
-      <line x1={CX} y1={CY} x2={TRX} y2={TRY} stroke="rgba(232,200,98,0.18)" strokeWidth="0.6" strokeDasharray="2 4" />
-      <line x1={CX} y1={CY} x2={BRX} y2={BRY} stroke="rgba(232,200,98,0.18)" strokeWidth="0.6" strokeDasharray="2 4" />
-      <line x1={CX} y1={CY} x2={BLX} y2={BLY} stroke="rgba(232,200,98,0.18)" strokeWidth="0.6" strokeDasharray="2 4" />
+      <line x1={CX} y1={CY} x2={TLX} y2={TLY} stroke="rgba(232,200,98,0.55)" strokeWidth="1.3" strokeDasharray="4 3" />
+      <line x1={CX} y1={CY} x2={TRX} y2={TRY} stroke="rgba(232,200,98,0.55)" strokeWidth="1.3" strokeDasharray="4 3" />
+      <line x1={CX} y1={CY} x2={BRX} y2={BRY} stroke="rgba(232,200,98,0.55)" strokeWidth="1.3" strokeDasharray="4 3" />
+      <line x1={CX} y1={CY} x2={BLX} y2={BLY} stroke="rgba(232,200,98,0.55)" strokeWidth="1.3" strokeDasharray="4 3" />
 
       {/* Cardinal axes through center — these are the channel axes */}
       <line x1={DX} y1={DY} x2={YX} y2={YY}
@@ -409,19 +409,19 @@ export function DestinyOctagram({
       {/* Big diamond outline */}
       <path d={`M ${DX} ${DY} L ${MX} ${MY} L ${YX} ${YY} L ${BX} ${BY} Z`}
         fill="none" stroke="rgba(232,200,98,0.55)" strokeWidth="1.2" />
-      {/* Small ancestral square outline (rotated 45°) */}
+      {/* Ancestral square outline (outer figure) */}
       <path d={`M ${TLX} ${TLY} L ${TRX} ${TRY} L ${BRX} ${BRY} L ${BLX} ${BLY} Z`}
-        fill="none" stroke="rgba(232,200,98,0.45)" strokeWidth="1.0" strokeDasharray="3 3" />
+        fill="none" stroke="rgba(232,200,98,0.75)" strokeWidth="1.6" strokeDasharray="5 4" />
 
       {/* Decorative icons near center (visual flair, non-interactive) */}
       <text x={CX + R_ICON * Math.cos((45 - 90) * Math.PI / 180)}
             y={CY + R_ICON * Math.sin((45 - 90) * Math.PI / 180)}
-            textAnchor="middle" dominantBaseline="central" fontSize="14"
-            opacity="0.7">💰</text>
+            textAnchor="middle" dominantBaseline="central" fontSize="16"
+            opacity="0.9">💰</text>
       <text x={CX + R_ICON * Math.cos((135 - 90) * Math.PI / 180)}
             y={CY + R_ICON * Math.sin((135 - 90) * Math.PI / 180)}
-            textAnchor="middle" dominantBaseline="central" fontSize="14"
-            opacity="0.7">♥</text>
+            textAnchor="middle" dominantBaseline="central" fontSize="16"
+            fill="#e84545" opacity="1">♥</text>
 
       {/* All tap-able nodes */}
       {nodes.map((node) => {
