@@ -93,6 +93,7 @@ function along(v: [number, number], t: number): [number, number] {
 // Radii мелких «кружочков».
 const R_DOT_1 = 20;  // первая точка (у угла) — крупнее
 const R_DOT_2 = 17;  // вторая точка (на периметре октаграммы)
+const R_DOT_3 = 14;  // спецточки внутри круга (comfort, cross, money_diag)
 const R_DOT = R_DOT_2;  // default для точек без явного tier
 
 // 1-й ярус: t = 0.09 — 10 px зазор от кончика угла.
@@ -200,18 +201,20 @@ function buildNodes(p: DestinyMatrixPositions): NodeDef[] {
   const moneyDiag  = p.money_diagonal ?? [0, 0, 0];
   const [valNearC, valNearMid] = comfortArr;
 
-  // Helper: a small dot. rayTier 1 = ближе к углу (крупнее),
-  // rayTier 2 = ближе к центру (меньше).
+  // Helper: a small dot.
+  //   rayTier 1 — у углов октаграммы (крупная R=R_DOT_1)
+  //   rayTier 2 — на периметре октаграммы (средняя R=R_DOT_2)
+  //   rayTier 3 — спецточки внутри круга (меньшая R=R_DOT_3)
   const dot = (
     nodeId: DestinyNodeId,
     num: number,
     point: [number, number],
-    rayTier: 1 | 2,
+    rayTier: 1 | 2 | 3,
     color?: string,
   ): NodeDef => ({
     nodeId, num, tier: "premium",
     x: point[0], y: point[1], kind: "dot", color,
-    radius: rayTier === 1 ? R_DOT_1 : R_DOT_2,
+    radius: rayTier === 1 ? R_DOT_1 : rayTier === 2 ? R_DOT_2 : R_DOT_3,
   });
 
   return [
@@ -252,15 +255,15 @@ function buildNodes(p: DestinyMatrixPositions): NodeDef[] {
     dot("amk_1", amk1, BL_1, 1),
     dot("amk_2", amk2, BL_2, 2),
 
-    // ── Special points near center (variant C) ──
-    dot("comfort_a", valNearC,   COMFORT_NEAR_C,   2, COLOR_DOT_PINK),
-    dot("comfort_b", valNearMid, COMFORT_NEAR_MID, 2, COLOR_DOT_PINK),
-    dot("cross_p",   crossVal,   CROSS_POS,        2, COLOR_DOT_ORANGE),
+    // ── Special points (зона комфорта внутри круга) ──
+    dot("comfort_a", valNearC,   COMFORT_NEAR_C,   3, COLOR_DOT_PINK),
+    dot("comfort_b", valNearMid, COMFORT_NEAR_MID, 3, COLOR_DOT_PINK),
+    dot("cross_p",   crossVal,   CROSS_POS,        3, COLOR_DOT_ORANGE),
 
     // ── Money diagonal: одна внешняя точка (cross+money). Пунктир
     // рисуется как SVG path в main render. money_diag[1]=cross и
     // money_diag[2]=money — оба дублируют другие точки. ──
-    dot("money_diag_1", moneyDiag[0], MONEY_DIAG_OUTER, 2, COLOR_DOT_ORANGE),
+    dot("money_diag_1", moneyDiag[0], MONEY_DIAG_OUTER, 3, COLOR_DOT_ORANGE),
   ];
 }
 
@@ -449,7 +452,7 @@ interface Props {
 //   "rays12"  — main + первая и вторая точки (16 шт., 2-й ярус несёт
 //                channel[2] = «третьи точки»)
 //   "all"     — все точки (включая comfort, cross, money_diag)
-const RENDER_MODE: "none" | "main" | "rays1" | "rays12" | "all" = "rays12";
+const RENDER_MODE: "none" | "main" | "rays1" | "rays12" | "all" = "all";
 
 // Node IDs точек каждого луча по ярусам.
 const RAY_1_IDS: ReadonlySet<DestinyNodeId> = new Set<DestinyNodeId>([
