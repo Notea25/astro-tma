@@ -126,6 +126,18 @@ class EntriesBlock(BaseModel):
     partner: int
 
 
+class SpecialsBlock(BaseModel):
+    """Семантические точки внутри октаграммы. talent/character/money/love
+    дублируют mid-ы соответствующих лучей, comfort — пара точек справа
+    от центра, cross — точка между центром и нижним лучом."""
+    talent: int       # M+C (mid верхнего луча)
+    character: int    # D+C (mid левого луча)
+    money: int        # Y+C (mid правого луча)
+    love: int         # B+C (mid нижнего луча)
+    cross: int        # reduce(love + money)
+    comfort: list[int]  # [vishuddha, anahata] активной горизонтальной линии
+
+
 class DestinyMatrixPositions(BaseModel):
     personality: PersonalityBlock
     ancestral_square: AncestralSquareBlock
@@ -140,6 +152,8 @@ class DestinyMatrixPositions(BaseModel):
     chakras: ChakrasBlock | None = None
     health_map: HealthMapBlock | None = None
     entries: EntriesBlock | None = None
+    specials: SpecialsBlock | None = None
+    money_diagonal: list[int] | None = None
 
 
 # ── Ответы эндпоинтов ───────────────────────────────────────────────────────

@@ -36,12 +36,10 @@ const NODE_TITLES_RU: Record<DestinyNodeId, string> = {
   month_1: "Канал талантов — точка 1",
   month_2: "Канал талантов — точка 2",
   month_3: "Канал талантов — точка 3 (у центра)",
-  year_1:  "Материальная карма — точка 1",
-  year_2:  "Материальная карма — точка 2",
-  year_3:  "Материальная карма — точка 3 (у центра)",
-  bottom_1: "Кармический хвост — точка 1",
-  bottom_2: "Кармический хвост — точка 2",
-  bottom_3: "Главный кармический урок (у центра)",
+  year_1:  "Материальная карма — точка у угла",
+  year_2:  "Точка входа денег (mid)",
+  bottom_1: "Кармический хвост — точка у угла",
+  bottom_2: "Точка входа партнёра / любовь (mid)",
   day_1: "Детско-родительский — точка 1",
   day_2: "Детско-родительский — точка 2",
   day_3: "Детско-родительский — точка 3 (у центра)",
@@ -58,7 +56,14 @@ const NODE_TITLES_RU: Record<DestinyNodeId, string> = {
   amk_1: "Род матери · карма — точка 1",
   amk_2: "Род матери · карма — точка 2",
   amk_3: "Род матери · карма — точка 3",
-  comfort_point: "Точка комфорта души",
+  // Special points near center
+  comfort_a: "Зона комфорта — ближе к центру",
+  comfort_b: "Зона комфорта — ближе к деньгам",
+  cross_p:   "Точка пересечения денег и отношений",
+  // Money diagonal (dashed)
+  money_diag_1: "Денежная диагональ — точка у угла",
+  money_diag_2: "Денежная диагональ — середина (cross)",
+  money_diag_3: "Денежная диагональ — точка входа денег",
 };
 
 // Which `arcana_meanings.context` row to pull for the bottom-sheet copy
@@ -78,11 +83,9 @@ const NODE_CONTEXT: Record<DestinyNodeId, string> = {
   month_2: "talents",
   month_3: "talents",
   year_1:  "material_karma",
-  year_2:  "material_karma",
-  year_3:  "material_karma",
+  year_2:  "finance",  // mid = money entry
   bottom_1: "karmic_tail",
-  bottom_2: "karmic_tail",
-  bottom_3: "karmic_tail",
+  bottom_2: "relationships",  // mid = love entry
   day_1: "parental",
   day_2: "parental",
   day_3: "parental",
@@ -99,7 +102,13 @@ const NODE_CONTEXT: Record<DestinyNodeId, string> = {
   amk_1: "ancestral",
   amk_2: "ancestral",
   amk_3: "ancestral",
-  comfort_point: "personality",
+  // Special points
+  comfort_a: "personality",
+  comfort_b: "personality",
+  cross_p:   "finance",
+  money_diag_1: "finance",
+  money_diag_2: "finance",
+  money_diag_3: "finance",
 };
 
 interface ActiveTap {

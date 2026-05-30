@@ -965,6 +965,15 @@ export interface DestinyEntries {
   partner: number;
 }
 
+export interface DestinySpecials {
+  talent: number;
+  character: number;
+  money: number;
+  love: number;
+  cross: number;
+  comfort: number[]; // [vishuddha, anahata] = (X+C, X+2C)
+}
+
 export interface DestinyMatrixPositions {
   personality: DestinyPersonality;
   ancestral_square: DestinyAncestralSquare;
@@ -978,6 +987,8 @@ export interface DestinyMatrixPositions {
   chakras?: DestinyChakras;
   health_map?: DestinyHealthMap;
   entries?: DestinyEntries;
+  specials?: DestinySpecials;
+  money_diagonal?: number[];
 }
 
 export interface DestinyMatrixResponse {

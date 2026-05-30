@@ -14,18 +14,23 @@ import type { DestinyMatrixPositions } from "@/services/api";
 export type DestinyNodeId =
   | "day" | "month" | "year" | "bottom" | "center"
   | "top_left" | "top_right" | "bottom_right" | "bottom_left"
-  // 3 dots per cardinal axis (talents/material_karma/karmic_tail/parental)
+  // Top + left cardinal axes render all 3 ray dots
   | "month_1" | "month_2" | "month_3"
-  | "year_1"  | "year_2"  | "year_3"
-  | "bottom_1" | "bottom_2" | "bottom_3"
   | "day_1"   | "day_2"   | "day_3"
+  // Right + bottom render only 2 (near_corner, mid) — third is replaced
+  // by comfort pair / cross point near the center
+  | "year_1"  | "year_2"
+  | "bottom_1" | "bottom_2"
   // 3 dots per diagonal
   | "aft_1" | "aft_2" | "aft_3"   // father talents — TL
   | "amt_1" | "amt_2" | "amt_3"   // mother talents — TR
   | "afk_1" | "afk_2" | "afk_3"   // father karma — BR
   | "amk_1" | "amk_2" | "amk_3"   // mother karma — BL
-  // Comfort-of-soul point — separate from any ray, sits beside center
-  | "comfort_point";
+  // Special points near center (variant C)
+  | "comfort_a" | "comfort_b"     // (X+C, X+2C) — sorted by distance to money
+  | "cross_p"                      // between center and bottom mid (love)
+  // Money diagonal (dashed line from right axis mid toward BR)
+  | "money_diag_1" | "money_diag_2" | "money_diag_3";
 
 export interface NodeMeta {
   nodeId: DestinyNodeId;
@@ -68,10 +73,8 @@ const TOP_2 = along(TOP, 0.50);
 const TOP_3 = along(TOP, 0.75);
 const RIGHT_1 = along(RIGHT, 0.25);
 const RIGHT_2 = along(RIGHT, 0.50);
-const RIGHT_3 = along(RIGHT, 0.75);
 const BOT_1 = along(BOTTOM, 0.25);
 const BOT_2 = along(BOTTOM, 0.50);
-const BOT_3 = along(BOTTOM, 0.75);
 const LEFT_1 = along(LEFT, 0.25);
 const LEFT_2 = along(LEFT, 0.50);
 const LEFT_3 = along(LEFT, 0.75);
@@ -97,7 +100,25 @@ const COLOR_BASE      = "#e8c862";                    // gold for base nodes
 const COLOR_KARMA     = "#e07b6a";                    // red — bottom/karma
 const COLOR_DOT       = "rgba(232, 200, 98, 0.95)";   // small dots default
 const COLOR_DOT_RED   = "#e07b6a";                    // karmic dots
+const COLOR_DOT_PINK  = "#d27b9c";                    // love/comfort accent
+const COLOR_DOT_ORANGE = "#e8a553";                   // money accent
 const COLOR_LABEL_DIM = "rgba(220, 215, 200, 0.55)";  // muted side labels
+const COLOR_FATHER    = "rgba(120, 145, 220, 0.75)";  // blue — отцовская линия
+const COLOR_MOTHER    = "rgba(220, 110, 130, 0.75)";  // red — материнская
+const COLOR_INNER_RING = "rgba(232, 200, 98, 0.35)";  // inner circle outline
+
+// Inner soul-circle radius (heart, $, ЗОНА КОМФОРТА живут внутри)
+const R_INNER = 130;
+// Comfort dots between center and right axis mid (= money point)
+const COMFORT_NEAR_C = along([530, 300], 0.85);  // closer to center
+const COMFORT_NEAR_MID = along([530, 300], 0.7); // closer to money
+// Cross point between center and bottom axis mid (= love)
+const CROSS_POS = along([300, 530], 0.85);
+// Money diagonal: dashed line from money point (right axis mid) toward BR
+// 3 dots along it: [cross+money, cross, money]
+const MONEY_DIAG_1 = [468, 460] as [number, number];  // closer to BR
+const MONEY_DIAG_2 = [440, 380] as [number, number];  // middle (cross)
+const MONEY_DIAG_3 = [415, 300] as [number, number];  // = right axis mid
 
 type NodeKind = "main-lg" | "main-md" | "dot";
 
@@ -111,38 +132,47 @@ interface NodeDef {
   color?: string;
 }
 
-function toArcana(n: number): number {
-  while (n > 22) n = String(n).split("").reduce((s, d) => s + Number(d), 0);
-  return n || 22;
-}
-
 function buildNodes(p: DestinyMatrixPositions): NodeDef[] {
   const per = p.personality;
   const sq  = p.ancestral_square;
   const ch  = p.channels;
-  const C   = per.center;
 
   // Pull pre-computed channel arrays from the backend. Each is a 3-tuple
   // in order [near corner, middle, near center] — placed directly on
-  // the ray from corner to center. No re-computation on the frontend.
+  // the ray from corner to center.
   const get3 = (arr?: number[]): [number, number, number] => {
     const a = arr ?? [];
     return [a[0] ?? 0, a[1] ?? 0, a[2] ?? 0];
   };
 
-  // Cardinal axes
-  const [t1, t2, t3] = get3(ch.talents);          // top — M ↔ C
-  const [d1, d2, d3] = get3(ch.parental);         // left — D ↔ C
-  const [r1, r2, r3] = get3(ch.material_karma);   // right — Y ↔ C
-  const [b1, b2, b3] = get3(ch.karmic_tail);      // bottom — B ↔ C
-  // Diagonals
+  // Cardinal axes — top/left render all 3, right/bottom only [near, mid]
+  // (третья позиция занята comfort/cross — отдельные узлы рядом с центром)
+  const [t1, t2, t3] = get3(ch.talents);          // top — M ↔ C (full 3)
+  const [d1, d2, d3] = get3(ch.parental);         // left — D ↔ C (full 3)
+  const [r1, r2]     = get3(ch.material_karma);   // right — Y ↔ C (2 only)
+  const [b1, b2]     = get3(ch.karmic_tail);      // bottom — B ↔ C (2 only)
+  // Diagonals — все 3 точки
   const [aft1, aft2, aft3] = get3(ch.ancestral_father_talents); // TL
   const [amt1, amt2, amt3] = get3(ch.ancestral_mother_talents); // TR
   const [afk1, afk2, afk3] = get3(ch.ancestral_father_karma);   // BR
   const [amk1, amk2, amk3] = get3(ch.ancestral_mother_karma);   // BL
 
-  // Soul comfort point — separate from any ray. Value = 2 × center, reduced.
-  const comfort = toArcana(C + C);
+  // Семантические точки из бэка (вариант C). Fallback на 0 если backend
+  // вернул запись в старом формате — она будет пересчитана на следующем
+  // /me запросе.
+  const sp = p.specials;
+  const moneyEntry = sp?.money ?? r2;
+  const comfortArr = sp?.comfort ?? [0, 0];
+  const crossVal   = sp?.cross ?? 0;
+  const moneyDiag  = p.money_diagonal ?? [0, 0, 0];
+
+  // Сортировка comfort_pair: ближе по значению к money_entry рисуется
+  // ближе к money (ту сторону), вторая — ближе к центру.
+  const [cA, cB] = comfortArr;
+  const aDist = Math.abs(cA - moneyEntry);
+  const bDist = Math.abs(cB - moneyEntry);
+  // comfort_near_center (large |val-money|), comfort_near_mid (small |val-money|)
+  const [valNearC, valNearMid] = aDist >= bDist ? [cA, cB] : [cB, cA];
 
   // Helper: a small dot
   const dot = (
@@ -154,11 +184,6 @@ function buildNodes(p: DestinyMatrixPositions): NodeDef[] {
     nodeId, num, tier: "premium",
     x: point[0], y: point[1], kind: "dot", color,
   });
-
-  // Reference the channels from backend just to keep the import "used" —
-  // we recompute axis points here for visual accuracy. The backend's
-  // channel arrays remain available for the tap-sheet trip data.
-  void ch;
 
   return [
     // ── Main 9 nodes ──
@@ -172,19 +197,17 @@ function buildNodes(p: DestinyMatrixPositions): NodeDef[] {
     { nodeId: "bottom_right", num: sq.bottom_right, tier: "premium", x: BR[0], y: BR[1], kind: "main-lg", color: COLOR_BASE },
     { nodeId: "bottom_left",  num: sq.bottom_left,  tier: "premium", x: BL[0], y: BL[1], kind: "main-lg", color: COLOR_BASE },
 
-    // ── Cardinal axes — 3 dots, vertex→center (near, middle, close) ──
+    // ── Cardinal axes: top/left — 3 dots, right/bottom — 2 dots ──
     dot("month_1", t1, TOP_1),
     dot("month_2", t2, TOP_2),
     dot("month_3", t3, TOP_3),
-    dot("year_1",  r1, RIGHT_1),
-    dot("year_2",  r2, RIGHT_2),
-    dot("year_3",  r3, RIGHT_3),
-    dot("bottom_1", b1, BOT_1, COLOR_DOT_RED),
-    dot("bottom_2", b2, BOT_2, COLOR_DOT_RED),
-    dot("bottom_3", b3, BOT_3, COLOR_DOT_RED),
     dot("day_1",   d1, LEFT_1),
     dot("day_2",   d2, LEFT_2),
     dot("day_3",   d3, LEFT_3),
+    dot("year_1",  r1, RIGHT_1),
+    dot("year_2",  r2, RIGHT_2, COLOR_DOT_ORANGE),  // mid = money
+    dot("bottom_1", b1, BOT_1, COLOR_DOT_RED),
+    dot("bottom_2", b2, BOT_2, COLOR_DOT_ORANGE),   // mid = love
 
     // ── Diagonal channels — 3 dots, square corner→center ──
     dot("aft_1", aft1, TL_1),
@@ -200,15 +223,23 @@ function buildNodes(p: DestinyMatrixPositions): NodeDef[] {
     dot("amk_2", amk2, BL_2),
     dot("amk_3", amk3, BL_3),
 
-    // ── Soul comfort point — 2×center, not part of any ray ──
-    dot("comfort_point", comfort, [CX + 45, CY], COLOR_KARMA),
+    // ── Special points near center (variant C) ──
+    dot("comfort_a", valNearC,   COMFORT_NEAR_C,   COLOR_DOT_PINK),
+    dot("comfort_b", valNearMid, COMFORT_NEAR_MID, COLOR_DOT_PINK),
+    dot("cross_p",   crossVal,   CROSS_POS,        COLOR_DOT_ORANGE),
+
+    // ── Money diagonal (dashed line, 3 dots toward BR) ──
+    dot("money_diag_1", moneyDiag[0], MONEY_DIAG_1, COLOR_DOT_ORANGE),
+    dot("money_diag_2", moneyDiag[1], MONEY_DIAG_2, COLOR_DOT_ORANGE),
+    dot("money_diag_3", moneyDiag[2], MONEY_DIAG_3, COLOR_DOT_ORANGE),
   ];
 }
 
-// ── Age ring (0..80, 10-year nodes) ────────────────────────────────────
-const AGE_NODE_YEARS = [0, 10, 20, 30, 40, 50, 60, 70];
+// ── Age ring (5..75, узлы на серединах декад как на эталоне) ──────────
+const AGE_NODE_YEARS = [5, 15, 25, 35, 45, 55, 65, 75];
+// Минорные тики на каждом году кроме узловых
 const AGE_MINOR_YEARS = Array.from({ length: 80 }, (_, i) => i + 1)
-  .filter((y) => y % 10 !== 0);
+  .filter((y) => !AGE_NODE_YEARS.includes(y));
 
 function polarFromCenter(angleDeg: number, radius: number): [number, number] {
   const rad = ((angleDeg - 90) * Math.PI) / 180;
@@ -216,7 +247,10 @@ function polarFromCenter(angleDeg: number, radius: number): [number, number] {
 }
 
 function ageAngle(years: number): number {
-  return (270 + years * 4.5) % 360;
+  // 80-year ring starting at "5 лет" position which is approximately at
+  // angle 90° (left of center) by matritsa-sudbi.ru convention. Each year
+  // spans 360/80 = 4.5°. Year 5 sits at the left vertex.
+  return (180 + years * 4.5) % 360;
 }
 
 function AgeRing() {
@@ -250,7 +284,7 @@ function AgeRing() {
               textAnchor="middle" dominantBaseline="central"
               fontSize="11" fill="rgba(232,200,98,0.95)" fontWeight={600}
               style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
-              {y}
+              {y} лет
             </text>
           </g>
         );
@@ -444,6 +478,61 @@ export function DestinyOctagram({
       <DiagLabel from={TR} to={[CX, CY]} text="род матери · таланты" t={0.45} offset={14} />
       <DiagLabel from={[CX, CY]} to={BR} text="род отца · карма"   t={0.55} offset={-14} />
       <DiagLabel from={[CX, CY]} to={BL} text="род матери · карма" t={0.55} offset={14} />
+
+      {/* ── Inner soul circle ── */}
+      <circle cx={CX} cy={CY} r={R_INNER}
+        fill="none" stroke={COLOR_INNER_RING} strokeWidth="1.1" />
+
+      {/* ── Lineage arrows внутри круга ── */}
+      <defs>
+        <marker id="dm-arrow-father" viewBox="0 0 10 10" refX="9" refY="5"
+          markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill={COLOR_FATHER} />
+        </marker>
+        <marker id="dm-arrow-mother" viewBox="0 0 10 10" refX="9" refY="5"
+          markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill={COLOR_MOTHER} />
+        </marker>
+      </defs>
+      <line x1={CX - 75} y1={CY - 75} x2={CX + 75} y2={CY + 75}
+        stroke={COLOR_FATHER} strokeWidth="1.6" opacity="0.85"
+        markerStart="url(#dm-arrow-father)" markerEnd="url(#dm-arrow-father)" />
+      <line x1={CX - 75} y1={CY + 75} x2={CX + 75} y2={CY - 75}
+        stroke={COLOR_MOTHER} strokeWidth="1.6" opacity="0.85"
+        markerStart="url(#dm-arrow-mother)" markerEnd="url(#dm-arrow-mother)" />
+
+      {/* Labels на стрелках линий рода (внутри круга) */}
+      <DiagLabel from={[CX - 75, CY - 75]} to={[CX, CY]}
+        text="линия мужского рода" t={0.5} offset={-9} color={COLOR_FATHER} />
+      <DiagLabel from={[CX + 75, CY + 75]} to={[CX, CY]}
+        text="линия женского рода" t={0.5} offset={-9} color={COLOR_MOTHER} />
+
+      {/* ── Денежная пунктирная диагональ ── */}
+      <path
+        d={`M ${MONEY_DIAG_3[0]} ${MONEY_DIAG_3[1]} L ${MONEY_DIAG_2[0]} ${MONEY_DIAG_2[1]} L ${MONEY_DIAG_1[0]} ${MONEY_DIAG_1[1]}`}
+        fill="none" stroke={COLOR_DOT_ORANGE} strokeWidth="1.2"
+        strokeDasharray="4 3" opacity="0.7" />
+
+      {/* ── ЗОНА КОМФОРТА — text внутри круга ── */}
+      <text x={CX} y={CY + 60} textAnchor="middle"
+        fontSize="9" fill={COLOR_LABEL_DIM} fontWeight={500}
+        style={{ fontFamily: "Inter, system-ui, sans-serif", letterSpacing: "0.12em" }}>
+        ЗОНА КОМФОРТА
+      </text>
+
+      {/* Heart icon под "ЗОНА КОМФОРТА" */}
+      <g transform={`translate(${CX} ${CY + 80}) scale(0.4)`}>
+        <path
+          d="M 0 6 C -10 -4 -22 -4 -22 6 C -22 18 0 32 0 32 C 0 32 22 18 22 6 C 22 -4 10 -4 0 6 Z"
+          fill="#e84545" />
+      </g>
+
+      {/* $ sign в правой нижней области инкера */}
+      <text x={CX + 65} y={CY + 50} textAnchor="middle"
+        fontSize="22" fill="#5cb85c" fontWeight={700}
+        style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
+        $
+      </text>
 
       {/* ── All nodes ── */}
       {nodes.map((node) => {

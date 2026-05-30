@@ -47,9 +47,14 @@ async def _has_full_access(db: AsyncSession, user_id: int) -> bool:
 
 
 def _is_stale_positions(positions: dict) -> bool:
-    """Detect pre-ray-dots format: channels[*][0] was the corner value itself
-    (e.g. talents[0] == month) instead of the first inner dot on the ray.
-    Old rows hit /me before this fix get auto-migrated on first access."""
+    """Detect old-format readings that need recompute. Two staleness markers:
+      (a) pre-ray-dots: channels.talents[0] equals personality.month (старый
+          формат канала [corner, mid, end])
+      (b) отсутствует блок `specials` или `money_diagonal` (добавлены в
+          варианте C для точек комфорта/cross/денежной диагонали)
+    """
+    if "specials" not in positions or "money_diagonal" not in positions:
+        return True
     try:
         ch = positions["channels"]
         pers = positions["personality"]

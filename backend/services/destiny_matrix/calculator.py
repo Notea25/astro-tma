@@ -323,10 +323,30 @@ def _health_map(sky: ChakraSet, earth: ChakraSet) -> dict[str, Any]:
     }
 
 
+def _comfort_pair(d: int, m_: int, c: int) -> list[int]:
+    """Две точки «зоны комфорта» справа от центра на горизонтальной оси.
+
+    Правило: `X = M если M == C иначе D`. Возвращает `[X+C, X+2C]` —
+    vishuddha и anahata «активной» горизонтальной линии (Sky если M=C,
+    Earth иначе). Проверено на 3 датах (30.04.1997 D=C; 30.05.1997 M=C;
+    01.09.1993 ни одна не совпадает с C)."""
+    x = m_ if m_ == c else d
+    return [reduce(x + c), reduce(x + 2 * c)]
+
+
 def to_dict(m: DestinyMatrix) -> dict[str, Any]:
     """Сериализация в плоский dict для JSONB / API ответа."""
     sky = _chakra_dict(m.chakras_sky)
     earth = _chakra_dict(m.chakras_earth)
+
+    # mid-точки лучей (одновременно — семантические лейблы)
+    talent = reduce(m.month + m.center)   # = mid верхнего луча
+    character = reduce(m.day + m.center)  # = mid левого луча (без явного лейбла)
+    money = reduce(m.year + m.center)     # = mid правого луча («деньги»)
+    love = reduce(m.bottom + m.center)    # = mid нижнего луча («любовь»)
+    cross = reduce(love + money)          # = reduce((B+C) + (Y+C))
+    comfort = _comfort_pair(m.day, m.month, m.center)
+
     return {
         "personality": {
             "day": m.day, "month": m.month, "year": m.year,
@@ -378,6 +398,19 @@ def to_dict(m: DestinyMatrix) -> dict[str, Any]:
             "ancestral_mother_talents": ray_dots(m.anc_top_right, m.center),
             "ancestral_mother_karma": ray_dots(m.anc_bottom_left, m.center),
         },
+        # Семантические точки внутри октаграммы (новое). talent/character/money/love
+        # это mid-ы лучей и дублируют channels[*][1], но удобно иметь явные ключи.
+        "specials": {
+            "talent": talent,
+            "character": character,
+            "money": money,
+            "love": love,
+            "cross": cross,
+            "comfort": comfort,  # [vishuddha, anahata] — порядок по формуле
+        },
+        # Денежная пунктирная диагональ от центра в сторону BR угла.
+        # 3 точки: [cross+money, cross, money].
+        "money_diagonal": [reduce(cross + money), cross, money],
         "chakras": {
             "sky": sky,
             "earth": earth,
