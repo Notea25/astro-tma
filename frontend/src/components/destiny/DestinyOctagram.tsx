@@ -111,8 +111,11 @@ const COLOR_FATHER    = "rgba(120, 145, 220, 0.75)";  // blue — отцовск
 const COLOR_MOTHER    = "rgba(220, 110, 130, 0.75)";  // red — материнская
 const COLOR_INNER_RING = "rgba(232, 200, 98, 0.35)";  // inner circle outline
 
-// Inner soul-circle radius (heart, $, ЗОНА КОМФОРТА живут внутри)
-const R_INNER = 100;
+// Inner soul-circle radius (heart, $, ЗОНА КОМФОРТА живут внутри).
+// Подобран так, чтобы окружность почти касалась граней внутреннего
+// октогона (точек пересечения двух квадратов на R≈174.6).
+// Вписанная в этот октогон окружность имеет радиус ≈161 px.
+const R_INNER = 160;
 // Comfort dots между центром и mid правой оси (точка денег)
 const COMFORT_NEAR_C = along([530, 300], 0.85);  // ~30 px от центра
 const COMFORT_NEAR_MID = along([530, 300], 0.72); // ~64 px от центра
