@@ -413,13 +413,19 @@ interface Props {
   onNodeTap: (node: NodeMeta) => void;
 }
 
-// TEMPORARY: template-only mode. Set to false to re-enable nodes.
-const RENDER_NODES = false;
+// Iterative render mode while we align with the matritsa-sudbi.ru template:
+//   "none"  — нет точек, только шаблон
+//   "main"  — только 9 больших узлов (D, M, Y, B, C + 4 угла квадрата)
+//   "all"   — все точки (включая лучи, comfort, cross, money_diag)
+const RENDER_MODE: "none" | "main" | "all" = "main";
 
 export function DestinyOctagram({
   positions, hasFullAccess, activeNodeId, onNodeTap,
 }: Props) {
-  const nodes = RENDER_NODES ? buildNodes(positions) : [];
+  const allNodes = RENDER_MODE === "none" ? [] : buildNodes(positions);
+  const nodes = RENDER_MODE === "main"
+    ? allNodes.filter((n) => n.kind === "main-lg" || n.kind === "main-md")
+    : allNodes;
 
   return (
     <svg
