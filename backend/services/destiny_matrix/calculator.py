@@ -36,6 +36,21 @@ def reduce1(n: int) -> int:
     return n
 
 
+def ray_dots(corner: int, center: int) -> list[int]:
+    """3 внутренние точки на луче «угол → центр» по методу Ладини.
+
+    Рекурсивное правило середины (fillLine, depth=2) развёрнуто:
+        mid         = corner + center
+        near_corner = corner + mid
+        near_center = mid + center
+    Возвращает [near_corner, mid, near_center] — порядок от угла к центру.
+    Сам угол в массив не входит (он рисуется отдельным большим узлом)."""
+    mid = reduce(corner + center)
+    near_corner = reduce(corner + mid)
+    near_center = reduce(mid + center)
+    return [near_corner, mid, near_center]
+
+
 # ── Авторские названия арканов из книги ────────────────────────────────────
 
 ARCANA_NAMES: dict[int, str] = {
@@ -348,17 +363,20 @@ def to_dict(m: DestinyMatrix) -> dict[str, Any]:
             "personal_divine": m.purpose_spiritual,
             "divine_mission": m.purpose_planetary,
         },
+        # 8 «лучевых» каналов отдают 3 точки луча [near_corner, mid, near_center].
+        # 2 «cross»-канала (отношения, финансы) идут как было — пересекающиеся,
+        # к лучу не привязаны.
         "channels": {
-            "karmic_tail": m.karmic_tail.as_list(),
-            "talents": m.talents.as_list(),
+            "karmic_tail": ray_dots(m.bottom, m.center),
+            "talents": ray_dots(m.month, m.center),
             "relationships": m.relationships.as_list(),
             "finance": m.finance.as_list(),
-            "material_karma": m.material_karma.as_list(),
-            "parental": m.parental.as_list(),
-            "ancestral_father_talents": m.ancestral_father.as_list(),
-            "ancestral_father_karma": m.ancestral_father2.as_list(),
-            "ancestral_mother_talents": m.ancestral_mother.as_list(),
-            "ancestral_mother_karma": m.ancestral_mother2.as_list(),
+            "material_karma": ray_dots(m.year, m.center),
+            "parental": ray_dots(m.day, m.center),
+            "ancestral_father_talents": ray_dots(m.anc_top_left, m.center),
+            "ancestral_father_karma": ray_dots(m.anc_bottom_right, m.center),
+            "ancestral_mother_talents": ray_dots(m.anc_top_right, m.center),
+            "ancestral_mother_karma": ray_dots(m.anc_bottom_left, m.center),
         },
         "chakras": {
             "sky": sky,

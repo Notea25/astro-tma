@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -44,6 +44,34 @@ async def _has_full_access(db: AsyncSession, user_id: int) -> bool:
     if is_prem:
         return True
     return await user_repo.has_purchased(db, user_id, "destiny_matrix_full")
+
+
+def _is_stale_positions(positions: dict) -> bool:
+    """Detect pre-ray-dots format: channels[*][0] was the corner value itself
+    (e.g. talents[0] == month) instead of the first inner dot on the ray.
+    Old rows hit /me before this fix get auto-migrated on first access."""
+    try:
+        ch = positions["channels"]
+        pers = positions["personality"]
+        return ch["talents"][0] == pers["month"]
+    except (KeyError, IndexError, TypeError):
+        return True
+
+
+async def _refresh_if_stale(
+    db: AsyncSession, reading: DestinyMatrixReading, birth_date,
+) -> None:
+    """Recompute positions in place if stored in the old channel format,
+    and drop the cached LLM interpretation (it was anchored to old numbers)."""
+    if not _is_stale_positions(reading.positions):
+        return
+    reading.positions = calculate_matrix(birth_date)
+    await db.execute(
+        delete(DestinyMatrixInterpretation).where(
+            DestinyMatrixInterpretation.reading_id == reading.id
+        )
+    )
+    await db.flush()
 
 
 @router.post("/calculate", response_model=DestinyMatrixResponse)
@@ -94,6 +122,8 @@ async def calculate(
                 )
             )
             reading = result.scalar_one()
+    else:
+        await _refresh_if_stale(db, reading, birth_date)
 
     return DestinyMatrixResponse(
         positions=DestinyMatrixPositions.model_validate(reading.positions),
@@ -138,6 +168,8 @@ async def get_me(
         )
         db.add(reading)
         await db.flush()
+    else:
+        await _refresh_if_stale(db, reading, birth_date)
 
     return DestinyMatrixResponse(
         positions=DestinyMatrixPositions.model_validate(reading.positions),
@@ -226,6 +258,8 @@ async def get_interpretation(
         )
         db.add(reading)
         await db.flush()
+    else:
+        await _refresh_if_stale(db, reading, birth_date)
 
     # Cached interpretation?
     cached_result = await db.execute(
