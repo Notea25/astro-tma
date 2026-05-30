@@ -490,13 +490,13 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .metric strong {{ color: var(--metric-color, {GOLD}); display: block; font: 22px "DejaVu Serif", Georgia, serif; }}
 .metric span {{ color: {TEXT_DIM}; font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; }}
 .aspect-group {{ border-left: 3px solid var(--aspect-color); padding-left: 5mm; margin-top: 5.5mm; break-inside: avoid; }}
-.aspect-group h3 {{ color: var(--aspect-color); font-size: 16.5px; letter-spacing: 1.2px; text-transform: uppercase; margin: 0 0 3mm; }}
+.aspect-group h3 {{ color: var(--aspect-color); font-size: 16.5px; letter-spacing: 1.2px; text-transform: uppercase; margin: 0 0 4mm; }}
 .aspect-group h3 em {{ color: {TEXT_DIM}; text-transform: none; font-size: 12.5px; letter-spacing: 0; margin-left: 3mm; }}
-.aspect-row {{ margin-bottom: 5mm; }}
-.aspect-title {{ display: flex; justify-content: space-between; gap: 4mm; color: {TEXT}; font-size: 13.5px; line-height: 1.2; }}
+.aspect-row {{ margin-bottom: 4mm; padding: 4mm 4.5mm; background: {PANEL}; border: 1px solid {BORDER}; border-radius: 7px; break-inside: avoid; }}
+.aspect-title {{ display: grid; grid-template-columns: 1fr auto; align-items: start; gap: 5mm; color: {TEXT}; font-size: 13.5px; line-height: 1.2; }}
 .aspect-title span:first-child {{ min-width: 0; }}
-.orb {{ color: {TEXT_DIM}; }}
-.aspect-row p {{ margin: 2mm 0 0; color: {TEXT_DIM}; line-height: 1.32; font-size: 12.2px; }}
+.orb {{ color: {TEXT_DIM}; white-space: nowrap; font-size: 11.5px; }}
+.aspect-row p {{ margin: 2.5mm 0 0; color: {TEXT_DIM}; line-height: 1.32; font-size: 12.2px; }}
 .reading {{ padding-right: 4mm; }}
 .reading-quote {{ text-align: center; color: {TEXT_DIM}; font: italic 13px "DejaVu Serif", Georgia, serif; margin: 8mm 0 9mm; }}
 .reading h3 {{ color: {GOLD}; font-size: 17px; letter-spacing: 1.5px; margin: 0 0 3mm; }}
@@ -689,22 +689,10 @@ def _aspect_pages(aspects: list[dict[str, Any]], descriptions: dict[str, Any] | 
         '</div>'
     )
     chunks: list[list[tuple[str, list[dict[str, Any]]]]] = []
-    current: list[tuple[str, list[dict[str, Any]]]] = []
-    current_weight = 0
-    max_weight = 4
     for atype, group_items in groups:
-        for index in range(0, len(group_items), 4):
-            group_chunk = group_items[index:index + 4]
-            weight = 1 + len(group_chunk)
-            if current and current_weight + weight > max_weight:
-                chunks.append(current)
-                current = []
-                current_weight = 0
-                max_weight = 5
-            current.append((atype, group_chunk))
-            current_weight += weight
-    if current:
-        chunks.append(current)
+        for index in range(0, len(group_items), 3):
+            group_chunk = group_items[index:index + 3]
+            chunks.append([(atype, group_chunk)])
     pages = []
     for idx, chunk in enumerate(chunks, start=1):
         page_index = start_page + idx - 1
