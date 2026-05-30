@@ -413,10 +413,13 @@ interface Props {
   onNodeTap: (node: NodeMeta) => void;
 }
 
+// TEMPORARY: template-only mode. Set to false to re-enable nodes.
+const RENDER_NODES = false;
+
 export function DestinyOctagram({
   positions, hasFullAccess, activeNodeId, onNodeTap,
 }: Props) {
-  const nodes = buildNodes(positions);
+  const nodes = RENDER_NODES ? buildNodes(positions) : [];
 
   return (
     <svg
