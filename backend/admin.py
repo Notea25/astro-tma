@@ -64,7 +64,11 @@ class UserAdmin(ModelView, model=User):
     ]
     column_searchable_list = [User.tg_first_name, User.tg_username]
     column_sortable_list = [User.created_at, User.sun_sign]
-    column_details_exclude_list = [User.natal_chart, User.subscriptions, User.purchases, User.tarot_readings]
+    # Show subscriptions + purchases inline on the detail page so an
+    # operator can immediately see whether the user has active Premium
+    # (status=active + expires_at in the future) and which one-off
+    # products they bought.
+    column_details_exclude_list = [User.natal_chart, User.tarot_readings]
     can_delete = True
     can_edit = True
     can_create = False
