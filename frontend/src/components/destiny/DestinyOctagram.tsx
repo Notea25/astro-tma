@@ -59,16 +59,23 @@ const CY = VIEW / 2;
 const R_AGE_RING   = 218;       // age scale circle
 const R_AGE_TICK   = 224;       // outward tick for age markers
 const R_AGE_LABEL  = 234;       // age number labels
-const R_BASE       = 150;       // diamond corners + square corners
+// Diamond is the OUTER figure; square sits INSIDE it (smaller) — matches
+// the canonical cheat-sheet layout where 4/8/15/3 corners sit beyond the
+// 7/12/5/18 ancestral square.
+const R_DIAMOND    = 185;
+const R_SQUARE     = 125;
 // Axis channels — 3 radii per cardinal direction (toward center).
 // Per Ладини cheat sheet: each axis carries [corner, near, mid, close, center]
 // where near = corner+middle, mid = corner+center, close = middle+center.
 const R_AXIS_NEAR  = 115;       // close to the corner side
 const R_AXIS_MID   = 80;        // halfway between corner and center
 const R_AXIS_CLOSE = 45;        // close to the center side
-// Diagonal channels (4 square corners × 2 radii — _in inside, _out outside)
-const R_DIAG_IN    = 88;
-const R_DIAG_OUT   = 200;
+// Diagonal channels: both points sit BETWEEN the square corner (R_SQUARE)
+// and the center, grouped on the inner side of the corner — matches the
+// canonical chart where the small companion numbers cluster next to each
+// square corner inward.
+const R_DIAG_NEAR  = 95;        // just inside the corner (corner-side)
+const R_DIAG_CLOSE = 60;        // closer to center
 // Decorative ♥ and $ icons clustered around center
 const R_ICON       = 38;
 
@@ -78,15 +85,15 @@ function polar(angleDeg: number, radius: number): [number, number] {
 }
 
 // Diamond corners
-const [MX, MY] = polar(0,   R_BASE);   // top — month
-const [YX, YY] = polar(90,  R_BASE);   // right — year
-const [BX, BY] = polar(180, R_BASE);   // bottom
-const [DX, DY] = polar(270, R_BASE);   // left — day
-// Square corners
-const [TLX, TLY] = polar(315, R_BASE);
-const [TRX, TRY] = polar(45,  R_BASE);
-const [BRX, BRY] = polar(135, R_BASE);
-const [BLX, BLY] = polar(225, R_BASE);
+const [MX, MY] = polar(0,   R_DIAMOND);   // top — month
+const [YX, YY] = polar(90,  R_DIAMOND);   // right — year
+const [BX, BY] = polar(180, R_DIAMOND);   // bottom
+const [DX, DY] = polar(270, R_DIAMOND);   // left — day
+// Square corners — inner, smaller than the diamond
+const [TLX, TLY] = polar(315, R_SQUARE);
+const [TRX, TRY] = polar(45,  R_SQUARE);
+const [BRX, BRY] = polar(135, R_SQUARE);
+const [BLX, BLY] = polar(225, R_SQUARE);
 // Axis channel coordinates — 3 points per cardinal direction (near / mid / close)
 const [TOP_NX, TOP_NY] = polar(0, R_AXIS_NEAR);
 const [TOP_MX, TOP_MY] = polar(0, R_AXIS_MID);
@@ -100,15 +107,16 @@ const [BOT_CX, BOT_CY] = polar(180, R_AXIS_CLOSE);
 const [LEFT_NX, LEFT_NY] = polar(270, R_AXIS_NEAR);
 const [LEFT_MX, LEFT_MY] = polar(270, R_AXIS_MID);
 const [LEFT_CX, LEFT_CY] = polar(270, R_AXIS_CLOSE);
-// Diagonal channel coordinates
-const [TL_IX, TL_IY] = polar(315, R_DIAG_IN);
-const [TL_OX, TL_OY] = polar(315, R_DIAG_OUT);
-const [TR_IX, TR_IY] = polar(45,  R_DIAG_IN);
-const [TR_OX, TR_OY] = polar(45,  R_DIAG_OUT);
-const [BR_IX, BR_IY] = polar(135, R_DIAG_IN);
-const [BR_OX, BR_OY] = polar(135, R_DIAG_OUT);
-const [BL_IX, BL_IY] = polar(225, R_DIAG_IN);
-const [BL_OX, BL_OY] = polar(225, R_DIAG_OUT);
+// Diagonal channel coordinates — both points sit INSIDE, between the
+// square corner and the center, grouped near the corner.
+const [TL_NX, TL_NY] = polar(315, R_DIAG_NEAR);
+const [TL_CX, TL_CY] = polar(315, R_DIAG_CLOSE);
+const [TR_NX, TR_NY] = polar(45,  R_DIAG_NEAR);
+const [TR_CX, TR_CY] = polar(45,  R_DIAG_CLOSE);
+const [BR_NX, BR_NY] = polar(135, R_DIAG_NEAR);
+const [BR_CX, BR_CY] = polar(135, R_DIAG_CLOSE);
+const [BL_NX, BL_NY] = polar(225, R_DIAG_NEAR);
+const [BL_CX, BL_CY] = polar(225, R_DIAG_CLOSE);
 
 type Variant =
   | "base-lg"      // diamond + center
@@ -116,8 +124,8 @@ type Variant =
   | "axis-near"    // axis point near the corner
   | "axis-mid"     // axis point at middle (corner+center)
   | "axis-close"   // axis point near the center
-  | "diag-in"      // diagonal channel inner
-  | "diag-out";    // diagonal channel outer
+  | "diag-near"    // diagonal point near the square corner
+  | "diag-close";  // diagonal point closer to center
 
 interface NodeDef {
   nodeId: DestinyNodeId;
@@ -129,14 +137,15 @@ interface NodeDef {
   color?: string;
 }
 
-// ── Cheat-sheet aligned color palette ──────────────────────────────────
-const C_SPIRITUAL  = "#a87bd6";  // purple — top axis (intellect / spirit)
-const C_FINANCE    = "#e07b6a";  // warm red — right axis (money / material)
-const C_KARMA      = "#e0a06a";  // orange — bottom axis (karmic lesson)
-const C_PORTRAIT   = "#d9d6c8";  // off-white — left axis (your portrait)
-const C_TALENTS    = "#e0c66a";  // yellow-gold — axis-in for talents
-const C_LOVE       = "#e07ba8";  // soft pink — relationships flavor
-const C_MONEY      = "#8cd6a0";  // mint green — money flavor
+// Palette per the canonical chart:
+//   spiritual axis (top + left) = purple
+//   material axis (right + bottom) = red
+//   center = gold
+const C_SPIRITUAL  = "#a87bd6";  // purple — top + left
+const C_FINANCE    = "#e07b6a";  // warm red — right + bottom
+const C_TALENTS    = "#e0c66a";  // yellow-gold — talents accent
+const C_LOVE       = "#e07ba8";  // soft pink — relationships
+const C_MONEY      = "#8cd6a0";  // mint green — money
 
 // Helper: reduce a sum to a 1..22 arcana number (matches backend formula).
 function toArcana(n: number): number {
@@ -181,10 +190,11 @@ function buildNodes(positions: DestinyMatrixPositions): NodeDef[] {
 
   return [
     // ── Diamond + center (free) ──
-    { nodeId: "day",    num: p.day,    tier: "free", x: DX, y: DY, variant: "base-lg", color: C_PORTRAIT },
+    // Spiritual axis (top + left) = purple; material axis (right + bottom) = red.
+    { nodeId: "day",    num: p.day,    tier: "free", x: DX, y: DY, variant: "base-lg", color: C_SPIRITUAL },
     { nodeId: "month",  num: p.month,  tier: "free", x: MX, y: MY, variant: "base-lg", color: C_SPIRITUAL },
     { nodeId: "year",   num: p.year,   tier: "free", x: YX, y: YY, variant: "base-lg", color: C_FINANCE },
-    { nodeId: "bottom", num: p.bottom, tier: "free", x: BX, y: BY, variant: "base-lg", color: C_KARMA },
+    { nodeId: "bottom", num: p.bottom, tier: "free", x: BX, y: BY, variant: "base-lg", color: C_FINANCE },
     { nodeId: "center", num: p.center, tier: "free", x: CX, y: CY, variant: "base-lg" },
 
     // ── Small ancestral square (premium) ──
@@ -194,32 +204,29 @@ function buildNodes(positions: DestinyMatrixPositions): NodeDef[] {
     { nodeId: "bottom_left",  num: s.bottom_left,  tier: "premium", x: BLX, y: BLY, variant: "base-md" },
 
     // ── Axis channels (premium) — 3 points per cardinal direction ──
-    // Top axis (talents): near (M+(M+C)) → mid (M+C) → close ((M+C)+C)
     { nodeId: "month_near",  num: monthNear,  tier: "premium", x: TOP_NX, y: TOP_NY, variant: "axis-near",  color: C_SPIRITUAL },
     { nodeId: "month_mid",   num: monthMid,   tier: "premium", x: TOP_MX, y: TOP_MY, variant: "axis-mid",   color: C_TALENTS },
     { nodeId: "month_close", num: monthClose, tier: "premium", x: TOP_CX, y: TOP_CY, variant: "axis-close", color: C_TALENTS },
-    // Right axis (material karma / finance)
     { nodeId: "year_near",   num: yearNear,   tier: "premium", x: RIGHT_NX, y: RIGHT_NY, variant: "axis-near",  color: C_FINANCE },
     { nodeId: "year_mid",    num: yearMid,    tier: "premium", x: RIGHT_MX, y: RIGHT_MY, variant: "axis-mid",   color: C_MONEY },
     { nodeId: "year_close",  num: yearClose,  tier: "premium", x: RIGHT_CX, y: RIGHT_CY, variant: "axis-close", color: C_MONEY },
-    // Bottom axis (karmic tail) — inside the diamond now
-    { nodeId: "bottom_near",  num: bottomNear,  tier: "free", x: BOT_NX, y: BOT_NY, variant: "axis-near",  color: C_KARMA },
-    { nodeId: "bottom_mid",   num: bottomMid,   tier: "free", x: BOT_MX, y: BOT_MY, variant: "axis-mid",   color: C_KARMA },
-    { nodeId: "bottom_close", num: bottomClose, tier: "free", x: BOT_CX, y: BOT_CY, variant: "axis-close", color: C_KARMA },
-    // Left axis (parental / relationships)
-    { nodeId: "day_near",   num: dayNear,   tier: "premium", x: LEFT_NX, y: LEFT_NY, variant: "axis-near",  color: C_PORTRAIT },
+    { nodeId: "bottom_near",  num: bottomNear,  tier: "free", x: BOT_NX, y: BOT_NY, variant: "axis-near",  color: C_FINANCE },
+    { nodeId: "bottom_mid",   num: bottomMid,   tier: "free", x: BOT_MX, y: BOT_MY, variant: "axis-mid",   color: C_FINANCE },
+    { nodeId: "bottom_close", num: bottomClose, tier: "free", x: BOT_CX, y: BOT_CY, variant: "axis-close", color: C_FINANCE },
+    { nodeId: "day_near",   num: dayNear,   tier: "premium", x: LEFT_NX, y: LEFT_NY, variant: "axis-near",  color: C_SPIRITUAL },
     { nodeId: "day_mid",    num: dayMid,    tier: "premium", x: LEFT_MX, y: LEFT_MY, variant: "axis-mid",   color: C_LOVE },
     { nodeId: "day_close",  num: dayClose,  tier: "premium", x: LEFT_CX, y: LEFT_CY, variant: "axis-close", color: C_LOVE },
 
-    // ── Diagonal ancestral channels (premium) ──
-    { nodeId: "aft_in",  num: ch.ancestral_father_talents[1] ?? 0, tier: "premium", x: TL_IX, y: TL_IY, variant: "diag-in" },
-    { nodeId: "aft_out", num: ch.ancestral_father_talents[2] ?? 0, tier: "premium", x: TL_OX, y: TL_OY, variant: "diag-out" },
-    { nodeId: "amt_in",  num: ch.ancestral_mother_talents[1] ?? 0, tier: "premium", x: TR_IX, y: TR_IY, variant: "diag-in" },
-    { nodeId: "amt_out", num: ch.ancestral_mother_talents[2] ?? 0, tier: "premium", x: TR_OX, y: TR_OY, variant: "diag-out" },
-    { nodeId: "amk_in",  num: ch.ancestral_mother_karma[1] ?? 0,   tier: "premium", x: BR_IX, y: BR_IY, variant: "diag-in" },
-    { nodeId: "amk_out", num: ch.ancestral_mother_karma[2] ?? 0,   tier: "premium", x: BR_OX, y: BR_OY, variant: "diag-out" },
-    { nodeId: "afk_in",  num: ch.ancestral_father_karma[1] ?? 0,   tier: "premium", x: BL_IX, y: BL_IY, variant: "diag-in" },
-    { nodeId: "afk_out", num: ch.ancestral_father_karma[2] ?? 0,   tier: "premium", x: BL_OX, y: BL_OY, variant: "diag-out" },
+    // ── Diagonal ancestral channels (premium) — both points INSIDE,
+    //    grouped near each square corner toward the center.
+    { nodeId: "aft_in",  num: ch.ancestral_father_talents[1] ?? 0, tier: "premium", x: TL_NX, y: TL_NY, variant: "diag-near" },
+    { nodeId: "aft_out", num: ch.ancestral_father_talents[2] ?? 0, tier: "premium", x: TL_CX, y: TL_CY, variant: "diag-close" },
+    { nodeId: "amt_in",  num: ch.ancestral_mother_talents[1] ?? 0, tier: "premium", x: TR_NX, y: TR_NY, variant: "diag-near" },
+    { nodeId: "amt_out", num: ch.ancestral_mother_talents[2] ?? 0, tier: "premium", x: TR_CX, y: TR_CY, variant: "diag-close" },
+    { nodeId: "amk_in",  num: ch.ancestral_mother_karma[1] ?? 0,   tier: "premium", x: BR_NX, y: BR_NY, variant: "diag-near" },
+    { nodeId: "amk_out", num: ch.ancestral_mother_karma[2] ?? 0,   tier: "premium", x: BR_CX, y: BR_CY, variant: "diag-close" },
+    { nodeId: "afk_in",  num: ch.ancestral_father_karma[1] ?? 0,   tier: "premium", x: BL_NX, y: BL_NY, variant: "diag-near" },
+    { nodeId: "afk_out", num: ch.ancestral_father_karma[2] ?? 0,   tier: "premium", x: BL_CX, y: BL_CY, variant: "diag-close" },
   ];
 }
 
@@ -230,8 +237,8 @@ function nodeRadius(variant: Variant): number {
     case "axis-near":  return 13;
     case "axis-mid":   return 13;
     case "axis-close": return 12;
-    case "diag-in":    return 12;
-    case "diag-out":   return 12;
+    case "diag-near":  return 12;
+    case "diag-close": return 11;
   }
 }
 
@@ -262,7 +269,7 @@ function RenderedNode({ node, locked, active, faded, onTap }: RenderedNodeProps)
   const stroke = active ? "#e8c862" : baseStroke;
   const strokeWidth = active ? 2.4 : (node.variant.startsWith("base") ? 1.7 : 1.1);
   const tint = node.color ? `${node.color}26` : "#0e0b20";
-  const numberFill = node.color && node.color !== C_PORTRAIT ? node.color : "#e8c862";
+  const numberFill = node.color ?? "#e8c862";
 
   return (
     <g
@@ -384,11 +391,11 @@ export function DestinyOctagram({
       {/* Age ring on the outside */}
       <AgeRing />
 
-      {/* Diagonal guide rays (subtle) */}
-      <line x1={CX} y1={CY} x2={TL_OX} y2={TL_OY} stroke="rgba(232,200,98,0.12)" strokeWidth="0.6" strokeDasharray="2 4" />
-      <line x1={CX} y1={CY} x2={TR_OX} y2={TR_OY} stroke="rgba(232,200,98,0.12)" strokeWidth="0.6" strokeDasharray="2 4" />
-      <line x1={CX} y1={CY} x2={BR_OX} y2={BR_OY} stroke="rgba(232,200,98,0.12)" strokeWidth="0.6" strokeDasharray="2 4" />
-      <line x1={CX} y1={CY} x2={BL_OX} y2={BL_OY} stroke="rgba(232,200,98,0.12)" strokeWidth="0.6" strokeDasharray="2 4" />
+      {/* Diagonal guide rays from center to each square corner */}
+      <line x1={CX} y1={CY} x2={TLX} y2={TLY} stroke="rgba(232,200,98,0.18)" strokeWidth="0.6" strokeDasharray="2 4" />
+      <line x1={CX} y1={CY} x2={TRX} y2={TRY} stroke="rgba(232,200,98,0.18)" strokeWidth="0.6" strokeDasharray="2 4" />
+      <line x1={CX} y1={CY} x2={BRX} y2={BRY} stroke="rgba(232,200,98,0.18)" strokeWidth="0.6" strokeDasharray="2 4" />
+      <line x1={CX} y1={CY} x2={BLX} y2={BLY} stroke="rgba(232,200,98,0.18)" strokeWidth="0.6" strokeDasharray="2 4" />
 
       {/* Cardinal axes through center — these are the channel axes */}
       <line x1={DX} y1={DY} x2={YX} y2={YY}
