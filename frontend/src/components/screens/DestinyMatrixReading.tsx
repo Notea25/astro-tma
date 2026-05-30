@@ -18,29 +18,61 @@ import { DestinyVarna } from "@/components/destiny/DestinyVarna";
 
 // Human-friendly title shown in the bottom-sheet header for each tap-target.
 const NODE_TITLES_RU: Record<DestinyNodeId, string> = {
-  day:          "День — портрет личности",
-  month:        "Месяц — таланты и вдохновение",
-  year:         "Год — опыт рода, повторы",
-  bottom:       "Низ — кармический урок",
-  center:       "Центр — характер, зона комфорта",
+  // Big diamond + center
+  day:    "День — портрет личности",
+  month:  "Месяц — таланты и вдохновение",
+  year:   "Год — опыт рода, повторы",
+  bottom: "Низ — главный кармический урок",
+  center: "Центр — характер, зона комфорта",
+  // Small ancestral square
   top_left:     "Род · верх слева — отец, духовное",
   top_right:    "Род · верх справа — мать, духовное",
   bottom_right: "Род · низ справа — мать, материальное",
   bottom_left:  "Род · низ слева — отец, материальное",
+  // Ancestral channels — "_in" = работа (между центром и углом),
+  // "_out" = итог (снаружи квадрата). Сам угол квадрата — вход канала.
+  aft_in:  "Род отца · таланты — работа канала",
+  aft_out: "Род отца · таланты — итог",
+  amt_in:  "Род матери · таланты — работа канала",
+  amt_out: "Род матери · таланты — итог",
+  amk_in:  "Род матери · карма — работа канала",
+  amk_out: "Род матери · карма — итог",
+  afk_in:  "Род отца · карма — работа канала",
+  afk_out: "Род отца · карма — итог",
+  // Karmic tail extension
+  kt_mid: "Кармический хвост — работа",
+  kt_out: "Кармический хвост — итог",
+  // Inner energy icons
+  talents_mid:       "Зона талантов — работа канала",
+  relationships_mid: "Отношения — работа канала",
+  finance_mid:       "Финансы — работа канала",
 };
 
 // Which `arcana_meanings.context` row to pull for the bottom-sheet copy
 // when the user taps a given node.
 const NODE_CONTEXT: Record<DestinyNodeId, string> = {
-  day:          "personality",
-  month:        "talents",
-  year:         "ancestral",
-  bottom:       "karmic_tail",
-  center:       "personality",
+  day:    "personality",
+  month:  "talents",
+  year:   "ancestral",
+  bottom: "karmic_tail",
+  center: "personality",
   top_left:     "ancestral",
   top_right:    "ancestral",
   bottom_right: "ancestral",
   bottom_left:  "ancestral",
+  aft_in:  "ancestral",
+  aft_out: "ancestral",
+  amt_in:  "ancestral",
+  amt_out: "ancestral",
+  amk_in:  "ancestral",
+  amk_out: "ancestral",
+  afk_in:  "ancestral",
+  afk_out: "ancestral",
+  kt_mid: "karmic_tail",
+  kt_out: "karmic_tail",
+  talents_mid:       "talents",
+  relationships_mid: "relationships",
+  finance_mid:       "finance",
 };
 
 const MONTHS_RU_GEN = [
