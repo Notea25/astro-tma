@@ -867,32 +867,62 @@ export const paymentsApi = {
 };
 
 // ── Destiny Matrix ──────────────────────────────────────────────────────────
+// Структура соответствует MATRIX_DESTINY_SPEC.md §4.2 + §5.1.
 
-export interface DestinyMatrixChakraRow {
-  physics: number;
-  energy: number;
-  emotion: number;
+export interface DestinyPersonality {
+  day: number;
+  month: number;
+  year: number;
+  bottom: number;
+  center: number;
+}
+
+export interface DestinyAncestralSquare {
+  top_left: number;
+  top_right: number;
+  bottom_right: number;
+  bottom_left: number;
+}
+
+export interface DestinyLines {
+  sky: number;
+  earth: number;
+  father: number;
+  mother: number;
+}
+
+export interface DestinyPurposes {
+  personal: number;
+  social: number;
+  spiritual: number;
+  planetary: number;
+}
+
+export interface DestinyChannels {
+  karmic_tail: number[];
+  talents: number[];
+  relationships: number[];
+  finance: number[];
+  material_karma: number[];
+  parental: number[];
+  ancestral_father_talents: number[];
+  ancestral_father_karma: number[];
+  ancestral_mother_talents: number[];
+  ancestral_mother_karma: number[];
+}
+
+export interface DestinyVarna {
+  varnas: Record<string, number>; // {"Брахман": 40, "Кшатрий": 40, ...}
+  expression: number;
 }
 
 export interface DestinyMatrixPositions {
-  A: number; B: number; C: number; D: number; E: number;
-  F: number; G: number; H: number; I: number;
-  line_earth: number;
-  line_sky: number;
-  purpose_personal: number;
-  purpose_social: number;
-  purpose_spiritual: number;
-  chakras: Record<string, DestinyMatrixChakraRow>;
-  line_karma: number[];
-  line_mission: number[];
-  line_money: number[];
-  line_love: number[];
-  line_health: number[];
-  karmic_tail_male: number;
-  karmic_tail_female: number;
-  point_comfort: number;
-  point_socialization: number;
-  point_love: number;
+  personality: DestinyPersonality;
+  ancestral_square: DestinyAncestralSquare;
+  lines: DestinyLines;
+  purposes: DestinyPurposes;
+  channels: DestinyChannels;
+  varna: DestinyVarna;
 }
 
 export interface DestinyMatrixResponse {

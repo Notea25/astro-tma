@@ -4,17 +4,19 @@ import { destinyApi } from "@/services/api";
 
 const SECTION_LABELS_RU: Record<string, string> = {
   who_you_are: "Кто вы",
-  mission: "Ваше предназначение",
-  money: "Деньги и реализация",
-  love: "Любовь и отношения",
-  health: "Тело и здоровье",
-  karma: "Карма и род",
+  karmic_tail: "Кармический хвост",
+  talents: "Таланты",
+  purpose: "Предназначение",
+  relationships: "Отношения",
+  finance: "Деньги и реализация",
+  parental: "Род и семья",
   advice: "Совет",
 };
 
 // The interpreter returns this exact order in the LLM response.
 const SECTION_ORDER = [
-  "who_you_are", "mission", "money", "love", "health", "karma", "advice",
+  "who_you_are", "karmic_tail", "talents", "purpose",
+  "relationships", "finance", "parental", "advice",
 ] as const;
 
 interface Props {

@@ -1,292 +1,258 @@
 """
 Destiny Matrix calculator — pure math, no I/O, no LLM.
 
-All formulas come from DESTINY_MATRIX_PRD_ADDENDUM.md. The §3 ones are
-cross-confirmed across public Russian calculators; the §4 ones are
-hypotheses pending Week 0 validation against gadalkindom.ru. Each
-hypothesis is marked with `# TODO: validate vs gadalkindom.ru`.
+Источник методики: книга «Матрица судьбы от А до Я» (Н. Бастиков, метод Л. Ладини).
+Традиция арканов: Marseille (8=Справедливость, 11=Сила, 22=Шут/Свобода).
 
-The matrix is indexed by **English code keys** (`A`, `B`, …, `chakra_sahasrara`)
-so we never bake the marketed Russian names into the schema. The display
-layer translates them via i18n.
+ВАЛИДАЦИЯ: формулы проверены на эталонном примере из книги (23.01.1987)
+плюс на трёх независимых публичных источниках (Халва 10.04.1988,
+Dzen 09.01.2001, ИнфоХит 22.11.1983). Полный тест-сьют — в
+tests/test_calculator.py (28 тестов).
+
+Используются английские code-ключи (`day`, `month`, `top_left`, …) —
+display labels на русском живут в UI.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
-# ── Universal folding rule (§3.1) ─────────────────────────────────────────────
 
+# ── Свёртка ─────────────────────────────────────────────────────────────────
 
-def fold_to_arcana(n: int) -> int:
-    """Fold any positive integer into the 1..22 major arcana range.
-
-    Rule (consensus across public sources):
-    - If n <= 22: return n.
-    - Else: n = sum of digits, repeat until n <= 22.
-    - If the result is 0 → return 22 (the convention 0 ≡ XXII The Fool).
-    """
-    if n < 0:
-        n = -n
+def reduce(n: int) -> int:
+    """Свёртка к диапазону арканов 1..22 сложением цифр.
+    Примеры: 25→7, 26→8, 23→5, 30→3. Месяцы (1..12) и суммы ≤22 не сворачиваются."""
     while n > 22:
         n = sum(int(d) for d in str(n))
-    return n if n > 0 else 22
+    return n
 
 
-def _sum_digits(n: int) -> int:
-    return sum(int(d) for d in str(abs(n)))
+def reduce1(n: int) -> int:
+    """Ведическая свёртка до 1..9 — используется для расчёта варн."""
+    while n > 9:
+        n = sum(int(d) for d in str(n))
+    return n
 
 
-# ── §3.2 Large diamond (rhombus) — 4 corners + center ────────────────────────
+# ── Авторские названия арканов из книги ────────────────────────────────────
+
+ARCANA_NAMES: dict[int, str] = {
+    1: "Маг", 2: "Единство", 3: "Императрица", 4: "Император",
+    5: "Учитель", 6: "Любовь", 7: "Воин",
+    8: "Справедливость", 9: "Мудрец", 10: "Фортуна",
+    11: "Сила", 12: "Новое видение", 13: "Трансформация",
+    14: "Искусство", 15: "Проявление", 16: "Духовное преображение",
+    17: "Звезда", 18: "Магия", 19: "Солнце",
+    20: "Ясно знание", 21: "Мир", 22: "Уровневая свобода",
+}
 
 
-def _big_diamond(birth_day: int, birth_month: int, birth_year: int) -> dict[str, int]:
-    """A=day, B=month, C=sum-of-year-digits, D=A+B+C, E=A+B+C+D.
+# ── Касты для расчёта варны (по числам кармы 1..9) ──────────────────────────
 
-    Source: media.halvacard.ru/retrogradnyi-merkurii/matrica-sudby
-    + consensus across at least three public calculators.
+VARNA = {
+    1: "Кшатрий", 9: "Кшатрий",
+    3: "Брахман", 6: "Брахман",
+    2: "Вайшью", 5: "Вайшью",
+    4: "Шудра", 7: "Шудра", 8: "Шудра",
+}
+
+
+# ── Структуры данных ────────────────────────────────────────────────────────
+
+@dataclass
+class Channel:
+    """Канал-«ключ» из трёх энергий: начало, середина, итог."""
+    a: int
+    b: int
+    c: int
+
+    def as_list(self) -> list[int]:
+        return [self.a, self.b, self.c]
+
+
+@dataclass
+class DestinyMatrix:
+    # §1 Личностный (диагональный) ромб
+    day: int
+    month: int
+    year: int
+    bottom: int
+    center: int
+
+    # §2 Родовой (прямой) квадрат
+    anc_top_left: int
+    anc_top_right: int
+    anc_bottom_right: int
+    anc_bottom_left: int
+
+    # §3 Линии и предназначения
+    sky: int
+    earth: int
+    line_father: int
+    line_mother: int
+    purpose_personal: int
+    purpose_social: int
+    purpose_spiritual: int
+    purpose_planetary: int
+
+    # §4 Каналы (3 энергии каждый)
+    karmic_tail: Channel
+    talents: Channel
+    relationships: Channel
+    finance: Channel
+    material_karma: Channel
+    parental: Channel
+    ancestral_father: Channel   # таланты по линии отца (ATL)
+    ancestral_father2: Channel  # карма по линии отца (ABR)
+    ancestral_mother: Channel   # таланты по линии матери (ATR)
+    ancestral_mother2: Channel  # карма по линии матери (ABL)
+
+    # Дополнительные точки
+    cross_point: int
+    material_karma_point: int
+
+
+# ── Расчёт ──────────────────────────────────────────────────────────────────
+
+def calculate(birth: date) -> DestinyMatrix:
+    """Полный расчёт Матрицы Судьбы по дате рождения. Чистая математика,
+    детерминированная: одна дата → одна матрица."""
+
+    # §1 Личностный квадрат (диагональный ромб)
+    D = reduce(birth.day)
+    M = reduce(birth.month)
+    Y = reduce(sum(int(c) for c in str(birth.year)))
+    B = reduce(D + M + Y)
+    C = reduce(D + M + Y + B)
+
+    # §2 Родовой квадрат (прямой)
+    atl = reduce(D + M)
+    atr = reduce(M + Y)
+    abr = reduce(Y + B)
+    abl = reduce(B + D)
+
+    # §3 Линии и предназначения
+    sky = reduce(M + B)
+    earth = reduce(D + Y)
+    line_father = reduce(atl + abr)
+    line_mother = reduce(atr + abl)
+    lp = reduce(sky + earth)            # личное (до 40 лет)
+    sp = reduce(line_father + line_mother)  # социальное (40-60)
+    dp = reduce(lp + sp)                # духовное (после 60)
+    pp = reduce(sp + dp)                # планетарное (миссия)
+
+    # §4.1 Кармический хвост (приём «вершина + C, затем + вершина»)
+    kt = Channel(B, reduce(B + C), reduce(B + reduce(B + C)))
+
+    # §4.2 Зона талантов
+    tal = Channel(M, reduce(M + C), reduce(M + reduce(M + C)))
+
+    # §4.3 Линия благополучия: отношения + финансы (пересекаются)
+    mk_point = reduce(Y + C)                 # точка материальной кармы (стык)
+    cross = reduce(kt.b + mk_point)
+    rel_center = reduce(kt.b + cross)
+    fin_center = reduce(mk_point + cross)
+    relationships = Channel(kt.b, rel_center, cross)
+    finance = Channel(mk_point, fin_center, cross)
+
+    # §4.4 Материальная карма
+    mk_center = reduce(Y + mk_point)
+    material_karma = Channel(Y, mk_center, mk_point)
+
+    # §4.5 Детско-родительский (на линии Земли)
+    parental = Channel(D, reduce(D + C), reduce(D + reduce(D + C)))
+
+    # §4.6 Родовые каналы (приём «вершина + C, затем + вершина»)
+    af1 = reduce(atl + C); af2 = reduce(atl + af1)
+    af3 = reduce(abr + C); af4 = reduce(abr + af3)
+    am1 = reduce(atr + C); am2 = reduce(atr + am1)
+    am3 = reduce(abl + C); am4 = reduce(abl + am3)
+
+    return DestinyMatrix(
+        day=D, month=M, year=Y, bottom=B, center=C,
+        anc_top_left=atl, anc_top_right=atr,
+        anc_bottom_right=abr, anc_bottom_left=abl,
+        sky=sky, earth=earth,
+        line_father=line_father, line_mother=line_mother,
+        purpose_personal=lp, purpose_social=sp,
+        purpose_spiritual=dp, purpose_planetary=pp,
+        karmic_tail=kt, talents=tal,
+        relationships=relationships, finance=finance,
+        material_karma=material_karma, parental=parental,
+        ancestral_father=Channel(atl, af1, af2),
+        ancestral_father2=Channel(abr, af3, af4),
+        ancestral_mother=Channel(atr, am1, am2),
+        ancestral_mother2=Channel(abl, am3, am4),
+        cross_point=cross, material_karma_point=mk_point,
+    )
+
+
+def calculate_varna(birth: date) -> dict:
+    """Расчёт варн (каст) по дате рождения. Ведическая свёртка до 1..9.
+
+    Правило: рождение 00:00-01:30 → берётся предыдущий день. Здесь время
+    не учитываем — варну считаем от паспортной даты как есть, корректировку
+    оставляем UI/пользователю.
     """
-    a = fold_to_arcana(birth_day)
-    b = fold_to_arcana(birth_month)
-    c = fold_to_arcana(_sum_digits(birth_year))
-    d = fold_to_arcana(a + b + c)
-    e = fold_to_arcana(a + b + c + d)
-    return {"A": a, "B": b, "C": c, "D": d, "E": e}
-
-
-# ── §3.3 Small (ancestral) square — F, G, H, I ───────────────────────────────
-
-
-def _small_square(big: dict[str, int]) -> dict[str, int]:
-    """Each ancestral-square corner is the fold of the two adjacent diamond
-    corners. Source: §3.3."""
-    a, b, c, d = big["A"], big["B"], big["C"], big["D"]
+    d = reduce1(birth.day)
+    m = reduce1(birth.month)
+    y = reduce1(sum(int(c) for c in str(birth.year)))
+    s = reduce1(d + m + y)
+    result: dict[str, int] = {}
+    for digit, pct in [(d, 40), (m, 10), (y, 10), (s, 40)]:
+        v = VARNA.get(digit, "—")
+        result[v] = result.get(v, 0) + pct
     return {
-        "F": fold_to_arcana(a + b),   # top-left
-        "G": fold_to_arcana(b + c),   # top-right
-        "H": fold_to_arcana(c + d),   # bottom-right
-        "I": fold_to_arcana(d + a),   # bottom-left
+        "varnas": result,
+        "expression": reduce1(birth.day + birth.month),
     }
 
 
-# ── §3.4 Earth / Sky lines + Purpose triple ──────────────────────────────────
-
-
-def _purpose_lines(big: dict[str, int], small: dict[str, int]) -> dict[str, int]:
-    """line_earth = A+C, line_sky = B+D, plus three life-purpose layers.
-
-    purpose_personal — your own mission up to ~40 y.o.
-    purpose_social   — through male/female lineage anchors (~40–60 y.o.)
-    purpose_spiritual — combined, the "after-60" arc / overall meaning.
-    """
-    a, b, c, d = big["A"], big["B"], big["C"], big["D"]
-    f, g, h, i = small["F"], small["G"], small["H"], small["I"]
-
-    line_earth = fold_to_arcana(a + c)
-    line_sky = fold_to_arcana(b + d)
-    purpose_personal = fold_to_arcana(line_earth + line_sky)
-
-    # TODO: validate vs gadalkindom.ru — the male/female anchors are the
-    # area with the widest variance between source calculators (§3.4 ⚠️).
-    male_lineage_anchor = fold_to_arcana(f + i)     # left side of family square
-    female_lineage_anchor = fold_to_arcana(g + h)   # right side
-
-    purpose_social = fold_to_arcana(male_lineage_anchor + female_lineage_anchor)
-    purpose_spiritual = fold_to_arcana(purpose_personal + purpose_social)
-
+def to_dict(m: DestinyMatrix) -> dict[str, Any]:
+    """Сериализация в плоский dict для JSONB / API ответа."""
     return {
-        "line_earth": line_earth,
-        "line_sky": line_sky,
-        "purpose_personal": purpose_personal,
-        "male_lineage_anchor": male_lineage_anchor,
-        "female_lineage_anchor": female_lineage_anchor,
-        "purpose_social": purpose_social,
-        "purpose_spiritual": purpose_spiritual,
+        "personality": {
+            "day": m.day, "month": m.month, "year": m.year,
+            "bottom": m.bottom, "center": m.center,
+        },
+        "ancestral_square": {
+            "top_left": m.anc_top_left, "top_right": m.anc_top_right,
+            "bottom_right": m.anc_bottom_right, "bottom_left": m.anc_bottom_left,
+        },
+        "lines": {
+            "sky": m.sky, "earth": m.earth,
+            "father": m.line_father, "mother": m.line_mother,
+        },
+        "purposes": {
+            "personal": m.purpose_personal,
+            "social": m.purpose_social,
+            "spiritual": m.purpose_spiritual,
+            "planetary": m.purpose_planetary,
+        },
+        "channels": {
+            "karmic_tail": m.karmic_tail.as_list(),
+            "talents": m.talents.as_list(),
+            "relationships": m.relationships.as_list(),
+            "finance": m.finance.as_list(),
+            "material_karma": m.material_karma.as_list(),
+            "parental": m.parental.as_list(),
+            "ancestral_father_talents": m.ancestral_father.as_list(),
+            "ancestral_father_karma": m.ancestral_father2.as_list(),
+            "ancestral_mother_talents": m.ancestral_mother.as_list(),
+            "ancestral_mother_karma": m.ancestral_mother2.as_list(),
+        },
     }
 
 
-# ── §4.2 7 chakras × 3 columns (HYPOTHESIS) ──────────────────────────────────
-
-
-# Chakra keys in the order shown on the diagram (top→bottom)
-_CHAKRA_KEYS = (
-    "sahasrara",      # 7 (crown)
-    "ajna",           # 6 (third eye)
-    "vishuddha",      # 5 (throat)
-    "anahata",        # 4 (heart — center)
-    "manipura",       # 3 (solar plexus)
-    "svadhisthana",   # 2 (sacral)
-    "muladhara",      # 1 (root)
-)
-
-
-def _chakras(
-    big: dict[str, int], small: dict[str, int], purpose: dict[str, int],
-) -> dict[str, dict[str, int]]:
-    """Returns {chakra_key: {physics, energy, emotion}} for 7 chakras × 3.
-
-    HYPOTHESIS (pending Week 0 validation against gadalkindom.ru):
-    the physics column lives on the male (left) family-square axis, the
-    energy column on the female (right) axis, the emotion column = fold
-    of the two. The crown (sahasrara) reads the diamond axes (A=day,
-    B=month) since that's the "head" of the figure.
-
-    The "anahata" (heart) row reads the center E because the heart sits
-    at the geometric center of the octagram in every source diagram.
-    """
-    a, b, c, d, e = big["A"], big["B"], big["C"], big["D"], big["E"]
-    f, g, h, i = small["F"], small["G"], small["H"], small["I"]
-
-    # TODO: validate vs gadalkindom.ru — chakras are §4.2 explicit hypothesis.
-    rows = {
-        "sahasrara":   (a, b, fold_to_arcana(a + b)),
-        "ajna":        (i, g, fold_to_arcana(i + g)),
-        "vishuddha":   (f, h, fold_to_arcana(f + h)),
-        "anahata":     (e, e, e),                                 # heart / center
-        "manipura":    (d, fold_to_arcana(d + e), fold_to_arcana(d + e + e)),
-        "svadhisthana": (
-            fold_to_arcana(a + d),
-            fold_to_arcana(b + d),
-            fold_to_arcana(a + b + d),
-        ),
-        "muladhara": (
-            fold_to_arcana(a + c),
-            fold_to_arcana(b + c),
-            fold_to_arcana(a + b + c),
-        ),
-    }
-    out: dict[str, dict[str, int]] = {}
-    for key, (physics, energy, emotion) in rows.items():
-        out[key] = {
-            "physics": physics,
-            "energy": energy,
-            "emotion": emotion,
-        }
-    # Totals column (8th row in the diagram) — sum-fold over each column.
-    out["totals"] = {
-        "physics": fold_to_arcana(sum(row[0] for row in rows.values())),
-        "energy": fold_to_arcana(sum(row[1] for row in rows.values())),
-        "emotion": fold_to_arcana(sum(row[2] for row in rows.values())),
-    }
-    return out
-
-
-# ── §4.3-§4.4 Money / love / health / karma lines (HYPOTHESIS) ───────────────
-
-
-def _life_lines(big: dict[str, int], small: dict[str, int]) -> dict[str, list[int]]:
-    """Each life line = 3 points: start, middle, outcome.
-
-    HYPOTHESIS (pending Week 0 validation). Public sources agree that
-    each line lives on a specific axis of the octagram with 3 nodes, but
-    the exact formula for each node is private to commercial calculators.
-    The convention here:
-    - start = the diamond/square corner closest to one end of the axis
-    - middle = fold of the two endpoints
-    - outcome = the corner at the far end
-
-    The "money" line sits on the vertical (sky) axis, anchored on
-    Svadhisthana (2nd chakra). The "love" line sits on the relationship
-    diagonal F↔H. Karma rides the personal axis, mission rides the sky-
-    of-purpose, health rides the earth-of-body.
-    """
-    a, b, c, d = big["A"], big["B"], big["C"], big["D"]
-    f, h = small["F"], small["H"]
-
-    # TODO: validate vs gadalkindom.ru — money/love line nodes are §4.3-§4.4.
-    return {
-        # Karma — personal axis (A↔D via E)
-        "line_karma": [
-            a,
-            fold_to_arcana(a + d),
-            d,
-        ],
-        # Mission — heaven-of-purpose (B↔C via E)
-        "line_mission": [
-            b,
-            fold_to_arcana(b + c),
-            c,
-        ],
-        # Money — vertical sky axis (B↔D)
-        "line_money": [
-            b,
-            fold_to_arcana(b + d),
-            d,
-        ],
-        # Love — F↔H relationship diagonal
-        "line_love": [
-            f,
-            fold_to_arcana(f + h),
-            h,
-        ],
-        # Health — earth axis (A↔C)
-        "line_health": [
-            a,
-            fold_to_arcana(a + c),
-            c,
-        ],
-    }
-
-
-# ── §4.5 Karmic tails + extra points (HYPOTHESIS) ────────────────────────────
-
-
-def _karmic_and_points(
-    big: dict[str, int], small: dict[str, int], purpose: dict[str, int],
-) -> dict[str, int]:
-    """Karmic tails (male/female lineage) + comfort/socialisation/love points.
-
-    HYPOTHESIS. The karmic tail is conventionally the fold of three
-    generations of lineage anchor points; we approximate as fold of the
-    anchor + adjacent diamond corner.
-    """
-    e = big["E"]
-    male_anchor = purpose["male_lineage_anchor"]
-    female_anchor = purpose["female_lineage_anchor"]
-
-    # TODO: validate vs gadalkindom.ru — karmic tails are §4.5 hypothesis.
-    return {
-        "karmic_tail_male": fold_to_arcana(male_anchor + e),
-        "karmic_tail_female": fold_to_arcana(female_anchor + e),
-        "point_comfort": e,                                # center = comfort
-        "point_socialization": fold_to_arcana(small["F"] + small["G"]),
-        "point_love": fold_to_arcana(small["F"] + small["H"]),
-    }
-
-
-# ── Public entry point ───────────────────────────────────────────────────────
-
+# ── Public entry point — совместим с прежним API ────────────────────────────
 
 def calculate_matrix(birth_date: date) -> dict[str, Any]:
-    """Compute the full Destiny Matrix from a birth date.
-
-    Returns a flat dict matching the api.schemas.destiny_matrix.
-    DestinyMatrixPositions schema. The output is deterministic — same
-    input always gives the same matrix.
-    """
-    big = _big_diamond(birth_date.day, birth_date.month, birth_date.year)
-    small = _small_square(big)
-    purpose = _purpose_lines(big, small)
-    chakras = _chakras(big, small, purpose)
-    lines = _life_lines(big, small)
-    karmic = _karmic_and_points(big, small, purpose)
-
+    """Удобная обёртка: считает матрицу + варну и возвращает плоский dict
+    для хранения в JSONB. Используется из api/routes/destiny_matrix.py."""
     return {
-        # Big diamond
-        "A": big["A"], "B": big["B"], "C": big["C"], "D": big["D"], "E": big["E"],
-        # Small square
-        "F": small["F"], "G": small["G"], "H": small["H"], "I": small["I"],
-        # Purpose triple
-        "line_earth": purpose["line_earth"],
-        "line_sky": purpose["line_sky"],
-        "purpose_personal": purpose["purpose_personal"],
-        "purpose_social": purpose["purpose_social"],
-        "purpose_spiritual": purpose["purpose_spiritual"],
-        # Chakras 7×3 + totals
-        "chakras": chakras,
-        # 5 life lines
-        **lines,
-        # Karmic + points
-        **karmic,
+        **to_dict(calculate(birth_date)),
+        "varna": calculate_varna(birth_date),
     }

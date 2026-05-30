@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """
-Seed 22 arcana × 8 contexts = 176 text blocks into the `arcana_meanings`
+Seed 22 arcana × 9 contexts = 198 text blocks into the `arcana_meanings`
 table for the Destiny Matrix feature.
 
 Each block is ~50-80 words of practical, on-tone description for one
 arcana in one of these life contexts:
-    personality, mission, money, love, health, karma, shadow, advice
+    personality, talents, purpose, parental, ancestral,
+    relationships, finance, material_karma, karmic_tail
 
 Generates content via Claude Haiku (one batched call per arcana with all
-8 contexts in a single JSON tool-call). At Haiku 4.5 rates this costs
-about $0.02 in total and takes ~30-60 seconds.
+9 contexts in a single JSON tool-call). At Haiku 4.5 rates this costs
+about $3-5 in total and takes ~5-10 minutes.
 
 Run:
     docker compose exec backend python infra/scripts/seed_destiny_arcana.py
@@ -44,14 +45,15 @@ _MODEL = "claude-haiku-4-5-20251001"
 
 
 _CONTEXT_HEADERS = {
-    "personality": "ЛИЧНОСТЬ (кто человек по своей сути, какой характер)",
-    "mission": "МИССИЯ (главная задача жизни, куда направлена воля)",
-    "money": "ДЕНЬГИ (отношения с финансами, способ зарабатывать)",
-    "love": "ЛЮБОВЬ (как любит, как складываются отношения, что притягивает)",
-    "health": "ЗДОРОВЬЕ (тело, энергия, уязвимые зоны)",
-    "karma": "КАРМА (родовые задачи, наследие предков, что прорабатывать)",
-    "shadow": "ТЕНЬ (зона риска, ловушка этой энергии, что разрушает)",
-    "advice": "СОВЕТ (один конкретный практический шаг)",
+    "personality": "ЛИЧНОСТЬ (характер, портрет, зона комфорта — позиция центра/портрета)",
+    "talents": "ТАЛАНТЫ (высшая суть, что вдохновляет, зона роста — позиция месяца/верха ромба)",
+    "purpose": "ПРЕДНАЗНАЧЕНИЕ (миссия, вектор проработки — ЛП/СП/ДП/ПЛ)",
+    "parental": "ДЕТСКО-РОДИТЕЛЬСКИЙ (зачем пришёл от родителей, задача, типичные ошибки)",
+    "ancestral": "РОДОВАЯ ПРОГРАММА (что транслирует род — таланты сверху, карма снизу)",
+    "relationships": "ОТНОШЕНИЯ (какого партнёра притягиваешь — в плюсе и в минусе)",
+    "finance": "ФИНАНСЫ (откуда деньги, подходящие профессии, риски с деньгами)",
+    "material_karma": "МАТЕРИАЛЬНАЯ КАРМА (прошлый опыт, подсказка по профессии, что уже есть как ресурс)",
+    "karmic_tail": "КАРМИЧЕСКИЙ ХВОСТ (главный кармический урок, что прорабатывать в этой жизни)",
 }
 
 
@@ -67,7 +69,7 @@ def _build_prompt(arcana_num: int, arcana_name: str, keywords: list[str]) -> str
 КЛЮЧЕВЫЕ СМЫСЛЫ: {", ".join(keywords)}
 
 Напиши **по одному короткому абзацу (50-80 слов, 3-4 предложения)** для
-каждого из 8 жизненных контекстов:
+каждого из 9 жизненных контекстов:
 {contexts_block}
 
 КАК ПИСАТЬ:
@@ -75,18 +77,19 @@ def _build_prompt(arcana_num: int, arcana_name: str, keywords: list[str]) -> str
 - Конкретные образы: разговоры, работа, отношения, бытовые ситуации.
 - Без жаргона: ни «энергии», ни «вибрации», ни «эманации», ни «архетипы».
 - Без клише: ни «звёзды благоволят», ни «судьба ведёт».
-- Каждый абзац самодостаточен — пользователь видит ОДИН из них, не все 8.
+- Каждый абзац самодостаточен — пользователь видит ОДИН из них, не все 9.
 
 Верни ТОЛЬКО валидный JSON без markdown-обёрток в формате:
 {{
   "personality": "...",
-  "mission": "...",
-  "money": "...",
-  "love": "...",
-  "health": "...",
-  "karma": "...",
-  "shadow": "...",
-  "advice": "..."
+  "talents": "...",
+  "purpose": "...",
+  "parental": "...",
+  "ancestral": "...",
+  "relationships": "...",
+  "finance": "...",
+  "material_karma": "...",
+  "karmic_tail": "..."
 }}"""
 
 
@@ -136,7 +139,7 @@ async def main(dry_run: bool = False, missing_only: bool = False, wipe: bool = F
             print(f"Existing arcana already seeded: {sorted(existing)}")
 
         targets = [n for n in range(1, 23) if n not in existing]
-        print(f"Generating {len(targets)} arcana × 8 contexts...")
+        print(f"Generating {len(targets)} arcana × 9 contexts...")
 
         for arcana_num in targets:
             print(f"  [{arcana_num:02d}/22] {ARCANA_NAMES_RU[arcana_num]}", end=" ", flush=True)

@@ -4,25 +4,26 @@ import type { DestinyMatrixPositions } from "@/services/api";
  * Destiny Matrix octagram — 8 corners + 1 center.
  *
  * Geometry (viewBox 0 0 360 360, center at 180,180, radius 150):
- * - Big diamond corners at 0°/90°/180°/270° (A left, B top, C right, D bottom)
- * - Small square corners at 45°/135°/225°/315° (F top-left, G top-right,
- *   H bottom-right, I bottom-left)
- * - Center E
+ * - Big diamond corners at 0°/90°/180°/270°
+ *   (day=left, month=top, year=right, bottom=bottom)
+ * - Small ancestral square corners at 45°/135°/225°/315°
+ *   (top_left, top_right, bottom_right, bottom_left)
+ * - Center = "center"
  *
- * Layout matches the canonical Russian Destiny Matrix diagrams:
- *   A on the left, B on the top, C on the right, D on the bottom.
+ * Tap a node → parent opens a bottom-sheet with the per-context arcana
+ * description. nodeId is what the parent uses to look up the Russian title
+ * and pick the right context for the meaning lookup.
  */
 
+/** Tap-id used to look up the Russian title and arcana context. */
+export type DestinyNodeId =
+  | "day" | "month" | "year" | "bottom" | "center"
+  | "top_left" | "top_right" | "bottom_right" | "bottom_left";
+
 export interface NodeMeta {
-  /** Which positions key in DestinyMatrixPositions to read (A/B/C/.../I/E). */
-  posKey: keyof DestinyMatrixPositions;
-  /** Arcana number to render — derived from positions[posKey]. */
+  nodeId: DestinyNodeId;
   num: number;
-  /** Tag for tap callback — used to look up Russian title in the parent. */
-  nodeId: string;
-  /** Free or Premium tier — premium nodes show a lock when no full access. */
   tier: "free" | "premium";
-  /** Cartesian (svg-space) coordinates of the node. */
   x: number;
   y: number;
 }
@@ -31,42 +32,53 @@ const R = 150;
 const CX = 180;
 const CY = 180;
 
-// Polar helper — angle is measured clockwise from the 12 o'clock position
-// (standard astrology convention) so positions match Russian diagrams.
 function polar(angleDeg: number, radius: number): [number, number] {
   const rad = ((angleDeg - 90) * Math.PI) / 180;
   return [CX + radius * Math.cos(rad), CY + radius * Math.sin(rad)];
 }
 
-const [BX, BY] = polar(0, R);     // top — month
-const [CX_, CY_] = polar(90, R);  // right — year/ancestry
-const [DX, DY] = polar(180, R);   // bottom — personality
-const [AX, AY] = polar(270, R);   // left — day
+const [MX, MY] = polar(0, R);     // top  — month
+const [YX, YY] = polar(90, R);    // right — year
+const [BX, BY] = polar(180, R);   // bottom — bottom
+const [DX, DY] = polar(270, R);   // left  — day
 
-const [GX, GY] = polar(45, R);    // top-right small square
-const [HX, HY] = polar(135, R);   // bottom-right
-const [IX, IY] = polar(225, R);   // bottom-left
-const [FX, FY] = polar(315, R);   // top-left
+const [TRX, TRY] = polar(45, R);  // top-right ancestral
+const [BRX, BRY] = polar(135, R); // bottom-right
+const [BLX, BLY] = polar(225, R); // bottom-left
+const [TLX, TLY] = polar(315, R); // top-left
 
-export const OCTAGRAM_NODES: Omit<NodeMeta, "num">[] = [
-  // Big diamond (free tier — main 4 corners)
-  { posKey: "A", nodeId: "A", tier: "free",    x: AX, y: AY },
-  { posKey: "B", nodeId: "B", tier: "free",    x: BX, y: BY },
-  { posKey: "C", nodeId: "C", tier: "free",    x: CX_, y: CY_ },
-  { posKey: "D", nodeId: "D", tier: "free",    x: DX, y: DY },
-  // Center (free — main mission)
-  { posKey: "E", nodeId: "E", tier: "free",    x: CX, y: CY },
-  // Small ancestral square (premium)
-  { posKey: "F", nodeId: "F", tier: "premium", x: FX, y: FY },
-  { posKey: "G", nodeId: "G", tier: "premium", x: GX, y: GY },
-  { posKey: "H", nodeId: "H", tier: "premium", x: HX, y: HY },
-  { posKey: "I", nodeId: "I", tier: "premium", x: IX, y: IY },
+const NODE_LAYOUT: ReadonlyArray<Omit<NodeMeta, "num">> = [
+  // Big diamond — free
+  { nodeId: "day",          tier: "free",    x: DX,  y: DY  },
+  { nodeId: "month",        tier: "free",    x: MX,  y: MY  },
+  { nodeId: "year",         tier: "free",    x: YX,  y: YY  },
+  { nodeId: "bottom",       tier: "free",    x: BX,  y: BY  },
+  { nodeId: "center",       tier: "free",    x: CX,  y: CY  },
+  // Small ancestral square — premium
+  { nodeId: "top_left",     tier: "premium", x: TLX, y: TLY },
+  { nodeId: "top_right",    tier: "premium", x: TRX, y: TRY },
+  { nodeId: "bottom_right", tier: "premium", x: BRX, y: BRY },
+  { nodeId: "bottom_left",  tier: "premium", x: BLX, y: BLY },
 ];
+
+function nodeNumber(positions: DestinyMatrixPositions, id: DestinyNodeId): number {
+  switch (id) {
+    case "day":          return positions.personality.day;
+    case "month":        return positions.personality.month;
+    case "year":         return positions.personality.year;
+    case "bottom":       return positions.personality.bottom;
+    case "center":       return positions.personality.center;
+    case "top_left":     return positions.ancestral_square.top_left;
+    case "top_right":    return positions.ancestral_square.top_right;
+    case "bottom_right": return positions.ancestral_square.bottom_right;
+    case "bottom_left":  return positions.ancestral_square.bottom_left;
+  }
+}
 
 interface Props {
   positions: DestinyMatrixPositions;
   hasFullAccess: boolean;
-  activeNodeId: string | null;
+  activeNodeId: DestinyNodeId | null;
   onNodeTap: (node: NodeMeta) => void;
 }
 
@@ -80,31 +92,31 @@ export function DestinyOctagram({
       role="img"
       aria-label="Октаграмма матрицы судьбы"
     >
-      {/* Big diamond (rhombus): A → B → C → D */}
+      {/* Big diamond (rhombus): day → month → year → bottom */}
       <path
-        d={`M ${AX} ${AY} L ${BX} ${BY} L ${CX_} ${CY_} L ${DX} ${DY} Z`}
+        d={`M ${DX} ${DY} L ${MX} ${MY} L ${YX} ${YY} L ${BX} ${BY} Z`}
         fill="none"
         stroke="rgba(232,200,98,0.55)"
         strokeWidth="1.2"
       />
-      {/* Small square (rotated 45°): F → G → H → I */}
+      {/* Small ancestral square (rotated 45°): TL → TR → BR → BL */}
       <path
-        d={`M ${FX} ${FY} L ${GX} ${GY} L ${HX} ${HY} L ${IX} ${IY} Z`}
+        d={`M ${TLX} ${TLY} L ${TRX} ${TRY} L ${BRX} ${BRY} L ${BLX} ${BLY} Z`}
         fill="none"
         stroke="rgba(232,200,98,0.45)"
         strokeWidth="1.0"
         strokeDasharray="3 3"
       />
       {/* Cross-axes through center */}
-      <line x1={AX} y1={AY} x2={CX_} y2={CY_} stroke="rgba(232,200,98,0.25)" strokeWidth="0.8" />
-      <line x1={BX} y1={BY} x2={DX} y2={DY} stroke="rgba(232,200,98,0.25)" strokeWidth="0.8" />
+      <line x1={DX} y1={DY} x2={YX} y2={YY} stroke="rgba(232,200,98,0.25)" strokeWidth="0.8" />
+      <line x1={MX} y1={MY} x2={BX} y2={BY} stroke="rgba(232,200,98,0.25)" strokeWidth="0.8" />
 
       {/* Nodes */}
-      {OCTAGRAM_NODES.map((meta) => {
-        const num = positions[meta.posKey] as number;
+      {NODE_LAYOUT.map((meta) => {
+        const num = nodeNumber(positions, meta.nodeId);
         const isLocked = meta.tier === "premium" && !hasFullAccess;
         const isActive = activeNodeId === meta.nodeId;
-        const isCenter = meta.nodeId === "E";
+        const isCenter = meta.nodeId === "center";
         const r = isCenter ? 30 : 24;
         const otherActive = activeNodeId !== null && !isActive;
 

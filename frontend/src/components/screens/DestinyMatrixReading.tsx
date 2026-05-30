@@ -8,22 +8,39 @@ import { useAppStore } from "@/stores/app";
 import { useHaptic, useTelegramBackButton } from "@/hooks/useTelegram";
 import {
   DestinyOctagram,
+  type DestinyNodeId,
   type DestinyNodeMeta,
 } from "@/components/destiny/DestinyOctagram";
 import { DestinyNarrative } from "@/components/destiny/DestinyNarrative";
-import { DestinyLifeLines } from "@/components/destiny/DestinyLifeLines";
-import { DestinyChakras } from "@/components/destiny/DestinyChakras";
+import { DestinyPurposes } from "@/components/destiny/DestinyPurposes";
+import { DestinyChannels } from "@/components/destiny/DestinyChannels";
+import { DestinyVarna } from "@/components/destiny/DestinyVarna";
 
-const NODE_TITLES_RU: Record<string, string> = {
-  A: "Энергия дня — что я получил при рождении",
-  B: "Энергия месяца — эмоциональный план",
-  C: "Энергия года — опыт рода",
-  D: "Личность — образ Я в этой жизни",
-  E: "Центр — главная задача жизни",
-  F: "Род · верх слева — отношения по линии отца",
-  G: "Род · верх справа — отношения по линии матери",
-  H: "Род · низ справа — линия женщин рода",
-  I: "Род · низ слева — линия мужчин рода",
+// Human-friendly title shown in the bottom-sheet header for each tap-target.
+const NODE_TITLES_RU: Record<DestinyNodeId, string> = {
+  day:          "День — портрет личности",
+  month:        "Месяц — таланты и вдохновение",
+  year:         "Год — опыт рода, повторы",
+  bottom:       "Низ — кармический урок",
+  center:       "Центр — характер, зона комфорта",
+  top_left:     "Род · верх слева — отец, духовное",
+  top_right:    "Род · верх справа — мать, духовное",
+  bottom_right: "Род · низ справа — мать, материальное",
+  bottom_left:  "Род · низ слева — отец, материальное",
+};
+
+// Which `arcana_meanings.context` row to pull for the bottom-sheet copy
+// when the user taps a given node.
+const NODE_CONTEXT: Record<DestinyNodeId, string> = {
+  day:          "personality",
+  month:        "talents",
+  year:         "ancestral",
+  bottom:       "karmic_tail",
+  center:       "personality",
+  top_left:     "ancestral",
+  top_right:    "ancestral",
+  bottom_right: "ancestral",
+  bottom_left:  "ancestral",
 };
 
 const MONTHS_RU_GEN = [
@@ -32,23 +49,10 @@ const MONTHS_RU_GEN = [
 ];
 
 function formatBirthDateRu(iso: string): string {
-  // Accept both "YYYY-MM-DD" and full ISO datetime — only the date part matters.
   const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
   if (!y || !m || !d) return iso;
   return `${d} ${MONTHS_RU_GEN[m - 1]} ${y}`;
 }
-
-const NODE_CONTEXT: Record<string, string> = {
-  A: "personality",
-  B: "personality",
-  C: "karma",
-  D: "personality",
-  E: "mission",
-  F: "love",
-  G: "love",
-  H: "karma",
-  I: "karma",
-};
 
 export function DestinyMatrixReading() {
   const { setScreen } = useAppStore();
@@ -69,13 +73,10 @@ export function DestinyMatrixReading() {
   };
   useTelegramBackButton(goBack, true);
 
-  // Calculate once on mount — idempotent, returns existing reading if any.
   const calcMutation = useMutation({
     mutationFn: destinyApi.calculate,
     onSuccess: () => {
       impact("medium");
-      // Keep the calculating animation for a tick so it doesn't feel
-      // instantaneous on cached responses.
       window.setTimeout(() => setShowCalcAnim(false), 600);
     },
   });
@@ -87,7 +88,6 @@ export function DestinyMatrixReading() {
 
   const reading = calcMutation.data;
 
-  // Fetch the tapped arcana's per-context meanings.
   const { data: arcanaData, isFetching: arcanaFetching } = useQuery({
     queryKey: ["destiny-matrix", "arcana", activeNode?.num],
     queryFn: () => destinyApi.getArcana(activeNode!.num),
@@ -100,7 +100,7 @@ export function DestinyMatrixReading() {
   const handlePurchase = async () => {
     impact("medium");
     const ok = await purchase("destiny_matrix_full");
-    if (ok) calcMutation.mutate(); // refetch so has_full_access flips
+    if (ok) calcMutation.mutate();
   };
 
   const contextKey = activeNode ? NODE_CONTEXT[activeNode.nodeId] : null;
@@ -193,15 +193,15 @@ export function DestinyMatrixReading() {
               <span className="destiny-reading__legend-dot destiny-reading__legend-dot--free" />
               <span>Бесплатно: ядро и центр</span>
               <span className="destiny-reading__legend-dot destiny-reading__legend-dot--prem" />
-              <span>Premium: углы рода и линии</span>
+              <span>Premium: углы рода и каналы</span>
             </div>
 
             {!reading.has_full_access && (
               <section className="destiny-reading__upsell">
                 <h4>Откройте полный разбор</h4>
                 <p>
-                  Личный 7-секционный разбор, 5 линий судьбы, 7 чакр и
-                  кармические хвосты. Один раз за {price} ⭐, доступ остаётся
+                  Личный 8-секционный разбор, 4 предназначения, 10 каналов
+                  судьбы и варна. Один раз за {price} ⭐, доступ остаётся
                   навсегда.
                 </p>
                 <button
@@ -221,9 +221,10 @@ export function DestinyMatrixReading() {
 
             {reading.has_full_access && (
               <>
+                <DestinyPurposes purposes={reading.positions.purposes} />
+                <DestinyChannels channels={reading.positions.channels} />
+                <DestinyVarna varna={reading.positions.varna} />
                 <DestinyNarrative enabled={reading.has_full_access} />
-                <DestinyLifeLines positions={reading.positions} />
-                <DestinyChakras positions={reading.positions} />
               </>
             )}
           </>

@@ -96,7 +96,7 @@ async def calculate(
             reading = result.scalar_one()
 
     return DestinyMatrixResponse(
-        positions=DestinyMatrixPositions(**reading.positions),
+        positions=DestinyMatrixPositions.model_validate(reading.positions),
         birth_date=reading.birth_date,
         computed_at=reading.computed_at,
         has_full_access=await _has_full_access(db, user.id),
@@ -140,7 +140,7 @@ async def get_me(
         await db.flush()
 
     return DestinyMatrixResponse(
-        positions=DestinyMatrixPositions(**reading.positions),
+        positions=DestinyMatrixPositions.model_validate(reading.positions),
         birth_date=reading.birth_date,
         computed_at=reading.computed_at,
         has_full_access=await _has_full_access(db, user.id),
