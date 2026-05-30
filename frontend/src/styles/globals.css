@@ -9905,6 +9905,15 @@ body::before {
   border-radius: 12px;
   border: 1px solid rgba(232, 200, 98, 0.28);
   background: rgba(14, 11, 32, 0.55);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+.destiny-purposes__cell:active {
+  border-color: rgba(232, 200, 98, 0.55);
+  background: rgba(14, 11, 32, 0.75);
 }
 .destiny-purposes__num {
   font-family: "Playfair Display", serif;
@@ -9988,6 +9997,16 @@ body::before {
   flex-direction: column;
   align-items: center;
   gap: 2px;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.destiny-channels__node:active .destiny-channels__node-num {
+  border-color: var(--gold);
+  background: rgba(232, 200, 98, 0.15);
 }
 .destiny-channels__node-num {
   display: inline-flex;

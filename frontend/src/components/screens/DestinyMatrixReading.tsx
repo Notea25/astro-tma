@@ -75,6 +75,16 @@ const NODE_CONTEXT: Record<DestinyNodeId, string> = {
   finance_mid:       "finance",
 };
 
+interface ActiveTap {
+  num: number;
+  title: string;
+  context: string;
+  tier: "free" | "premium";
+  /** Only set when the tap came from the octagram itself; lets it
+   *  highlight the active node on the SVG. */
+  octagramNodeId: DestinyNodeId | null;
+}
+
 const MONTHS_RU_GEN = [
   "января", "февраля", "марта", "апреля", "мая", "июня",
   "июля", "августа", "сентября", "октября", "ноября", "декабря",
@@ -93,17 +103,33 @@ export function DestinyMatrixReading() {
   const { purchase, phase } = usePayment();
   const paying = phase === "opening" || phase === "activating";
 
-  const [activeNode, setActiveNode] = useState<DestinyNodeMeta | null>(null);
+  // Universal tap target — works for octagram nodes AND for cells in the
+  // Purposes/Channels tables below.
+  const [activeTap, setActiveTap] = useState<ActiveTap | null>(null);
   const [showCalcAnim, setShowCalcAnim] = useState(true);
 
   const goBack = () => {
-    if (activeNode) {
-      setActiveNode(null);
+    if (activeTap) {
+      setActiveTap(null);
       return;
     }
     setScreen("destiny_matrix_info", "back");
   };
   useTelegramBackButton(goBack, true);
+
+  const openTap = (tap: ActiveTap) => {
+    impact("light");
+    setActiveTap(tap);
+  };
+  const openOctagramTap = (meta: DestinyNodeMeta) => {
+    openTap({
+      num: meta.num,
+      title: NODE_TITLES_RU[meta.nodeId] ?? meta.nodeId,
+      context: NODE_CONTEXT[meta.nodeId] ?? "personality",
+      tier: meta.tier,
+      octagramNodeId: meta.nodeId,
+    });
+  };
 
   const calcMutation = useMutation({
     mutationFn: destinyApi.calculate,
@@ -121,13 +147,13 @@ export function DestinyMatrixReading() {
   const reading = calcMutation.data;
 
   const { data: arcanaData, isFetching: arcanaFetching } = useQuery({
-    queryKey: ["destiny-matrix", "arcana", activeNode?.num],
-    queryFn: () => destinyApi.getArcana(activeNode!.num),
-    enabled: activeNode !== null,
+    queryKey: ["destiny-matrix", "arcana", activeTap?.num],
+    queryFn: () => destinyApi.getArcana(activeTap!.num),
+    enabled: activeTap !== null,
     staleTime: 1000 * 60 * 60,
   });
 
-  const isLocked = activeNode?.tier === "premium" && !reading?.has_full_access;
+  const isLocked = activeTap?.tier === "premium" && !reading?.has_full_access;
 
   const handlePurchase = async () => {
     impact("medium");
@@ -135,9 +161,8 @@ export function DestinyMatrixReading() {
     if (ok) calcMutation.mutate();
   };
 
-  const contextKey = activeNode ? NODE_CONTEXT[activeNode.nodeId] : null;
   const meaning =
-    arcanaData && contextKey ? arcanaData.contexts[contextKey] : null;
+    arcanaData && activeTap ? arcanaData.contexts[activeTap.context] : null;
 
   return (
     <div className="screen destiny-reading-screen">
@@ -213,11 +238,8 @@ export function DestinyMatrixReading() {
               <DestinyOctagram
                 positions={reading.positions}
                 hasFullAccess={reading.has_full_access}
-                activeNodeId={activeNode?.nodeId ?? null}
-                onNodeTap={(meta) => {
-                  impact("light");
-                  setActiveNode(meta);
-                }}
+                activeNodeId={activeTap?.octagramNodeId ?? null}
+                onNodeTap={openOctagramTap}
               />
             </motion.div>
 
@@ -253,8 +275,14 @@ export function DestinyMatrixReading() {
 
             {reading.has_full_access && (
               <>
-                <DestinyPurposes purposes={reading.positions.purposes} />
-                <DestinyChannels channels={reading.positions.channels} />
+                <DestinyPurposes
+                  purposes={reading.positions.purposes}
+                  onTap={openTap}
+                />
+                <DestinyChannels
+                  channels={reading.positions.channels}
+                  onTap={openTap}
+                />
                 <DestinyVarna varna={reading.positions.varna} />
                 <DestinyNarrative enabled={reading.has_full_access} />
               </>
@@ -263,16 +291,16 @@ export function DestinyMatrixReading() {
         )}
       </div>
 
-      {/* BottomSheet — tap a node to see arcana details */}
+      {/* BottomSheet — tap any node or table cell to see arcana details */}
       <AnimatePresence>
-        {activeNode && (
+        {activeTap && (
           <>
             <motion.div
               className="destiny-sheet-backdrop"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setActiveNode(null)}
+              onClick={() => setActiveTap(null)}
             />
             <motion.div
               className="destiny-sheet"
@@ -284,16 +312,14 @@ export function DestinyMatrixReading() {
               dragConstraints={{ top: 0, bottom: 0 }}
               dragElastic={0.2}
               onDragEnd={(_, info) => {
-                if (info.offset.y > 80) setActiveNode(null);
+                if (info.offset.y > 80) setActiveTap(null);
               }}
             >
               <div className="destiny-sheet__handle" />
               <div className="destiny-sheet__header">
-                <div className="destiny-sheet__node-tag">
-                  {NODE_TITLES_RU[activeNode.nodeId] ?? activeNode.nodeId}
-                </div>
+                <div className="destiny-sheet__node-tag">{activeTap.title}</div>
                 <div className="destiny-sheet__arcana">
-                  <span className="destiny-sheet__num">{activeNode.num}</span>
+                  <span className="destiny-sheet__num">{activeTap.num}</span>
                   <div>
                     <div className="destiny-sheet__name">
                       {arcanaData?.arcana_name ?? "…"}

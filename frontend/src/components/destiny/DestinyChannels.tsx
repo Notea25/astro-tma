@@ -1,41 +1,48 @@
 import type { DestinyChannels as DestinyChannelsType } from "@/services/api";
 
+interface TapInfo {
+  num: number;
+  title: string;
+  context: string;
+  tier: "free" | "premium";
+  octagramNodeId: null;
+}
+
 interface Props {
   channels: DestinyChannelsType;
+  onTap?: (info: TapInfo) => void;
 }
 
 interface ChannelDef {
   key: keyof DestinyChannelsType;
   label: string;
   caption: string;
-  hint: string; // 3-stage label series
+  /** arcana_meanings.context key for arcana lookups on this row */
+  context: string;
 }
 
 const STAGES = ["вход", "работа", "итог"];
 
-// Group ordering matches §6.3 of the spec: relationships+finance share a
-// "wellbeing" group on the right side, ancestral channels are paired
-// (talents above / karma below) per parent.
 const CHANNELS: ChannelDef[] = [
-  { key: "karmic_tail",  label: "Кармический хвост", caption: "Главный кармический урок", hint: "" },
-  { key: "talents",      label: "Зона талантов",     caption: "Что вдохновляет, где рост", hint: "" },
-  { key: "relationships", label: "Отношения",        caption: "Какого партнёра притягиваешь", hint: "" },
-  { key: "finance",      label: "Финансы",           caption: "Откуда деньги, профессии", hint: "" },
-  { key: "material_karma", label: "Материальная карма", caption: "Прошлый опыт как ресурс", hint: "" },
-  { key: "parental",     label: "Детско-родительский", caption: "Что пришёл от родителей", hint: "" },
-  { key: "ancestral_father_talents", label: "Род отца · таланты", caption: "Сильные стороны линии отца", hint: "" },
-  { key: "ancestral_father_karma",   label: "Род отца · карма",   caption: "Что прорабатывает линия отца", hint: "" },
-  { key: "ancestral_mother_talents", label: "Род матери · таланты", caption: "Сильные стороны линии матери", hint: "" },
-  { key: "ancestral_mother_karma",   label: "Род матери · карма",   caption: "Что прорабатывает линия матери", hint: "" },
+  { key: "karmic_tail",  label: "Кармический хвост", caption: "Главный кармический урок", context: "karmic_tail" },
+  { key: "talents",      label: "Зона талантов",     caption: "Что вдохновляет, где рост", context: "talents" },
+  { key: "relationships", label: "Отношения",        caption: "Какого партнёра притягиваешь", context: "relationships" },
+  { key: "finance",      label: "Финансы",           caption: "Откуда деньги, профессии",     context: "finance" },
+  { key: "material_karma", label: "Материальная карма", caption: "Прошлый опыт как ресурс",   context: "material_karma" },
+  { key: "parental",     label: "Детско-родительский", caption: "Что пришёл от родителей",     context: "parental" },
+  { key: "ancestral_father_talents", label: "Род отца · таланты", caption: "Сильные стороны линии отца", context: "ancestral" },
+  { key: "ancestral_father_karma",   label: "Род отца · карма",   caption: "Что прорабатывает линия отца", context: "ancestral" },
+  { key: "ancestral_mother_talents", label: "Род матери · таланты", caption: "Сильные стороны линии матери", context: "ancestral" },
+  { key: "ancestral_mother_karma",   label: "Род матери · карма",   caption: "Что прорабатывает линия матери", context: "ancestral" },
 ];
 
-export function DestinyChannels({ channels }: Props) {
+export function DestinyChannels({ channels, onTap }: Props) {
   return (
     <section className="destiny-channels">
       <h3 className="destiny-channels__title">10 каналов</h3>
       <p className="destiny-channels__hint">
         Каждый канал — три точки: вход в энергию, работа с ней и итог.
-        Числа — номера арканов 1-22.
+        Нажмите на любой кружок, чтобы открыть трактовку аркана.
       </p>
       <div className="destiny-channels__list">
         {CHANNELS.map((ch) => {
@@ -49,12 +56,25 @@ export function DestinyChannels({ channels }: Props) {
               </div>
               <div className="destiny-channels__nodes">
                 {arr.slice(0, 3).map((num, i) => (
-                  <div key={i} className="destiny-channels__node">
+                  <button
+                    key={i}
+                    type="button"
+                    className="destiny-channels__node"
+                    onClick={() =>
+                      onTap?.({
+                        num,
+                        title: `${ch.label} — ${STAGES[i] ?? ""}`,
+                        context: ch.context,
+                        tier: "premium",
+                        octagramNodeId: null,
+                      })
+                    }
+                  >
                     <span className="destiny-channels__node-num">{num}</span>
                     <span className="destiny-channels__node-stage">
                       {STAGES[i] ?? ""}
                     </span>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
