@@ -94,7 +94,20 @@ interface NodeDef {
   y: number;
   variant: Variant;
   icon?: string;
+  /** Optional accent color — overrides default gold stroke. Used to
+   *  color-code positions by life domain (matches the canonical cheat
+   *  sheet: purple=spiritual, red=finance, orange=karma, etc.). */
+  color?: string;
 }
+
+// Cheat-sheet aligned palette. Muted enough to read on the dark backdrop.
+const C_SPIRITUAL  = "#a87bd6";  // purple — top of diamond (intellect / spirit)
+const C_FINANCE    = "#e07b6a";  // warm red — right of diamond (money channel)
+const C_KARMA      = "#e0a06a";  // orange — bottom of diamond (karmic lesson)
+const C_PORTRAIT   = "#d9d6c8";  // off-white — left of diamond (your portrait)
+const C_TALENTS    = "#e0c66a";  // yellow-gold — talents icon
+const C_LOVE       = "#e07ba8";  // soft pink — relationships icon
+const C_MONEY      = "#8cd6a0";  // mint green — finance icon
 
 function buildNodes(positions: DestinyMatrixPositions): NodeDef[] {
   const p = positions.personality;
@@ -103,10 +116,13 @@ function buildNodes(positions: DestinyMatrixPositions): NodeDef[] {
 
   return [
     // ── Big diamond + center (free) ─────────────────────────────────
-    { nodeId: "day",    num: p.day,    tier: "free", x: DX, y: DY, variant: "base-lg" },
-    { nodeId: "month",  num: p.month,  tier: "free", x: MX, y: MY, variant: "base-lg" },
-    { nodeId: "year",   num: p.year,   tier: "free", x: YX, y: YY, variant: "base-lg" },
-    { nodeId: "bottom", num: p.bottom, tier: "free", x: BX, y: BY, variant: "base-lg" },
+    // Color-coded per the destiny matrix cheat sheet: purple top
+    // (intellect/spirit), red right (money), orange bottom (karma),
+    // light left (portrait), center stays gold (your true self).
+    { nodeId: "day",    num: p.day,    tier: "free", x: DX, y: DY, variant: "base-lg", color: C_PORTRAIT },
+    { nodeId: "month",  num: p.month,  tier: "free", x: MX, y: MY, variant: "base-lg", color: C_SPIRITUAL },
+    { nodeId: "year",   num: p.year,   tier: "free", x: YX, y: YY, variant: "base-lg", color: C_FINANCE },
+    { nodeId: "bottom", num: p.bottom, tier: "free", x: BX, y: BY, variant: "base-lg", color: C_KARMA },
     { nodeId: "center", num: p.center, tier: "free", x: CX, y: CY, variant: "base-lg" },
 
     // ── Small ancestral square (premium) ────────────────────────────
@@ -128,13 +144,13 @@ function buildNodes(positions: DestinyMatrixPositions): NodeDef[] {
     { nodeId: "afk_out", num: ch.ancestral_father_karma[2] ?? 0,   tier: "premium", x: BL_OX, y: BL_OY, variant: "channel-out" },
 
     // ── Karmic tail (free — main hook) ──────────────────────────────
-    { nodeId: "kt_mid", num: ch.karmic_tail[1] ?? 0, tier: "free", x: KT_MX, y: KT_MY, variant: "kt-mid" },
-    { nodeId: "kt_out", num: ch.karmic_tail[2] ?? 0, tier: "free", x: KT_OX, y: KT_OY, variant: "kt-out" },
+    { nodeId: "kt_mid", num: ch.karmic_tail[1] ?? 0, tier: "free", x: KT_MX, y: KT_MY, variant: "kt-mid", color: C_KARMA },
+    { nodeId: "kt_out", num: ch.karmic_tail[2] ?? 0, tier: "free", x: KT_OX, y: KT_OY, variant: "kt-out", color: C_KARMA },
 
     // ── Inner energy icons (premium): talents / relationships / finance
-    { nodeId: "talents_mid",       num: ch.talents[1] ?? 0,       tier: "premium", x: TAL_X, y: TAL_Y, variant: "icon", icon: "✦" },
-    { nodeId: "relationships_mid", num: ch.relationships[1] ?? 0, tier: "premium", x: REL_X, y: REL_Y, variant: "icon", icon: "♥" },
-    { nodeId: "finance_mid",       num: ch.finance[1] ?? 0,       tier: "premium", x: FIN_X, y: FIN_Y, variant: "icon", icon: "₽" },
+    { nodeId: "talents_mid",       num: ch.talents[1] ?? 0,       tier: "premium", x: TAL_X, y: TAL_Y, variant: "icon", icon: "✦", color: C_TALENTS },
+    { nodeId: "relationships_mid", num: ch.relationships[1] ?? 0, tier: "premium", x: REL_X, y: REL_Y, variant: "icon", icon: "♥", color: C_LOVE },
+    { nodeId: "finance_mid",       num: ch.finance[1] ?? 0,       tier: "premium", x: FIN_X, y: FIN_Y, variant: "icon", icon: "₽", color: C_MONEY },
   ];
 }
 
@@ -172,13 +188,26 @@ function RenderedNode({ node, locked, active, faded, onTap }: RenderedNodeProps)
     node.variant === "channel-out" ? 12 :
     13;
 
-  const stroke = active
-    ? "#e8c862"
-    : node.variant.startsWith("base") || isCenter
-      ? "rgba(232,200,98,0.85)"
-      : "rgba(232,200,98,0.55)";
+  const goldDefault = "rgba(232,200,98,0.85)";
+  const goldDim     = "rgba(232,200,98,0.55)";
 
-  const strokeWidth = active ? 2.4 : (node.variant.startsWith("base") ? 1.5 : 1);
+  const baseStroke = node.color
+    ? node.color
+    : (node.variant.startsWith("base") || isCenter ? goldDefault : goldDim);
+
+  const stroke = active ? "#e8c862" : baseStroke;
+  const strokeWidth = active ? 2.4 : (node.variant.startsWith("base") ? 1.7 : 1.1);
+
+  // Subtle radial tint inside the circle so a color-coded position reads
+  // even from peripheral vision. Center node intentionally stays neutral.
+  const tint = node.color
+    ? `${node.color}26`  // ~15% alpha hex suffix
+    : "#0e0b20";
+
+  // Number text color: keep gold for non-colored nodes, use the node's
+  // own color for colored ones — except for very light colors where we
+  // want gold for contrast.
+  const numberFill = node.color && node.color !== C_PORTRAIT ? node.color : "#e8c862";
 
   return (
     <g
@@ -196,7 +225,7 @@ function RenderedNode({ node, locked, active, faded, onTap }: RenderedNodeProps)
         cx={node.x}
         cy={node.y}
         r={r}
-        fill="#0e0b20"
+        fill={tint}
         stroke={stroke}
         strokeWidth={strokeWidth}
       />
@@ -220,7 +249,7 @@ function RenderedNode({ node, locked, active, faded, onTap }: RenderedNodeProps)
           textAnchor="middle"
           dominantBaseline="central"
           fontSize={fontSize}
-          fill="#e8c862"
+          fill={numberFill}
           fontWeight={node.variant === "channel-out" ? 500 : 600}
           style={{ fontFamily: "Playfair Display, serif" }}
         >
