@@ -516,11 +516,15 @@ export function DestinyOctagram({
       <DiagLabel from={[CX + 75, CY + 75]} to={[CX, CY]}
         text="линия женского рода" t={0.5} offset={-9} color={COLOR_MOTHER} />
 
-      {/* ── Денежная пунктирная диагональ от money point к внешней точке ── */}
-      <path
-        d={`M ${RIGHT_2[0]} ${RIGHT_2[1]} L ${MONEY_DIAG_OUTER[0]} ${MONEY_DIAG_OUTER[1]}`}
-        fill="none" stroke={COLOR_DOT_ORANGE} strokeWidth="1.2"
-        strokeDasharray="4 3" opacity="0.7" />
+      {/* Денежный пунктир рисуем только когда есть обе конечные точки
+          (mid правой оси year_2 и внешняя money_diag_1) — иначе линия
+          «висит в воздухе». */}
+      {RENDER_MODE === "all" && (
+        <path
+          d={`M ${RIGHT_2[0]} ${RIGHT_2[1]} L ${MONEY_DIAG_OUTER[0]} ${MONEY_DIAG_OUTER[1]}`}
+          fill="none" stroke={COLOR_DOT_ORANGE} strokeWidth="1.2"
+          strokeDasharray="4 3" opacity="0.7" />
+      )}
 
       {/* ── ЗОНА КОМФОРТА — text внутри круга ── */}
       <text x={CX} y={CY + 60} textAnchor="middle"
