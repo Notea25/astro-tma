@@ -21,7 +21,9 @@ import type { DestinyMatrixPositions } from "@/services/api";
  * Every node opens the bottom-sheet on tap. The parent screen picks the
  * right arcana context for each nodeId.
  *
- * Geometry: viewBox 0 0 460 460, center (230,230).
+ * Geometry: viewBox 0 0 500 500, center (250,250). Square is OUTER,
+ * diamond is inscribed inside with vertices on the midpoints of square
+ * sides (R_diamond = R_square / √2).
  */
 
 export type DestinyNodeId =
@@ -52,18 +54,19 @@ export interface NodeMeta {
 }
 
 // ── Geometry ───────────────────────────────────────────────────────────
-const VIEW = 460;
+const VIEW = 500;
 const CX = VIEW / 2;
 const CY = VIEW / 2;
 
-const R_AGE_RING   = 218;       // age scale circle
-const R_AGE_TICK   = 224;       // outward tick for age markers
-const R_AGE_LABEL  = 234;       // age number labels
-// Diamond is the OUTER figure; square sits INSIDE it (smaller) — matches
-// the canonical cheat-sheet layout where 4/8/15/3 corners sit beyond the
-// 7/12/5/18 ancestral square.
-const R_DIAMOND    = 185;
-const R_SQUARE     = 125;
+// Per the canonical chart: the SQUARE (ancestral) is the OUTER figure;
+// the diamond is INSCRIBED inside it with vertices on the midpoints of
+// the square's sides. Therefore R_diamond = R_square / √2.
+const R_SQUARE     = 210;
+const R_DIAMOND    = 148;       // ≈ R_SQUARE / √2
+
+const R_AGE_RING   = 230;       // age scale circle (just outside square)
+const R_AGE_TICK   = 238;
+const R_AGE_LABEL  = 248;
 // Axis channels — 3 radii per cardinal direction (toward center).
 // Per Ладини cheat sheet: each axis carries [corner, near, mid, close, center]
 // where near = corner+middle, mid = corner+center, close = middle+center.
@@ -74,8 +77,8 @@ const R_AXIS_CLOSE = 45;        // close to the center side
 // and the center, grouped on the inner side of the corner — matches the
 // canonical chart where the small companion numbers cluster next to each
 // square corner inward.
-const R_DIAG_NEAR  = 95;        // just inside the corner (corner-side)
-const R_DIAG_CLOSE = 60;        // closer to center
+const R_DIAG_NEAR  = 162;       // just inside the square corner
+const R_DIAG_CLOSE = 112;       // further toward center
 // Decorative ♥ and $ icons clustered around center
 const R_ICON       = 38;
 
