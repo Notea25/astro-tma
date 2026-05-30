@@ -19,7 +19,6 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
-
 # ── Свёртка ─────────────────────────────────────────────────────────────────
 
 def reduce(n: int) -> int:

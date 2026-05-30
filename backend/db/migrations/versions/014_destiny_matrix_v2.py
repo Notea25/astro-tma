@@ -18,7 +18,6 @@ Create Date: 2026-05-30
 
 from alembic import op
 
-
 revision = "014_destiny_matrix_v2"
 down_revision = "013_destiny_matrix"
 branch_labels = None
