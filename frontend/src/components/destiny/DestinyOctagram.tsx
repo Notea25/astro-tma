@@ -491,16 +491,14 @@ export function DestinyOctagram({
         );
       })}
 
-      {/* ── Diamond (diagonal square) outline ── */}
-      <path
-        d={`M ${LEFT[0]} ${LEFT[1]} L ${TOP[0]} ${TOP[1]} L ${RIGHT[0]} ${RIGHT[1]} L ${BOTTOM[0]} ${BOTTOM[1]} Z`}
-        fill="none" stroke={COLOR_LINE_ACC} strokeWidth="1.3"
-      />
-      {/* ── Straight ancestral square outline ── */}
-      <path
-        d={`M ${TL[0]} ${TL[1]} L ${TR[0]} ${TR[1]} L ${BR[0]} ${BR[1]} L ${BL[0]} ${BL[1]} Z`}
-        fill="none" stroke={COLOR_LINE_ACC} strokeWidth="1.3"
-      />
+      {/* Внешние контуры октаграммы (ромб + квадрат) убраны — это и были
+          «линии за пределами круга». Если нужно вернуть — раскомментируй. */}
+      {/*
+      <path d={`M ${LEFT[0]} ${LEFT[1]} L ${TOP[0]} ${TOP[1]} L ${RIGHT[0]} ${RIGHT[1]} L ${BOTTOM[0]} ${BOTTOM[1]} Z`}
+        fill="none" stroke={COLOR_LINE_ACC} strokeWidth="1.3" />
+      <path d={`M ${TL[0]} ${TL[1]} L ${TR[0]} ${TR[1]} L ${BR[0]} ${BR[1]} L ${BL[0]} ${BL[1]} Z`}
+        fill="none" stroke={COLOR_LINE_ACC} strokeWidth="1.3" />
+      */}
 
       {/* ── Side-of-world labels (выше/ниже/сбоку новых вынесенных узлов) ── */}
       <text x={NODE_TOP[0]} y={NODE_TOP[1] - 36} textAnchor="middle"
