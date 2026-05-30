@@ -33,6 +33,8 @@ log = get_logger(__name__)
 router = APIRouter(prefix="/natal", tags=["natal"])
 _PDF_DOWNLOAD_TTL_SECONDS = 300
 NATAL_DESCRIPTIONS_VERSION = 2
+MIN_EXPANDED_READING_HEADINGS = 5
+MIN_EXPANDED_READING_WORDS = 650
 
 
 def _empty_descriptions() -> dict[str, Any]:
@@ -45,6 +47,14 @@ def _has_any(descriptions: dict[str, Any]) -> bool:
         or descriptions.get("houses")
         or descriptions.get("aspects")
     )
+
+
+def _is_expanded_reading(reading: Any) -> bool:
+    if not isinstance(reading, str) or not reading.strip():
+        return False
+    headings = sum(1 for line in reading.splitlines() if line.strip().startswith("**") and line.strip().endswith("**"))
+    words = len(reading.split())
+    return headings >= MIN_EXPANDED_READING_HEADINGS and words >= MIN_EXPANDED_READING_WORDS
 
 
 async def _get_or_generate_descriptions(
@@ -412,15 +422,34 @@ async def get_natal_full(
     if not user.natal_chart:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "No birth data — set birth data first")
 
-    # Check cache
-    cache_key = key_natal(user.id)
-    cached = await cache_get(cache_key)
-    if cached:
-        return cached
-
     chart = user.natal_chart
     planets = chart.chart_data.get("planets", {})
     aspects = chart.chart_data.get("aspects", [])
+
+    # Check cache. Older cached readings were intentionally short; refresh
+    # them on the full-chart view so PDF downloads can stay non-blocking.
+    cache_key = key_natal(user.id)
+    cached = await cache_get(cache_key)
+    if isinstance(cached, dict):
+        if _is_expanded_reading(cached.get("reading")) or not settings.ANTHROPIC_API_KEY:
+            return cached
+        try:
+            refreshed_reading = await generate_natal_reading(
+                sun_sign=chart.sun_sign,
+                moon_sign=chart.moon_sign,
+                ascendant_sign=chart.ascendant_sign,
+                planets=planets,
+                aspects=aspects[:10],
+                api_key=settings.ANTHROPIC_API_KEY,
+            )
+        except Exception as e:
+            log.error("natal.llm_refresh_failed", user_id=user.id, error=str(e))
+            return cached
+        refreshed = {**cached, "reading": refreshed_reading}
+        await cache_set(cache_key, refreshed, settings.CACHE_TTL_NATAL)
+        return refreshed
+    if cached:
+        return cached
 
     # Build the three lookup dictionaries the interpreter needs:
     # planet → sign, planet → house, and the raw aspects list.

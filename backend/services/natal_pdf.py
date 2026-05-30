@@ -1155,8 +1155,8 @@ def generate_natal_pdf(
             c.setFillColor(TEXT)
             _set_font(c, False, 8)
             continue
-        paragraph = _limit_words(line, 95)
-        paragraph_lines = _lines_for_width(c, paragraph, w - 116, bold=False, size=8.4, max_lines=9)
+        paragraph = _limit_words(line, 220)
+        paragraph_lines = _lines_for_width(c, paragraph, w - 116, bold=False, size=8.4)
         block_h = 14 * len(paragraph_lines) + 16
         if y - block_h < 64:
             finish_page()

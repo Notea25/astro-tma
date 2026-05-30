@@ -65,6 +65,7 @@ PLANET_COLORS = {
     "neptune": "#78a9e8",
     "pluto": "#bb426b",
 }
+TOTAL_PAGES_TOKEN = "__TOTAL_PAGES__"
 
 
 def _e(value: Any) -> str:
@@ -160,6 +161,20 @@ def _lines(text: str, max_words: int) -> str:
     return " ".join(words[:max_words]).rstrip(" .,;:") + "."
 
 
+def _word_count(text: str) -> int:
+    return len(str(text or "").split())
+
+
+def _split_words(text: str, max_words: int) -> list[str]:
+    words = str(text or "").split()
+    if len(words) <= max_words:
+        return [" ".join(words)] if words else []
+    chunks = []
+    for start in range(0, len(words), max_words):
+        chunks.append(" ".join(words[start:start + max_words]))
+    return chunks
+
+
 def _description(entry: Any, fallback: str, *, words: int) -> str:
     if isinstance(entry, dict):
         source = str(entry.get("short") or entry.get("full") or "").strip()
@@ -247,7 +262,7 @@ def _section_header(title: str, subtitle: str, aside: str = "") -> str:
     )
 
 
-def _footer(page: int, total: int = 13) -> str:
+def _footer(page: int, total: int | str = TOTAL_PAGES_TOKEN) -> str:
     return f'<footer>ASTRO TMA · НАТАЛЬНАЯ КАРТА <span>{page} / {total}</span></footer>'
 
 
@@ -701,11 +716,32 @@ def _reading_pages(reading: str | None, sun_sign: str, moon_sign: str, asc_sign:
             current_lines.append(line)
     if current_title or current_lines:
         blocks.append((current_title or "Персональная интерпретация", " ".join(current_lines)))
-    compact_blocks = [(title, _lines(paragraph, 70)) for title, paragraph in blocks]
-    first = compact_blocks[:4]
-    second = compact_blocks[4:8]
+    expanded_blocks: list[tuple[str, str]] = []
+    for title, paragraph in blocks:
+        chunks = _split_words(paragraph, 260)
+        if not chunks:
+            continue
+        expanded_blocks.append((title, chunks[0]))
+        expanded_blocks.extend((f"{title} · продолжение", chunk) for chunk in chunks[1:])
+
+    page_chunks: list[list[tuple[str, str]]] = []
+    current: list[tuple[str, str]] = []
+    current_words = 0
+    limits = [300, 360]
+    for title, paragraph in expanded_blocks:
+        block_words = _word_count(paragraph) + 10
+        limit = limits[min(len(page_chunks), len(limits) - 1)]
+        if current and current_words + block_words > limit:
+            page_chunks.append(current)
+            current = []
+            current_words = 0
+        current.append((title, paragraph))
+        current_words += block_words
+    if current:
+        page_chunks.append(current)
+
     pages = []
-    for idx, chunk in enumerate((first, second), start=11):
+    for idx, chunk in enumerate(page_chunks, start=11):
         if not chunk:
             continue
         body = _section_header("Персональная интерпретация", "Написано специально для вас")
@@ -715,12 +751,10 @@ def _reading_pages(reading: str | None, sun_sign: str, moon_sign: str, asc_sign:
             f'<h3>✦ {_e(title)}</h3><p>{_e(paragraph)}</p>' for title, paragraph in chunk
         ) + "</div>"
         pages.append(_page(idx, body))
-    if len(pages) == 1:
-        pages.append(_page(12, '<div class="reading"></div>'))
     return pages
 
 
-def _final_page() -> str:
+def _final_page(page: int) -> str:
     body = (
         '<div class="mark">✦</div><div class="final-copy">Этот отчёт создан для вашего понимания<br>личного космического рисунка.</div>'
         '<div class="cover-line"></div><div class="glossary-title">Краткий справочник</div><dl class="glossary">'
@@ -728,7 +762,7 @@ def _final_page() -> str:
     for term, definition in GLOSSARY:
         body += f'<div><dt>{_e(term)}</dt><dd>{_e(definition)}</dd></div>'
     body += '</dl><div class="cover-foot">ASTRO TMA · СОЗДАНО ДЛЯ ВАС</div>'
-    return _page(13, body, class_name="final")
+    return _page(page, body, class_name="final")
 
 
 def build_natal_pdf_html(
@@ -755,9 +789,10 @@ def build_natal_pdf_html(
         _houses_page(houses, descriptions),
         *_aspect_pages(aspects, descriptions),
         *_reading_pages(reading, sun_sign, moon_sign, asc_sign),
-        _final_page(),
     ]
-    return f"<!doctype html><html><head><meta charset='utf-8'><style>{_css()}</style></head><body>{''.join(pages)}</body></html>"
+    pages.append(_final_page(len(pages) + 1))
+    body = "".join(pages).replace(TOTAL_PAGES_TOKEN, str(len(pages)))
+    return f"<!doctype html><html><head><meta charset='utf-8'><style>{_css()}</style></head><body>{body}</body></html>"
 
 
 async def generate_natal_pdf_html(

@@ -1,12 +1,13 @@
 """Tests for natal PDF generation and temporary download links."""
 
+import sys
 from types import SimpleNamespace
 
 import pytest
 from fastapi.responses import Response
 
 from services import natal_pdf, natal_pdf_html
-from services.astro import natal_descriptions
+from services.astro import llm_interpreter, natal_descriptions
 from services.natal_pdf import generate_natal_pdf
 
 
@@ -192,6 +193,111 @@ def test_build_natal_pdf_html_contains_reference_layout_sections():
     assert "@page" in document
 
 
+def test_build_natal_pdf_html_keeps_full_reading_text_without_empty_page():
+    planets, houses, aspects = _sample_chart()
+    long_paragraph = " ".join(f"слово{i}" for i in range(120)) + " ФИНАЛЬНЫЙ_МАРКЕР"
+    reading = f"**Ядро личности**\n{long_paragraph}"
+
+    document = natal_pdf_html.build_natal_pdf_html(
+        user_name="Андрей",
+        birth_date="2000-10-20",
+        birth_time="12:00",
+        birth_city="Минск",
+        sun_sign="Scorpio",
+        moon_sign="Aquarius",
+        asc_sign="Aries",
+        planets=planets,
+        houses=houses,
+        aspects=aspects,
+        reading=reading,
+    )
+
+    assert "ФИНАЛЬНЫЙ_МАРКЕР" in document
+    assert '<div class="reading"></div>' not in document
+
+
+def test_build_natal_pdf_html_adds_continuation_pages_for_long_reading():
+    planets, houses, aspects = _sample_chart()
+    paragraph = " ".join(f"текст{i}" for i in range(240))
+    reading = "\n".join(
+        [
+            "**Ядро личности**",
+            paragraph,
+            "**Ум и общение**",
+            paragraph,
+            "**Любовь и ценности**",
+            paragraph,
+            "**Энергия и воля**",
+            paragraph,
+            "**Удача и вызовы**",
+            paragraph,
+            "**Ключевые аспекты**",
+            paragraph,
+            "**Совет и путь**",
+            paragraph,
+        ]
+    )
+
+    document = natal_pdf_html.build_natal_pdf_html(
+        user_name="Андрей",
+        birth_date="2000-10-20",
+        birth_time="12:00",
+        birth_city="Минск",
+        sun_sign="Scorpio",
+        moon_sign="Aquarius",
+        asc_sign="Aries",
+        planets=planets,
+        houses=houses,
+        aspects=aspects,
+        reading=reading,
+    )
+
+    total_pages = document.count('<section class="page')
+    assert total_pages > 13
+    assert f"{total_pages} / {total_pages}" in document
+
+
+def test_natal_reading_prompt_requests_expanded_interpretation():
+    planets, _houses, aspects = _sample_chart()
+
+    prompt = llm_interpreter._build_prompt("Scorpio", "Aquarius", "Aries", planets, aspects)
+
+    assert "1000–1400 слов" in prompt
+    assert "полноценными абзацами" in prompt
+    assert "2–3 абзаца" in prompt
+
+
+@pytest.mark.asyncio
+async def test_generate_natal_reading_uses_expanded_token_budget(monkeypatch):
+    planets, _houses, aspects = _sample_chart()
+    calls = {}
+
+    class FakeMessages:
+        async def create(self, **kwargs):
+            calls.update(kwargs)
+            return SimpleNamespace(content=[SimpleNamespace(text="Развёрнутое чтение.")])
+
+    class FakeAnthropic:
+        def __init__(self, api_key):
+            calls["api_key"] = api_key
+            self.messages = FakeMessages()
+
+    monkeypatch.setitem(sys.modules, "anthropic", SimpleNamespace(AsyncAnthropic=FakeAnthropic))
+
+    reading = await llm_interpreter.generate_natal_reading(
+        sun_sign="Scorpio",
+        moon_sign="Aquarius",
+        ascendant_sign="Aries",
+        planets=planets,
+        aspects=aspects,
+        api_key="test-key",
+    )
+
+    assert reading == "Развёрнутое чтение."
+    assert calls["api_key"] == "test-key"
+    assert calls["max_tokens"] == 2400
+
+
 def test_planet_description_prompt_prioritises_sign_over_house():
     prompt = natal_descriptions._planet_one_prompt(
         "sun",
@@ -235,6 +341,73 @@ async def test_get_or_generate_descriptions_regenerates_stale_cached_text(monkey
     assert descriptions["_version"] == natal.NATAL_DESCRIPTIONS_VERSION
     assert chart.chart_data["descriptions"] == descriptions
     assert db.committed is True
+
+
+@pytest.mark.asyncio
+async def test_get_natal_full_refreshes_short_cached_reading(monkeypatch):
+    from api.routes import natal
+
+    chart = SimpleNamespace(
+        chart_data={
+            "planets": {"sun": {"sign": "Scorpio", "house": 9}},
+            "aspects": [{"p1": "Sun", "p2": "Moon", "aspect": "square", "orb": 1.2}],
+        },
+        sun_sign="Scorpio",
+        moon_sign="Aquarius",
+        ascendant_sign="Aries",
+    )
+    user = SimpleNamespace(id=1001, natal_chart=chart)
+    cached = {"reading": "**Ядро личности**\nКоротко.", "planets": chart.chart_data["planets"]}
+    refreshed_text = "\n".join(
+        [
+            "**Ядро личности**",
+            "слово " * 140,
+            "**Ум и общение**",
+            "слово " * 140,
+            "**Любовь и ценности**",
+            "слово " * 140,
+            "**Энергия и воля**",
+            "слово " * 140,
+            "**Удача и вызовы**",
+            "слово " * 140,
+        ]
+    )
+    calls = {}
+
+    async def fake_get_by_id(_db, user_id):
+        assert user_id == 1001
+        return user
+
+    async def fake_true(_db, user_id, *_args):
+        assert user_id == 1001
+        return True
+
+    async def fake_cache_get(key):
+        assert key == "natal:1001"
+        return cached
+
+    async def fake_cache_set(key, value, ttl):
+        calls["cache_set"] = (key, value, ttl)
+
+    async def fake_generate_natal_reading(**kwargs):
+        calls["reading_kwargs"] = kwargs
+        return refreshed_text
+
+    monkeypatch.setattr(natal.user_repo, "get_by_id", fake_get_by_id)
+    monkeypatch.setattr(natal.user_repo, "is_premium", fake_true)
+    monkeypatch.setattr(natal.user_repo, "has_purchased", fake_true)
+    monkeypatch.setattr(natal, "cache_get", fake_cache_get)
+    monkeypatch.setattr(natal, "cache_set", fake_cache_set)
+    monkeypatch.setattr(natal.settings, "ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.setattr(natal, "generate_natal_reading", fake_generate_natal_reading)
+
+    result = await natal.get_natal_full(tg_user={"id": 1001}, db=object())
+
+    assert result["reading"] == refreshed_text
+    assert result["planets"] == chart.chart_data["planets"]
+    assert calls["reading_kwargs"]["aspects"] == chart.chart_data["aspects"]
+    assert calls["cache_set"][0] == "natal:1001"
+    assert calls["cache_set"][1]["reading"] == refreshed_text
 
 
 @pytest.mark.asyncio

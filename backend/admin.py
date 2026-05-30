@@ -3,7 +3,7 @@ SQLAdmin panel — /admin
 Protected by username + password from settings.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqladmin import Admin, ModelView, action
 from sqladmin.authentication import AuthenticationBackend
@@ -86,7 +86,7 @@ class UserAdmin(ModelView, model=User):
         if not pks:
             return _redirect_back(request)
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         extension = timedelta(days=365)
 
         async with AsyncSessionLocal() as session:
