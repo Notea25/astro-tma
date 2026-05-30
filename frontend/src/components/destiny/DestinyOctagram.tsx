@@ -92,7 +92,7 @@ function along(v: [number, number], t: number): [number, number] {
 
 // Radii мелких «кружочков».
 const R_DOT_1 = 20;  // первая точка (у угла) — крупнее
-const R_DOT_2 = 14;  // вторая точка (на периметре октаграммы) — меньше
+const R_DOT_2 = 17;  // вторая точка (на периметре октаграммы)
 const R_DOT = R_DOT_2;  // default для точек без явного tier
 
 // 1-й ярус: t = 0.09 — 10 px зазор от кончика угла.
