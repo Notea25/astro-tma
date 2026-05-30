@@ -90,36 +90,34 @@ function along(v: [number, number], t: number): [number, number] {
   return [v[0] + t * (CX - v[0]), v[1] + t * (CY - v[1])];
 }
 
-// Radii мелких «кружочков». 3-й ярус (R_DOT_3) пока не используется.
-const R_DOT_1 = 17;  // первая точка (у угла) — крупнее
-const R_DOT_2 = 13;  // вторая точка (середина луча) — меньше
+// Radii мелких «кружочков».
+const R_DOT_1 = 20;  // первая точка (у угла) — крупнее
+const R_DOT_2 = 14;  // вторая точка (на периметре октаграммы) — меньше
 const R_DOT = R_DOT_2;  // default для точек без явного tier
 
-// Ray dots positioning.
-//   t1 = 0.09  — первая точка, 10 px зазор от кончика угла.
-//   t2 = 0.356 — вторая точка, поэтапно сдвинута на 10 px ближе к первой
-//                 от исходных 0.4 (две итерации по 5 px).
-const RAY_T = [0.09, 0.356] as const;
-const TOP_1 = along(TOP, RAY_T[0]);
-const TOP_2 = along(TOP, RAY_T[1]);
-const RIGHT_1 = along(RIGHT, RAY_T[0]);
-const RIGHT_2 = along(RIGHT, RAY_T[1]);
-const BOT_1 = along(BOTTOM, RAY_T[0]);
-const BOT_2 = along(BOTTOM, RAY_T[1]);
-const LEFT_1 = along(LEFT, RAY_T[0]);
-const LEFT_2 = along(LEFT, RAY_T[1]);
-// Diagonal axis points — first two via t, third on diamond edge.
-const TL_1 = along(TL, RAY_T[0]);
-const TL_2 = along(TL, RAY_T[1]);
-const TR_1 = along(TR, RAY_T[0]);
-const TR_2 = along(TR, RAY_T[1]);
-const BR_1 = along(BR, RAY_T[0]);
-const BR_2 = along(BR, RAY_T[1]);
-const BL_1 = along(BL, RAY_T[0]);
-const BL_2 = along(BL, RAY_T[1]);
+// 1-й ярус: t = 0.09 — 10 px зазор от кончика угла.
+const RAY_T_1 = 0.09;
+const TOP_1   = along(TOP,    RAY_T_1);
+const RIGHT_1 = along(RIGHT,  RAY_T_1);
+const BOT_1   = along(BOTTOM, RAY_T_1);
+const LEFT_1  = along(LEFT,   RAY_T_1);
+const TL_1    = along(TL, RAY_T_1);
+const TR_1    = along(TR, RAY_T_1);
+const BR_1    = along(BR, RAY_T_1);
+const BL_1    = along(BL, RAY_T_1);
 
-// 3-й ярус (точки на периметре октаграммы) временно убран — значения
-// channel[2] показываются на 2-м ярусе в средней позиции (t=0.4).
+// 2-й ярус: точки на периметре октаграммы — пересечение луча с
+// ближайшей границей. Cardinal лучи (M/D/Y/B → центр) пересекают сторону
+// прямого квадрата (y=140, x=140, y=460, x=460). Diagonal лучи
+// (atl/atr/abr/abl → центр) пересекают сторону ромба.
+const TOP_2:   [number, number] = [300, 140];
+const LEFT_2:  [number, number] = [140, 300];
+const RIGHT_2: [number, number] = [460, 300];
+const BOT_2:   [number, number] = [300, 460];
+const TL_2:    [number, number] = [185, 185];  // ромб LEFT-TOP   (x+y=370)
+const TR_2:    [number, number] = [415, 185];  // ромб TOP-RIGHT  (x-y=230)
+const BR_2:    [number, number] = [415, 415];  // ромб RIGHT-BOT  (x+y=830)
+const BL_2:    [number, number] = [185, 415];  // ромб BOT-LEFT   (y-x=230)
 
 // ── Palette ────────────────────────────────────────────────────────────
 const COLOR_LINE      = "rgba(200, 195, 180, 0.6)";   // thin grey lines
