@@ -10283,29 +10283,37 @@ body::before {
 
 .synastry-biwheel__legend {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-top: 10px;
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-mute);
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 0.85rem;
+  color: var(--text);
 }
-.synastry-biwheel__legend > span {
+.synastry-biwheel__legend-item {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
-.synastry-biwheel__legend-dot {
-  width: 9px;
-  height: 9px;
+.synastry-biwheel__legend-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  border: 1px solid var(--natal-accent, #e8c862);
+  font-size: 0.72rem;
+  font-weight: 700;
 }
-.synastry-biwheel__legend-dot--inner {
-  background: var(--natal-primary, #d4b254);
+.synastry-biwheel__legend-where {
+  color: var(--text-mute);
+  font-size: 0.78rem;
 }
-.synastry-biwheel__legend-dot--outer {
-  background: transparent;
+.synastry-biwheel__legend-item--inner > span:nth-child(2) {
+  color: #e8c862;
+  font-weight: 500;
+}
+.synastry-biwheel__legend-item--outer > span:nth-child(2) {
+  color: #7ec6f0;
+  font-weight: 500;
 }
