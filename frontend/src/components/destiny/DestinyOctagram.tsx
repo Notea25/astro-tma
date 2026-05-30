@@ -119,21 +119,30 @@ function buildNodes(p: DestinyMatrixPositions): NodeDef[] {
   const per = p.personality;
   const sq  = p.ancestral_square;
   const ch  = p.channels;
+  const C   = per.center;
 
-  // Some channels are 3-tuples. Pad with center if backend returned fewer
-  // (shouldn't happen but defensive).
-  const triple = (arr: number[] | undefined): [number, number, number] => {
-    const a = arr ?? [];
-    return [a[0] ?? per.center, a[1] ?? per.center, a[2] ?? per.center];
+  /** Compute the 3 axis points by recursive sum-and-reduce.
+   *  Given the corner value, returns numbers along the axis vertex→center:
+   *    [1] near corner    = corner + middle
+   *    [2] middle         = corner + center
+   *    [3] near center    = middle + center
+   *  Matches the canonical chart (e.g. for 30.04.1997 top axis with M=4,
+   *  C=3 the chart shows 11→7→10 = [4+7, 4+3, 7+3]). */
+  const recursive3 = (corner: number): [number, number, number] => {
+    const middle = toArcana(corner + C);
+    const near   = toArcana(corner + middle);
+    const close  = toArcana(middle + C);
+    return [near, middle, close];
   };
-  const tal  = triple(ch.talents);
-  const mk   = triple(ch.material_karma);
-  const kt   = triple(ch.karmic_tail);
-  const par  = triple(ch.parental);
-  const aft  = triple(ch.ancestral_father_talents);
-  const amt  = triple(ch.ancestral_mother_talents);
-  const fin  = triple(ch.finance);
-  const afk  = triple(ch.ancestral_father_karma);
+
+  const [t1, t2, t3]   = recursive3(per.month);
+  const [r1, r2, r3]   = recursive3(per.year);
+  const [b1, b2, b3]   = recursive3(per.bottom);
+  const [d1, d2, d3]   = recursive3(per.day);
+  const [aft1, aft2, aft3] = recursive3(sq.top_left);
+  const [amt1, amt2, amt3] = recursive3(sq.top_right);
+  const [fin1, fin2, fin3] = recursive3(sq.bottom_right);
+  const [afk1, afk2, afk3] = recursive3(sq.bottom_left);
 
   // Helper: a small dot
   const dot = (
@@ -142,12 +151,17 @@ function buildNodes(p: DestinyMatrixPositions): NodeDef[] {
     point: [number, number],
     color?: string,
   ): NodeDef => ({
-    nodeId, num: toArcana(num), tier: "premium",
+    nodeId, num, tier: "premium",
     x: point[0], y: point[1], kind: "dot", color,
   });
 
+  // Reference the channels from backend just to keep the import "used" —
+  // we recompute axis points here for visual accuracy. The backend's
+  // channel arrays remain available for the tap-sheet trip data.
+  void ch;
+
   return [
-    // ── Main 9 nodes (large circles) ──
+    // ── Main 9 nodes ──
     { nodeId: "day",    num: per.day,    tier: "free", x: LEFT[0],   y: LEFT[1],   kind: "main-lg", color: COLOR_BASE },
     { nodeId: "month",  num: per.month,  tier: "free", x: TOP[0],    y: TOP[1],    kind: "main-lg", color: COLOR_BASE },
     { nodeId: "year",   num: per.year,   tier: "free", x: RIGHT[0],  y: RIGHT[1],  kind: "main-lg", color: COLOR_BASE },
@@ -158,33 +172,33 @@ function buildNodes(p: DestinyMatrixPositions): NodeDef[] {
     { nodeId: "bottom_right", num: sq.bottom_right, tier: "premium", x: BR[0], y: BR[1], kind: "main-lg", color: COLOR_BASE },
     { nodeId: "bottom_left",  num: sq.bottom_left,  tier: "premium", x: BL[0], y: BL[1], kind: "main-lg", color: COLOR_BASE },
 
-    // ── Cardinal axes (3 dots each, 1/4 → 3/4 toward center) ──
-    dot("month_1", tal[0], TOP_1),
-    dot("month_2", tal[1], TOP_2),
-    dot("month_3", tal[2], TOP_3),
-    dot("year_1",  mk[0],  RIGHT_1),
-    dot("year_2",  mk[1],  RIGHT_2),
-    dot("year_3",  mk[2],  RIGHT_3),
-    dot("bottom_1", kt[0], BOT_1, COLOR_DOT_RED),
-    dot("bottom_2", kt[1], BOT_2, COLOR_DOT_RED),
-    dot("bottom_3", kt[2], BOT_3, COLOR_DOT_RED),
-    dot("day_1",   par[0], LEFT_1),
-    dot("day_2",   par[1], LEFT_2),
-    dot("day_3",   par[2], LEFT_3),
+    // ── Cardinal axes — 3 dots, vertex→center (near, middle, close) ──
+    dot("month_1", t1, TOP_1),
+    dot("month_2", t2, TOP_2),
+    dot("month_3", t3, TOP_3),
+    dot("year_1",  r1, RIGHT_1),
+    dot("year_2",  r2, RIGHT_2),
+    dot("year_3",  r3, RIGHT_3),
+    dot("bottom_1", b1, BOT_1, COLOR_DOT_RED),
+    dot("bottom_2", b2, BOT_2, COLOR_DOT_RED),
+    dot("bottom_3", b3, BOT_3, COLOR_DOT_RED),
+    dot("day_1",   d1, LEFT_1),
+    dot("day_2",   d2, LEFT_2),
+    dot("day_3",   d3, LEFT_3),
 
-    // ── Diagonal channels (3 dots each) ──
-    dot("aft_1", aft[0], TL_1),
-    dot("aft_2", aft[1], TL_2),
-    dot("aft_3", aft[2], TL_3),
-    dot("amt_1", amt[0], TR_1),
-    dot("amt_2", amt[1], TR_2),
-    dot("amt_3", amt[2], TR_3),
-    dot("fin_1", fin[0], BR_1),
-    dot("fin_2", fin[1], BR_2),
-    dot("fin_3", fin[2], BR_3),
-    dot("afk_1", afk[0], BL_1),
-    dot("afk_2", afk[1], BL_2),
-    dot("afk_3", afk[2], BL_3),
+    // ── Diagonal channels — 3 dots, square corner→center ──
+    dot("aft_1", aft1, TL_1),
+    dot("aft_2", aft2, TL_2),
+    dot("aft_3", aft3, TL_3),
+    dot("amt_1", amt1, TR_1),
+    dot("amt_2", amt2, TR_2),
+    dot("amt_3", amt3, TR_3),
+    dot("fin_1", fin1, BR_1),
+    dot("fin_2", fin2, BR_2),
+    dot("fin_3", fin3, BR_3),
+    dot("afk_1", afk1, BL_1),
+    dot("afk_2", afk2, BL_2),
+    dot("afk_3", afk3, BL_3),
   ];
 }
 
