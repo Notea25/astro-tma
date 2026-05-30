@@ -14,6 +14,7 @@ from typing import Any
 
 from services.astro.planet_names import PLANET_GLYPH as PLANET_SYMBOLS
 from services.astro.planet_names import PLANET_RU
+from services.astro.sign_cases import sign_ru as _sign_case_ru
 from services.natal_pdf import (
     ASPECT_ORDER,
     ASPECT_RU,
@@ -77,11 +78,15 @@ def _key(value: Any) -> str:
 
 
 def _sign_ru(sign: Any) -> str:
-    key = _key(sign)
-    if key not in SIGN_RU:
-        reverse = {v.lower(): k for k, v in SIGN_RU.items()}
-        key = reverse.get(key, key)
-    return SIGN_RU.get(key, str(sign or ""))
+    return _sign_case_ru(sign)
+
+
+def _sign_ru_case(sign: Any, case: str) -> str:
+    if case == "prep":
+        return _sign_case_ru(sign, "prep")
+    if case == "gen":
+        return _sign_case_ru(sign, "gen")
+    return _sign_case_ru(sign)
 
 
 def _sign_symbol(sign: Any) -> str:
@@ -190,12 +195,14 @@ def _description(entry: Any, fallback: str, *, words: int) -> str:
 
 def _planet_fallback(name: str, planet: dict[str, Any]) -> str:
     ru = PLANET_RU.get(name, name)
-    sign = _sign_ru(planet.get("sign_ru") or planet.get("sign"))
+    sign = planet.get("sign_ru") or planet.get("sign")
+    sign_prep = _sign_ru_case(sign, "prep")
+    sign_gen = _sign_ru_case(sign, "gen")
     house = planet.get("house") or "?"
     retro = " Если планета ретроградна, её тема чаще проживается внутренне: через пересмотр привычек, задержки, возвращение к старым сюжетам и более внимательное отношение к собственным реакциям." if planet.get("retrograde") else ""
     return (
-        f"{ru} в знаке {sign} показывает, каким стилем раскрывается эта часть личности: "
-        f"как вы реагируете, выбираете, проявляете инициативу и встречаете похожие ситуации. "
+        f"{ru} в {sign_prep} показывает, каким стилем раскрывается эта часть личности; "
+        f"в знаке {sign_gen} планета проявляется через реакции, выборы, инициативу и повторяющиеся ситуации. "
         f"{house}-й дом показывает сферу, где качество планеты заметнее всего: там чаще возникают "
         f"события, люди и задачи, через которые эта энергия становится практической. "
         f"В жизни это можно отслеживать по повторяющимся сценариям: где вы быстро включаетесь, "
@@ -205,10 +212,12 @@ def _planet_fallback(name: str, planet: dict[str, Any]) -> str:
 
 def _house_fallback(house: dict[str, Any]) -> str:
     num = int(house.get("number") or 0)
-    sign = _sign_ru(house.get("sign_ru") or house.get("sign"))
+    sign = house.get("sign_ru") or house.get("sign")
+    sign_nom = _sign_ru(sign)
+    sign_prep = _sign_ru_case(sign, "prep")
     topic = HOUSE_TOPICS.get(num, "важную сферу жизни")
     return (
-        f"{num}-й дом описывает {topic}. Знак {sign} показывает, каким способом эта область "
+        f"{num}-й дом описывает {topic}. Знак на куспиде — {sign_nom}; дом в {sign_prep} показывает, каким способом эта область "
         f"обычно раскрывается: спокойно или резко, через инициативу или ожидание, через контакт "
         f"с людьми или личную самостоятельность. Этот дом полезно читать как карту повседневных "
         f"сценариев: где вы чаще берёте ответственность, где ищете поддержку, где растёте через "
@@ -636,7 +645,7 @@ def _planet_pages(planets: dict[str, dict[str, Any]], descriptions: dict[str, An
             meta = f'{_roman(int(planet.get("house") or 0))} дом · {_deg_str(planet.get("sign_degree", planet.get("degree", 0)))}'
             body += _card(
                 f'{PLANET_RU[name]} в {_sign_ru(sign)} {retro}',
-                _e(_description(planet_desc.get(name), _planet_fallback(name, planet), words=46)),
+                _e(_description(planet_desc.get(name), _planet_fallback(name, planet), words=95)),
                 class_name="planet-card",
                 meta=meta,
                 icon=f'<span style="color:{PLANET_COLORS.get(name, GOLD)}">{PLANET_SYMBOLS.get(name, "")}</span>',
@@ -665,7 +674,7 @@ def _houses_pages(houses: list[dict[str, Any]], descriptions: dict[str, Any] | N
                 f'<span class="house-num">{_roman(num)}</span><span class="house-sign">{_sign_symbol(sign)} {_e(_sign_ru(sign))}</span></div>'
                 f'<div class="house-degree">{_deg_str(house.get("degree"), within_sign=False)}</div></div>{axis_html}'
                 f'<div class="house-label">{_e(HOUSE_LABELS.get(num, f"ДОМ {num}"))}</div>'
-                f'<p>{_e(_description(house_desc.get(str(num)), _house_fallback(house), words=34))}</p></article>'
+                f'<p>{_e(_description(house_desc.get(str(num)), _house_fallback(house), words=68))}</p></article>'
             )
         body += "</div>"
         pages.append(_page(start_page + idx - 1, body))
@@ -705,7 +714,7 @@ def _aspect_pages(aspects: list[dict[str, Any]], descriptions: dict[str, Any] | 
             for aspect in group_items:
                 p1 = _planet_key(aspect.get("p1"))
                 p2 = _planet_key(aspect.get("p2"))
-                desc = _description(aspect_desc.get((p1, p2, atype)), _aspect_fallback(aspect), words=30)
+                desc = _description(aspect_desc.get((p1, p2, atype)), _aspect_fallback(aspect), words=82)
                 body += (
                     f'<div class="aspect-row"><div class="aspect-title"><span>{PLANET_SYMBOLS.get(p1, "")} {_e(PLANET_RU.get(p1, p1))} '
                     f'{ASPECT_SYMBOLS.get(atype, "")} {PLANET_SYMBOLS.get(p2, "")} {_e(PLANET_RU.get(p2, p2))}</span>'
