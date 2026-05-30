@@ -82,11 +82,12 @@ function along(v: [number, number], t: number): [number, number] {
   return [v[0] + t * (CX - v[0]), v[1] + t * (CY - v[1])];
 }
 
-// Ray dots positioning. Первая точка касается кончиком угла (расстояние
-// от центра угла = corner_radius 26 + dot_radius 4 = 30 px; делим на длину
-// луча 230 для cardinal / 226 для diagonal → t ≈ 0.13). Остальные две —
-// середина внешней половины и на краю внутреннего круга.
-const RAY_T = [0.13, 0.4, 0.55] as const;
+// Ray dots positioning. Первая точка стоит с 10 px зазором от кончика
+// угла октаграммы: dot_center на (10 + dot_radius=4) = 14 px от вершины,
+// что = 14/230 ≈ 0.06 для cardinal (длина луча 230) и 14/226 ≈ 0.062 для
+// diagonal (длина 226). Остальные две — середина внешней половины и на
+// краю внутреннего круга.
+const RAY_T = [0.06, 0.4, 0.55] as const;
 const TOP_1 = along(TOP, RAY_T[0]);
 const TOP_2 = along(TOP, RAY_T[1]);
 const TOP_3 = along(TOP, RAY_T[2]);
@@ -437,16 +438,31 @@ interface Props {
 // Iterative render mode while we align with the matritsa-sudbi.ru template:
 //   "none"  — нет точек, только шаблон
 //   "main"  — только 9 больших узлов (D, M, Y, B, C + 4 угла квадрата)
+//   "rays1" — main + первая точка каждого луча (8 шт., ближе всего к углу)
 //   "all"   — все точки (включая лучи, comfort, cross, money_diag)
-const RENDER_MODE: "none" | "main" | "all" = "main";
+const RENDER_MODE: "none" | "main" | "rays1" | "all" = "rays1";
+
+// Node IDs первых точек каждого из 8 лучей.
+const RAY_1_IDS: ReadonlySet<DestinyNodeId> = new Set<DestinyNodeId>([
+  "month_1", "day_1", "year_1", "bottom_1",
+  "aft_1", "amt_1", "afk_1", "amk_1",
+]);
 
 export function DestinyOctagram({
   positions, hasFullAccess, activeNodeId, onNodeTap,
 }: Props) {
   const allNodes = RENDER_MODE === "none" ? [] : buildNodes(positions);
-  const nodes = RENDER_MODE === "main"
-    ? allNodes.filter((n) => n.kind === "main-lg" || n.kind === "main-md")
-    : allNodes;
+  const nodes = (() => {
+    if (RENDER_MODE === "main") {
+      return allNodes.filter((n) => n.kind === "main-lg" || n.kind === "main-md");
+    }
+    if (RENDER_MODE === "rays1") {
+      return allNodes.filter((n) =>
+        n.kind === "main-lg" || n.kind === "main-md" || RAY_1_IDS.has(n.nodeId),
+      );
+    }
+    return allNodes;
+  })();
 
   return (
     <svg
