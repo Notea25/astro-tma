@@ -479,12 +479,13 @@ export function DestinyOctagram({
     >
       <AgeRing />
 
-      {/* ── 8 спиц: от каждого угла внутрь до края внутреннего круга ── */}
+      {/* ── 8 внутренних спиц: от центра до края внутреннего круга
+          в направлении каждого угла. Снаружи круга линии не рисуем. ── */}
       {([LEFT, RIGHT, TOP, BOTTOM, TL, TR, BR, BL] as const).map((corner, i) => {
         const edge = innerEdge(corner);
         return (
           <line key={`spoke-${i}`}
-            x1={corner[0]} y1={corner[1]}
+            x1={CX} y1={CY}
             x2={edge[0]} y2={edge[1]}
             stroke={COLOR_LINE} strokeWidth="1" />
         );
