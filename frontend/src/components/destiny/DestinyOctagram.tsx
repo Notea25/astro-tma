@@ -91,15 +91,15 @@ function along(v: [number, number], t: number): [number, number] {
 }
 
 // Radii мелких «кружочков». 3-й ярус (R_DOT_3) пока не используется.
-const R_DOT_1 = 30;  // первая точка (у угла) — самая крупная
-const R_DOT_2 = 20;  // вторая точка (середина луча) — меньше
+const R_DOT_1 = 17;  // первая точка (у угла) — крупнее
+const R_DOT_2 = 13;  // вторая точка (середина луча) — меньше
 const R_DOT = R_DOT_2;  // default для точек без явного tier
 
 // Ray dots positioning.
 //   t1 = 0.09  — первая точка, 10 px зазор от кончика угла.
-//   t2 = 0.378 — вторая точка, на 5 px ближе к первой чем середина
-//                 внешней половины луча (раньше было t=0.4).
-const RAY_T = [0.09, 0.378] as const;
+//   t2 = 0.356 — вторая точка, поэтапно сдвинута на 10 px ближе к первой
+//                 от исходных 0.4 (две итерации по 5 px).
+const RAY_T = [0.09, 0.356] as const;
 const TOP_1 = along(TOP, RAY_T[0]);
 const TOP_2 = along(TOP, RAY_T[1]);
 const RIGHT_1 = along(RIGHT, RAY_T[0]);
