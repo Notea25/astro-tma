@@ -28,6 +28,9 @@ from services.natal_pdf import (
     PLANET_ORDER,
     SIGN_RU,
     SIGN_SYMBOLS,
+    _aspect_fallback as _aspect_fallback_base,
+    _house_fallback as _house_fallback_base,
+    _planet_fallback as _planet_fallback_base,
 )
 
 GOLD = "#d6b85a"
@@ -140,7 +143,16 @@ def _aspect_key(name: Any) -> str:
 
 
 def _roman(num: int) -> str:
-    values = ((10, "X"), (9, "IX"), (8, "VIII"), (7, "VII"), (6, "VI"), (5, "V"), (4, "IV"), (1, "I"))
+    values = (
+        (10, "X"),
+        (9, "IX"),
+        (8, "VIII"),
+        (7, "VII"),
+        (6, "VI"),
+        (5, "V"),
+        (4, "IV"),
+        (1, "I"),
+    )
     out = ""
     rest = num
     for value, glyph in values:
@@ -176,7 +188,7 @@ def _split_words(text: str, max_words: int) -> list[str]:
         return [" ".join(words)] if words else []
     chunks = []
     for start in range(0, len(words), max_words):
-        chunks.append(" ".join(words[start:start + max_words]))
+        chunks.append(" ".join(words[start : start + max_words]))
     return chunks
 
 
@@ -194,53 +206,22 @@ def _description(entry: Any, fallback: str, *, words: int) -> str:
 
 
 def _planet_fallback(name: str, planet: dict[str, Any]) -> str:
-    ru = PLANET_RU.get(name, name)
-    sign = planet.get("sign_ru") or planet.get("sign")
-    sign_prep = _sign_ru_case(sign, "prep")
-    sign_gen = _sign_ru_case(sign, "gen")
-    house = planet.get("house") or "?"
-    retro = " Если планета ретроградна, её тема чаще проживается внутренне: через пересмотр привычек, задержки, возвращение к старым сюжетам и более внимательное отношение к собственным реакциям." if planet.get("retrograde") else ""
-    return (
-        f"{ru} в {sign_prep} показывает, каким стилем раскрывается эта часть личности; "
-        f"в знаке {sign_gen} планета проявляется через реакции, выборы, инициативу и повторяющиеся ситуации. "
-        f"{house}-й дом показывает сферу, где качество планеты заметнее всего: там чаще возникают "
-        f"события, люди и задачи, через которые эта энергия становится практической. "
-        f"В жизни это можно отслеживать по повторяющимся сценариям: где вы быстро включаетесь, "
-        f"где сомневаетесь, а где чувствуете естественную силу и интерес.{retro}"
-    )
+    return _planet_fallback_base(name, planet)
 
 
 def _house_fallback(house: dict[str, Any]) -> str:
-    num = int(house.get("number") or 0)
-    sign = house.get("sign_ru") or house.get("sign")
-    sign_nom = _sign_ru(sign)
-    sign_prep = _sign_ru_case(sign, "prep")
-    topic = HOUSE_TOPICS.get(num, "важную сферу жизни")
-    return (
-        f"{num}-й дом описывает {topic}. Знак на куспиде — {sign_nom}; дом в {sign_prep} показывает, каким способом эта область "
-        f"обычно раскрывается: спокойно или резко, через инициативу или ожидание, через контакт "
-        f"с людьми или личную самостоятельность. Этот дом полезно читать как карту повседневных "
-        f"сценариев: где вы чаще берёте ответственность, где ищете поддержку, где растёте через "
-        f"опыт и где важно не повторять старые автоматические реакции."
-    )
+    return _house_fallback_base(house)
 
 
 def _aspect_fallback(aspect: dict[str, Any]) -> str:
-    p1 = PLANET_RU.get(_planet_key(aspect.get("p1")), str(aspect.get("p1") or "Планета"))
-    p2 = PLANET_RU.get(_planet_key(aspect.get("p2")), str(aspect.get("p2") or "Планета"))
-    topic = ASPECT_TOPICS.get(_aspect_key(aspect.get("aspect")), "создают важную внутреннюю связь")
-    return (
-        f"{p1} и {p2} {topic}. Этот аспект показывает, как две разные части характера "
-        f"взаимодействуют между собой: где они помогают друг другу, а где создают напряжение "
-        f"или внутренний спор. В повседневности он может проявляться через повторяющийся выбор, "
-        f"тип реакции, стиль общения и способ принимать решения. Чем точнее орб, тем заметнее "
-        f"эта тема в характере, отношениях и личных разворотах."
-    )
+    return _aspect_fallback_base(aspect)
 
 
-def _aspect_description_map(descriptions: dict[str, Any] | None) -> dict[tuple[str, str, str], dict[str, Any]]:
+def _aspect_description_map(
+    descriptions: dict[str, Any] | None,
+) -> dict[tuple[str, str, str], dict[str, Any]]:
     out: dict[tuple[str, str, str], dict[str, Any]] = {}
-    for entry in ((descriptions or {}).get("aspects") or []):
+    for entry in (descriptions or {}).get("aspects") or []:
         if not isinstance(entry, dict):
             continue
         p1 = _planet_key(entry.get("p1"))
@@ -294,7 +275,7 @@ def _section_header(title: str, subtitle: str, aside: str = "") -> str:
 
 
 def _footer(page: int, total: int | str = TOTAL_PAGES_TOKEN) -> str:
-    return f'<footer>ASTRO TMA · НАТАЛЬНАЯ КАРТА <span>{page} / {total}</span></footer>'
+    return f"<footer>ASTRO TMA · НАТАЛЬНАЯ КАРТА <span>{page} / {total}</span></footer>"
 
 
 def _page(page: int, body: str, *, class_name: str = "") -> str:
@@ -350,22 +331,32 @@ def _natal_wheel_svg(
         start = _wheel_angle(i * 30, asc)
         x1, y1 = _polar(cx, cy, middle, start)
         x2, y2 = _polar(cx, cy, outer, start)
-        parts.append(f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{GOLD_DIM}" stroke-width=".7" opacity=".7"/>')
+        parts.append(
+            f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{GOLD_DIM}" stroke-width=".7" opacity=".7"/>'
+        )
         gx, gy = _polar(cx, cy, 286, _wheel_angle(i * 30 + 15, asc))
-        parts.append(f'<text x="{gx:.1f}" y="{gy:.1f}" text-anchor="middle" dominant-baseline="middle" fill="{GOLD}" font-size="30">{SIGN_SYMBOLS[sign]}</text>')
-    ordered_houses = sorted([h for h in houses if int(h.get("number") or 0)], key=lambda h: int(h.get("number") or 0))
+        parts.append(
+            f'<text x="{gx:.1f}" y="{gy:.1f}" text-anchor="middle" dominant-baseline="middle" fill="{GOLD}" font-size="30">{SIGN_SYMBOLS[sign]}</text>'
+        )
+    ordered_houses = sorted(
+        [h for h in houses if int(h.get("number") or 0)], key=lambda h: int(h.get("number") or 0)
+    )
     for index, house in enumerate(ordered_houses):
         num = int(house.get("number") or 0)
         angle = _wheel_angle(_chart_abs_degree(house), asc)
         x1, y1 = _polar(cx, cy, inner, angle)
         x2, y2 = _polar(cx, cy, middle, angle)
-        width = 1.3 if num in (1, 4, 7, 10) else .55
+        width = 1.3 if num in (1, 4, 7, 10) else 0.55
         color = GOLD if num in (1, 4, 7, 10) else GOLD_DIM
-        parts.append(f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{color}" stroke-width="{width}" opacity=".75"/>')
+        parts.append(
+            f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{color}" stroke-width="{width}" opacity=".75"/>'
+        )
         next_house = ordered_houses[(index + 1) % len(ordered_houses)] if ordered_houses else house
         span = (_chart_abs_degree(next_house) - _chart_abs_degree(house)) % 360
         tx, ty = _polar(cx, cy, 210, _wheel_angle((_chart_abs_degree(house) + span / 2) % 360, asc))
-        parts.append(f'<text x="{tx:.1f}" y="{ty:.1f}" text-anchor="middle" dominant-baseline="middle" fill="{GOLD_DIM}" font-size="17">{_roman(num)}</text>')
+        parts.append(
+            f'<text x="{tx:.1f}" y="{ty:.1f}" text-anchor="middle" dominant-baseline="middle" fill="{GOLD_DIM}" font-size="17">{_roman(num)}</text>'
+        )
     planet_points: dict[str, tuple[float, float]] = {}
     for name in PLANET_ORDER:
         planet = planets.get(name)
@@ -383,10 +374,16 @@ def _natal_wheel_svg(
         x1, y1 = planet_points[p1]
         x2, y2 = planet_points[p2]
         dash = ' stroke-dasharray="5 5"' if atype in ("sextile", "opposition", "quincunx") else ""
-        parts.append(f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{ASPECT_COLORS.get(atype, GOLD_DIM)}" stroke-width=".8" opacity=".55"{dash}/>')
+        parts.append(
+            f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{ASPECT_COLORS.get(atype, GOLD_DIM)}" stroke-width=".8" opacity=".55"{dash}/>'
+        )
     for name, (px, py) in planet_points.items():
-        parts.append(f'<circle cx="{px:.1f}" cy="{py:.1f}" r="15" fill="{BG}" stroke="{GOLD_DIM}" stroke-width="1"/>')
-        parts.append(f'<text x="{px:.1f}" y="{py + 1:.1f}" text-anchor="middle" dominant-baseline="middle" fill="{PLANET_COLORS.get(name, GOLD)}" font-size="26">{PLANET_SYMBOLS.get(name, "")}</text>')
+        parts.append(
+            f'<circle cx="{px:.1f}" cy="{py:.1f}" r="15" fill="{BG}" stroke="{GOLD_DIM}" stroke-width="1"/>'
+        )
+        parts.append(
+            f'<text x="{px:.1f}" y="{py + 1:.1f}" text-anchor="middle" dominant-baseline="middle" fill="{PLANET_COLORS.get(name, GOLD)}" font-size="26">{PLANET_SYMBOLS.get(name, "")}</text>'
+        )
     parts.append("</svg>")
     return "".join(parts)
 
@@ -410,10 +407,10 @@ def _donut_svg(percentages: dict[str, int], dominant: str) -> str:
     return (
         '<svg class="donut" viewBox="0 0 220 220">'
         '<circle r="80" cx="110" cy="110" fill="none" stroke="#141029" stroke-width="38"/>'
-        f'{"".join(circles)}'
+        f"{''.join(circles)}"
         f'<text x="110" y="103" text-anchor="middle" class="donut-kicker">ДОМИНАНТА</text>'
         f'<text x="110" y="129" text-anchor="middle" class="donut-label">{_e(label)} {percentages.get(dominant, 0)}%</text>'
-        '</svg>'
+        "</svg>"
     )
 
 
@@ -482,6 +479,10 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .element-card h3 {{ color: var(--element-color); }}
 .tags {{ margin-top: 8mm; display: flex; gap: 3mm; flex-wrap: wrap; }}
 .tag {{ border: 1px solid rgba(224,91,48,.35); color: #d99072; background: rgba(224,91,48,.13); border-radius: 999px; padding: 1.5mm 5mm; font-size: 11px; }}
+.zero-elements {{ margin-top: 7mm; display: grid; gap: 3.5mm; }}
+.zero-element-card {{ min-height: auto; padding: 4mm 5mm; background: {PANEL_DARK}; }}
+.zero-element-card h3 {{ font-size: 13px; margin-bottom: 2mm; }}
+.zero-element-card p {{ font-size: 11px; line-height: 1.38; color: {TEXT_DIM}; margin: 0; }}
 .planet-card {{ min-height: 79mm; }}
 .planet-card .card-icon {{ font-size: 27px; color: var(--planet-color); }}
 .retro {{ display: inline-block; margin-left: 3mm; padding: 1mm 3mm; border: 1px solid {GOLD_DIM}; border-radius: 999px; color: {GOLD}; font-size: 11px; letter-spacing: 1px; }}
@@ -520,7 +521,9 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 """
 
 
-def _content_page(*, planets_page: int, houses_page: int, aspects_page: int, reading_page: int) -> str:
+def _content_page(
+    *, planets_page: int, houses_page: int, aspects_page: int, reading_page: int
+) -> str:
     rows = [
         ("I", "Ключевые точки карты", "3"),
         ("II", "Натальное колесо", "4"),
@@ -531,14 +534,26 @@ def _content_page(*, planets_page: int, houses_page: int, aspects_page: int, rea
         ("VII", "Персональная интерпретация", str(reading_page)),
     ]
     body = _section_header("Содержание", "Что внутри отчёта")
-    body += '<div class="toc-list">' + "".join(
-        f'<div class="toc-row"><div class="toc-roman">{roman}</div><div class="toc-title">{_e(title)}</div><div class="toc-page">{page}</div></div>'
-        for roman, title, page in rows
-    ) + "</div>"
+    body += (
+        '<div class="toc-list">'
+        + "".join(
+            f'<div class="toc-row"><div class="toc-roman">{roman}</div><div class="toc-title">{_e(title)}</div><div class="toc-page">{page}</div></div>'
+            for roman, title, page in rows
+        )
+        + "</div>"
+    )
     return _page(2, body)
 
 
-def _cover_page(user_name: str, birth_date: str, birth_time: str | None, birth_city: str, sun_sign: str, moon_sign: str, asc_sign: str | None) -> str:
+def _cover_page(
+    user_name: str,
+    birth_date: str,
+    birth_time: str | None,
+    birth_city: str,
+    sun_sign: str,
+    moon_sign: str,
+    asc_sign: str | None,
+) -> str:
     birth_bits = " · ".join(bit for bit in (_format_birth_date(birth_date), birth_time) if bit)
     points = [
         ("☉", "СОЛНЦЕ", _sign_ru(sun_sign)),
@@ -574,17 +589,50 @@ def _key_points_page(
     dominant_label = ELEMENTS[dominant][0]
     dominant_pct = _element_percentages(planets).get(dominant, 0)
     data = [
-        ("sun", "☉", "СОЛНЦЕ", sun_sign, "«Как я сияю»", _description(planet_desc.get("sun"), _planet_fallback("sun", planets.get("sun", {"sign": sun_sign})), words=14)),
-        ("moon", "☽", "ЛУНА", moon_sign, "«Что я чувствую»", _description(planet_desc.get("moon"), _planet_fallback("moon", planets.get("moon", {"sign": moon_sign})), words=14)),
-        ("asc", "↑", "ВОСХОД", asc_sign, "«Как меня видят»", f"Восходящий знак {_sign_ru(asc_sign)} показывает первое впечатление, стиль реакции и внешний ритм."),
+        (
+            "sun",
+            "☉",
+            "СОЛНЦЕ",
+            sun_sign,
+            "«Как я сияю»",
+            _description(
+                planet_desc.get("sun"),
+                _planet_fallback("sun", planets.get("sun", {"sign": sun_sign})),
+                words=14,
+            ),
+        ),
+        (
+            "moon",
+            "☽",
+            "ЛУНА",
+            moon_sign,
+            "«Что я чувствую»",
+            _description(
+                planet_desc.get("moon"),
+                _planet_fallback("moon", planets.get("moon", {"sign": moon_sign})),
+                words=14,
+            ),
+        ),
+        (
+            "asc",
+            "↑",
+            "ВОСХОД",
+            asc_sign,
+            "«Как меня видят»",
+            f"Восходящий знак {_sign_ru(asc_sign)} показывает первое впечатление, стиль реакции и внешний ритм.",
+        ),
     ]
     body = _section_header("Ключевые точки", "Три центра, через которые читается ваша карта")
-    body += '<div class="cards-3">' + "".join(
-        f'<article class="card key-card"><div class="card-icon">{glyph}</div><div class="card-meta">{label}</div>'
-        f'<div class="zodiac-dot" style="background:{ELEMENT_COLORS[_sign_element(sign)]}">{_sign_symbol(sign)}</div>'
-        f'<h3>{_e(_sign_ru(sign))}</h3><div class="mini-rule"></div><div class="quote">{quote}</div><p>{_e(text)}</p></article>'
-        for _key_name, glyph, label, sign, quote, text in data
-    ) + "</div>"
+    body += (
+        '<div class="cards-3">'
+        + "".join(
+            f'<article class="card key-card"><div class="card-icon">{glyph}</div><div class="card-meta">{label}</div>'
+            f'<div class="zodiac-dot" style="background:{ELEMENT_COLORS[_sign_element(sign)]}">{_sign_symbol(sign)}</div>'
+            f'<h3>{_e(_sign_ru(sign))}</h3><div class="mini-rule"></div><div class="quote">{quote}</div><p>{_e(text)}</p></article>'
+            for _key_name, glyph, label, sign, quote, text in data
+        )
+        + "</div>"
+    )
     body += (
         f'<article class="card dominant-card" style="--element-color:{ELEMENT_COLORS[dominant]}">'
         f'<div class="dominant-symbol">△</div><div><h3>Доминирует {dominant_label.lower()}</h3>'
@@ -593,7 +641,12 @@ def _key_points_page(
     return _page(3, body)
 
 
-def _wheel_page(planets: dict[str, dict[str, Any]], houses: list[dict[str, Any]], aspects: list[dict[str, Any]], asc_sign: str | None) -> str:
+def _wheel_page(
+    planets: dict[str, dict[str, Any]],
+    houses: list[dict[str, Any]],
+    aspects: list[dict[str, Any]],
+    asc_sign: str | None,
+) -> str:
     legend = [
         ("conjunction", "Соединение · слияние"),
         ("trine", "Трин · поток"),
@@ -604,47 +657,106 @@ def _wheel_page(planets: dict[str, dict[str, Any]], houses: list[dict[str, Any]]
     ]
     body = _section_header("Натальное колесо", "Карта неба в момент вашего рождения")
     body += f'<div class="wheel-wrap">{_natal_wheel_svg(planets, houses, aspects, asc_sign)}</div>'
-    body += '<div class="legend">' + "".join(
-        f'<div style="color:{ASPECT_COLORS[k]}"><span class="legend-line"></span>{_e(label)}</div>' for k, label in legend
-    ) + "</div>"
+    body += (
+        '<div class="legend">'
+        + "".join(
+            f'<div style="color:{ASPECT_COLORS[k]}"><span class="legend-line"></span>{_e(label)}</div>'
+            for k, label in legend
+        )
+        + "</div>"
+    )
     return _page(4, body)
+
+
+_ZERO_ELEMENT_TEXTS: dict[str, str] = {
+    "fire": (
+        "Огонь (0%) — отсутствующая стихия. Ни одна планета не стоит в Овне, Льве или Стрельце. "
+        "Инициатива, энтузиазм и спонтанное действие даются с усилием или через других людей. "
+        "Задача: научиться доверять собственным импульсам, не дожидаясь внешнего разрешения."
+    ),
+    "earth": (
+        "Земля (0%) — отсутствующая стихия. Ни одна планета не стоит в Тельце, Деве или Козероге. "
+        "Материальность, практичность и стабильность не приходят автоматически — требуют сознательного внимания. "
+        "Задача: выстроить конкретные структуры в быту и финансах, не полагаясь только на интуицию."
+    ),
+    "air": (
+        "Воздух (0%) — отсутствующая стихия. Ни одна планета не стоит в Близнецах, Весах или Водолее. "
+        "Абстрактное мышление, лёгкая коммуникация и дистанцирование от чувств даются труднее. "
+        "Задача: развивать навык называть происходящее словами и смотреть на ситуацию с рационального расстояния."
+    ),
+    "water": (
+        "Вода (0%) — отсутствующая стихия. Ни одна планета не стоит в Раке, Скорпионе или Рыбах. "
+        "Глубокие чувства, интуиция и эмпатия не проявляются сами по себе — они требуют усилия. "
+        "Задача: позволить себе чувствовать без немедленного объяснения и контроля."
+    ),
+}
 
 
 def _elements_page(planets: dict[str, dict[str, Any]]) -> str:
     percentages = _element_percentages(planets)
     dominant = _dominant_element(planets)
+    zero_elements = [el for el in ELEMENTS if percentages.get(el, 0) == 0]
     body = _section_header("Баланс стихий", "Как распределена энергия вашей карты")
     body += '<div class="elements-layout">'
     body += _donut_svg(percentages, dominant)
-    body += '<div class="element-list">' + "".join(
-        f'<div class="element-row" style="--element-color:{ELEMENT_COLORS[element]}"><span class="swatch"></span>'
-        f'<span>{_e(ELEMENTS[element][0])}</span><span class="percent">{percentages.get(element, 0)}%</span></div>'
-        for element in ELEMENTS
-    ) + "</div></div>"
-    body += '<div class="grid-2 element-cards">' + "".join(
-        f'<article class="card element-card" style="--element-color:{ELEMENT_COLORS[element]}"><h3>{_e(ELEMENTS[element][0])}'
-        f'<span class="percent" style="float:right">{percentages.get(element, 0)}%</span></h3><p>{_e(ELEMENT_COPY[element][0])}</p></article>'
-        for element in ELEMENTS
-    ) + "</div>"
-    body += '<div class="tags">' + "".join(f'<span class="tag">{_e(tag)}</span>' for tag in ELEMENT_COPY[dominant][1]) + "</div>"
+    body += (
+        '<div class="element-list">'
+        + "".join(
+            f'<div class="element-row" style="--element-color:{ELEMENT_COLORS[element]}"><span class="swatch"></span>'
+            f'<span>{_e(ELEMENTS[element][0])}</span><span class="percent">{percentages.get(element, 0)}%</span></div>'
+            for element in ELEMENTS
+        )
+        + "</div></div>"
+    )
+    body += (
+        '<div class="grid-2 element-cards">'
+        + "".join(
+            f'<article class="card element-card" style="--element-color:{ELEMENT_COLORS[element]}"><h3>{_e(ELEMENTS[element][0])}'
+            f'<span class="percent" style="float:right">{percentages.get(element, 0)}%</span></h3><p>{_e(ELEMENT_COPY[element][0])}</p></article>'
+            for element in ELEMENTS
+        )
+        + "</div>"
+    )
+    body += (
+        '<div class="tags">'
+        + "".join(f'<span class="tag">{_e(tag)}</span>' for tag in ELEMENT_COPY[dominant][1])
+        + "</div>"
+    )
+    if zero_elements:
+        body += '<div class="zero-elements">'
+        for el in zero_elements:
+            text = _ZERO_ELEMENT_TEXTS.get(el, "")
+            color = ELEMENT_COLORS[el]
+            body += (
+                f'<article class="card zero-element-card" style="border-left:3px solid {color}">'
+                f'<h3 style="color:{color}">⚠ {_e(ELEMENTS[el][0])} — отсутствующая стихия</h3>'
+                f"<p>{_e(text)}</p></article>"
+            )
+        body += "</div>"
     return _page(5, body)
 
 
-def _planet_pages(planets: dict[str, dict[str, Any]], descriptions: dict[str, Any] | None, *, start_page: int) -> list[str]:
+def _planet_pages(
+    planets: dict[str, dict[str, Any]], descriptions: dict[str, Any] | None, *, start_page: int
+) -> list[str]:
     planet_desc = (descriptions or {}).get("planets") or {}
     items = [name for name in PLANET_ORDER if planets.get(name)]
-    chunks = [items[index:index + 4] for index in range(0, len(items), 4)]
+    chunks = [items[index : index + 4] for index in range(0, len(items), 4)]
     pages = []
     for idx, chunk in enumerate(chunks, start=1):
-        body = _section_header("Планеты в знаках", "Где находится каждая планета и что это значит", f"{idx} / {len(chunks)}")
+        body = _section_header(
+            "Планеты в знаках",
+            "Где находится каждая планета и что это значит",
+            f"{idx} / {len(chunks)}",
+        )
         body += '<div class="grid-2">'
         for name in chunk:
             planet = planets[name]
             sign = planet.get("sign_ru") or planet.get("sign")
             retro = '<span class="retro">℞ РЕТРО</span>' if planet.get("retrograde") else ""
-            meta = f'{_roman(int(planet.get("house") or 0))} дом · {_deg_str(planet.get("sign_degree", planet.get("degree", 0)))}'
+            meta = f"{_roman(int(planet.get('house') or 0))} дом · {_deg_str(planet.get('sign_degree', planet.get('degree', 0)))}"
             body += _card(
-                f'{PLANET_RU[name]} в {_sign_ru(sign)} {retro}',
+                f"{PLANET_RU[name]} в {_sign_ru(sign)} {retro}",
                 _e(_description(planet_desc.get(name), _planet_fallback(name, planet), words=95)),
                 class_name="planet-card",
                 meta=meta,
@@ -655,35 +767,48 @@ def _planet_pages(planets: dict[str, dict[str, Any]], descriptions: dict[str, An
     return pages
 
 
-def _houses_pages(houses: list[dict[str, Any]], descriptions: dict[str, Any] | None, *, start_page: int) -> list[str]:
+def _houses_pages(
+    houses: list[dict[str, Any]], descriptions: dict[str, Any] | None, *, start_page: int
+) -> list[str]:
     house_desc = (descriptions or {}).get("houses") or {}
     axis = {1: "Асцендент", 4: "Основание (IC)", 7: "Десцендент", 10: "Середина неба (MC)"}
     items = [house for house in houses if int(house.get("number") or 0)]
-    chunks = [items[index:index + 6] for index in range(0, len(items), 6)]
+    chunks = [items[index : index + 6] for index in range(0, len(items), 6)]
     pages = []
     for idx, chunk in enumerate(chunks, start=1):
-        body = _section_header("Дома гороскопа", "12 сфер жизни и их обстановка", f"{idx} / {len(chunks)}")
+        body = _section_header(
+            "Дома гороскопа", "12 сфер жизни и их обстановка", f"{idx} / {len(chunks)}"
+        )
         body += '<div class="houses-grid">'
         for house in chunk:
             num = int(house.get("number") or 0)
             sign = house.get("sign_ru") or house.get("sign")
             angle_cls = " angle" if num in axis else ""
-            axis_html = f'<div class="card-meta" style="color:{GOLD}">{axis[num]}</div>' if num in axis else ""
+            axis_html = (
+                f'<div class="card-meta" style="color:{GOLD}">{axis[num]}</div>'
+                if num in axis
+                else ""
+            )
             body += (
                 f'<article class="card house-card{angle_cls}"><div class="house-top"><div>'
                 f'<span class="house-num">{_roman(num)}</span><span class="house-sign">{_sign_symbol(sign)} {_e(_sign_ru(sign))}</span></div>'
                 f'<div class="house-degree">{_deg_str(house.get("degree"), within_sign=False)}</div></div>{axis_html}'
                 f'<div class="house-label">{_e(HOUSE_LABELS.get(num, f"ДОМ {num}"))}</div>'
-                f'<p>{_e(_description(house_desc.get(str(num)), _house_fallback(house), words=68))}</p></article>'
+                f"<p>{_e(_description(house_desc.get(str(num)), _house_fallback(house), words=68))}</p></article>"
             )
         body += "</div>"
         pages.append(_page(start_page + idx - 1, body))
     return pages
 
 
-def _aspect_pages(aspects: list[dict[str, Any]], descriptions: dict[str, Any] | None, *, start_page: int) -> list[str]:
+def _aspect_pages(
+    aspects: list[dict[str, Any]], descriptions: dict[str, Any] | None, *, start_page: int
+) -> list[str]:
     aspect_desc = _aspect_description_map(descriptions)
-    groups = [(atype, [a for a in aspects if _aspect_key(a.get("aspect")) == atype]) for atype in ASPECT_ORDER]
+    groups = [
+        (atype, [a for a in aspects if _aspect_key(a.get("aspect")) == atype])
+        for atype in ASPECT_ORDER
+    ]
     groups = [(atype, group) for atype, group in groups if group]
     total = sum(len(group) for _, group in groups)
     harm = sum(1 for a in aspects if _aspect_key(a.get("aspect")) in ("trine", "sextile"))
@@ -695,12 +820,12 @@ def _aspect_pages(aspects: list[dict[str, Any]], descriptions: dict[str, Any] | 
         f'<div class="metric" style="--metric-color:#1fa37c"><strong>{harm}</strong><span>Гармоничных</span></div>'
         f'<div class="metric" style="--metric-color:#f0673c"><strong>{chall}</strong><span>Напряжённых</span></div>'
         f'<div class="metric" style="--metric-color:{TEXT_DIM}"><strong>{neutral}</strong><span>Нейтральных</span></div>'
-        '</div>'
+        "</div>"
     )
     chunks: list[list[tuple[str, list[dict[str, Any]]]]] = []
     for atype, group_items in groups:
         for index in range(0, len(group_items), 3):
-            group_chunk = group_items[index:index + 3]
+            group_chunk = group_items[index : index + 3]
             chunks.append([(atype, group_chunk)])
     pages = []
     for idx, chunk in enumerate(chunks, start=1):
@@ -714,10 +839,12 @@ def _aspect_pages(aspects: list[dict[str, Any]], descriptions: dict[str, Any] | 
             for aspect in group_items:
                 p1 = _planet_key(aspect.get("p1"))
                 p2 = _planet_key(aspect.get("p2"))
-                desc = _description(aspect_desc.get((p1, p2, atype)), _aspect_fallback(aspect), words=82)
+                desc = _description(
+                    aspect_desc.get((p1, p2, atype)), _aspect_fallback(aspect), words=82
+                )
                 body += (
                     f'<div class="aspect-row"><div class="aspect-title"><span>{PLANET_SYMBOLS.get(p1, "")} {_e(PLANET_RU.get(p1, p1))} '
-                    f'{ASPECT_SYMBOLS.get(atype, "")} {PLANET_SYMBOLS.get(p2, "")} {_e(PLANET_RU.get(p2, p2))}</span>'
+                    f"{ASPECT_SYMBOLS.get(atype, '')} {PLANET_SYMBOLS.get(p2, '')} {_e(PLANET_RU.get(p2, p2))}</span>"
                     f'<span class="orb">орб {float(aspect.get("orb") or 0):.1f}°</span></div><p>{_e(desc)}</p></div>'
                 )
             body += "</section>"
@@ -725,7 +852,14 @@ def _aspect_pages(aspects: list[dict[str, Any]], descriptions: dict[str, Any] | 
     return pages
 
 
-def _reading_pages(reading: str | None, sun_sign: str, moon_sign: str, asc_sign: str | None) -> list[str]:
+def _reading_pages(
+    reading: str | None,
+    sun_sign: str,
+    moon_sign: str,
+    asc_sign: str | None,
+    *,
+    start_page: int = 11,
+) -> list[str]:
     text = str(reading or "").strip()
     if not text:
         text = (
@@ -774,15 +908,17 @@ def _reading_pages(reading: str | None, sun_sign: str, moon_sign: str, asc_sign:
         page_chunks.append(current)
 
     pages = []
-    for idx, chunk in enumerate(page_chunks, start=11):
+    for idx, chunk in enumerate(page_chunks, start=start_page):
         if not chunk:
             continue
         body = _section_header("Персональная интерпретация", "Написано специально для вас")
-        if idx == 11:
+        if idx == start_page:
             body += '<div class="reading-quote">«Каждый рисунок звёзд раскрывается только через того, кто его носит»</div>'
-        body += '<div class="reading">' + "".join(
-            f'<h3>✦ {_e(title)}</h3><p>{_e(paragraph)}</p>' for title, paragraph in chunk
-        ) + "</div>"
+        body += (
+            '<div class="reading">'
+            + "".join(f"<h3>✦ {_e(title)}</h3><p>{_e(paragraph)}</p>" for title, paragraph in chunk)
+            + "</div>"
+        )
         pages.append(_page(idx, body))
     return pages
 
@@ -793,7 +929,7 @@ def _final_page(page: int) -> str:
         '<div class="cover-line"></div><div class="glossary-title">Краткий справочник</div><dl class="glossary">'
     )
     for term, definition in GLOSSARY:
-        body += f'<div><dt>{_e(term)}</dt><dd>{_e(definition)}</dd></div>'
+        body += f"<div><dt>{_e(term)}</dt><dd>{_e(definition)}</dd></div>"
     body += '</dl><div class="cover-foot">ASTRO TMA · СОЗДАНО ДЛЯ ВАС</div>'
     return _page(page, body, class_name="final")
 
@@ -832,7 +968,7 @@ def build_natal_pdf_html(
         *planet_pages,
         *house_pages,
         *aspect_pages,
-        *_reading_pages(reading, sun_sign, moon_sign, asc_sign),
+        *_reading_pages(reading, sun_sign, moon_sign, asc_sign, start_page=reading_start),
     ]
     pages.append(_final_page(len(pages) + 1))
     body = "".join(pages).replace(TOTAL_PAGES_TOKEN, str(len(pages)))
@@ -872,7 +1008,9 @@ async def generate_natal_pdf_html(
     async with async_playwright() as p:
         browser = await p.chromium.launch(args=["--no-sandbox", "--disable-dev-shm-usage"])
         try:
-            page = await browser.new_page(viewport={"width": 794, "height": 1123}, device_scale_factor=1)
+            page = await browser.new_page(
+                viewport={"width": 794, "height": 1123}, device_scale_factor=1
+            )
             await page.set_content(document, wait_until="load")
             return await page.pdf(
                 format="A4",
