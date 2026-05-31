@@ -87,12 +87,15 @@ async def _llm_batch(
 Верни ТОЛЬКО JSON-массив строк в порядке списка, без обёртки. Пример: ["текст1", "текст2", ...]"""
 
     try:
+        from services.llm_pool import llm_semaphore
+
         client = anthropic.AsyncAnthropic(api_key=api_key)
-        message = await client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=4000,
-            messages=[{"role": "user", "content": prompt}],
-        )
+        async with llm_semaphore:
+            message = await client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=4000,
+                messages=[{"role": "user", "content": prompt}],
+            )
         raw = first_text_block(message.content).strip()
         if raw.startswith("```"):
             raw = raw.split("\n", 1)[1] if "\n" in raw else raw
@@ -302,12 +305,15 @@ async def _llm_advice(
 {{"do": "Совет 1\\nСовет 2\\nСовет 3", "avoid": "Предупреждение 1\\nПредупреждение 2"}}"""
 
     try:
+        from services.llm_pool import llm_semaphore
+
         client = anthropic.AsyncAnthropic(api_key=api_key)
-        message = await client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=600,
-            messages=[{"role": "user", "content": prompt}],
-        )
+        async with llm_semaphore:
+            message = await client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=600,
+                messages=[{"role": "user", "content": prompt}],
+            )
         raw = first_text_block(message.content).strip()
         if raw.startswith("```"):
             raw = raw.split("\n", 1)[1] if "\n" in raw else raw

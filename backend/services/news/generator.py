@@ -36,12 +36,16 @@ async def generate_body(event: dict[str, Any]) -> str:
     )
     try:
         import anthropic
+
+        from services.llm_pool import llm_semaphore
+
         client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
-        message = await client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=600,
-            messages=[{"role": "user", "content": prompt}],
-        )
+        async with llm_semaphore:
+            message = await client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=600,
+                messages=[{"role": "user", "content": prompt}],
+            )
         text = first_text_block(message.content).strip()
         return text or _fallback_body(title, source)
     except Exception as e:

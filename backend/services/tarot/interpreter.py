@@ -217,6 +217,8 @@ async def generate_spread_interpretation(
             f"expected {expected_n} cards for {spread_type}, got {len(cards)}"
         )
 
+    from services.llm_pool import llm_semaphore
+
     prompt = _build_prompt(spread_type, cards, gender)
 
     # max_tokens scaled to spread size: ~70 tokens per position (3 sentences)
@@ -225,11 +227,12 @@ async def generate_spread_interpretation(
     cap = 600 + expected_n * 180
 
     client = anthropic.AsyncAnthropic(api_key=api_key)
-    message = await client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=cap,
-        messages=[{"role": "user", "content": prompt}],
-    )
+    async with llm_semaphore:
+        message = await client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=cap,
+            messages=[{"role": "user", "content": prompt}],
+        )
 
     text = first_text_block(message.content)
     parsed = _extract_json(text)

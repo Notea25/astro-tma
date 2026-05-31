@@ -291,19 +291,22 @@ async def _call_tool(
     """Invoke the model with a forced tool call — the response's tool_use
     block carries an already-parsed dict matching `input_schema`. No JSON
     string handling needed on our side."""
-    message = await client.messages.create(
-        model=_MODEL,
-        max_tokens=max_tokens,
-        tools=[
-            {
-                "name": tool_name,
-                "description": "Submit the requested descriptions.",
-                "input_schema": input_schema,
-            }
-        ],
-        tool_choice={"type": "tool", "name": tool_name},
-        messages=[{"role": "user", "content": prompt}],
-    )
+    from services.llm_pool import llm_semaphore
+
+    async with llm_semaphore:
+        message = await client.messages.create(
+            model=_MODEL,
+            max_tokens=max_tokens,
+            tools=[
+                {
+                    "name": tool_name,
+                    "description": "Submit the requested descriptions.",
+                    "input_schema": input_schema,
+                }
+            ],
+            tool_choice={"type": "tool", "name": tool_name},
+            messages=[{"role": "user", "content": prompt}],
+        )
     for block in message.content:
         if getattr(block, "type", None) == "tool_use":
             return getattr(block, "input", None)
@@ -312,11 +315,14 @@ async def _call_tool(
 
 async def _call_llm(client: Any, prompt: str, max_tokens: int) -> str:
     """Legacy plain-text call — kept for any future free-form prompt."""
-    message = await client.messages.create(
-        model=_MODEL,
-        max_tokens=max_tokens,
-        messages=[{"role": "user", "content": prompt}],
-    )
+    from services.llm_pool import llm_semaphore
+
+    async with llm_semaphore:
+        message = await client.messages.create(
+            model=_MODEL,
+            max_tokens=max_tokens,
+            messages=[{"role": "user", "content": prompt}],
+        )
     return first_text_block(message.content)
 
 

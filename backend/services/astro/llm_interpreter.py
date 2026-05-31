@@ -127,14 +127,17 @@ async def generate_natal_reading(
     """
     import anthropic
 
+    from services.llm_pool import llm_semaphore
+
     prompt = _build_prompt(sun_sign, moon_sign, ascendant_sign, planets, aspects, gender)
 
     client = anthropic.AsyncAnthropic(api_key=api_key)
-    message = await client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=2400,
-        messages=[{"role": "user", "content": prompt}],
-    )
+    async with llm_semaphore:
+        message = await client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=2400,
+            messages=[{"role": "user", "content": prompt}],
+        )
 
     text = first_text_block(message.content)
     log.info("llm_interpreter.done", chars=len(text))

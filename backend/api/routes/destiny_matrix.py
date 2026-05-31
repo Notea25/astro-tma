@@ -8,7 +8,7 @@ from secrets import token_urlsafe
 from urllib.parse import quote
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi.responses import Response
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
@@ -92,14 +92,96 @@ async def _refresh_if_stale(
     await db.flush()
 
 
+async def _pregenerate_interpretation(
+    reading_id: int,
+    positions: dict,
+    first_name: str | None,
+    gender: str | None,
+) -> None:
+    """Run from a FastAPI BackgroundTask after /calculate. Generates the
+    LLM narrative for this reading if none exists yet (or if the cached
+    row was generated for a different gender). Opens its own DB session
+    because the request session is already closed by the time this runs.
+
+    Errors are swallowed — pre-generation is best-effort, the live
+    /interpretation endpoint will retry on the next click."""
+    if not settings.ANTHROPIC_API_KEY:
+        return
+    from db.database import AsyncSessionLocal
+
+    try:
+        async with AsyncSessionLocal() as bg_db:
+            existing = await bg_db.execute(
+                select(DestinyMatrixInterpretation).where(
+                    DestinyMatrixInterpretation.reading_id == reading_id,
+                )
+            )
+            cached = existing.scalar_one_or_none()
+            if cached and cached.gender_used == gender:
+                return  # already fresh
+
+            sections, model = await generate_interpretation(
+                positions=positions,
+                first_name=first_name,
+                api_key=settings.ANTHROPIC_API_KEY,
+                gender=gender,
+            )
+            if model == "fallback":
+                # Mirrors the live endpoint: never cache the static fallback.
+                log.info(
+                    "destiny_matrix.pregenerate.fallback_skipped",
+                    reading_id=reading_id,
+                )
+                return
+
+            if cached:
+                # Gender mismatch — clear the old row before insert.
+                await bg_db.execute(
+                    delete(DestinyMatrixInterpretation).where(
+                        DestinyMatrixInterpretation.reading_id == reading_id,
+                    )
+                )
+                await bg_db.flush()
+
+            interp = DestinyMatrixInterpretation(
+                reading_id=reading_id,
+                sections=sections,
+                model=model,
+                gender_used=gender,
+            )
+            bg_db.add(interp)
+            try:
+                await bg_db.commit()
+                log.info(
+                    "destiny_matrix.pregenerated",
+                    reading_id=reading_id,
+                    model=model,
+                )
+            except IntegrityError:
+                # Another worker raced us to write. Their version stands.
+                await bg_db.rollback()
+    except Exception as e:  # noqa: BLE001
+        log.warning(
+            "destiny_matrix.pregenerate.failed",
+            reading_id=reading_id,
+            error=str(e)[:300],
+        )
+
+
 @router.post("/calculate", response_model=DestinyMatrixResponse)
 async def calculate(
+    background_tasks: BackgroundTasks,
     tg_user: dict = Depends(get_tg_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Idempotent: returns the existing reading for the user's current
     birth_date or creates one. The matrix is pure-math, so the result
-    is deterministic — same birth_date always yields the same numbers."""
+    is deterministic — same birth_date always yields the same numbers.
+
+    Kicks off LLM narrative pre-generation in the background so the
+    subsequent /interpretation call from the frontend returns
+    immediately from cache instead of blocking on the 3-5s Anthropic
+    round-trip."""
     user = await user_repo.get_by_id(db, tg_user["id"])
     if not user:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
@@ -142,6 +224,17 @@ async def calculate(
             reading = result.scalar_one()
     else:
         await _refresh_if_stale(db, reading, birth_date)
+
+    # Warm the interpretation cache in the background. Captures plain
+    # values rather than the ORM instance so the task doesn't depend on
+    # the request session staying open.
+    background_tasks.add_task(
+        _pregenerate_interpretation,
+        reading.id,
+        dict(reading.positions),
+        user.tg_first_name,
+        user.gender.value if user.gender else None,
+    )
 
     return DestinyMatrixResponse(
         positions=DestinyMatrixPositions.model_validate(reading.positions),

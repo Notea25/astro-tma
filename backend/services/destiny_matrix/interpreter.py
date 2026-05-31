@@ -238,20 +238,23 @@ async def generate_interpretation(
     import anthropic
     from anthropic.types import MessageParam, ToolChoiceToolParam, ToolParam
 
+    from services.llm_pool import llm_semaphore
+
     user_prompt = _build_user_prompt(positions, first_name, gender)
     try:
         client = anthropic.AsyncAnthropic(api_key=api_key)
         tools = cast(list[ToolParam], [_PUBLISH_TOOL])
         tool_choice: ToolChoiceToolParam = {"type": "tool", "name": "publish_reading"}
         messages: list[MessageParam] = [{"role": "user", "content": user_prompt}]
-        message = await client.messages.create(
-            model=_MODEL,
-            max_tokens=3000,
-            system=_SYSTEM_PROMPT,
-            tools=tools,
-            tool_choice=tool_choice,
-            messages=messages,
-        )
+        async with llm_semaphore:
+            message = await client.messages.create(
+                model=_MODEL,
+                max_tokens=3000,
+                system=_SYSTEM_PROMPT,
+                tools=tools,
+                tool_choice=tool_choice,
+                messages=messages,
+            )
         # Find the tool_use block — model is forced to it via tool_choice.
         tool_input: dict[str, Any] | None = None
         for block in message.content:
