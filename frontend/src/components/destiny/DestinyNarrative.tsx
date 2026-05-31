@@ -21,9 +21,12 @@ const SECTION_ORDER = [
 
 interface Props {
   enabled: boolean;
+  /** V2: when false, free preview of 2 sections; remaining 6 render as locked. */
+  hasFullAccess?: boolean;
+  onUpgrade?: () => void;
 }
 
-export function DestinyNarrative({ enabled }: Props) {
+export function DestinyNarrative({ enabled, hasFullAccess = true, onUpgrade }: Props) {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["destiny-matrix", "interpretation"],
     queryFn: destinyApi.getInterpretation,
@@ -54,27 +57,41 @@ export function DestinyNarrative({ enabled }: Props) {
 
   if (!data) return null;
 
+  const lockedKeys = new Set(data.locked_sections ?? []);
+  const isUnlocked = data.has_full_access ?? hasFullAccess;
+
   return (
     <section className="destiny-narrative">
       <h3 className="destiny-narrative__title">Личный разбор</h3>
       {SECTION_ORDER.map((key, idx) => {
         const text = data.sections[key];
         if (!text) return null;
+        const isLocked = lockedKeys.has(key);
         return (
           <motion.div
             key={key}
-            className="destiny-narrative__section"
+            className={`destiny-narrative__section${isLocked ? " is-locked" : ""}`}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 * idx, duration: 0.3 }}
           >
             <h4 className="destiny-narrative__section-title">
               {SECTION_LABELS_RU[key] ?? key}
+              {isLocked && <span className="destiny-narrative__lock">🔒</span>}
             </h4>
             <p className="destiny-narrative__section-text">{text}</p>
           </motion.div>
         );
       })}
+      {!isUnlocked && onUpgrade && (
+        <button
+          type="button"
+          className="btn-stars destiny-narrative__upgrade"
+          onClick={onUpgrade}
+        >
+          Открыть полный разбор
+        </button>
+      )}
     </section>
   );
 }

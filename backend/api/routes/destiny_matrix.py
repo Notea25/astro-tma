@@ -232,22 +232,50 @@ async def get_arcana(
     )
 
 
+# Free users get a 2-section preview; the rest is premium-gated.
+FREE_SECTIONS: tuple[str, ...] = ("who_you_are", "karmic_tail")
+
+
+def _mask_locked_sections(
+    sections: dict[str, str], has_full_access: bool
+) -> tuple[dict[str, str], list[str]]:
+    """Return (visible_sections, locked_keys). Premium users see everything;
+    free users see only the FREE_SECTIONS — the rest is replaced with a
+    short teaser so the frontend can render a lock badge in place."""
+    if has_full_access:
+        return sections, []
+    visible: dict[str, str] = {}
+    locked: list[str] = []
+    teaser = (
+        "Эта секция доступна в полном разборе. Откройте, чтобы прочитать "
+        "тёплый персональный анализ по вашим числам."
+    )
+    for key, text in sections.items():
+        if key in FREE_SECTIONS:
+            visible[key] = text
+        else:
+            visible[key] = teaser
+            locked.append(key)
+    return visible, locked
+
+
 @router.get("/interpretation", response_model=InterpretationResponse)
 async def get_interpretation(
     tg_user: dict = Depends(get_tg_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """LLM-generated 7-section personal narrative. Premium-gated.
-    Lazily generated on first request, cached per reading_id forever."""
+    """LLM-generated 8-section personal narrative.
+
+    V2: первые 2 секции (``who_you_are``, ``karmic_tail``) бесплатны;
+    остальные 6 показываются только при полном доступе (Premium или
+    одноразовая покупка ``destiny_matrix_full``). LLM-вызов выполняется
+    один раз и кешируется per reading_id — премиум показывает уже
+    сохранённый полный текст без повторной генерации."""
     user = await user_repo.get_by_id(db, tg_user["id"])
     if not user:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
 
-    if not await _has_full_access(db, user.id):
-        raise HTTPException(
-            status.HTTP_402_PAYMENT_REQUIRED,
-            "Полный разбор Матрицы доступен в Premium или после покупки",
-        )
+    has_full_access = await _has_full_access(db, user.id)
 
     if not user.birth_date:
         raise HTTPException(
@@ -287,11 +315,14 @@ async def get_interpretation(
     )
     cached = cached_result.scalar_one_or_none()
     if cached:
+        visible, locked = _mask_locked_sections(cached.sections, has_full_access)
         return InterpretationResponse(
             reading_id=reading.id,
-            sections=cached.sections,
+            sections=visible,
             model=cached.model,
             generated_at=cached.generated_at,
+            has_full_access=has_full_access,
+            locked_sections=locked,
         )
 
     # First time — call LLM.
@@ -299,6 +330,7 @@ async def get_interpretation(
         positions=reading.positions,
         first_name=user.tg_first_name,
         api_key=settings.ANTHROPIC_API_KEY,
+        gender=user.gender.value if user.gender else None,
     )
 
     # Don't cache the static fallback — that locks every future request
@@ -306,11 +338,14 @@ async def get_interpretation(
     # the LLM.
     if model == "fallback":
         log.warning("destiny_matrix.interp.fallback_no_cache", reading_id=reading.id)
+        visible, locked = _mask_locked_sections(sections, has_full_access)
         return InterpretationResponse(
             reading_id=reading.id,
-            sections=sections,
+            sections=visible,
             model=model,
             generated_at=datetime.utcnow(),
+            has_full_access=has_full_access,
+            locked_sections=locked,
         )
 
     interp = DestinyMatrixInterpretation(
@@ -332,11 +367,14 @@ async def get_interpretation(
         )
         interp = cached_result.scalar_one()
 
+    visible, locked = _mask_locked_sections(interp.sections, has_full_access)
     return InterpretationResponse(
         reading_id=reading.id,
-        sections=interp.sections,
+        sections=visible,
         model=interp.model,
         generated_at=interp.generated_at,
+        has_full_access=has_full_access,
+        locked_sections=locked,
     )
 
 
@@ -410,6 +448,7 @@ async def _get_or_generate_pdf_sections(
         positions=reading.positions,
         first_name=user.tg_first_name,
         api_key=settings.ANTHROPIC_API_KEY,
+        gender=user.gender.value if user.gender else None,
     )
 
     # Persist only real LLM output, never the static fallback (matches the
@@ -429,14 +468,62 @@ async def _get_or_generate_pdf_sections(
     return sections
 
 
+async def _load_arcana_meanings(
+    db: AsyncSession, gender: str | None
+) -> dict[int, dict[str, dict[str, str | None]]]:
+    """Return ``{arcana_num: {context: {meaning, plus, minus, professions}}}``
+    prefering the reader's gender row and falling back to gender='any'."""
+    rows = await db.execute(
+        select(
+            ArcanaMeaning.arcana_num,
+            ArcanaMeaning.context,
+            ArcanaMeaning.gender,
+            ArcanaMeaning.meaning,
+            ArcanaMeaning.plus,
+            ArcanaMeaning.minus,
+            ArcanaMeaning.professions,
+        )
+    )
+    by_key: dict[tuple[int, str, str], dict[str, str | None]] = {}
+    for r in rows.all():
+        by_key[(r.arcana_num, r.context, r.gender)] = {
+            "meaning": r.meaning,
+            "plus": r.plus,
+            "minus": r.minus,
+            "professions": r.professions,
+        }
+    target_gender = gender if gender in ("male", "female") else None
+    out: dict[int, dict[str, dict[str, str | None]]] = {}
+    for (arc, ctx, g), fields in by_key.items():
+        # Prefer the gender-specific row when present, fall back to 'any'.
+        slot = out.setdefault(arc, {})
+        existing = slot.get(ctx)
+        if existing is None:
+            slot[ctx] = fields
+            slot[ctx]["_gender"] = g
+            continue
+        # An entry already exists — replace with the gendered one if relevant.
+        if g == target_gender and existing.get("_gender") == "any":
+            slot[ctx] = {**fields, "_gender": g}
+    # Strip helper keys
+    for ctx_map in out.values():
+        for fields in ctx_map.values():
+            fields.pop("_gender", None)
+    return out
+
+
 async def _build_destiny_pdf_bytes(db: AsyncSession, user) -> bytes:
     reading = await _get_or_create_pdf_reading(db, user)
     sections = await _get_or_generate_pdf_sections(db, user, reading)
+    gender = user.gender.value if user.gender else None
+    arcana_meanings = await _load_arcana_meanings(db, gender)
     return await generate_destiny_matrix_pdf_html(
         user_name=user.tg_first_name or "User",
         birth_date=str(reading.birth_date),
         positions=reading.positions,
         sections=sections,
+        arcana_meanings=arcana_meanings,
+        gender=gender,
     )
 
 

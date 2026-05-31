@@ -1019,6 +1019,10 @@ export interface DestinyMatrixInterpretation {
   sections: Record<string, string>;
   model: string;
   generated_at: string;
+  /** V2: false означает что показаны только секции из `FREE_SECTIONS`,
+   *  остальные ключи есть в `sections` с teaser-текстом и помечены в `locked_sections`. */
+  has_full_access?: boolean;
+  locked_sections?: string[];
 }
 
 export const destinyApi = {

@@ -9728,6 +9728,22 @@ body::before {
   font-size: 0.94rem;
   line-height: 1.6;
 }
+.destiny-narrative__section.is-locked {
+  opacity: 0.65;
+  filter: saturate(0.5);
+}
+.destiny-narrative__section.is-locked .destiny-narrative__section-text {
+  font-style: italic;
+}
+.destiny-narrative__lock {
+  margin-left: 8px;
+  font-size: 0.85rem;
+  vertical-align: middle;
+}
+.destiny-narrative__upgrade {
+  margin-top: 14px;
+  align-self: flex-start;
+}
 
 /* 5 life lines */
 

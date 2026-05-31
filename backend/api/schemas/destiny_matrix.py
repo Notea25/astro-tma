@@ -189,9 +189,15 @@ class ArcanaResponse(BaseModel):
 
 
 class InterpretationResponse(BaseModel):
-    """LLM-сгенерированный 8-секционный личный разбор. Кешируется per reading_id."""
+    """LLM-сгенерированный 8-секционный личный разбор. Кешируется per reading_id.
+
+    V2: bottom-2 free, остальные 6 секций под premium-гейтом. Поле
+    `locked_sections` помечает, какие ключи фронту нужно прятать под
+    замок. Для премиумов это всегда пустой список."""
     reading_id: int
     sections: dict[str, str]   # who_you_are, karmic_tail, talents, purpose,
                                # relationships, finance, parental, advice
     model: str
     generated_at: datetime
+    has_full_access: bool = True
+    locked_sections: list[str] = []

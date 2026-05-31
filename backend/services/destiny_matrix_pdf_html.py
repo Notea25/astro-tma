@@ -1,14 +1,15 @@
-"""HTML/CSS Destiny Matrix PDF renderer (MVP).
+"""HTML/CSS Destiny Matrix PDF renderer (V2).
 
 Mirrors ``services.natal_pdf_html`` — builds a print-oriented HTML document
 and renders it through Playwright/Chromium. No ReportLab fallback here;
 the route catches exceptions and surfaces a 502 to the client.
 
-MVP scope (per spec, see ``memory/project_destiny_matrix_pdf_v2.md`` for V2):
-    * cover page (name, birth date, 3 anchor arcana)
-    * contents
-    * octagram (SVG, simplified projection of the React component)
-    * 8 narrative sections (one per page)
+V2 scope:
+    * cover, contents, octagram (same as MVP)
+    * 8 narrative sections, each now augmented with 3 arcana mini-cards
+      (meaning + plus/minus from ``arcana_meanings``) and a hardcoded
+      practice-template block (bulleted action steps)
+    * mini-glossary page(s) — all 22 arcana × ~40 words
     * 36-slot summary table
     * disclaimer / final page
 """
@@ -144,14 +145,44 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .octa-anchor .name {{ font: 12.5px "DejaVu Serif", Georgia, serif; margin-top: 2mm; }}
 
 /* Narrative pages */
-.section-card {{ background: {PANEL}; border: 1px solid {BORDER}; border-left: 3px solid {GOLD}; border-radius: 8px; padding: 8mm 8mm; }}
-.section-card .anchor {{ display: flex; gap: 6mm; align-items: center; margin-bottom: 6mm; padding-bottom: 5mm; border-bottom: 1px solid rgba(214,184,90,.18); }}
+.section-card {{ background: {PANEL}; border: 1px solid {BORDER}; border-left: 3px solid {GOLD}; border-radius: 8px; padding: 6mm 7mm; }}
+.section-card .anchor {{ display: flex; gap: 6mm; align-items: center; margin-bottom: 5mm; padding-bottom: 4mm; border-bottom: 1px solid rgba(214,184,90,.18); }}
 .section-card .anchor .num {{ color: {GOLD}; font: 30px "DejaVu Serif", Georgia, serif; line-height: 1; }}
 .section-card .anchor .name {{ font: 16px "DejaVu Serif", Georgia, serif; }}
 .section-card .anchor .keywords {{ color: {TEXT_DIM}; font-size: 11px; margin-top: 1.5mm; }}
-.section-card p {{ font-size: 13px; line-height: 1.55; margin: 0 0 5mm; }}
+.section-card p {{ font-size: 12.5px; line-height: 1.5; margin: 0 0 4mm; }}
 .section-card p:last-child {{ margin-bottom: 0; }}
-.section-quote {{ text-align: center; color: {TEXT_DIM}; font: italic 13px "DejaVu Serif", Georgia, serif; margin: 6mm 0 8mm; }}
+.section-quote {{ text-align: center; color: {TEXT_DIM}; font: italic 12.5px "DejaVu Serif", Georgia, serif; margin: 4mm 0 5mm; }}
+
+/* V2: decoded arcana mini-cards inside each narrative section */
+.arc-trio {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; margin-top: 5mm; }}
+.arc-card {{ background: {PANEL_DARK}; border: 1px solid {BORDER}; border-radius: 6px; padding: 4mm; min-height: 38mm; }}
+.arc-card .head {{ display: flex; align-items: baseline; gap: 3mm; margin-bottom: 2mm; }}
+.arc-card .num {{ color: {GOLD}; font: 18px "DejaVu Serif", Georgia, serif; line-height: 1; }}
+.arc-card .name {{ font: 11.5px "DejaVu Serif", Georgia, serif; line-height: 1.2; }}
+.arc-card .ctx {{ color: {TEXT_DIM}; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 2mm; }}
+.arc-card .body {{ color: {TEXT}; font-size: 10px; line-height: 1.4; margin: 0 0 2.5mm; }}
+.arc-card .pm {{ font-size: 9.5px; line-height: 1.35; margin: 0; }}
+.arc-card .pm .pl {{ color: #8fd497; font-weight: 600; }}
+.arc-card .pm .mn {{ color: #ff8b8b; font-weight: 600; }}
+.arc-card .pro {{ color: {TEXT_DIM}; font-size: 9px; margin-top: 2mm; font-style: italic; }}
+
+/* V2: practice template blocks */
+.practice {{ background: rgba(20,16,28,.55); border: 1px solid {BORDER}; border-radius: 8px; padding: 5mm 6mm; margin-top: 5mm; }}
+.practice h3 {{ color: {GOLD}; font: 13px "DejaVu Serif", Georgia, serif; letter-spacing: 1.5px; text-transform: uppercase; margin: 0 0 3mm; }}
+.practice ul {{ margin: 0; padding-left: 5mm; }}
+.practice li {{ font-size: 11px; line-height: 1.45; margin-bottom: 2mm; color: {TEXT}; }}
+.practice li:last-child {{ margin-bottom: 0; }}
+.practice .affirm {{ margin-top: 4mm; padding: 3mm; border-left: 2px solid {GOLD}; color: {TEXT}; font: italic 11.5px "DejaVu Serif", Georgia, serif; background: rgba(214,184,90,.05); }}
+
+/* V2: glossary */
+.glossary-grid {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 3mm 5mm; margin-top: 6mm; }}
+.gloss-cell {{ background: {PANEL}; border: 1px solid {BORDER}; border-radius: 6px; padding: 3.5mm 4mm; min-height: 22mm; }}
+.gloss-cell .head {{ display: flex; align-items: baseline; gap: 3mm; }}
+.gloss-cell .num {{ color: {GOLD}; font: 16px "DejaVu Serif", Georgia, serif; line-height: 1; }}
+.gloss-cell .name {{ font: 12px "DejaVu Serif", Georgia, serif; }}
+.gloss-cell .kw {{ color: {TEXT_DIM}; font-size: 9.5px; margin-top: 1mm; letter-spacing: .5px; }}
+.gloss-cell p {{ margin: 2mm 0 0; font-size: 10px; line-height: 1.4; color: {TEXT}; }}
 
 /* Summary table */
 .summary-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm 4mm; margin-top: 6mm; }}
@@ -336,19 +367,32 @@ def _cover_page(user_name: str, birth_date: str, positions: dict[str, Any]) -> s
     )
 
 
-def _contents_page(narrative_start: int, summary_page: int) -> str:
-    rows = [
-        ("I", "Октаграмма судьбы", "3"),
-        ("II", "Кто ты — характер и центр", str(narrative_start)),
-        ("III", "Кармический хвост", str(narrative_start + 1)),
-        ("IV", "Таланты и вдохновение", str(narrative_start + 2)),
-        ("V", "Предназначение", str(narrative_start + 3)),
-        ("VI", "Отношения", str(narrative_start + 4)),
-        ("VII", "Деньги и реализация", str(narrative_start + 5)),
-        ("VIII", "Род и семья", str(narrative_start + 6)),
-        ("IX", "Совет на этот период", str(narrative_start + 7)),
-        ("X", "Сводная таблица ключевых точек", str(summary_page)),
-    ]
+_TOC_TITLES = {
+    "who_you_are":   "Кто ты — характер и центр",
+    "karmic_tail":   "Кармический хвост",
+    "talents":       "Таланты и вдохновение",
+    "purpose":       "Предназначение",
+    "relationships": "Отношения",
+    "finance":       "Деньги и реализация",
+    "parental":      "Род и семья",
+    "advice":        "Совет на этот период",
+}
+
+_ROMAN = ("I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII")
+
+
+def _contents_page(
+    section_first_pages: dict[str, int],
+    glossary_page: int,
+    summary_page: int,
+) -> str:
+    rows: list[tuple[str, str, str]] = [(_ROMAN[0], "Октаграмма судьбы", "3")]
+    for idx, key in enumerate(SECTION_KEYS, start=1):
+        rows.append(
+            (_ROMAN[idx], _TOC_TITLES.get(key, key), str(section_first_pages.get(key, "—")))
+        )
+    rows.append((_ROMAN[len(SECTION_KEYS) + 1], "Краткий словарь арканов", str(glossary_page)))
+    rows.append((_ROMAN[len(SECTION_KEYS) + 2], "Сводная таблица ключевых точек", str(summary_page)))
     body = _section_header("Содержание", "Что внутри отчёта")
     body += '<div class="toc-list">' + "".join(
         f'<div class="toc-row"><div class="toc-roman">{roman}</div><div class="toc-title">{_e(title)}</div><div class="toc-page">{page}</div></div>'
@@ -402,6 +446,235 @@ def _section_anchor(positions: dict[str, Any], section_key: str) -> int | None:
     return int(val) if isinstance(val, int) else None
 
 
+def _section_arcana_trio(
+    positions: dict[str, Any], section_key: str
+) -> list[tuple[int, str, str]]:
+    """3 ``(arcana_num, context, short_label)`` per section. Each gets a
+    mini-card with meaning + plus/minus from ``arcana_meanings``.
+
+    Picked so the section is anchored to its dominant matrix points —
+    keeps the cards specific to the reader, not generic."""
+    pers = positions.get("personality", {}) or {}
+    sq = positions.get("ancestral_square", {}) or {}
+    purposes = positions.get("purposes", {}) or {}
+    channels = positions.get("channels", {}) or {}
+
+    def _ch(name: str, idx: int) -> int | None:
+        seq = channels.get(name)
+        if isinstance(seq, list) and len(seq) > idx:
+            return seq[idx]
+        return None
+
+    raw_map: dict[str, list[tuple[Any, str, str]]] = {
+        "who_you_are": [
+            (pers.get("center"),     "personality", "Центр — характер"),
+            (pers.get("day"),        "personality", "День — портрет"),
+            (sq.get("top_left"),     "ancestral",   "Внутренний потенциал"),
+        ],
+        "karmic_tail": [
+            (pers.get("bottom"),     "karmic_tail",     "Главный урок"),
+            (pers.get("year"),       "material_karma",  "Прошлый опыт"),
+            (sq.get("bottom_left"),  "ancestral",       "Родовая карма"),
+        ],
+        "talents": [
+            (pers.get("month"),      "talents",     "Высшая суть"),
+            (sq.get("top_right"),    "ancestral",   "Талант рода"),
+            (sq.get("top_left"),     "talents",     "Подача дара"),
+        ],
+        "purpose": [
+            (purposes.get("personal"),  "purpose", "До ~40 лет"),
+            (purposes.get("social"),    "purpose", "40–60 лет"),
+            (purposes.get("planetary"), "purpose", "Миссия"),
+        ],
+        "relationships": [
+            (_ch("relationships", 0), "relationships", "Вход в отношения"),
+            (_ch("relationships", 1), "relationships", "Что делать"),
+            (pers.get("bottom"),      "relationships", "Урок отношений"),
+        ],
+        "finance": [
+            (_ch("finance", 0),         "finance",        "Откуда деньги"),
+            (pers.get("year"),          "finance",        "Денежный канал"),
+            (_ch("finance", 2),         "material_karma", "Готовый ресурс"),
+        ],
+        "parental": [
+            (_ch("parental", 0),     "parental", "Зачем пришёл"),
+            (pers.get("day"),        "parental", "Роль ребёнка"),
+            (sq.get("bottom_right"), "parental", "Урок родителей"),
+        ],
+        "advice": [
+            (pers.get("center"),         "personality", "Опора характера"),
+            (purposes.get("planetary"),  "purpose",     "Миссия дальше"),
+            (pers.get("month"),          "talents",     "Питание дара"),
+        ],
+    }
+    out: list[tuple[int, str, str]] = []
+    seen: set[tuple[int, str]] = set()
+    for num, ctx, label in raw_map.get(section_key, []):
+        if not isinstance(num, int):
+            continue
+        key = (num, ctx)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append((num, ctx, label))
+    return out
+
+
+_CONTEXT_LABEL_RU = {
+    "personality":     "характер",
+    "talents":         "талант",
+    "purpose":         "предназначение",
+    "parental":        "род.-дет.",
+    "ancestral":       "род",
+    "relationships":   "отношения",
+    "finance":         "финансы",
+    "material_karma":  "мат. карма",
+    "karmic_tail":     "карма",
+}
+
+
+# Hardcoded practice templates — generic but actionable. Personalisation
+# already comes from the LLM section text + the arcana cards above.
+PRACTICE_BLOCKS = {
+    "who_you_are": {
+        "title": "Твои сильные стороны на каждый день",
+        "items": [
+            "Записывай каждый вечер 1-2 ситуации дня, где ты проявил свою «настоящую» энергию — без подстройки под чужие ожидания.",
+            "Раз в неделю задавай себе вопрос: «Что я делал в эту неделю по привычке, а не по своему характеру?» Меняй одну такую привычку.",
+            "Найди 2-3 человека, рядом с которыми тебе не приходится «играть». Контакт с ними — твоя точка перезагрузки.",
+            "Когда чувствуешь усталость без причины — сверься с центром: что ты сейчас делаешь вопреки своей природе?",
+        ],
+    },
+    "karmic_tail": {
+        "title": "Практика проработки кармического урока",
+        "items": [
+            "Выпиши 3-5 ситуаций из прошлого года, в которых ты повторил один и тот же сценарий. Что у них общего?",
+            "Один раз в неделю — практика «другого выбора»: в типовой ситуации поступи противоположно привычному. Заметь реакцию тела.",
+            "Если урок про границы — тренируйся отказывать без оправданий («нет, не получится», без объяснений). Минимум 1 отказ в день.",
+            "Если урок про доверие — тренируйся озвучивать просьбу прямо, а не намёками. Минимум 1 такая просьба в день.",
+        ],
+    },
+    "talents": {
+        "title": "Профессии и призвание — куда направить дар",
+        "items": [
+            "Выпиши 5 занятий, после которых ты чувствуешь не усталость, а наполнение. Это первые подсказки про твой дар.",
+            "В течение месяца уделяй 30 минут в день одному из этих занятий — не для результата, а для подтверждения «это моё».",
+            "Если в карте сильны творческие арканы — попробуй формат «учитель-наставник»: объясни кому-то то, что умеешь.",
+            "Если сильны организационные арканы (4, 7, 11) — попробуй вести небольшой проект от старта до запуска.",
+            "Не путай талант с социально одобряемой профессией. Твоё предназначение — там, где тебе легко, а не где платят больше.",
+        ],
+    },
+    "purpose": {
+        "title": "Шаги к своему предназначению",
+        "items": [
+            "Раз в квартал перечитывай раздел «Предназначение». До 40 — собирай навык, после 40 — выходи в социальный масштаб, после 60 — делись опытом.",
+            "Поставь одну цель на этот год, которая лежит на векторе ЛП → СП → ДП — а не «потому что все так делают».",
+            "Если у тебя сильное планетарное предназначение — не торопись. Оно раскрывается через все три первых этапа, не миная их.",
+            "Раз в месяц — честный аудит: что из последнего месяца было «по моему вектору», а что — по чужому сценарию?",
+        ],
+    },
+    "relationships": {
+        "title": "Твой идеальный партнёр и как с ним строить",
+        "items": [
+            "Перечитай канал отношений в своей матрице. «Вход» — кого ты притягиваешь, «середина» — что делать в паре, «итог» — куда отношения идут.",
+            "Партнёр-зеркало: 3 черты, которые тебя бесят в других, — твои собственные неприсвоенные качества. Найди их у себя.",
+            "Раз в неделю — разговор «без претензий» с близким человеком: только наблюдения и просьбы, без обвинений.",
+            "Если канал «застрял» в минусе (повторяющиеся болезненные сценарии) — пауза от новых отношений минимум 3 месяца, чтобы пересобрать паттерн.",
+        ],
+    },
+    "finance": {
+        "title": "5 шагов открыть денежный канал",
+        "items": [
+            "Шаг 1. Посмотри в матрицу: твой денежный канал — это «канал года» (правый луч). Какие 3 числа на нём?",
+            "Шаг 2. Найди профессию или хобби, где задействован арканный смысл этих чисел. Не «нравится теоретически» — а «уже пробовал».",
+            "Шаг 3. Минимум 90 дней одной фокусной деятельности. Деньги приходят к сосредоточенности, а не к разбросу.",
+            "Шаг 4. Раз в месяц — учёт доходов и расходов вручную. Без таблиц-автоматов: рука пишет — мозг видит.",
+            "Шаг 5. 10-20% дохода — на развитие в своём канале (обучение, инструменты, контакты), не «просто отложить».",
+        ],
+    },
+    "parental": {
+        "title": "Твоя задача перед родом и детьми",
+        "items": [
+            "Если есть дети — спроси себя: что я даю им из «здоровой» части своей родовой программы, а что бессознательно повторяю из больной?",
+            "Найди свою «детскую» обиду на одного из родителей. Опиши её на бумаге одним абзацем. Один раз. Сожги или порви — символический жест важен.",
+            "Раз в месяц — встреча или звонок старшим родственникам без повода и просьб. Просто послушать.",
+            "Если в роду были «закрытые темы» (репрессии, потери, развод) — узнай факты. Знание расширяет канал, незнание сужает.",
+        ],
+    },
+    "advice": {
+        "title": "5 шагов на ближайшие 3 месяца + аффирмация",
+        "items": [
+            "Месяц 1: ежедневная микро-практика 10 минут (медитация, дыхание, прогулка молча). Без пропусков.",
+            "Месяц 2: один большой шаг по своему предназначению (новый проект / навык / разговор / переезд).",
+            "Месяц 3: один большой отказ — от того, что давно не твоё (отношения, привычка, договор, обязательство).",
+            "В конце каждого месяца — короткий письменный отчёт: что было / что узнал о себе / что меняю.",
+            "Перечитывай эту страницу раз в 3 месяца. Матрица не меняется, но твой взгляд на неё — да.",
+        ],
+        "affirmation": (
+            "Я не борюсь со своей картой — я учусь её читать. Каждый поворот, "
+            "который раньше казался ошибкой, — это страница, на которой я "
+            "наконец увидел свой настоящий рисунок."
+        ),
+    },
+}
+
+
+def _render_arcana_card(
+    arcana_num: int,
+    context: str,
+    label: str,
+    arcana_meanings: dict[int, dict[str, dict[str, Any]]] | None,
+) -> str:
+    fields: dict[str, Any] = {}
+    if arcana_meanings:
+        fields = arcana_meanings.get(arcana_num, {}).get(context, {}) or {}
+    meaning = str(fields.get("meaning") or "").strip()
+    plus = str(fields.get("plus") or "").strip()
+    minus = str(fields.get("minus") or "").strip()
+    professions = str(fields.get("professions") or "").strip()
+    if not meaning:
+        meaning = (
+            f"Аркан {arcana_num} ({_arcana_name(arcana_num)}) в контексте "
+            f"«{_CONTEXT_LABEL_RU.get(context, context)}». Подробная "
+            "расшифровка появится после обновления словаря."
+        )
+    pm_html = ""
+    if plus or minus:
+        bits = []
+        if plus:
+            bits.append(f'<span class="pl">+ </span>{_e(plus)}')
+        if minus:
+            bits.append(f'<span class="mn">− </span>{_e(minus)}')
+        pm_html = '<p class="pm">' + "<br>".join(bits) + "</p>"
+    pro_html = (
+        f'<div class="pro">Профессии: {_e(professions)}</div>'
+        if professions
+        else ""
+    )
+    return (
+        '<article class="arc-card">'
+        f'<div class="head"><div class="num">{arcana_num}</div>'
+        f'<div class="name">{_e(_arcana_name(arcana_num))}</div></div>'
+        f'<div class="ctx">{_e(label)}</div>'
+        f'<p class="body">{_e(meaning)}</p>'
+        f'{pm_html}{pro_html}'
+        "</article>"
+    )
+
+
+def _render_practice_block(section_key: str) -> str:
+    block = PRACTICE_BLOCKS.get(section_key)
+    if not block:
+        return ""
+    items_html = "".join(f"<li>{_e(item)}</li>" for item in block.get("items", []))
+    affirm = block.get("affirmation")
+    affirm_html = f'<div class="affirm">«{_e(affirm)}»</div>' if affirm else ""
+    return (
+        f'<section class="practice"><h3>{_e(block.get("title", ""))}</h3>'
+        f'<ul>{items_html}</ul>{affirm_html}</section>'
+    )
+
+
 SECTION_QUOTES_RU = {
     "who_you_are":   "Характер — это не приговор, а способ дышать.",
     "karmic_tail":   "Урок повторяется, пока не научишься выбирать иначе.",
@@ -414,12 +687,16 @@ SECTION_QUOTES_RU = {
 }
 
 
-def _narrative_page(
-    page: int,
+def _narrative_pages(
+    start_page: int,
     section_key: str,
     section_text: str,
     positions: dict[str, Any],
-) -> str:
+    arcana_meanings: dict[int, dict[str, dict[str, Any]]] | None,
+) -> list[str]:
+    """V2 narrative section. Returns one or two pages: page 1 has the
+    LLM text + 3 arcana cards; if a practice block exists for this
+    section, it goes on page 2 (avoids cramming everything onto one A4)."""
     label = SECTION_LABELS_RU.get(section_key, section_key)
     anchor_num = _section_anchor(positions, section_key)
     anchor_html = ""
@@ -430,10 +707,6 @@ def _narrative_page(
             f'<div><div class="name">{_e(_arcana_name(anchor_num))}</div>'
             f'<div class="keywords">{_e(_arcana_keywords(anchor_num))}</div></div></div>'
         )
-    body = _section_header(label, "Личный разбор", aside=f"{section_key.replace('_', ' ').title()}")
-    body += f'<div class="section-quote">«{_e(SECTION_QUOTES_RU.get(section_key, ""))}»</div>'
-    body += '<div class="section-card">' + anchor_html
-    # Split the LLM text into paragraphs on blank lines / single newlines.
     paragraphs: list[str] = []
     current: list[str] = []
     for raw in (section_text or "").splitlines():
@@ -451,9 +724,30 @@ def _narrative_page(
             "Подробный текст этого раздела появится после обновления контента. "
             "Числа арканов уже рассчитаны и видны на октаграмме."
         ]
-    body += "".join(f'<p>{_e(p)}</p>' for p in paragraphs)
-    body += "</div>"
-    return _page(page, body)
+
+    trio = _section_arcana_trio(positions, section_key)
+    cards_html = "".join(
+        _render_arcana_card(num, ctx, label_, arcana_meanings)
+        for num, ctx, label_ in trio
+    )
+
+    body1 = _section_header(label, "Личный разбор")
+    body1 += f'<div class="section-quote">«{_e(SECTION_QUOTES_RU.get(section_key, ""))}»</div>'
+    body1 += '<div class="section-card">' + anchor_html
+    body1 += "".join(f'<p>{_e(p)}</p>' for p in paragraphs)
+    body1 += "</div>"
+    if cards_html:
+        body1 += f'<div class="arc-trio">{cards_html}</div>'
+
+    pages = [_page(start_page, body1)]
+
+    # Page 2 — practice block (only if defined)
+    practice_html = _render_practice_block(section_key)
+    if practice_html:
+        body2 = _section_header(label, "Практика и шаги", aside="что делать")
+        body2 += practice_html
+        pages.append(_page(start_page + 1, body2))
+    return pages
 
 
 def _summary_page(page: int, positions: dict[str, Any]) -> str:
@@ -530,6 +824,52 @@ def _summary_page(page: int, positions: dict[str, Any]) -> str:
     return _page(page, body)
 
 
+def _glossary_pages(
+    start_page: int,
+    arcana_meanings: dict[int, dict[str, dict[str, Any]]] | None,
+) -> list[str]:
+    """Mini-glossary — all 22 arcana, each as a short cell. Pulls the
+    `personality` context as the short definition (gender='any'). Falls
+    back to the keyword list if the row isn't seeded yet."""
+
+    def _short_text(arcana_num: int) -> str:
+        if arcana_meanings:
+            fields = arcana_meanings.get(arcana_num, {}).get("personality", {})
+            text = str(fields.get("meaning") or "").strip()
+            if text:
+                words = text.split()
+                if len(words) > 36:
+                    text = " ".join(words[:36]).rstrip(",.;:") + "…"
+                return text
+        keywords = _arcana_keywords(arcana_num)
+        return f"Ключевые смыслы: {keywords}." if keywords else (
+            "Подробное описание появится после обновления словаря."
+        )
+
+    # 22 cards / 2 columns ≈ 11 rows; A4 fits ~12 per page so we split
+    # into 2 pages of 11 cards each.
+    chunks = [list(range(1, 12)), list(range(12, 23))]
+    pages: list[str] = []
+    for idx, chunk in enumerate(chunks, start=0):
+        body = _section_header(
+            "Краткий словарь арканов",
+            "22 ключевых архетипа Матрицы Судьбы",
+            aside=f"{idx + 1} / {len(chunks)}",
+        )
+        body += '<div class="glossary-grid">'
+        for arcana_num in chunk:
+            body += (
+                '<div class="gloss-cell"><div class="head">'
+                f'<div class="num">{arcana_num}</div>'
+                f'<div class="name">{_e(_arcana_name(arcana_num))}</div></div>'
+                f'<div class="kw">{_e(_arcana_keywords(arcana_num))}</div>'
+                f'<p>{_e(_short_text(arcana_num))}</p></div>'
+            )
+        body += "</div>"
+        pages.append(_page(start_page + idx, body))
+    return pages
+
+
 def _final_page(page: int) -> str:
     body = (
         '<div class="mark">✦</div>'
@@ -559,28 +899,45 @@ def build_destiny_matrix_pdf_html(
     birth_date: str,
     positions: dict[str, Any],
     sections: dict[str, str] | None,
+    arcana_meanings: dict[int, dict[str, dict[str, Any]]] | None = None,
+    gender: str | None = None,  # noqa: ARG001 — reserved for future tone-of-voice tweaks
 ) -> str:
-    """Compose the final HTML document. Section order follows SECTION_KEYS."""
+    """Compose the final HTML document. Section order follows SECTION_KEYS.
+
+    V2: narrative sections may span 2 pages each (narrative + practice).
+    Page numbers are assigned sequentially as sections are built so the
+    TOC / footer stays consistent regardless of the practice-block mix."""
     safe_sections = sections or {}
 
-    narrative_start = 4  # cover(1) + toc(2) + octagram(3) → first narrative is 4
-    narrative_pages = [
-        _narrative_page(
-            narrative_start + idx,
+    narrative_start = 4  # cover(1) + toc(2) + octagram(3) → narrative starts at 4
+    narrative_pages: list[str] = []
+    section_first_pages: dict[str, int] = {}
+    next_page = narrative_start
+    for key in SECTION_KEYS:
+        section_first_pages[key] = next_page
+        produced = _narrative_pages(
+            next_page,
             key,
             safe_sections.get(key, ""),
             positions,
+            arcana_meanings,
         )
-        for idx, key in enumerate(SECTION_KEYS)
-    ]
-    summary_page_num = narrative_start + len(SECTION_KEYS)
+        narrative_pages.extend(produced)
+        next_page += len(produced)
+
+    glossary_start = next_page
+    glossary_pages = _glossary_pages(glossary_start, arcana_meanings)
+    next_page += len(glossary_pages)
+
+    summary_page_num = next_page
     final_page_num = summary_page_num + 1
 
     pages = [
         _cover_page(user_name, birth_date, positions),
-        _contents_page(narrative_start, summary_page_num),
+        _contents_page(section_first_pages, glossary_start, summary_page_num),
         _octagram_page(positions),
         *narrative_pages,
+        *glossary_pages,
         _summary_page(summary_page_num, positions),
         _final_page(final_page_num),
     ]
@@ -596,6 +953,8 @@ async def generate_destiny_matrix_pdf_html(
     birth_date: str,
     positions: dict[str, Any],
     sections: dict[str, str] | None,
+    arcana_meanings: dict[int, dict[str, dict[str, Any]]] | None = None,
+    gender: str | None = None,
 ) -> bytes:
     from playwright.async_api import async_playwright
 
@@ -604,6 +963,8 @@ async def generate_destiny_matrix_pdf_html(
         birth_date=birth_date,
         positions=positions,
         sections=sections,
+        arcana_meanings=arcana_meanings,
+        gender=gender,
     )
     async with async_playwright() as p:
         browser = await p.chromium.launch(args=["--no-sandbox", "--disable-dev-shm-usage"])

@@ -425,25 +425,36 @@ class ReferralReward(TimestampMixin, Base):
 
 
 class ArcanaMeaning(Base):
-    """22 arcana × 8 contexts = 176 text blocks for the Destiny Matrix
-    interpretation. Filled by infra/scripts/seed_destiny_arcana.py.
+    """22 arcana × 9 contexts × {any, male, female} text blocks for the
+    Destiny Matrix interpretation. Filled by
+    infra/scripts/seed_destiny_arcana_v2.py.
 
     Numbering follows the Marseille tradition (8 = Justice, 11 = Strength),
     which is what the Destiny Matrix methodology uses. The tarot module
     uses Rider-Waite (8 = Strength, 11 = Justice) — keep these tables
     separate to avoid mixing the two numbering systems.
+
+    `gender` is 'any' / 'male' / 'female'. Lookup is reader's own gender
+    first → 'any' as fallback.
     """
     __tablename__ = "arcana_meanings"
     __table_args__ = (
         CheckConstraint("arcana_num BETWEEN 1 AND 22", name="ck_arcana_num_range"),
-        UniqueConstraint("arcana_num", "context", name="uq_arcana_num_context"),
-        Index("idx_arcana_num_ctx", "arcana_num", "context"),
+        UniqueConstraint(
+            "arcana_num", "context", "gender",
+            name="uq_arcana_num_context_gender",
+        ),
+        Index("idx_arcana_num_ctx_gender", "arcana_num", "context", "gender"),
     )
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     arcana_num: Mapped[int] = mapped_column(SmallInteger)
     arcana_name: Mapped[str] = mapped_column(Text)
     context: Mapped[str] = mapped_column(String(32))
+    gender: Mapped[str] = mapped_column(String(8), default="any", server_default="any")
     meaning: Mapped[str] = mapped_column(Text)
+    plus: Mapped[str | None] = mapped_column(Text, nullable=True)
+    minus: Mapped[str | None] = mapped_column(Text, nullable=True)
+    professions: Mapped[str | None] = mapped_column(Text, nullable=True)
     keywords: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
 
 

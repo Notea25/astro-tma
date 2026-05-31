@@ -308,26 +308,33 @@ export function DestinyMatrixReading() {
             </div>
 
             {!reading.has_full_access && (
-              <section className="destiny-reading__upsell">
-                <h4>Откройте полный разбор</h4>
-                <p>
-                  Личный 8-секционный разбор, 4 предназначения, 10 каналов
-                  судьбы и варна. Один раз за {price} ⭐, доступ остаётся
-                  навсегда.
-                </p>
-                <button
-                  type="button"
-                  className="btn-stars"
-                  onClick={handlePurchase}
-                  disabled={paying}
-                >
-                  {paying
-                    ? phase === "activating"
-                      ? "Активируем доступ…"
-                      : "Открываем оплату…"
-                    : `Открыть за ${price} ⭐`}
-                </button>
-              </section>
+              <>
+                <DestinyNarrative
+                  enabled={true}
+                  hasFullAccess={false}
+                  onUpgrade={handlePurchase}
+                />
+                <section className="destiny-reading__upsell">
+                  <h4>Откройте полный разбор</h4>
+                  <p>
+                    Личный 8-секционный разбор, 4 предназначения, 10 каналов
+                    судьбы и варна. Один раз за {price} ⭐, доступ остаётся
+                    навсегда.
+                  </p>
+                  <button
+                    type="button"
+                    className="btn-stars"
+                    onClick={handlePurchase}
+                    disabled={paying}
+                  >
+                    {paying
+                      ? phase === "activating"
+                        ? "Активируем доступ…"
+                        : "Открываем оплату…"
+                      : `Открыть за ${price} ⭐`}
+                  </button>
+                </section>
+              </>
             )}
 
             {reading.has_full_access && (
@@ -348,7 +355,7 @@ export function DestinyMatrixReading() {
                   />
                 )}
                 <DestinyVarna varna={reading.positions.varna} />
-                <DestinyNarrative enabled={reading.has_full_access} />
+                <DestinyNarrative enabled={true} hasFullAccess={true} />
 
                 <section className="destiny-reading__pdf">
                   <h4>Сохранить разбор</h4>
