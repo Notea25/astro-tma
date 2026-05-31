@@ -375,6 +375,7 @@ def _natal_wheel_svg(
             f'<text x="{tx:.1f}" y="{ty:.1f}" text-anchor="middle" dominant-baseline="middle" fill="{GOLD_DIM}" font-size="17">{_roman(num)}</text>'
         )
     planet_points: dict[str, tuple[float, float]] = {}
+    planet_angles: dict[str, float] = {}
     for name in PLANET_ORDER:
         planet = planets.get(name)
         if not planet:
@@ -382,6 +383,7 @@ def _natal_wheel_svg(
         angle = _wheel_angle(_chart_abs_degree(planet), asc)
         px, py = _polar(cx, cy, 143, angle)
         planet_points[name] = (px, py)
+        planet_angles[name] = angle
     for aspect in sorted(aspects, key=lambda a: float(a.get("orb") or 99))[:16]:
         p1 = _planet_key(aspect.get("p1"))
         p2 = _planet_key(aspect.get("p2"))
@@ -400,6 +402,19 @@ def _natal_wheel_svg(
         )
         parts.append(
             f'<text x="{px:.1f}" y="{py + 1:.1f}" text-anchor="middle" dominant-baseline="middle" fill="{PLANET_COLORS.get(name, GOLD)}" font-size="26">{PLANET_SYMBOLS.get(name, "")}</text>'
+        )
+        # Degree label outside the planet circle, pushed radially outward
+        planet = planets.get(name) or {}
+        deg_value = planet.get("sign_degree")
+        if deg_value is None:
+            deg_value = float(planet.get("degree") or 0) % 30
+        deg_int = int(float(deg_value))
+        deg_label = f"{deg_int}°"
+        if planet.get("retrograde"):
+            deg_label += "℞"
+        label_x, label_y = _polar(cx, cy, 122, planet_angles[name])
+        parts.append(
+            f'<text x="{label_x:.1f}" y="{label_y + 1:.1f}" text-anchor="middle" dominant-baseline="middle" fill="{GOLD}" font-size="12" font-weight="600">{deg_label}</text>'
         )
     parts.append("</svg>")
     return "".join(parts)
@@ -528,13 +543,17 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .reading-quote {{ text-align: center; color: {TEXT_DIM}; font: italic 13px "DejaVu Serif", Georgia, serif; margin: 8mm 0 9mm; }}
 .reading h3 {{ color: {GOLD}; font-size: 17px; letter-spacing: 1.5px; margin: 0 0 3mm; }}
 .reading p {{ font-size: 13px; line-height: 1.48; margin: 0 0 7mm; }}
-.final {{ display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 76mm; }}
-.final .mark {{ margin-bottom: 20mm; }}
-.final-copy {{ font: italic 16px/1.65 "DejaVu Serif", Georgia, serif; width: 92mm; }}
-.glossary {{ margin-top: 24mm; width: 130mm; text-align: left; display: grid; grid-template-columns: repeat(2, 1fr); gap: 6mm 18mm; }}
-.glossary-title {{ color: {GOLD}; font: 15px "DejaVu Serif", Georgia, serif; letter-spacing: 2px; margin-top: 20mm; }}
-.glossary dt {{ color: {GOLD}; font: 12px "DejaVu Serif", Georgia, serif; margin-bottom: 2mm; }}
-.glossary dd {{ margin: 0; color: {TEXT_DIM}; font-size: 11px; line-height: 1.28; }}
+.final {{ display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 18mm; }}
+.final .mark {{ margin-bottom: 8mm; }}
+.final-hero {{ display: flex; flex-direction: column; align-items: center; margin-bottom: 8mm; }}
+.final-copy {{ font: italic 15px/1.6 "DejaVu Serif", Georgia, serif; width: 110mm; }}
+.glossary-title {{ color: {GOLD}; font: 18px "DejaVu Serif", Georgia, serif; letter-spacing: 4px; text-transform: uppercase; margin: 8mm 0 7mm; }}
+.glossary-grid {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 5mm; width: 170mm; }}
+.glossary-card {{ background: {PANEL}; border: 1px solid {BORDER}; border-radius: 8px; padding: 7mm 6mm 6mm; min-height: 48mm; text-align: left; position: relative; }}
+.glossary-glyph {{ color: {GOLD}; font-size: 26px; line-height: 1; margin-bottom: 4mm; font-family: "DejaVu Serif", Georgia, serif; }}
+.glossary-card h3 {{ color: {TEXT}; font-size: 14px; margin: 0; letter-spacing: 1px; }}
+.glossary-card .mini-rule {{ width: 12mm; height: 1px; margin: 3mm 0 4mm; background: {GOLD_DIM}; }}
+.glossary-card p {{ margin: 0; font-size: 11px; line-height: 1.42; color: {TEXT_DIM}; }}
 """
 
 
@@ -941,13 +960,34 @@ def _reading_pages(
 
 
 def _final_page(page: int) -> str:
+    glyph_map = {
+        "Планета": "☉",
+        "Знак зодиака": "♈",
+        "Дом": "⌂",
+        "Аспект": "△",
+        "Асцендент": "↑",
+        "Ретроградность": "℞",
+    }
     body = (
-        '<div class="mark">✦</div><div class="final-copy">Этот отчёт создан для вашего понимания<br>личного космического рисунка.</div>'
-        '<div class="cover-line"></div><div class="glossary-title">Краткий справочник</div><dl class="glossary">'
+        '<div class="final-hero">'
+        '<div class="mark">✦</div>'
+        '<div class="final-copy">Этот отчёт создан для вашего понимания<br>личного космического рисунка.</div>'
+        '<div class="cover-line"></div>'
+        "</div>"
+        '<div class="glossary-title">Краткий справочник</div>'
+        '<div class="glossary-grid">'
     )
     for term, definition in GLOSSARY:
-        body += f"<div><dt>{_e(term)}</dt><dd>{_e(definition)}</dd></div>"
-    body += '</dl><div class="cover-foot">ASTRO TMA · СОЗДАНО ДЛЯ ВАС</div>'
+        glyph = glyph_map.get(term, "✦")
+        body += (
+            '<article class="glossary-card">'
+            f'<div class="glossary-glyph">{glyph}</div>'
+            f"<h3>{_e(term)}</h3>"
+            '<div class="mini-rule"></div>'
+            f"<p>{_e(definition)}</p>"
+            "</article>"
+        )
+    body += '</div><div class="cover-foot">ASTRO TMA · СОЗДАНО ДЛЯ ВАС</div>'
     return _page(page, body, class_name="final")
 
 
