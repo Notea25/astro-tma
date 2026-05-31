@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { destinyApi } from "@/services/api";
+import { ApiError, destinyApi } from "@/services/api";
 import { usePayment } from "@/hooks/usePayment";
 import { useProductPrice } from "@/hooks/useProductPrice";
 import { useAppStore } from "@/stores/app";
@@ -134,6 +134,8 @@ export function DestinyMatrixReading() {
   // Purposes/Channels tables below.
   const [activeTap, setActiveTap] = useState<ActiveTap | null>(null);
   const [showCalcAnim, setShowCalcAnim] = useState(true);
+  const [isPdfDownloading, setIsPdfDownloading] = useState(false);
+  const [pdfDownloadError, setPdfDownloadError] = useState<string | null>(null);
 
   const goBack = () => {
     if (activeTap) {
@@ -186,6 +188,34 @@ export function DestinyMatrixReading() {
     impact("medium");
     const ok = await purchase("destiny_matrix_full");
     if (ok) calcMutation.mutate();
+  };
+
+  const handleDownloadPdf = async () => {
+    if (isPdfDownloading) return;
+    impact("light");
+    setIsPdfDownloading(true);
+    setPdfDownloadError(null);
+    try {
+      await destinyApi.downloadPdf();
+    } catch (error) {
+      if (error instanceof ApiError) {
+        if (error.status === 402) {
+          setPdfDownloadError("PDF доступен после открытия полного разбора.");
+        } else if (error.status === 422) {
+          setPdfDownloadError("Заполните дату рождения в профиле.");
+        } else if (error.status === 403) {
+          setPdfDownloadError(
+            "Откройте чат с ботом (/start) и попробуйте снова.",
+          );
+        } else {
+          setPdfDownloadError(error.message || "Не удалось подготовить PDF.");
+        }
+      } else {
+        setPdfDownloadError("Не удалось подготовить PDF. Попробуйте ещё раз.");
+      }
+    } finally {
+      setIsPdfDownloading(false);
+    }
   };
 
   const meaning =
@@ -319,6 +349,30 @@ export function DestinyMatrixReading() {
                 )}
                 <DestinyVarna varna={reading.positions.varna} />
                 <DestinyNarrative enabled={reading.has_full_access} />
+
+                <section className="destiny-reading__pdf">
+                  <h4>Сохранить разбор</h4>
+                  <p>
+                    PDF-отчёт со всеми числами, октаграммой и личным разбором
+                    в 8 секциях. Можно перечитать позже.
+                  </p>
+                  <button
+                    type="button"
+                    className="btn-stars"
+                    onClick={handleDownloadPdf}
+                    disabled={isPdfDownloading}
+                    aria-busy={isPdfDownloading}
+                  >
+                    {isPdfDownloading
+                      ? "Готовим PDF…"
+                      : "Скачать PDF-отчёт"}
+                  </button>
+                  {pdfDownloadError && (
+                    <p className="destiny-reading__pdf-error">
+                      {pdfDownloadError}
+                    </p>
+                  )}
+                </section>
               </>
             )}
           </>

@@ -1030,6 +1030,48 @@ export const destinyApi = {
     request<ArcanaResponse>("GET", `/destiny-matrix/arcana/${num}`),
   getInterpretation: () =>
     request<DestinyMatrixInterpretation>("GET", "/destiny-matrix/interpretation"),
+  downloadPdf: async () => {
+    const filename = "destiny-matrix.pdf";
+
+    if (canUseTelegramOpenLink()) {
+      try {
+        await request<NatalPdfSendResponse>("POST", "/destiny-matrix/pdf-send");
+        WebApp.showAlert?.("PDF-отчёт отправлен вам в чат с ботом.");
+      } catch (error) {
+        if (!(error instanceof ApiError) || error.status !== 404) {
+          throw error;
+        }
+        const blob = await requestBlob("/destiny-matrix/pdf");
+        triggerBlobDownload(blob, filename);
+      }
+      return;
+    }
+
+    try {
+      const blob = await requestBlob("/destiny-matrix/pdf");
+      triggerBlobDownload(blob, filename);
+      return;
+    } catch (directDownloadError) {
+      const popup = openDownloadWindow();
+      try {
+        const link = await request<NatalPdfLinkResponse>(
+          "POST",
+          "/destiny-matrix/pdf-link",
+        );
+        const downloadUrl = apiUrl(link.download_url);
+        if (popup && !popup.closed) {
+          popup.location.href = downloadUrl;
+          return;
+        }
+        triggerDownload(downloadUrl, link.filename || filename);
+      } catch {
+        if (popup && !popup.closed) {
+          popup.close();
+        }
+        throw directDownloadError;
+      }
+    }
+  },
 };
 
 export { ApiError };

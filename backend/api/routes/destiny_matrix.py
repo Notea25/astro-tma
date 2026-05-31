@@ -1,10 +1,15 @@
-"""Destiny Matrix endpoints — calculate, fetch, look up an arcana."""
+"""Destiny Matrix endpoints — calculate, fetch, look up an arcana, PDF."""
 
 from __future__ import annotations
 
 from datetime import datetime
+from io import BytesIO
+from secrets import token_urlsafe
+from urllib.parse import quote
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import Response
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +21,7 @@ from api.schemas.destiny_matrix import (
     DestinyMatrixResponse,
     InterpretationResponse,
 )
+from core.cache import cache_get, cache_set, key_destiny_pdf_download
 from core.logging import get_logger
 from core.settings import settings
 from db.database import get_db
@@ -32,10 +38,12 @@ from services.destiny_matrix.arcana_names import (
 )
 from services.destiny_matrix.calculator import calculate_matrix
 from services.destiny_matrix.interpreter import generate_interpretation
+from services.destiny_matrix_pdf_html import generate_destiny_matrix_pdf_html
 from services.users import repository as user_repo
 
 router = APIRouter(prefix="/destiny-matrix", tags=["destiny-matrix"])
 log = get_logger(__name__)
+_PDF_DOWNLOAD_TTL_SECONDS = 300
 
 
 async def _has_full_access(db: AsyncSession, user_id: int) -> bool:
@@ -330,3 +338,234 @@ async def get_interpretation(
         model=interp.model,
         generated_at=interp.generated_at,
     )
+
+
+# ── PDF report ──────────────────────────────────────────────────────────────
+
+
+def _destiny_pdf_filename(user) -> str:
+    safe_name = str(user.tg_first_name or "matrix").replace('"', "").strip() or "matrix"
+    return f"destiny_matrix_{safe_name}.pdf"
+
+
+async def _get_pdf_user_or_error(db: AsyncSession, user_id: int):
+    user = await user_repo.get_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    if not await _has_full_access(db, user.id):
+        raise HTTPException(
+            status.HTTP_402_PAYMENT_REQUIRED,
+            "PDF-отчёт доступен в Premium или после покупки полного разбора",
+        )
+    if not user.birth_date:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Заполните дату рождения в профиле",
+        )
+    return user
+
+
+async def _get_or_create_pdf_reading(db: AsyncSession, user) -> DestinyMatrixReading:
+    birth_date = (
+        user.birth_date.date()
+        if hasattr(user.birth_date, "date")
+        else user.birth_date
+    )
+    result = await db.execute(
+        select(DestinyMatrixReading).where(
+            DestinyMatrixReading.user_id == user.id,
+            DestinyMatrixReading.birth_date == birth_date,
+        )
+    )
+    reading = result.scalar_one_or_none()
+    if reading is None:
+        reading = DestinyMatrixReading(
+            user_id=user.id,
+            birth_date=birth_date,
+            positions=calculate_matrix(birth_date),
+        )
+        db.add(reading)
+        await db.flush()
+    else:
+        await _refresh_if_stale(db, reading, birth_date)
+    return reading
+
+
+async def _get_or_generate_pdf_sections(
+    db: AsyncSession, user, reading: DestinyMatrixReading
+) -> dict[str, str]:
+    """Use the cached LLM interpretation if it exists; otherwise generate one
+    and cache it. The PDF is gated behind premium, so the LLM call is fine —
+    a missed cache simply means a one-time ~3-5s wait."""
+    cached_result = await db.execute(
+        select(DestinyMatrixInterpretation).where(
+            DestinyMatrixInterpretation.reading_id == reading.id,
+        )
+    )
+    cached = cached_result.scalar_one_or_none()
+    if cached:
+        return cached.sections
+
+    sections, model = await generate_interpretation(
+        positions=reading.positions,
+        first_name=user.tg_first_name,
+        api_key=settings.ANTHROPIC_API_KEY,
+    )
+
+    # Persist only real LLM output, never the static fallback (matches the
+    # /interpretation endpoint policy).
+    if model != "fallback":
+        interp = DestinyMatrixInterpretation(
+            reading_id=reading.id,
+            sections=sections,
+            model=model,
+        )
+        db.add(interp)
+        try:
+            await db.flush()
+        except IntegrityError:
+            await db.rollback()
+
+    return sections
+
+
+async def _build_destiny_pdf_bytes(db: AsyncSession, user) -> bytes:
+    reading = await _get_or_create_pdf_reading(db, user)
+    sections = await _get_or_generate_pdf_sections(db, user, reading)
+    return await generate_destiny_matrix_pdf_html(
+        user_name=user.tg_first_name or "User",
+        birth_date=str(reading.birth_date),
+        positions=reading.positions,
+        sections=sections,
+    )
+
+
+async def _build_destiny_pdf_response(db: AsyncSession, user) -> Response:
+    try:
+        pdf_bytes = await _build_destiny_pdf_bytes(db, user)
+    except Exception as e:  # noqa: BLE001
+        log.error("destiny_matrix.pdf_build_failed", user_id=user.id, error=str(e)[:500])
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            "Не удалось собрать PDF-отчёт. Попробуйте ещё раз.",
+        ) from e
+    filename = _destiny_pdf_filename(user)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/octet-stream",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": (
+                f"attachment; filename=\"destiny-matrix.pdf\"; "
+                f"filename*=UTF-8''{quote(filename)}"
+            ),
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
+async def _send_destiny_pdf_document(user, pdf_bytes: bytes) -> None:
+    filename = _destiny_pdf_filename(user)
+    url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendDocument"
+    data = {
+        "chat_id": str(user.id),
+        "caption": "Ваш персональный PDF-разбор Матрицы Судьбы.",
+    }
+    files = {
+        "document": (
+            filename,
+            BytesIO(pdf_bytes),
+            "application/pdf",
+        )
+    }
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(url, data=data, files=files)
+        payload = response.json()
+    except Exception as e:  # noqa: BLE001
+        log.error("destiny_matrix.pdf_send_failed", user_id=user.id, error=str(e))
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            "Не удалось отправить PDF в Telegram. Попробуйте ещё раз.",
+        ) from e
+
+    if response.status_code == 403:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Сначала откройте чат с ботом и нажмите /start, затем попробуйте снова.",
+        )
+
+    if not response.is_success or not payload.get("ok"):
+        description = str(payload.get("description") or response.text)
+        log.error(
+            "destiny_matrix.pdf_send_rejected",
+            user_id=user.id,
+            status_code=response.status_code,
+            error=description[:500],
+        )
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            "Telegram не принял PDF. Попробуйте ещё раз.",
+        )
+
+
+@router.get("/pdf")
+async def get_destiny_pdf(
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Generate and return the Destiny Matrix PDF as a direct download."""
+    user = await _get_pdf_user_or_error(db, tg_user["id"])
+    return await _build_destiny_pdf_response(db, user)
+
+
+@router.post("/pdf-link")
+async def create_destiny_pdf_link(
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a short-lived token URL for WebViews that block blob downloads."""
+    user = await _get_pdf_user_or_error(db, tg_user["id"])
+    token = token_urlsafe(24)
+    await cache_set(
+        key_destiny_pdf_download(token),
+        {"user_id": user.id},
+        _PDF_DOWNLOAD_TTL_SECONDS,
+    )
+    return {
+        "download_url": f"/destiny-matrix/pdf-download/{token}",
+        "filename": _destiny_pdf_filename(user),
+        "expires_in": _PDF_DOWNLOAD_TTL_SECONDS,
+    }
+
+
+@router.post("/pdf-send")
+async def send_destiny_pdf_to_telegram(
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Build the PDF and deliver it to the user's Telegram chat as a document."""
+    user = await _get_pdf_user_or_error(db, tg_user["id"])
+    try:
+        pdf_bytes = await _build_destiny_pdf_bytes(db, user)
+    except Exception as e:  # noqa: BLE001
+        log.error("destiny_matrix.pdf_build_failed", user_id=user.id, error=str(e)[:500])
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            "Не удалось собрать PDF-отчёт. Попробуйте ещё раз.",
+        ) from e
+    await _send_destiny_pdf_document(user, pdf_bytes)
+    return {"status": "sent", "filename": _destiny_pdf_filename(user)}
+
+
+@router.get("/pdf-download/{token}")
+async def get_destiny_pdf_by_token(
+    token: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Download the PDF via a short-lived token created by /pdf-link."""
+    payload = await cache_get(key_destiny_pdf_download(token))
+    if not isinstance(payload, dict) or "user_id" not in payload:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Download link expired")
+    user = await _get_pdf_user_or_error(db, int(payload["user_id"]))
+    return await _build_destiny_pdf_response(db, user)
