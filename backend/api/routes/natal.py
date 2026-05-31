@@ -46,16 +46,18 @@ def _empty_descriptions() -> dict[str, Any]:
 
 def _has_any(descriptions: dict[str, Any]) -> bool:
     return bool(
-        descriptions.get("planets")
-        or descriptions.get("houses")
-        or descriptions.get("aspects")
+        descriptions.get("planets") or descriptions.get("houses") or descriptions.get("aspects")
     )
 
 
 def _is_expanded_reading(reading: Any) -> bool:
     if not isinstance(reading, str) or not reading.strip():
         return False
-    headings = sum(1 for line in reading.splitlines() if line.strip().startswith("**") and line.strip().endswith("**"))
+    headings = sum(
+        1
+        for line in reading.splitlines()
+        if line.strip().startswith("**") and line.strip().endswith("**")
+    )
     words = len(reading.split())
     return headings >= MIN_EXPANDED_READING_HEADINGS and words >= MIN_EXPANDED_READING_WORDS
 
@@ -240,41 +242,39 @@ async def _build_natal_pdf_bytes(db: AsyncSession, user) -> bytes:
     houses = chart.chart_data.get("houses", [])
     aspects_raw = chart.chart_data.get("aspects", [])
     aspects = [
-        {"p1": a.get("p1", ""), "p2": a.get("p2", ""), "aspect": a.get("aspect", ""), "orb": a.get("orb", 0)}
+        {
+            "p1": a.get("p1", ""),
+            "p2": a.get("p2", ""),
+            "aspect": a.get("aspect", ""),
+            "orb": a.get("orb", 0),
+        }
         for a in aspects_raw
     ]
 
-    # PDF downloads must stay comfortably under reverse-proxy timeouts.
-    # Use already persisted/cached LLM text when it exists; otherwise the PDF
-    # generator has local fallback copy and can respond immediately.
     descriptions = _get_stored_descriptions(user)
     reading = await _get_cached_pdf_reading(user)
 
-    pdf_kwargs = {
-        "user_name": user.tg_first_name or "User",
-        "birth_date": str(user.birth_date) if user.birth_date else "",
-        "birth_time": (
-            user.birth_date.strftime("%H:%M")
-            if user.birth_date and user.birth_time_known
-            else None
+    pdf_kwargs = dict(
+        user_name=user.tg_first_name or "User",
+        birth_date=str(user.birth_date) if user.birth_date else "",
+        birth_time=(
+            user.birth_date.strftime("%H:%M") if user.birth_date and user.birth_time_known else None
         ),
-        "birth_city": user.birth_city or "",
-        "sun_sign": chart.sun_sign or "",
-        "moon_sign": chart.moon_sign or "",
-        "asc_sign": chart.ascendant_sign,
-        "planets": planets,
-        "houses": houses,
-        "aspects": aspects,
-        "reading": reading,
-        "descriptions": descriptions,
-    }
+        birth_city=user.birth_city or "",
+        sun_sign=chart.sun_sign or "",
+        moon_sign=chart.moon_sign or "",
+        asc_sign=chart.ascendant_sign,
+        planets=planets,
+        houses=houses,
+        aspects=aspects,
+        reading=reading,
+        descriptions=descriptions,
+    )
     try:
-        pdf_bytes = await generate_natal_pdf_html(**pdf_kwargs)
+        return await generate_natal_pdf_html(**pdf_kwargs)
     except Exception as e:  # noqa: BLE001
         log.error("natal.pdf_html_failed_fallback_reportlab", user_id=user.id, error=str(e))
-        pdf_bytes = generate_natal_pdf(**pdf_kwargs)
-
-    return pdf_bytes
+        return generate_natal_pdf(**pdf_kwargs)
 
 
 async def _build_natal_pdf_response(db: AsyncSession, user) -> Response:
@@ -286,8 +286,7 @@ async def _build_natal_pdf_response(db: AsyncSession, user) -> Response:
         headers={
             "Cache-Control": "no-store",
             "Content-Disposition": (
-                f"attachment; filename=\"natal-chart.pdf\"; "
-                f"filename*=UTF-8''{quote(filename)}"
+                f"attachment; filename=\"natal-chart.pdf\"; filename*=UTF-8''{quote(filename)}"
             ),
             "X-Content-Type-Options": "nosniff",
         },
@@ -366,25 +365,31 @@ async def get_natal_summary(
     raw_planets = chart.chart_data.get("planets", {})
     for name, data in raw_planets.items():
         planets_for_wheel[name] = {
-            "degree":      data.get("degree", 0),       # absolute 0–360
+            "degree": data.get("degree", 0),  # absolute 0–360
             "sign_degree": data.get("sign_degree", 0),  # within-sign 0–30
-            "sign":        data.get("sign", ""),
-            "house":       data.get("house", 1),
-            "retrograde":  data.get("retrograde", False),
+            "sign": data.get("sign", ""),
+            "house": data.get("house", 1),
+            "retrograde": data.get("retrograde", False),
         }
 
     # House cusps with sign
     houses_for_wheel = []
     for h in chart.chart_data.get("houses", []):
-        houses_for_wheel.append({
-            "number": h.get("number", 0),
-            "degree": h.get("degree", 0),
-            "sign":   h.get("sign", ""),
-        })
+        houses_for_wheel.append(
+            {
+                "number": h.get("number", 0),
+                "degree": h.get("degree", 0),
+                "sign": h.get("sign", ""),
+            }
+        )
 
     # Birth date / time
     birth_date_str = user.birth_date.strftime("%Y-%m-%d") if user.birth_date else None
-    birth_time_str = user.birth_date.strftime("%H:%M") if (user.birth_date and user.birth_time_known) else "12:00"
+    birth_time_str = (
+        user.birth_date.strftime("%H:%M")
+        if (user.birth_date and user.birth_time_known)
+        else "12:00"
+    )
 
     raw_aspects = chart.chart_data.get("aspects", [])
     try:
@@ -407,32 +412,32 @@ async def get_natal_summary(
         try:
             hero_info = {
                 "elements": build_elements_hero(dominants),
-                "planets":  build_planets_hero(raw_planets, dominants),
-                "houses":   build_houses_hero(raw_planets),
-                "aspects":  build_aspects_hero(raw_aspects, key_aspects),
+                "planets": build_planets_hero(raw_planets, dominants),
+                "houses": build_houses_hero(raw_planets),
+                "aspects": build_aspects_hero(raw_aspects, key_aspects),
             }
         except Exception as e:  # noqa: BLE001
             log.warning("natal.hero_failed", user_id=user.id, error=str(e))
 
     return {
-        "has_chart":        True,
-        "sun_sign":         chart.sun_sign,
-        "moon_sign":        chart.moon_sign,
-        "ascendant_sign":   chart.ascendant_sign,
-        "mc_sign":          chart.chart_data.get("mc_sign"),
-        "birth_city":       user.birth_city,
+        "has_chart": True,
+        "sun_sign": chart.sun_sign,
+        "moon_sign": chart.moon_sign,
+        "ascendant_sign": chart.ascendant_sign,
+        "mc_sign": chart.chart_data.get("mc_sign"),
+        "birth_city": user.birth_city,
         "birth_time_known": user.birth_time_known,
-        "birth_lat":        user.birth_lat,
-        "birth_lng":        user.birth_lng,
-        "birth_tz":         user.birth_tz,
-        "birth_date":       birth_date_str,
-        "birth_time":       birth_time_str,
-        "planets":          planets_for_wheel,
-        "houses":           houses_for_wheel,
-        "aspects":          raw_aspects,
-        "dominants":        dominants,
-        "key_aspects":      key_aspects,
-        "hero_info":        hero_info,
+        "birth_lat": user.birth_lat,
+        "birth_lng": user.birth_lng,
+        "birth_tz": user.birth_tz,
+        "birth_date": birth_date_str,
+        "birth_time": birth_time_str,
+        "planets": planets_for_wheel,
+        "houses": houses_for_wheel,
+        "aspects": raw_aspects,
+        "dominants": dominants,
+        "key_aspects": key_aspects,
+        "hero_info": hero_info,
     }
 
 
@@ -452,10 +457,14 @@ async def get_natal_full(
     is_prem = await user_repo.is_premium(db, user.id)
     has_purchase = await user_repo.has_purchased(db, user.id, "natal_full")
     if not (is_prem or has_purchase):
-        raise HTTPException(status.HTTP_402_PAYMENT_REQUIRED, "Premium or natal_full purchase required")
+        raise HTTPException(
+            status.HTTP_402_PAYMENT_REQUIRED, "Premium or natal_full purchase required"
+        )
 
     if not user.natal_chart:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "No birth data — set birth data first")
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, "No birth data — set birth data first"
+        )
 
     chart = user.natal_chart
     planets = chart.chart_data.get("planets", {})
@@ -509,9 +518,7 @@ async def get_natal_full(
         if planet not in ("sun", "moon")
     }
     planet_houses = {
-        planet: int(data["house"])
-        for planet, data in planets.items()
-        if data.get("house")
+        planet: int(data["house"]) for planet, data in planets.items() if data.get("house")
     }
 
     interp_blocks = await get_natal_interpretation(
@@ -541,16 +548,15 @@ async def get_natal_full(
             log.error("natal.llm_failed", user_id=user.id, error=str(e))
 
     result = {
-        "sun_sign":       chart.sun_sign,
-        "moon_sign":      chart.moon_sign,
+        "sun_sign": chart.sun_sign,
+        "moon_sign": chart.moon_sign,
         "ascendant_sign": chart.ascendant_sign,
-        "planets":        planets,
-        "houses":         chart.chart_data.get("houses", []),
-        "aspects":        chart.chart_data.get("aspects", [])[:10],
+        "planets": planets,
+        "houses": chart.chart_data.get("houses", []),
+        "aspects": chart.chart_data.get("aspects", [])[:10],
         "reading_gender": current_gender,
         "interpretations": [
-            {"planet": b.planet, "category": b.category, "text": b.text}
-            for b in interp_blocks
+            {"planet": b.planet, "category": b.category, "text": b.text} for b in interp_blocks
         ],
         "reading": llm_reading,
     }
