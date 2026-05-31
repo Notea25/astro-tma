@@ -430,7 +430,13 @@ def _limit_words(text: str, words: int) -> str:
     parts = str(text or "").split()
     if len(parts) <= words:
         return " ".join(parts)
-    return " ".join(parts[:words]).rstrip(" .,:;—-") + "."
+    # Try to break at the last sentence boundary within the limit
+    end = words
+    for i in range(words - 1, max(0, words - 40) - 1, -1):
+        if parts[i].endswith((".", "!", "?", "…")):
+            end = i + 1
+            break
+    return " ".join(parts[:end]).rstrip(" .,:;—-") + "."
 
 
 def _draw_card_frame(c: canvas.Canvas, x: float, y: float, width: float, height: float) -> None:
