@@ -385,14 +385,18 @@ async def test_get_or_generate_descriptions_regenerates_stale_cached_text(monkey
             "descriptions": {"planets": {"sun": {"full": "Старый короткий текст."}}},
         }
     )
-    user = SimpleNamespace(id=1001, natal_chart=chart)
+    user = SimpleNamespace(id=1001, natal_chart=chart, gender=None)
     db = SimpleNamespace(committed=False)
 
     async def fake_commit():
         db.committed = True
 
     async def fake_generate_natal_descriptions(**_kwargs):
-        return {"planets": {"sun": {"full": "Новый полный справочный текст."}}, "houses": {}, "aspects": []}
+        return {
+            "planets": {"sun": {"full": "Новый полный справочный текст."}},
+            "houses": {},
+            "aspects": [],
+        }
 
     db.commit = fake_commit
     monkeypatch.setattr(natal.settings, "ANTHROPIC_API_KEY", "test-key")
@@ -420,7 +424,7 @@ async def test_get_natal_full_refreshes_short_cached_reading(monkeypatch):
         moon_sign="Aquarius",
         ascendant_sign="Aries",
     )
-    user = SimpleNamespace(id=1001, natal_chart=chart)
+    user = SimpleNamespace(id=1001, natal_chart=chart, gender=None)
     cached = {"reading": "**Ядро личности**\nКоротко.", "planets": chart.chart_data["planets"]}
     refreshed_text = "\n".join(
         [
@@ -584,6 +588,7 @@ async def test_build_natal_pdf_response_does_not_block_on_llm(monkeypatch):
         birth_time_known=False,
         birth_city="Минск",
         natal_chart=chart,
+        gender=None,
     )
     calls = {}
 
@@ -630,7 +635,7 @@ async def test_pdf_reading_is_generated_when_full_chart_cache_is_cold(monkeypatc
     )
     planets = {"sun": {"sign": "Scorpio"}}
     aspects = [{"p1": "Sun", "p2": "Moon", "aspect": "square", "orb": 1.2}]
-    user = SimpleNamespace(id=1001)
+    user = SimpleNamespace(id=1001, gender=None)
 
     async def fake_cache_get(key):
         calls["cache_get_key"] = key
