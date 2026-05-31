@@ -106,12 +106,15 @@ async def _llm_batch(missing: list[tuple[str, str, str]], api_key: str) -> dict[
 Верни ТОЛЬКО JSON-массив строк в порядке списка, без обёртки. Пример: ["текст1", "текст2", ...]"""
 
     try:
+        from services.llm_pool import llm_semaphore
+
         client = anthropic.AsyncAnthropic(api_key=api_key)
-        message = await client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=2500,
-            messages=[{"role": "user", "content": prompt}],
-        )
+        async with llm_semaphore:
+            message = await client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=2500,
+                messages=[{"role": "user", "content": prompt}],
+            )
         raw = first_text_block(message.content).strip()
         # Strip code fences if model adds them
         if raw.startswith("```"):
@@ -306,12 +309,15 @@ async def get_or_generate_pair_summary(
 - Без markdown, без нумерации в тексте."""
 
     try:
+        from services.llm_pool import llm_semaphore
+
         client = anthropic.AsyncAnthropic(api_key=api_key)
-        message = await client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=900,
-            messages=[{"role": "user", "content": prompt}],
-        )
+        async with llm_semaphore:
+            message = await client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=900,
+                messages=[{"role": "user", "content": prompt}],
+            )
         text = first_text_block(message.content).strip()
     except Exception as e:  # noqa: BLE001
         log.error("synastry_summary.failed", error=str(e))

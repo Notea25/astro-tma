@@ -46,7 +46,9 @@ from services.destiny_matrix.arcana_names import (  # noqa: E402
     CONTEXTS,
 )
 
-_MODEL = "claude-haiku-4-5-20251001"
+_MODEL_DEFAULT = "claude-haiku-4-5-20251001"
+_MODEL_SONNET = "claude-sonnet-4-6"
+_MODEL = _MODEL_DEFAULT  # mutated by main() when --sonnet is passed
 
 _CONTEXT_BRIEFS = {
     "personality": "ЛИЧНОСТЬ — характер, портрет, зона комфорта (центр/портрет ромба).",
@@ -166,7 +168,11 @@ async def _generate_one(client: Any, arcana_num: int) -> dict[str, dict[str, str
     }
     message = await client.messages.create(
         model=_MODEL,
-        max_tokens=4000,
+        # 9 contexts × {meaning + plus + minus} ≈ ~5K tokens of structured
+        # output; the schema description itself eats ~1K. Empirically Haiku
+        # likes to over-elaborate the very first context (`personality`),
+        # so leave very generous headroom or it truncates the remaining 8.
+        max_tokens=12000,
         tools=tools,
         tool_choice=tool_choice,
         messages=[{"role": "user", "content": _build_prompt(arcana_num, name, keywords)}],
@@ -178,17 +184,32 @@ async def _generate_one(client: Any, arcana_num: int) -> dict[str, dict[str, str
             break
     if not isinstance(tool_input, dict):
         return None
-    return {ctx: dict(tool_input.get(ctx) or {}) for ctx in CONTEXTS}
+    out: dict[str, dict[str, str]] = {}
+    for ctx in CONTEXTS:
+        raw = tool_input.get(ctx)
+        if isinstance(raw, dict):
+            out[ctx] = {k: str(v) for k, v in raw.items() if isinstance(v, (str, int, float))}
+        else:
+            # Model returned the wrong shape (a string, a list, or nothing).
+            # Keep an empty placeholder so the row exists; --missing-only
+            # will retry on the next run.
+            out[ctx] = {}
+    return out
 
 
-async def _existing_keys(session) -> set[tuple[int, str]]:
-    """Set of (arcana_num, context) already present at gender='any'."""
+async def _populated_arcana(session) -> set[int]:
+    """Arcana numbers where ALL 9 contexts have non-empty `meaning`. Used by
+    --missing-only to skip work that's already fully done."""
     result = await session.execute(
-        select(ArcanaMeaning.arcana_num, ArcanaMeaning.context).where(
-            ArcanaMeaning.gender == "any"
+        select(ArcanaMeaning.arcana_num).where(
+            ArcanaMeaning.gender == "any",
+            ArcanaMeaning.meaning != "",
         )
     )
-    return {(row[0], row[1]) for row in result.all()}
+    counts: dict[int, int] = {}
+    for row in result.all():
+        counts[row[0]] = counts.get(row[0], 0) + 1
+    return {num for num, count in counts.items() if count >= len(CONTEXTS)}
 
 
 async def main(
@@ -196,7 +217,12 @@ async def main(
     dry_run: bool = False,
     missing_only: bool = False,
     wipe: bool = False,
+    sonnet: bool = False,
 ) -> None:
+    global _MODEL
+    if sonnet:
+        _MODEL = _MODEL_SONNET
+        print(f"Using model: {_MODEL}", flush=True)
     if not settings.ANTHROPIC_API_KEY:
         print("ANTHROPIC_API_KEY missing — aborting", flush=True)
         sys.exit(1)
@@ -210,15 +236,18 @@ async def main(
             await session.commit()
             print("Wiped arcana_meanings.", flush=True)
 
-        existing: set[tuple[int, str]] = set()
+        populated: set[int] = set()
         if missing_only and not dry_run:
-            existing = await _existing_keys(session)
-            print(f"Existing 'any' rows: {len(existing)}", flush=True)
+            populated = await _populated_arcana(session)
+            print(f"Fully-populated arcana already in DB: {sorted(populated)}", flush=True)
 
         for arcana_num in range(1, 23):
-            # In --missing-only mode, only skip if ALL 9 contexts already exist.
-            if missing_only and {(arcana_num, c) for c in CONTEXTS}.issubset(existing):
-                print(f"  [{arcana_num:02d}/22] {ARCANA_NAMES_RU[arcana_num]} — skipped (already seeded)", flush=True)
+            if missing_only and arcana_num in populated:
+                print(
+                    f"  [{arcana_num:02d}/22] {ARCANA_NAMES_RU[arcana_num]} "
+                    "— skipped (all 9 contexts filled)",
+                    flush=True,
+                )
                 continue
 
             print(f"  [{arcana_num:02d}/22] {ARCANA_NAMES_RU[arcana_num]}", end=" ", flush=True)
@@ -235,12 +264,17 @@ async def main(
             rows = []
             for ctx in CONTEXTS:
                 fields = data.get(ctx) or {}
+                meaning = str(fields.get("meaning") or "").strip()
+                if not meaning:
+                    # Don't overwrite an existing non-empty row with blank
+                    # content from a partial / malformed LLM response.
+                    continue
                 rows.append({
                     "arcana_num": arcana_num,
                     "arcana_name": ARCANA_NAMES_RU[arcana_num],
                     "context": ctx,
                     "gender": "any",
-                    "meaning": str(fields.get("meaning") or "").strip(),
+                    "meaning": meaning,
                     "plus": str(fields.get("plus") or "").strip() or None,
                     "minus": str(fields.get("minus") or "").strip() or None,
                     "professions": (
@@ -250,6 +284,10 @@ async def main(
                     ),
                     "keywords": ARCANA_KEYWORDS_RU.get(arcana_num, []),
                 })
+
+            if not rows:
+                print("SKIPPED (no usable rows in LLM reply)", flush=True)
+                continue
 
             stmt = pg_insert(ArcanaMeaning).values(rows)
             stmt = stmt.on_conflict_do_update(
@@ -277,5 +315,6 @@ if __name__ == "__main__":
             dry_run="--dry-run" in args,
             missing_only="--missing-only" in args,
             wipe="--wipe" in args,
+            sonnet="--sonnet" in args,
         )
     )

@@ -90,7 +90,9 @@ _SPREADS: dict[str, dict[str, Any]] = {
 
 # ── Prompt construction ───────────────────────────────────────────────────────
 
-def _build_prompt(spread_type: str, cards: list[dict[str, Any]]) -> str:
+def _build_prompt(
+    spread_type: str, cards: list[dict[str, Any]], gender: str | None = None
+) -> str:
     meta = _SPREADS[spread_type]
     positions_meta: dict[int, str] = meta["positions"]
     expected_n = len(positions_meta)
@@ -118,8 +120,24 @@ def _build_prompt(spread_type: str, cards: list[dict[str, Any]]) -> str:
         for i in range(1, expected_n + 1)
     )
 
-    return f"""Ты делаешь расклад «{meta["title"]}» для популярного приложения. Читатели — обычные люди, не тарологи и не эзотерики.
+    gender_directive = ""
+    if gender == "male":
+        gender_directive = (
+            "\nПол читателя: МУЖЧИНА. Все прилагательные, причастия и "
+            "глаголы прошедшего времени — в МУЖСКОМ роде («вы внимательный», "
+            "«вы сделали выбор», «настоящий»). Если карта говорит о партнёре, "
+            "это партнёрша (или партнёр — пол партнёра неизвестен, формулируй нейтрально).\n"
+        )
+    elif gender == "female":
+        gender_directive = (
+            "\nПол читателя: ЖЕНЩИНА. Все прилагательные, причастия и "
+            "глаголы прошедшего времени — в ЖЕНСКОМ роде («вы внимательная», "
+            "«вы сделали выбор» с дальнейшими женскими формами, «настоящая»). "
+            "Если карта говорит о партнёре, не предполагай его пол без оснований.\n"
+        )
 
+    return f"""Ты делаешь расклад «{meta["title"]}» для популярного приложения. Читатели — обычные люди, не тарологи и не эзотерики.
+{gender_directive}
 {meta["intro"]}
 
 Расклад ({expected_n} карт):
@@ -174,6 +192,7 @@ async def generate_spread_interpretation(
     spread_type: str,
     cards: list[dict[str, Any]],
     api_key: str,
+    gender: str | None = None,
 ) -> dict[str, Any]:
     """
     Call Claude to generate a narrative interpretation for the given spread.
@@ -182,6 +201,10 @@ async def generate_spread_interpretation(
     a dict with at least: name_ru, reversed, keywords_ru.
     Returns dict: {"positions": [...N...], "summary": str}.
     Raises on API / JSON / count mismatch — caller should handle.
+
+    ``gender`` ('male' / 'female' / None) anchors grammatical forms in the
+    output. Caller should record it next to the cached payload so a
+    profile change triggers a regen.
     """
     import anthropic
 
@@ -194,7 +217,9 @@ async def generate_spread_interpretation(
             f"expected {expected_n} cards for {spread_type}, got {len(cards)}"
         )
 
-    prompt = _build_prompt(spread_type, cards)
+    from services.llm_pool import llm_semaphore
+
+    prompt = _build_prompt(spread_type, cards, gender)
 
     # max_tokens scaled to spread size: ~70 tokens per position (3 sentences)
     # + 200 tokens summary + a safety margin. Caps growth on big spreads
@@ -202,11 +227,12 @@ async def generate_spread_interpretation(
     cap = 600 + expected_n * 180
 
     client = anthropic.AsyncAnthropic(api_key=api_key)
-    message = await client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=cap,
-        messages=[{"role": "user", "content": prompt}],
-    )
+    async with llm_semaphore:
+        message = await client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=cap,
+            messages=[{"role": "user", "content": prompt}],
+        )
 
     text = first_text_block(message.content)
     parsed = _extract_json(text)

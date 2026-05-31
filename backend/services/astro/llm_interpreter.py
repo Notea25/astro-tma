@@ -26,6 +26,7 @@ def _build_prompt(
     ascendant_sign: str | None,
     planets: dict,
     aspects: list,
+    gender: str | None = None,
 ) -> str:
     planet_lines: list[str] = []
     for key, ru_name in _PLANET_RU.items():
@@ -47,9 +48,21 @@ def _build_prompt(
         aspect_lines.append(f"- {p1} — {asp} — {p2} (орб {orb:.1f}°)")
 
     asc_line = f"Асцендент: {ascendant_sign}" if ascendant_sign else ""
+    gender_directive = ""
+    if gender in ("male", "female"):
+        ru = "мужчина" if gender == "male" else "женщина"
+        forms = (
+            "все формы глаголов прошедшего времени, прилагательных и причастий — в мужском роде"
+            if gender == "male"
+            else "все формы глаголов прошедшего времени, прилагательных и причастий — в женском роде"
+        )
+        gender_directive = (
+            f"\nПол читателя: {ru.upper()}. {forms.upper()} "
+            "(например: «вы сделали», «вы сильный/сильная», «настоящий/настоящая»).\n"
+        )
 
     return f"""Ты пишешь персональный разбор натальной карты для популярного приложения с астрологией. Читатель — обычный человек, не астролог. Многие открывают свою карту впервые.
-
+{gender_directive}
 Данные карты:
 Солнце: {sun_sign}
 Луна: {moon_sign}
@@ -102,21 +115,29 @@ async def generate_natal_reading(
     planets: dict,
     aspects: list,
     api_key: str,
+    gender: str | None = None,
 ) -> str:
     """
     Call Claude to generate a natal chart reading in Russian.
     Raises on API error — caller should catch and handle gracefully.
+
+    ``gender`` ('male' / 'female' / None) anchors the grammatical forms in
+    the generated text. Caller is responsible for storing the value next
+    to the cached reading so future requests can detect a stale gender.
     """
     import anthropic
 
-    prompt = _build_prompt(sun_sign, moon_sign, ascendant_sign, planets, aspects)
+    from services.llm_pool import llm_semaphore
+
+    prompt = _build_prompt(sun_sign, moon_sign, ascendant_sign, planets, aspects, gender)
 
     client = anthropic.AsyncAnthropic(api_key=api_key)
-    message = await client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=2400,
-        messages=[{"role": "user", "content": prompt}],
-    )
+    async with llm_semaphore:
+        message = await client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=2400,
+            messages=[{"role": "user", "content": prompt}],
+        )
 
     text = first_text_block(message.content)
     log.info("llm_interpreter.done", chars=len(text))

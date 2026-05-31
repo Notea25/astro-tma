@@ -9,9 +9,23 @@
  */
 
 import { motion } from "framer-motion";
+import WebApp from "@twa-dev/sdk";
 import { usePayment } from "@/hooks/usePayment";
 import { useEntitlement } from "@/hooks/useEntitlement";
-import { useProductPrice } from "@/hooks/useProductPrice";
+import { useProductPrice, useProductPriceRub } from "@/hooks/useProductPrice";
+
+/** Click-handler for the «Pay in rubles» button. YuKassa flow is not
+ *  wired yet — until it is, every press just informs the user. */
+function notifyRubSoon(): void {
+  const message =
+    "Оплата рублями скоро будет доступна. Пока используйте звёзды Telegram.";
+  if (WebApp.showAlert) {
+    WebApp.showAlert(message);
+  } else {
+    // eslint-disable-next-line no-alert
+    alert(message);
+  }
+}
 
 interface PremiumGateProps {
   productId: string;
@@ -52,6 +66,7 @@ export function PremiumGate({
   // the gate never flashes a placeholder.
   const livePrice = useProductPrice(productId);
   const displayStars = livePrice ?? stars;
+  const priceRub = useProductPriceRub(productId);
 
   // Caller forced free access OR user is entitled → show the real content.
   if (locked === false || entitled) {
@@ -103,6 +118,18 @@ export function PremiumGate({
             ? "Открываем Telegram…"
             : `Открыть за ${displayStars} ⭐`}
       </button>
+
+      {priceRub !== undefined && (
+        <button
+          type="button"
+          className="btn-rub premium-gate__cta-rub"
+          onClick={notifyRubSoon}
+          disabled={loading}
+          aria-label={`Оплатить ${priceRub} рублей`}
+        >
+          Оплатить {priceRub} ₽
+        </button>
+      )}
 
       {activating && (
         <motion.div

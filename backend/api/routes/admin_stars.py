@@ -32,8 +32,11 @@ from db.database import get_db
 from db.models import Purchase, Subscription
 from services.payments.pricing import (
     clear_product_price,
+    clear_product_price_rub,
     get_all_overrides,
+    get_all_rub_overrides,
     set_product_price,
+    set_product_price_rub,
 )
 from services.payments.stars import PRODUCTS
 
@@ -415,19 +418,28 @@ async def stars_overview_html(
 
 @router.get("/products")
 async def admin_list_products(_: str = Depends(_require_admin)) -> dict[str, Any]:
-    """Per-product effective Stars price (override → catalogue default)."""
-    overrides = await get_all_overrides(list(PRODUCTS.keys()))
+    """Per-product effective price (Stars + rubles). Each price has its
+    own override → catalogue default fall-through."""
+    star_overrides = await get_all_overrides(list(PRODUCTS.keys()))
+    rub_overrides = await get_all_rub_overrides(list(PRODUCTS.keys()))
     items: list[dict[str, Any]] = []
     for pid, product in PRODUCTS.items():
-        override = overrides.get(pid)
+        s_override = star_overrides.get(pid)
+        r_override = rub_overrides.get(pid)
+        default_rub = int(product.get("price_rub") or 0)
         items.append(
             {
                 "id": pid,
                 "name": product["name"],
                 "type": product["type"],
                 "default_stars": product["stars"],
-                "current_stars": override if override is not None else product["stars"],
-                "is_overridden": override is not None,
+                "current_stars": (
+                    s_override if s_override is not None else product["stars"]
+                ),
+                "is_overridden": s_override is not None,
+                "default_rub": default_rub,
+                "current_rub": r_override if r_override is not None else default_rub,
+                "is_overridden_rub": r_override is not None,
             }
         )
     return {"products": items}
@@ -464,36 +476,88 @@ async def admin_clear_price(
     return {"product_id": product_id, "ok": True}
 
 
+# ── Ruble price (UI-only, no YuKassa flow yet) ──────────────────────────────
+
+
+@router.post("/products/{product_id}/price-rub")
+async def admin_set_price_rub(
+    product_id: str,
+    payload: dict[str, Any],
+    _: str = Depends(_require_admin),
+) -> dict[str, Any]:
+    if product_id not in PRODUCTS:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown product")
+    try:
+        rub = int(payload.get("rub", 0))
+    except (TypeError, ValueError):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "rub must be an integer")
+    if rub < 1:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "rub must be ≥ 1")
+    await set_product_price_rub(product_id, rub)
+    log.info("admin.price_rub_set", product=product_id, rub=rub)
+    return {"product_id": product_id, "rub": rub, "ok": True}
+
+
+@router.delete("/products/{product_id}/price-rub")
+async def admin_clear_price_rub(
+    product_id: str,
+    _: str = Depends(_require_admin),
+) -> dict[str, Any]:
+    if product_id not in PRODUCTS:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown product")
+    await clear_product_price_rub(product_id)
+    log.info("admin.price_rub_cleared", product=product_id)
+    return {"product_id": product_id, "ok": True}
+
+
 @router.get("/products.html", response_class=HTMLResponse)
 async def admin_products_html(_: str = Depends(_require_admin)) -> Response:
-    """Inline HTML page to edit Stars prices per product."""
-    overrides = await get_all_overrides(list(PRODUCTS.keys()))
+    """Inline HTML page to edit prices per product. Two parallel columns:
+    Stars (live, wired to invoices) and rubles (UI-only for screenshots
+    until YuKassa is connected)."""
+    star_overrides = await get_all_overrides(list(PRODUCTS.keys()))
+    rub_overrides = await get_all_rub_overrides(list(PRODUCTS.keys()))
+
+    def _badge(is_override: bool) -> str:
+        if is_override:
+            return "<span class='badge override'>override</span>"
+        return "<span class='badge default'>default</span>"
+
     rows = []
     for pid, product in PRODUCTS.items():
-        override = overrides.get(pid)
-        current = override if override is not None else product["stars"]
-        badge = (
-            "<span class='badge override'>override</span>"
-            if override is not None
-            else "<span class='badge default'>default</span>"
-        )
+        s_override = star_overrides.get(pid)
+        r_override = rub_overrides.get(pid)
+        current_stars = s_override if s_override is not None else product["stars"]
+        default_rub = int(product.get("price_rub") or 0)
+        current_rub = r_override if r_override is not None else default_rub
         rows.append(
             f"<tr data-product-id='{pid}'>"
             f"<td><strong>{product['name']}</strong>"
             f"<div class='muted'>{pid}</div></td>"
             f"<td>{product['type']}</td>"
-            f"<td>{product['stars']} ⭐</td>"
-            f"<td>"
-            f"<input type='number' min='1' value='{current}' class='price-input' /> "
-            f"{badge}"
+            # ── Stars column ──
+            f"<td class='price-cell'>"
+            f"<div class='catalog'>{product['stars']} ⭐</div>"
+            f"<input type='number' min='1' value='{current_stars}' class='price-input stars-input' />"
+            f"{_badge(s_override is not None)}"
+            f"<div class='actions'>"
+            f"<button class='save stars-save'>Сохранить ⭐</button> "
+            f"<button class='reset stars-reset'>Сбросить</button>"
+            f"</div>"
             f"</td>"
-            f"<td>"
-            f"<button class='save'>Сохранить</button> "
-            f"<button class='reset'>Сбросить</button>"
+            # ── Rubles column ──
+            f"<td class='price-cell'>"
+            f"<div class='catalog'>{default_rub} ₽</div>"
+            f"<input type='number' min='1' value='{current_rub}' class='price-input rub-input' />"
+            f"{_badge(r_override is not None)}"
+            f"<div class='actions'>"
+            f"<button class='save rub-save'>Сохранить ₽</button> "
+            f"<button class='reset rub-reset'>Сбросить</button>"
+            f"</div>"
             f"</td>"
             f"</tr>"
         )
-    rows_html = "".join(rows) or "<tr><td colspan='5'><em>пусто</em></td></tr>"
+    rows_html = "".join(rows) or "<tr><td colspan='4'><em>пусто</em></td></tr>"
 
     html = f"""<!doctype html>
 <html lang="ru">
@@ -526,10 +590,13 @@ async def admin_products_html(_: str = Depends(_require_admin)) -> Response:
     font-weight: 500; text-transform: uppercase; font-size: 11px;
     letter-spacing: 0.08em; border-bottom: 0.5px solid var(--border);
   }}
-  tbody td {{ padding: 12px 14px; border-top: 0.5px solid rgba(255,255,255,0.05); }}
+  tbody td {{ padding: 12px 14px; border-top: 0.5px solid rgba(255,255,255,0.05); vertical-align: top; }}
   .muted {{ color: var(--muted); font-size: 11px; }}
+  .price-cell {{ min-width: 200px; }}
+  .price-cell .catalog {{ color: var(--muted); font-size: 11px; margin-bottom: 4px; }}
+  .price-cell .actions {{ margin-top: 8px; display: flex; gap: 6px; }}
   .price-input {{
-    width: 80px; padding: 6px 8px;
+    width: 90px; padding: 6px 8px;
     background: rgba(255,255,255,0.04); border: 0.5px solid var(--border);
     border-radius: 8px; color: var(--text); font-size: 14px;
     font-family: ui-monospace, "SF Mono", Menlo, monospace;
@@ -566,8 +633,8 @@ async def admin_products_html(_: str = Depends(_require_admin)) -> Response:
 
 <table>
   <thead><tr>
-    <th>Продукт</th><th>Тип</th><th>В каталоге</th>
-    <th>Текущая цена</th><th>Действия</th>
+    <th>Продукт</th><th>Тип</th>
+    <th>⭐ Звёзды</th><th>₽ Рубли</th>
   </tr></thead>
   <tbody>{rows_html}</tbody>
 </table>
@@ -582,47 +649,62 @@ function showToast(msg) {{
   setTimeout(() => t.classList.remove('show'), 2200);
 }}
 
+async function postPrice(pid, currency, value) {{
+  const path = currency === 'rub' ? 'price-rub' : 'price';
+  const body = currency === 'rub' ? {{ rub: value }} : {{ stars: value }};
+  const resp = await fetch(`/api/admin/products/${{pid}}/${{path}}`, {{
+    method: 'POST',
+    headers: {{ 'Content-Type': 'application/json' }},
+    body: JSON.stringify(body),
+    credentials: 'include',
+  }});
+  if (!resp.ok) throw new Error(`HTTP ${{resp.status}}`);
+}}
+
+async function deletePrice(pid, currency) {{
+  const path = currency === 'rub' ? 'price-rub' : 'price';
+  const resp = await fetch(`/api/admin/products/${{pid}}/${{path}}`, {{
+    method: 'DELETE',
+    credentials: 'include',
+  }});
+  if (!resp.ok) throw new Error(`HTTP ${{resp.status}}`);
+}}
+
 document.querySelectorAll('tr[data-product-id]').forEach(row => {{
   const pid = row.dataset.productId;
-  const input = row.querySelector('.price-input');
-  const saveBtn = row.querySelector('.save');
-  const resetBtn = row.querySelector('.reset');
 
-  saveBtn.addEventListener('click', async () => {{
-    const stars = parseInt(input.value, 10);
-    if (!stars || stars < 1) {{ showToast('Цена должна быть ≥ 1'); return; }}
-    saveBtn.disabled = true;
-    try {{
-      const resp = await fetch(`/api/admin/products/${{pid}}/price`, {{
-        method: 'POST',
-        headers: {{ 'Content-Type': 'application/json' }},
-        body: JSON.stringify({{ stars }}),
-        credentials: 'include',
-      }});
-      if (!resp.ok) throw new Error(`HTTP ${{resp.status}}`);
-      showToast(`${{pid}}: ${{stars}} ⭐ сохранено`);
-      setTimeout(() => location.reload(), 600);
-    }} catch (e) {{
-      showToast(`Ошибка: ${{e.message}}`);
-      saveBtn.disabled = false;
-    }}
-  }});
+  function bind(saveSel, resetSel, inputSel, currency, label) {{
+    const saveBtn = row.querySelector(saveSel);
+    const resetBtn = row.querySelector(resetSel);
+    const input = row.querySelector(inputSel);
+    saveBtn.addEventListener('click', async () => {{
+      const value = parseInt(input.value, 10);
+      if (!value || value < 1) {{ showToast('Цена должна быть ≥ 1'); return; }}
+      saveBtn.disabled = true;
+      try {{
+        await postPrice(pid, currency, value);
+        showToast(`${{pid}}: ${{value}} ${{label}} сохранено`);
+        setTimeout(() => location.reload(), 600);
+      }} catch (e) {{
+        showToast(`Ошибка: ${{e.message}}`);
+        saveBtn.disabled = false;
+      }}
+    }});
+    resetBtn.addEventListener('click', async () => {{
+      resetBtn.disabled = true;
+      try {{
+        await deletePrice(pid, currency);
+        showToast(`${{pid}}: ${{label}} сброшено к каталогу`);
+        setTimeout(() => location.reload(), 600);
+      }} catch (e) {{
+        showToast(`Ошибка: ${{e.message}}`);
+        resetBtn.disabled = false;
+      }}
+    }});
+  }}
 
-  resetBtn.addEventListener('click', async () => {{
-    resetBtn.disabled = true;
-    try {{
-      const resp = await fetch(`/api/admin/products/${{pid}}/price`, {{
-        method: 'DELETE',
-        credentials: 'include',
-      }});
-      if (!resp.ok) throw new Error(`HTTP ${{resp.status}}`);
-      showToast(`${{pid}}: сброшено к каталожной цене`);
-      setTimeout(() => location.reload(), 600);
-    }} catch (e) {{
-      showToast(`Ошибка: ${{e.message}}`);
-      resetBtn.disabled = false;
-    }}
-  }});
+  bind('.stars-save', '.stars-reset', '.stars-input', 'stars', '⭐');
+  bind('.rub-save', '.rub-reset', '.rub-input', 'rub', '₽');
 }});
 </script>
 

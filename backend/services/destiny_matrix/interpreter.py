@@ -46,14 +46,22 @@ SECTION_LABELS_RU = {
 _SYSTEM_PROMPT = """Ты — астролог-практик, эксперт по Матрице Судьбы (метод Ладини).
 Пишешь тёплый, поддерживающий, конкретный персональный разбор.
 
+КРИТИЧНО ПРО ПОЛ ЧИТАТЕЛЯ:
+Если в пользовательском промпте указан пол, ВСЕ грамматические формы
+(прилагательные, причастия, глаголы прошедшего времени, обращения)
+должны быть в соответствующем роде. Примеры:
+  • мужчина: «ты сильный», «ты сделал», «настоящий», «один такой»,
+    «партнёрша», «жена», «дочь / сын»
+  • женщина: «ты сильная», «ты сделала», «настоящая», «одна такая»,
+    «партнёр», «муж», «сын / дочь»
+Особенно строго в секциях «Отношения», «Род и семья», и в трактовке
+арканов 3 (Императрица) и 4 (Император). Не объясняй сам факт пола
+читателя — просто пиши в нужном роде.
+
 Стиль:
 - Обращайся на «ты», тепло, без формализма.
 - Связный текст в каждой секции, не список значений арканов.
 - Учитывай принцип «плюс/минус»: энергия не плохая, важно как проживается.
-- Учитывай пол читателя, если он указан: арканы 3 (Императрица) и 4
-  (Император), а также секции «Отношения» и «Род и семья» имеют разное
-  звучание для мужчины и женщины. Не объясняй сам факт пола читателя —
-  просто пиши на соответствующем тоне.
 - Без мед/юр/инвест-советов и без предсказаний дат.
 - Не используй фразы «звёзды говорят», «судьба предначертала» —
   ты наставник, а не предсказатель.
@@ -106,8 +114,18 @@ def _build_user_prompt(
     name_line = f"Имя: {first_name}\n" if first_name else ""
     gender_line = ""
     if gender in ("male", "female"):
+        # Repeat the gender directive in the user message too — system
+        # prompts can be partially ignored by smaller models on long
+        # generations, so anchoring it in-context makes truncation less
+        # likely to drop the agreement rule.
+        ru = "мужчина" if gender == "male" else "женщина"
+        forms = (
+            "все формы глаголов и прилагательных в мужском роде"
+            if gender == "male"
+            else "все формы глаголов и прилагательных в женском роде"
+        )
         gender_line = (
-            f"Пол: {'мужчина' if gender == 'male' else 'женщина'}\n"
+            f"Пол читателя: {ru.upper()}. ПИШИ {forms.upper()}.\n"
         )
 
     pers = positions["personality"]
@@ -220,20 +238,23 @@ async def generate_interpretation(
     import anthropic
     from anthropic.types import MessageParam, ToolChoiceToolParam, ToolParam
 
+    from services.llm_pool import llm_semaphore
+
     user_prompt = _build_user_prompt(positions, first_name, gender)
     try:
         client = anthropic.AsyncAnthropic(api_key=api_key)
         tools = cast(list[ToolParam], [_PUBLISH_TOOL])
         tool_choice: ToolChoiceToolParam = {"type": "tool", "name": "publish_reading"}
         messages: list[MessageParam] = [{"role": "user", "content": user_prompt}]
-        message = await client.messages.create(
-            model=_MODEL,
-            max_tokens=3000,
-            system=_SYSTEM_PROMPT,
-            tools=tools,
-            tool_choice=tool_choice,
-            messages=messages,
-        )
+        async with llm_semaphore:
+            message = await client.messages.create(
+                model=_MODEL,
+                max_tokens=3000,
+                system=_SYSTEM_PROMPT,
+                tools=tools,
+                tool_choice=tool_choice,
+                messages=messages,
+            )
         # Find the tool_use block — model is forced to it via tool_choice.
         tool_input: dict[str, Any] | None = None
         for block in message.content:

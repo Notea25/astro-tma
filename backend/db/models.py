@@ -493,3 +493,7 @@ class DestinyMatrixInterpretation(Base):
     generated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(),
     )
+    # 'male' / 'female' / None. NULL means «generated before gender
+    # propagation existed» — route treats those as stale and regenerates
+    # on the next call.
+    gender_used: Mapped[str | None] = mapped_column(String(8), nullable=True)

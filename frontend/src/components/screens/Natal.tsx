@@ -30,7 +30,7 @@ import {
 import { NatalDescriptionSheet } from "./NatalDescriptionSheet";
 import { useEntitlement } from "@/hooks/useEntitlement";
 import { usePayment } from "@/hooks/usePayment";
-import { useProductPrice } from "@/hooks/useProductPrice";
+import { useProductPrice, useProductPriceRub } from "@/hooks/useProductPrice";
 import {
   ASPECT_FALLBACK_DESC,
   ASPECT_PAIR_FALLBACK_HINT,
@@ -1672,6 +1672,7 @@ function NatalPdfCard({
 }) {
   const entitled = useEntitlement("natal_full");
   const price = useProductPrice("natal_full") ?? 149;
+  const priceRub = useProductPriceRub("natal_full");
   const {
     purchase,
     activating,
@@ -1722,6 +1723,24 @@ function NatalPdfCard({
         <IconDownload />
         <span>{label}</span>
       </motion.button>
+      {!entitled && hasChart && !paying && priceRub !== undefined && (
+        <button
+          type="button"
+          className={`btn-rub ${styles.pdfButtonRub ?? ""}`}
+          onClick={() => {
+            const message =
+              "Оплата рублями скоро будет доступна. Пока используйте звёзды Telegram.";
+            if (WebApp.showAlert) {
+              WebApp.showAlert(message);
+            } else {
+              // eslint-disable-next-line no-alert
+              alert(message);
+            }
+          }}
+        >
+          Оплатить {priceRub} ₽
+        </button>
+      )}
       {!entitled && hasChart && !paying && (
         <p className={styles.pdfHint}>
           Премиум-доступ ко всей карте + PDF-отчёт. Также входит в Premium-подписку.

@@ -541,6 +541,9 @@ export interface ProductInfo {
   name: string;
   description: string;
   stars: number;
+  /** Effective ruble price (catalogue default + admin override). 0 or
+   *  missing means no ruble price configured — UI should hide that button. */
+  price_rub?: number;
   type: string;
 }
 

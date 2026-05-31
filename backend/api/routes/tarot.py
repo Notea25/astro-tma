@@ -262,11 +262,24 @@ async def interpret_reading(
             f"Interpretation not supported for {reading.spread_type}",
         )
 
-    # Cache by reading_id — interpretation is deterministic for a given reading
+    # Resolve current reader's gender — used both for the LLM prompt and
+    # for the cache freshness check.
+    user = await user_repo.get_by_id(db, tg_user["id"])
+    current_gender = (
+        user.gender.value if (user and user.gender) else None
+    )
+
+    # Cache by reading_id — interpretation is deterministic for a given
+    # (reading, reader gender). A cached payload with a different gender
+    # marker (or missing one — pre-gender rows) is treated as stale.
     cache_key = key_tarot_interpret(reading.id)
     cached = await cache_get(cache_key)
-    if cached:
-        return TarotInterpretationResponse(**cached)
+    if (
+        isinstance(cached, dict)
+        and cached.get("gender_used") == current_gender
+    ):
+        payload = {k: v for k, v in cached.items() if k != "gender_used"}
+        return TarotInterpretationResponse(**payload)
 
     if not settings.ANTHROPIC_API_KEY:
         raise HTTPException(
@@ -305,6 +318,7 @@ async def interpret_reading(
             spread_type=reading.spread_type,
             cards=prompt_cards,
             api_key=settings.ANTHROPIC_API_KEY,
+            gender=current_gender,
         )
     except Exception as e:  # noqa: BLE001
         log.error(
@@ -325,5 +339,6 @@ async def interpret_reading(
         summary=parsed["summary"],
     )
 
-    await cache_set(cache_key, response.model_dump(), settings.CACHE_TTL_TAROT_INTERPRET)
+    cached_payload = {**response.model_dump(), "gender_used": current_gender}
+    await cache_set(cache_key, cached_payload, settings.CACHE_TTL_TAROT_INTERPRET)
     return response

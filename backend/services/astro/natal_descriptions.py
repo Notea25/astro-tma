@@ -111,7 +111,29 @@ def _safe_load_json(raw: str) -> Any:
 
 # ── Prompts ───────────────────────────────────────────────────────────────────
 
-def _build_planets_prompt(planets: dict[str, dict[str, Any]]) -> str:
+
+def _gender_directive(gender: str | None) -> str:
+    """One-liner injected into every batch prompt. The «вы»-форма is mostly
+    gender-neutral in Russian, so the directive only needs to anchor
+    adjectives, past-tense verbs and participles — the few places that
+    actually differ."""
+    if gender == "male":
+        return (
+            "Пол читателя: МУЖЧИНА. Все прилагательные, причастия, "
+            "глаголы прошедшего времени — в МУЖСКОМ роде (например, "
+            "«вы сделали», «вы внимательный», «настоящий»).\n\n"
+        )
+    if gender == "female":
+        return (
+            "Пол читателя: ЖЕНЩИНА. Все прилагательные, причастия, "
+            "глаголы прошедшего времени — в ЖЕНСКОМ роде (например, "
+            "«вы сделали» с женскими формами далее, «вы внимательная», "
+            "«настоящая»).\n\n"
+        )
+    return ""
+
+
+def _build_planets_prompt(planets: dict[str, dict[str, Any]], gender: str | None = None) -> str:
     rows: list[str] = []
     for key in _PLANET_ORDER:
         p = planets.get(key)
@@ -130,7 +152,7 @@ def _build_planets_prompt(planets: dict[str, dict[str, Any]]) -> str:
     count = len(rows)
     return f"""Ты — опытный астролог, пишешь персональные интерпретации натальной карты на русском языке.
 
-Раздел PDF: «Планеты в знаках».
+{_gender_directive(gender)}Раздел PDF: «Планеты в знаках».
 Положения планет ({count} штук):
 {chr(10).join(rows)}
 
@@ -143,7 +165,7 @@ def _build_planets_prompt(planets: dict[str, dict[str, Any]]) -> str:
 Вызови инструмент submit_planet_descriptions РОВНО ОДИН РАЗ. В одном вызове укажи КАЖДУЮ из {count} планет как отдельный ключ верхнего уровня (например, "sun", "moon", "mercury", … "pluto"); значение каждого ключа — это объект с двумя полями short и full. Не пропускай ни одну планету."""
 
 
-def _build_houses_prompt(houses: list[dict[str, Any]]) -> str:
+def _build_houses_prompt(houses: list[dict[str, Any]], gender: str | None = None) -> str:
     rows: list[str] = []
     for h in houses:
         num = h.get("number")
@@ -156,7 +178,7 @@ def _build_houses_prompt(houses: list[dict[str, Any]]) -> str:
     count = len(rows)
     return f"""Ты — опытный астролог, пишешь персональные интерпретации натальной карты на русском языке.
 
-Куспиды домов ({count} штук):
+{_gender_directive(gender)}Куспиды домов ({count} штук):
 {chr(10).join(rows)}
 
 Для КАЖДОГО дома напиши:
@@ -168,7 +190,9 @@ def _build_houses_prompt(houses: list[dict[str, Any]]) -> str:
 Вызови инструмент submit_house_descriptions РОВНО ОДИН РАЗ. В одном вызове укажи КАЖДЫЙ из {count} домов как отдельный ключ верхнего уровня в виде строки с номером ("1", "2", …, "{count}"); значение каждого ключа — это объект с двумя полями short и full. Не пропускай ни один дом."""
 
 
-def _build_aspects_prompt(aspects: list[dict[str, Any]]) -> tuple[str, list[str]]:
+def _build_aspects_prompt(
+    aspects: list[dict[str, Any]], gender: str | None = None
+) -> tuple[str, list[str]]:
     """Returns (prompt, list_of_aspect_ids). Empty prompt + empty list if
     nothing was usable."""
     rows: list[str] = []
@@ -197,7 +221,7 @@ def _build_aspects_prompt(aspects: list[dict[str, Any]]) -> tuple[str, list[str]
     count = len(rows)
     prompt = f"""Ты — опытный астролог, пишешь персональные интерпретации натальной карты на русском языке.
 
-Аспекты между планетами ({count} штук):
+{_gender_directive(gender)}Аспекты между планетами ({count} штук):
 {chr(10).join(rows)}
 
 Для КАЖДОГО аспекта напиши:
@@ -267,19 +291,22 @@ async def _call_tool(
     """Invoke the model with a forced tool call — the response's tool_use
     block carries an already-parsed dict matching `input_schema`. No JSON
     string handling needed on our side."""
-    message = await client.messages.create(
-        model=_MODEL,
-        max_tokens=max_tokens,
-        tools=[
-            {
-                "name": tool_name,
-                "description": "Submit the requested descriptions.",
-                "input_schema": input_schema,
-            }
-        ],
-        tool_choice={"type": "tool", "name": tool_name},
-        messages=[{"role": "user", "content": prompt}],
-    )
+    from services.llm_pool import llm_semaphore
+
+    async with llm_semaphore:
+        message = await client.messages.create(
+            model=_MODEL,
+            max_tokens=max_tokens,
+            tools=[
+                {
+                    "name": tool_name,
+                    "description": "Submit the requested descriptions.",
+                    "input_schema": input_schema,
+                }
+            ],
+            tool_choice={"type": "tool", "name": tool_name},
+            messages=[{"role": "user", "content": prompt}],
+        )
     for block in message.content:
         if getattr(block, "type", None) == "tool_use":
             return getattr(block, "input", None)
@@ -288,11 +315,14 @@ async def _call_tool(
 
 async def _call_llm(client: Any, prompt: str, max_tokens: int) -> str:
     """Legacy plain-text call — kept for any future free-form prompt."""
-    message = await client.messages.create(
-        model=_MODEL,
-        max_tokens=max_tokens,
-        messages=[{"role": "user", "content": prompt}],
-    )
+    from services.llm_pool import llm_semaphore
+
+    async with llm_semaphore:
+        message = await client.messages.create(
+            model=_MODEL,
+            max_tokens=max_tokens,
+            messages=[{"role": "user", "content": prompt}],
+        )
     return first_text_block(message.content)
 
 
@@ -464,11 +494,16 @@ async def generate_natal_descriptions(
     houses: list[dict[str, Any]],
     aspects: list[dict[str, Any]],
     api_key: str,
+    gender: str | None = None,
 ) -> dict[str, Any]:
     """Batched LLM generation: each tool call covers up to 5 items at once,
     cutting the per-chart call count from ~30 to ~6 (and the cost
     proportionally). Reliable for Haiku — 5 keys is well within its schema
-    adherence window. Cached forever per chart so the cost is paid once."""
+    adherence window. Cached forever per chart so the cost is paid once.
+
+    ``gender`` is propagated into every batch prompt so adjectives/past-
+    tense verbs match the reader. Caller should also write ``gender`` into
+    the cached payload so a profile change triggers a regen."""
     import anthropic
 
     client = anthropic.AsyncAnthropic(api_key=api_key)
@@ -482,7 +517,7 @@ async def generate_natal_descriptions(
     planet_tasks = []
     for chunk in planet_chunks:
         chunk_dict = dict(chunk)
-        prompt = _build_planets_prompt(chunk_dict)
+        prompt = _build_planets_prompt(chunk_dict, gender)
         keys = [k for k, _ in chunk]
         planet_tasks.append(
             _call_tool_chunk(
@@ -504,7 +539,7 @@ async def generate_natal_descriptions(
     house_chunks = _chunked(house_items, _BATCH_SIZE)
     house_tasks = []
     for chunk in house_chunks:
-        prompt = _build_houses_prompt(chunk)
+        prompt = _build_houses_prompt(chunk, gender)
         keys = [str(h["number"]) for h in chunk]
         house_tasks.append(
             _call_tool_chunk(
@@ -534,7 +569,7 @@ async def generate_natal_descriptions(
     aspect_chunks = _chunked(aspect_items, _BATCH_SIZE)
     aspect_tasks = []
     for chunk in aspect_chunks:
-        prompt, chunk_ids = _build_aspects_prompt(chunk)
+        prompt, chunk_ids = _build_aspects_prompt(chunk, gender)
         if not chunk_ids:
             continue
         aspect_tasks.append(

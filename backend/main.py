@@ -137,19 +137,33 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 
 
 # ── Request logging middleware ─────────────────────────────────────────────────
+# Requests above this threshold emit at WARNING level — easy to grep in
+# `docker logs` to spot the routes that are pinning workers under load.
+SLOW_REQUEST_MS = 1500
+
+
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     import time
     start = time.perf_counter()
     response = await call_next(request)
     duration_ms = round((time.perf_counter() - start) * 1000, 1)
-    log.info(
-        "http.request",
-        method=request.method,
-        path=request.url.path,
-        status=response.status_code,
-        duration_ms=duration_ms,
-    )
+    if duration_ms >= SLOW_REQUEST_MS:
+        log.warning(
+            "http.request.slow",
+            method=request.method,
+            path=request.url.path,
+            status=response.status_code,
+            duration_ms=duration_ms,
+        )
+    else:
+        log.info(
+            "http.request",
+            method=request.method,
+            path=request.url.path,
+            status=response.status_code,
+            duration_ms=duration_ms,
+        )
     return response
 
 

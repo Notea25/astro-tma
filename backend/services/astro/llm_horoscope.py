@@ -96,14 +96,17 @@ async def generate_daily_horoscope(
     try:
         import anthropic
 
+        from services.llm_pool import llm_semaphore
+
         client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
         prompt = _build_horoscope_prompt(sign, target_date, period)
 
-        message = await client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=500,
-            messages=[{"role": "user", "content": prompt}],
-        )
+        async with llm_semaphore:
+            message = await client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=500,
+                messages=[{"role": "user", "content": prompt}],
+            )
         text = first_text_block(message.content).strip()
         log.info("llm_horoscope.generated", sign=sign, period=period, chars=len(text))
         return text
@@ -120,21 +123,24 @@ async def generate_energy_scores_llm(sign: str, target_date: date) -> dict[str, 
     try:
         import anthropic
 
+        from services.llm_pool import llm_semaphore
+
         client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
         sign_ru = _SIGN_RU.get(sign, sign)
 
-        message = await client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=100,
-            messages=[{
-                "role": "user",
-                "content": (
-                    f"Оцени энергии для {sign_ru} на {target_date.strftime('%d.%m.%Y')} "
-                    f"по шкале 40-95. Ответь ТОЛЬКО в формате: "
-                    f"love:XX career:XX health:XX luck:XX"
-                ),
-            }],
-        )
+        async with llm_semaphore:
+            message = await client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=100,
+                messages=[{
+                    "role": "user",
+                    "content": (
+                        f"Оцени энергии для {sign_ru} на {target_date.strftime('%d.%m.%Y')} "
+                        f"по шкале 40-95. Ответь ТОЛЬКО в формате: "
+                        f"love:XX career:XX health:XX luck:XX"
+                    ),
+                }],
+            )
         text = first_text_block(message.content).strip()
         scores = {}
         for pair in text.split():

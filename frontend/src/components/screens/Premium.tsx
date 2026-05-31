@@ -1,10 +1,24 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import WebApp from "@twa-dev/sdk";
 import { HeaderAvatarButton } from "@/components/ui/HeaderAvatarButton";
 import { paymentsApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
 import { usePayment } from "@/hooks/usePayment";
+
+/** Placeholder until YuKassa is wired. Every ruble click pops the same
+ *  alert so screenshots look live but no real payment happens. */
+function notifyRubSoon(): void {
+  const message =
+    "Оплата рублями скоро будет доступна. Пока используйте звёзды Telegram.";
+  if (WebApp.showAlert) {
+    WebApp.showAlert(message);
+  } else {
+    // eslint-disable-next-line no-alert
+    alert(message);
+  }
+}
 
 /**
  * Premium / Stars screen — overview of available paid products and the
@@ -36,6 +50,11 @@ export function Premium() {
   const handleBuy = async (productId: string) => {
     impact("medium");
     await purchase(productId);
+  };
+
+  const handleBuyRub = () => {
+    impact("light");
+    notifyRubSoon();
   };
 
   return (
@@ -70,31 +89,53 @@ export function Premium() {
           {!user?.is_premium && (monthly || yearly) && (
             <div className="premium-plans">
               {monthly && (
-                <button
-                  className="premium-plan"
-                  onClick={() => handleBuy(monthly.id)}
-                  disabled={loading}
-                >
-                  <span className="premium-plan__label">Месяц</span>
-                  <span className="premium-plan__price">⭐ {monthly.stars}</span>
-                  <span className="premium-plan__period">30 дней</span>
-                </button>
+                <div className="premium-plan-wrap">
+                  <button
+                    className="premium-plan"
+                    onClick={() => handleBuy(monthly.id)}
+                    disabled={loading}
+                  >
+                    <span className="premium-plan__label">Месяц</span>
+                    <span className="premium-plan__price">⭐ {monthly.stars}</span>
+                    <span className="premium-plan__period">30 дней</span>
+                  </button>
+                  {monthly.price_rub ? (
+                    <button
+                      type="button"
+                      className="btn-rub premium-plan__rub"
+                      onClick={handleBuyRub}
+                    >
+                      {monthly.price_rub} ₽
+                    </button>
+                  ) : null}
+                </div>
               )}
               {yearly && (
-                <button
-                  className="premium-plan premium-plan--best"
-                  onClick={() => handleBuy(yearly.id)}
-                  disabled={loading}
-                >
-                  {yearlySavingsPct > 0 && (
-                    <span className="premium-plan__badge">
-                      −{yearlySavingsPct}%
-                    </span>
-                  )}
-                  <span className="premium-plan__label">Год</span>
-                  <span className="premium-plan__price">⭐ {yearly.stars}</span>
-                  <span className="premium-plan__period">365 дней</span>
-                </button>
+                <div className="premium-plan-wrap">
+                  <button
+                    className="premium-plan premium-plan--best"
+                    onClick={() => handleBuy(yearly.id)}
+                    disabled={loading}
+                  >
+                    {yearlySavingsPct > 0 && (
+                      <span className="premium-plan__badge">
+                        −{yearlySavingsPct}%
+                      </span>
+                    )}
+                    <span className="premium-plan__label">Год</span>
+                    <span className="premium-plan__price">⭐ {yearly.stars}</span>
+                    <span className="premium-plan__period">365 дней</span>
+                  </button>
+                  {yearly.price_rub ? (
+                    <button
+                      type="button"
+                      className="btn-rub premium-plan__rub"
+                      onClick={handleBuyRub}
+                    >
+                      {yearly.price_rub} ₽
+                    </button>
+                  ) : null}
+                </div>
               )}
             </div>
           )}
@@ -115,20 +156,34 @@ export function Premium() {
             <h2 className="section-title">Открыть отдельно</h2>
             <div className="premium-list">
               {oneOffs.map((p) => (
-                <motion.button
+                <motion.div
                   key={p.id}
-                  type="button"
-                  className="premium-list__item"
-                  onClick={() => handleBuy(p.id)}
-                  whileTap={{ scale: 0.98 }}
-                  disabled={loading || user?.is_premium}
+                  className="premium-list__row"
+                  whileTap={{ scale: 0.99 }}
                 >
-                  <div className="premium-list__main">
-                    <div className="premium-list__name">{p.name}</div>
-                    <div className="premium-list__desc">{p.description}</div>
-                  </div>
-                  <div className="premium-list__price">⭐ {p.stars}</div>
-                </motion.button>
+                  <button
+                    type="button"
+                    className="premium-list__item"
+                    onClick={() => handleBuy(p.id)}
+                    disabled={loading || user?.is_premium}
+                  >
+                    <div className="premium-list__main">
+                      <div className="premium-list__name">{p.name}</div>
+                      <div className="premium-list__desc">{p.description}</div>
+                    </div>
+                    <div className="premium-list__price">⭐ {p.stars}</div>
+                  </button>
+                  {p.price_rub ? (
+                    <button
+                      type="button"
+                      className="btn-rub premium-list__rub"
+                      onClick={handleBuyRub}
+                      disabled={user?.is_premium}
+                    >
+                      Оплатить {p.price_rub} ₽
+                    </button>
+                  ) : null}
+                </motion.div>
               ))}
             </div>
           </>
