@@ -24,12 +24,17 @@ from services.natal_pdf import (
     ELEMENTS,
     GLOSSARY,
     HOUSE_LABELS,
-    HOUSE_TOPICS,
     PLANET_ORDER,
     SIGN_RU,
     SIGN_SYMBOLS,
+)
+from services.natal_pdf import (
     _aspect_fallback as _aspect_fallback_base,
+)
+from services.natal_pdf import (
     _house_fallback as _house_fallback_base,
+)
+from services.natal_pdf import (
     _planet_fallback as _planet_fallback_base,
 )
 
