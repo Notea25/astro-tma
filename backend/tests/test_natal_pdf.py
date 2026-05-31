@@ -405,7 +405,6 @@ async def test_get_or_generate_descriptions_regenerates_stale_cached_text(monkey
     descriptions = await natal._get_or_generate_descriptions(db, user)
 
     assert descriptions["planets"]["sun"]["full"] == "Новый полный справочный текст."
-    assert descriptions["_version"] == 3
     assert descriptions["_version"] == natal.NATAL_DESCRIPTIONS_VERSION
     assert chart.chart_data["descriptions"] == descriptions
     assert db.committed is True
