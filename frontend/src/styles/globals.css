@@ -995,6 +995,64 @@ body::after {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Secondary payment button — ruble price. Visually quieter than
+   .btn-stars so the Stars option keeps primary affordance. Until
+   YuKassa is wired it just shows an alert. */
+.btn-rub {
+  background: rgba(255, 255, 255, 0.04);
+  border: 0.5px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--btn-radius);
+  padding: 12px 22px;
+  color: var(--text-soft, #cfc8dc);
+  font-size: 0.96rem;
+  font-weight: 500;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  -webkit-tap-highlight-color: transparent;
+  width: 100%;
+  margin-top: 8px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn-rub:hover:not(:disabled),
+.btn-rub:active:not(:disabled) {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+.btn-rub:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Compact ruble badge — used under the subscription plan tiles
+   (Premium screen) where the stars price already lives inside the
+   bigger button. */
+.premium-plan-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.premium-plan__rub {
+  width: 100%;
+  margin-top: 0;
+  padding: 8px 14px;
+  font-size: 0.86rem;
+  letter-spacing: 0.05em;
+}
+
+/* The one-off catalogue row wraps the stars button + the ruble
+   button as siblings; the row no longer is a button itself, so it
+   needs no hover state but we keep the spacing tight. */
+.premium-list__row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.premium-list__rub {
+  margin-top: 0;
+  font-size: 0.86rem;
+  padding: 10px 16px;
+}
+
 /* ── Premium Gate ──────────────────────────────────────────────────────────── */
 .premium-gate {
   position: relative;

@@ -50,12 +50,14 @@ PRODUCTS: dict[str, dict] = {
         "name": "Полная натальная карта",
         "description": "Длинные интерпретации планет/домов/аспектов + персональный портрет + PDF",
         "stars": settings.PRICE_NATAL_FULL,
+        "price_rub": settings.PRICE_NATAL_FULL_RUB,
         "type": "one_time",
     },
     "synastry": {
         "name": "Синастрия — детальный анализ",
         "description": "Глубокий анализ совместимости двух натальных карт",
         "stars": settings.PRICE_SYNASTRY,
+        "price_rub": settings.PRICE_SYNASTRY_RUB,
         "type": "one_time",
     },
     "destiny_matrix_full": {
@@ -66,12 +68,14 @@ PRODUCTS: dict[str, dict] = {
             "кармические задачи"
         ),
         "stars": settings.PRICE_DESTINY_MATRIX_FULL,
+        "price_rub": settings.PRICE_DESTINY_MATRIX_FULL_RUB,
         "type": "one_time",
     },
     "subscription_month": {
         "name": "Premium — 30 дней",
         "description": "Все интерпретации, прогнозы на неделю и месяц, Таро на неделю, push о значимых транзитах",
         "stars": settings.PRICE_SUBSCRIPTION_MONTH,
+        "price_rub": settings.PRICE_SUBSCRIPTION_MONTH_RUB,
         "type": "subscription",
         "duration_days": 30,
         "plan": SubscriptionPlan.PREMIUM_MONTH,
@@ -80,6 +84,7 @@ PRODUCTS: dict[str, dict] = {
         "name": "Premium — 365 дней",
         "description": "Всё то же, что в месячной, но на год. Выгода 38%.",
         "stars": settings.PRICE_SUBSCRIPTION_YEAR,
+        "price_rub": settings.PRICE_SUBSCRIPTION_YEAR_RUB,
         "type": "subscription",
         "duration_days": 365,
         "plan": SubscriptionPlan.PREMIUM_YEAR,

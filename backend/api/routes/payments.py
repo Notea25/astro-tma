@@ -14,7 +14,7 @@ from api.schemas.payments import (
 from core.logging import get_logger
 from core.settings import settings
 from db.database import get_db
-from services.payments.pricing import get_product_price
+from services.payments.pricing import get_product_price, get_product_price_rub
 from services.payments.stars import (
     PRODUCTS,
     create_invoice_link,
@@ -28,16 +28,21 @@ log = get_logger(__name__)
 
 @router.get("/products", response_model=list[ProductInfo])
 async def list_products(tg_user: dict = Depends(get_tg_user)):
-    """Return all purchasable products with current Stars prices."""
+    """Return all purchasable products with current effective prices
+    (Stars + rubles). Both sides honour the per-product Redis override
+    set from the admin UI; ruble price is informational for now (no
+    YuKassa flow yet)."""
     out: list[ProductInfo] = []
     for pid, p in PRODUCTS.items():
         stars = await get_product_price(pid, default=p["stars"])
+        price_rub = await get_product_price_rub(pid, default=int(p.get("price_rub") or 0))
         out.append(
             ProductInfo(
                 id=pid,
                 name=p["name"],
                 description=p["description"],
                 stars=stars,
+                price_rub=price_rub,
                 type=p["type"],
             )
         )

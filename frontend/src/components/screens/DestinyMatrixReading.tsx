@@ -2,8 +2,20 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ApiError, destinyApi } from "@/services/api";
+import WebApp from "@twa-dev/sdk";
 import { usePayment } from "@/hooks/usePayment";
-import { useProductPrice } from "@/hooks/useProductPrice";
+import { useProductPrice, useProductPriceRub } from "@/hooks/useProductPrice";
+
+function notifyRubSoon(): void {
+  const message =
+    "Оплата рублями скоро будет доступна. Пока используйте звёзды Telegram.";
+  if (WebApp.showAlert) {
+    WebApp.showAlert(message);
+  } else {
+    // eslint-disable-next-line no-alert
+    alert(message);
+  }
+}
 import { useAppStore } from "@/stores/app";
 import { useHaptic, useTelegramBackButton } from "@/hooks/useTelegram";
 import {
@@ -126,6 +138,7 @@ export function DestinyMatrixReading() {
   const { setScreen } = useAppStore();
   const { impact } = useHaptic();
   const price = useProductPrice("destiny_matrix_full") ?? 150;
+  const priceRub = useProductPriceRub("destiny_matrix_full");
   const { purchase, phase } = usePayment();
   const paying = phase === "opening" || phase === "activating";
 
@@ -331,6 +344,16 @@ export function DestinyMatrixReading() {
                         : "Открываем оплату…"
                       : `Открыть за ${price} ⭐`}
                   </button>
+                  {priceRub !== undefined && (
+                    <button
+                      type="button"
+                      className="btn-rub destiny-reading__upsell-rub"
+                      onClick={notifyRubSoon}
+                      disabled={paying}
+                    >
+                      Оплатить {priceRub} ₽
+                    </button>
+                  )}
                 </section>
               </>
             )}
@@ -442,6 +465,16 @@ export function DestinyMatrixReading() {
                     >
                       Открыть за {price} ⭐
                     </button>
+                    {priceRub !== undefined && (
+                      <button
+                        type="button"
+                        className="btn-rub destiny-sheet__rub"
+                        onClick={notifyRubSoon}
+                        disabled={paying}
+                      >
+                        Оплатить {priceRub} ₽
+                      </button>
+                    )}
                   </>
                 )}
                 {!arcanaFetching && !isLocked && meaning && (

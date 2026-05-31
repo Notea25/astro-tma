@@ -1,12 +1,17 @@
-"""Effective Stars-price resolution with Redis-backed overrides.
+"""Effective price resolution with Redis-backed overrides.
 
 The catalogue in `services.payments.stars.PRODUCTS` carries the *default*
-price for each product. Admins can override the default at runtime via
-the admin UI; the override lives in Redis so changes are picked up by
-every backend worker without a restart.
+prices for each product (Stars + rubles). Admins can override either
+at runtime via the admin UI; overrides live in Redis so changes are
+picked up by every backend worker without a restart.
 
-Cache key shape:
-    price_override:{product_id}   →  int (Stars amount)
+Cache key shapes:
+    price_override:{product_id}      →  int (Stars amount)
+    price_override_rub:{product_id}  →  int (rubles, whole units)
+
+The ruble side is a parallel mechanism — YuKassa integration is not
+wired yet, the frontend just renders the value next to the Stars button
+for screenshots / market validation.
 """
 
 from __future__ import annotations
@@ -21,6 +26,10 @@ _OVERRIDE_TTL = 86400 * 365
 
 def _key(product_id: str) -> str:
     return f"price_override:{product_id}"
+
+
+def _key_rub(product_id: str) -> str:
+    return f"price_override_rub:{product_id}"
 
 
 def _normalize_override(value: Any) -> int | None:
@@ -62,5 +71,32 @@ async def get_all_overrides(product_ids: list[str]) -> dict[str, int | None]:
     out: dict[str, int | None] = {}
     for pid in product_ids:
         raw = await cache_get(_key(pid))
+        out[pid] = _normalize_override(raw)
+    return out
+
+
+# ── Ruble side (parallel mechanism; UI-only for now) ────────────────────────
+
+
+async def get_product_price_rub(product_id: str, default: int) -> int:
+    override = await cache_get(_key_rub(product_id))
+    parsed = _normalize_override(override)
+    return parsed if parsed is not None else default
+
+
+async def set_product_price_rub(product_id: str, rub: int) -> None:
+    if rub < 1:
+        raise ValueError("Ruble amount must be a positive integer")
+    await cache_set(_key_rub(product_id), rub, _OVERRIDE_TTL)
+
+
+async def clear_product_price_rub(product_id: str) -> None:
+    await cache_delete(_key_rub(product_id))
+
+
+async def get_all_rub_overrides(product_ids: list[str]) -> dict[str, int | None]:
+    out: dict[str, int | None] = {}
+    for pid in product_ids:
+        raw = await cache_get(_key_rub(pid))
         out[pid] = _normalize_override(raw)
     return out

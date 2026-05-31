@@ -64,6 +64,18 @@ class Settings(BaseSettings):
     PRICE_SUBSCRIPTION_MONTH: int = 199
     PRICE_SUBSCRIPTION_YEAR: int = 1490
 
+    # Ruble pricing (whole rubles). Displayed alongside the Stars price
+    # as a second payment option; YuKassa flow is not wired yet — the
+    # frontend currently shows an "Скоро" alert on click. Bootstrap
+    # defaults are ~3.3× the Stars price (rough RU market parity at
+    # launch). Override in .env and via the admin /products endpoint
+    # (Redis cache, applies live).
+    PRICE_NATAL_FULL_RUB: int = 490
+    PRICE_SYNASTRY_RUB: int = 290
+    PRICE_DESTINY_MATRIX_FULL_RUB: int = 490
+    PRICE_SUBSCRIPTION_MONTH_RUB: int = 650
+    PRICE_SUBSCRIPTION_YEAR_RUB: int = 4900
+
     # Feature flags for launch pack — easy off-switch if something goes wrong.
     FEATURE_WELCOME_TRIAL: bool = True
     FEATURE_REFERRAL_PROGRAM: bool = True
