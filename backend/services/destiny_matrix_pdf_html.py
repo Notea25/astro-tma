@@ -958,6 +958,8 @@ async def generate_destiny_matrix_pdf_html(
 ) -> bytes:
     from playwright.async_api import async_playwright
 
+    from services.playwright_pool import pdf_semaphore
+
     document = build_destiny_matrix_pdf_html(
         user_name=user_name,
         birth_date=birth_date,
@@ -966,16 +968,17 @@ async def generate_destiny_matrix_pdf_html(
         arcana_meanings=arcana_meanings,
         gender=gender,
     )
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(args=["--no-sandbox", "--disable-dev-shm-usage"])
-        try:
-            page = await browser.new_page(viewport={"width": 794, "height": 1123}, device_scale_factor=1)
-            await page.set_content(document, wait_until="load")
-            return await page.pdf(
-                format="A4",
-                print_background=True,
-                margin={"top": "0", "right": "0", "bottom": "0", "left": "0"},
-                prefer_css_page_size=True,
-            )
-        finally:
-            await browser.close()
+    async with pdf_semaphore:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(args=["--no-sandbox", "--disable-dev-shm-usage"])
+            try:
+                page = await browser.new_page(viewport={"width": 794, "height": 1123}, device_scale_factor=1)
+                await page.set_content(document, wait_until="load")
+                return await page.pdf(
+                    format="A4",
+                    print_background=True,
+                    margin={"top": "0", "right": "0", "bottom": "0", "left": "0"},
+                    prefer_css_page_size=True,
+                )
+            finally:
+                await browser.close()
