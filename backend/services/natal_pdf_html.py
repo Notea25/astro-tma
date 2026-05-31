@@ -188,12 +188,24 @@ def _word_count(text: str) -> int:
 
 
 def _split_words(text: str, max_words: int) -> list[str]:
+    """Split text into chunks of at most max_words, breaking at sentence boundaries."""
     words = str(text or "").split()
     if len(words) <= max_words:
         return [" ".join(words)] if words else []
-    chunks = []
-    for start in range(0, len(words), max_words):
-        chunks.append(" ".join(words[start : start + max_words]))
+    chunks: list[str] = []
+    start = 0
+    while start < len(words):
+        end = min(start + max_words, len(words))
+        if end < len(words):
+            # Try to find the last sentence boundary (. ! ?) within the window
+            best = end
+            for i in range(end - 1, max(start, end - 40) - 1, -1):
+                if words[i].endswith((".", "!", "?", "…")):
+                    best = i + 1
+                    break
+            end = best
+        chunks.append(" ".join(words[start:end]))
+        start = end
     return chunks
 
 
