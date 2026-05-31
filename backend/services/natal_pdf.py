@@ -1713,6 +1713,42 @@ def _element_counts(planets: dict[str, dict[str, Any]]) -> dict[str, int]:
     return counts
 
 
+def _estimate_page_counts(
+    planets: dict[str, dict[str, Any]],
+    houses: list[dict[str, Any]],
+    aspects: list[dict[str, Any]],
+    reading: str | None,
+) -> tuple[int, int, int, int, int]:
+    """Return (planets_start, houses_start, aspects_start, reading_start, total)."""
+    # Fixed pages: cover=1, toc=1, key_points=1, wheel=1, elements=1 → start planets at 6
+    planets_start = 6
+    planet_items = [name for name in PLANET_ORDER if planets.get(name)]
+    planet_pages = math.ceil(len(planet_items) / 4) if planet_items else 1
+
+    houses_start = planets_start + planet_pages
+    house_items = [h for h in houses if int(h.get("number") or 0)]
+    house_pages = math.ceil(len(house_items) / 6) if house_items else 1
+
+    aspects_start = houses_start + house_pages
+    # Aspects: 1 header page + roughly 3 aspects per page after that
+    grouped = [
+        (atype, [a for a in aspects if _aspect_key(a.get("aspect")) == atype])
+        for atype in ASPECT_ORDER
+    ]
+    grouped = [(atype, grp) for atype, grp in grouped if grp]
+    total_aspect_chunks = sum(math.ceil(len(grp) / 3) for _, grp in grouped)
+    aspect_pages = max(total_aspect_chunks, 1)
+
+    reading_start = aspects_start + aspect_pages
+    # Reading: estimate ~180 words per page
+    text = str(reading or "").strip()
+    word_count = len(text.split()) if text else 60
+    reading_pages = max(math.ceil(word_count / 180), 1)
+
+    total = reading_start + reading_pages  # +1 glossary page
+    return planets_start, houses_start, aspects_start, reading_start, total
+
+
 def generate_natal_pdf(
     user_name: str,
     birth_date: str,
@@ -1733,8 +1769,11 @@ def generate_natal_pdf(
     c = canvas.Canvas(buf, pagesize=A4)
     w, h = A4
 
+    planets_start, houses_start, aspects_start, reading_start, total_hint = _estimate_page_counts(
+        planets, houses, aspects, reading
+    )
+
     page = 1
-    total_hint = None
     planet_desc = (descriptions or {}).get("planets") or {}
     house_desc = (descriptions or {}).get("houses") or {}
     aspect_desc = _aspect_description_map(descriptions)
@@ -1964,10 +2003,10 @@ def generate_natal_pdf(
         ("I", "Ключевые точки карты", "3"),
         ("II", "Натальное колесо", "4"),
         ("III", "Баланс стихий и характер", "5"),
-        ("IV", "Планеты в знаках", "6"),
-        ("V", "Дома гороскопа", "9"),
-        ("VI", "Аспекты — связи между планетами", "11"),
-        ("VII", "Персональная интерпретация", "12"),
+        ("IV", "Планеты в знаках", str(planets_start)),
+        ("V", "Дома гороскопа", str(houses_start)),
+        ("VI", "Аспекты — связи между планетами", str(aspects_start)),
+        ("VII", "Персональная интерпретация", str(reading_start)),
     )
     for content_marker, content_title, content_page in contents:
         c.setStrokeColor(LINE)
