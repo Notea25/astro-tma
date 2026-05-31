@@ -14,7 +14,6 @@ import {
 import { DestinyNarrative } from "@/components/destiny/DestinyNarrative";
 import { DestinyPurposes } from "@/components/destiny/DestinyPurposes";
 import { DestinyChannels } from "@/components/destiny/DestinyChannels";
-import { DestinyVarna } from "@/components/destiny/DestinyVarna";
 import { DestinyHealthMap } from "@/components/destiny/DestinyHealthMap";
 
 // Human-friendly title shown in the bottom-sheet header for each tap-target.
@@ -317,9 +316,8 @@ export function DestinyMatrixReading() {
                 <section className="destiny-reading__upsell">
                   <h4>Откройте полный разбор</h4>
                   <p>
-                    Личный 8-секционный разбор, 4 предназначения, 10 каналов
-                    судьбы и варна. Один раз за {price} ⭐, доступ остаётся
-                    навсегда.
+                    Личный 8-секционный разбор, 4 предназначения и 10 каналов
+                    судьбы. Один раз за {price} ⭐, доступ остаётся навсегда.
                   </p>
                   <button
                     type="button"
@@ -354,7 +352,6 @@ export function DestinyMatrixReading() {
                     onTap={openTap}
                   />
                 )}
-                <DestinyVarna varna={reading.positions.varna} />
                 <DestinyNarrative enabled={true} hasFullAccess={true} />
 
                 <section className="destiny-reading__pdf">
