@@ -307,14 +307,18 @@ async def get_interpretation(
     else:
         await _refresh_if_stale(db, reading, birth_date)
 
-    # Cached interpretation?
+    current_gender = user.gender.value if user.gender else None
+
+    # Cached interpretation? — but only honour it if it was generated for
+    # the reader's current gender. NULL (pre-V2 rows) and mismatches are
+    # treated as stale: drop the row and regenerate below.
     cached_result = await db.execute(
         select(DestinyMatrixInterpretation).where(
             DestinyMatrixInterpretation.reading_id == reading.id,
         )
     )
     cached = cached_result.scalar_one_or_none()
-    if cached:
+    if cached and cached.gender_used == current_gender:
         visible, locked = _mask_locked_sections(cached.sections, has_full_access)
         return InterpretationResponse(
             reading_id=reading.id,
@@ -324,13 +328,26 @@ async def get_interpretation(
             has_full_access=has_full_access,
             locked_sections=locked,
         )
+    if cached:
+        log.info(
+            "destiny_matrix.interp.regen_for_gender",
+            reading_id=reading.id,
+            old=cached.gender_used,
+            new=current_gender,
+        )
+        await db.execute(
+            delete(DestinyMatrixInterpretation).where(
+                DestinyMatrixInterpretation.reading_id == reading.id,
+            )
+        )
+        await db.flush()
 
-    # First time — call LLM.
+    # First time (or gender changed) — call LLM.
     sections, model = await generate_interpretation(
         positions=reading.positions,
         first_name=user.tg_first_name,
         api_key=settings.ANTHROPIC_API_KEY,
-        gender=user.gender.value if user.gender else None,
+        gender=current_gender,
     )
 
     # Don't cache the static fallback — that locks every future request
@@ -352,6 +369,7 @@ async def get_interpretation(
         reading_id=reading.id,
         sections=sections,
         model=model,
+        gender_used=current_gender,
     )
     db.add(interp)
     try:
@@ -434,21 +452,33 @@ async def _get_or_generate_pdf_sections(
 ) -> dict[str, str]:
     """Use the cached LLM interpretation if it exists; otherwise generate one
     and cache it. The PDF is gated behind premium, so the LLM call is fine —
-    a missed cache simply means a one-time ~3-5s wait."""
+    a missed cache simply means a one-time ~3-5s wait.
+
+    Reuses the gender-staleness logic from /interpretation: a cached row
+    generated for a different gender is dropped and rebuilt so the PDF
+    matches the reader's current profile."""
+    current_gender = user.gender.value if user.gender else None
     cached_result = await db.execute(
         select(DestinyMatrixInterpretation).where(
             DestinyMatrixInterpretation.reading_id == reading.id,
         )
     )
     cached = cached_result.scalar_one_or_none()
-    if cached:
+    if cached and cached.gender_used == current_gender:
         return cached.sections
+    if cached:
+        await db.execute(
+            delete(DestinyMatrixInterpretation).where(
+                DestinyMatrixInterpretation.reading_id == reading.id,
+            )
+        )
+        await db.flush()
 
     sections, model = await generate_interpretation(
         positions=reading.positions,
         first_name=user.tg_first_name,
         api_key=settings.ANTHROPIC_API_KEY,
-        gender=user.gender.value if user.gender else None,
+        gender=current_gender,
     )
 
     # Persist only real LLM output, never the static fallback (matches the
@@ -458,6 +488,7 @@ async def _get_or_generate_pdf_sections(
             reading_id=reading.id,
             sections=sections,
             model=model,
+            gender_used=current_gender,
         )
         db.add(interp)
         try:

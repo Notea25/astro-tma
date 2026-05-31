@@ -32,7 +32,10 @@ log = get_logger(__name__)
 
 router = APIRouter(prefix="/natal", tags=["natal"])
 _PDF_DOWNLOAD_TTL_SECONDS = 300
-NATAL_DESCRIPTIONS_VERSION = 3
+# Bumped to 4 when gender propagation was added — old rows render as
+# stale on first read so they regenerate with adjective/verb agreement
+# matching the reader's profile.
+NATAL_DESCRIPTIONS_VERSION = 4
 MIN_EXPANDED_READING_HEADINGS = 5
 MIN_EXPANDED_READING_WORDS = 650
 
@@ -75,9 +78,11 @@ async def _get_or_generate_descriptions(
     chart = user.natal_chart
     chart_data = chart.chart_data or {}
     stored = chart_data.get("descriptions")
+    current_gender = _user_gender(user)
     if (
         isinstance(stored, dict)
         and stored.get("_version") == NATAL_DESCRIPTIONS_VERSION
+        and stored.get("_gender_used") == current_gender
         and _has_any(stored)
     ):
         return stored
@@ -95,18 +100,27 @@ async def _get_or_generate_descriptions(
             houses=houses,
             aspects=aspects,
             api_key=settings.ANTHROPIC_API_KEY,
+            gender=current_gender,
         )
     except Exception as e:
         log.error("natal.descriptions_failed", user_id=user.id, error=str(e))
         return _empty_descriptions()
 
     if _has_any(result):
-        result = {"_version": NATAL_DESCRIPTIONS_VERSION, **result}
+        result = {
+            "_version": NATAL_DESCRIPTIONS_VERSION,
+            "_gender_used": current_gender,
+            **result,
+        }
         # Reassign the whole dict so SQLAlchemy detects the change (default
         # JSON columns don't track mutations to nested keys).
         chart.chart_data = {**chart_data, "descriptions": result}
         await db.commit()
-        log.info("natal.descriptions_persisted", user_id=user.id)
+        log.info(
+            "natal.descriptions_persisted",
+            user_id=user.id,
+            gender=current_gender,
+        )
 
     return result
 
@@ -132,6 +146,24 @@ def _natal_pdf_filename(user) -> str:
     return f"natal_{safe_name}.pdf"
 
 
+def _user_gender(user) -> str | None:
+    return user.gender.value if user.gender else None
+
+
+def _reading_is_fresh(cached: Any, current_gender: str | None) -> str | None:
+    """Return the cached reading text only if it matches the reader's
+    current gender. The cache payload is a dict with `reading` plus a
+    `reading_gender` marker recorded at write time; mismatch ⇒ stale."""
+    if not isinstance(cached, dict):
+        return None
+    reading = cached.get("reading")
+    if not isinstance(reading, str) or not reading.strip():
+        return None
+    if cached.get("reading_gender") != current_gender:
+        return None
+    return reading
+
+
 async def _get_or_generate_pdf_reading(
     user,
     chart,
@@ -140,10 +172,10 @@ async def _get_or_generate_pdf_reading(
 ) -> str | None:
     cache_key = key_natal(user.id)
     cached = await cache_get(cache_key)
-    if isinstance(cached, dict):
-        reading = cached.get("reading")
-        if isinstance(reading, str) and reading.strip():
-            return reading
+    current_gender = _user_gender(user)
+    fresh = _reading_is_fresh(cached, current_gender)
+    if fresh:
+        return fresh
 
     if not settings.ANTHROPIC_API_KEY:
         return None
@@ -156,6 +188,7 @@ async def _get_or_generate_pdf_reading(
             planets=planets,
             aspects=aspects,
             api_key=settings.ANTHROPIC_API_KEY,
+            gender=current_gender,
         )
     except Exception as e:
         log.error("natal.pdf_reading_failed", user_id=user.id, error=str(e))
@@ -165,7 +198,7 @@ async def _get_or_generate_pdf_reading(
         cached_payload = cached if isinstance(cached, dict) else {}
         await cache_set(
             cache_key,
-            {**cached_payload, "reading": reading},
+            {**cached_payload, "reading": reading, "reading_gender": current_gender},
             settings.CACHE_TTL_NATAL,
         )
 
@@ -174,14 +207,15 @@ async def _get_or_generate_pdf_reading(
 
 async def _get_cached_pdf_reading(user) -> str | None:
     cached = await cache_get(key_natal(user.id))
-    if isinstance(cached, dict):
-        reading = cached.get("reading")
-        if isinstance(reading, str) and reading.strip():
-            return reading
-    return None
+    return _reading_is_fresh(cached, _user_gender(user))
 
 
 def _get_stored_descriptions(user) -> dict[str, Any]:
+    """Return persisted descriptions only if the version AND the gender they
+    were generated for match the reader's current profile. Mismatch falls
+    back to empty so the PDF renders its own per-item fallback copy
+    instead of stale-gender text — regen happens when the user next opens
+    /natal/descriptions."""
     if not user.natal_chart:
         return _empty_descriptions()
 
@@ -190,6 +224,7 @@ def _get_stored_descriptions(user) -> dict[str, Any]:
     if (
         isinstance(stored, dict)
         and stored.get("_version") == NATAL_DESCRIPTIONS_VERSION
+        and stored.get("_gender_used") == _user_gender(user)
         and _has_any(stored)
     ):
         return stored
@@ -426,12 +461,22 @@ async def get_natal_full(
     planets = chart.chart_data.get("planets", {})
     aspects = chart.chart_data.get("aspects", [])
 
+    current_gender = _user_gender(user)
+
     # Check cache. Older cached readings were intentionally short; refresh
     # them on the full-chart view so PDF downloads can stay non-blocking.
+    # Also refresh whenever the cached `reading_gender` no longer matches
+    # the reader's current profile setting.
     cache_key = key_natal(user.id)
     cached = await cache_get(cache_key)
     if isinstance(cached, dict):
-        if _is_expanded_reading(cached.get("reading")) or not settings.ANTHROPIC_API_KEY:
+        cached_gender = cached.get("reading_gender")
+        gender_matches = cached_gender == current_gender
+        if gender_matches and (
+            _is_expanded_reading(cached.get("reading")) or not settings.ANTHROPIC_API_KEY
+        ):
+            return cached
+        if not settings.ANTHROPIC_API_KEY:
             return cached
         try:
             refreshed_reading = await generate_natal_reading(
@@ -441,11 +486,16 @@ async def get_natal_full(
                 planets=planets,
                 aspects=aspects[:10],
                 api_key=settings.ANTHROPIC_API_KEY,
+                gender=current_gender,
             )
         except Exception as e:
             log.error("natal.llm_refresh_failed", user_id=user.id, error=str(e))
             return cached
-        refreshed = {**cached, "reading": refreshed_reading}
+        refreshed = {
+            **cached,
+            "reading": refreshed_reading,
+            "reading_gender": current_gender,
+        }
         await cache_set(cache_key, refreshed, settings.CACHE_TTL_NATAL)
         return refreshed
     if cached:
@@ -485,6 +535,7 @@ async def get_natal_full(
                 planets=planets,
                 aspects=chart.chart_data.get("aspects", [])[:10],
                 api_key=settings.ANTHROPIC_API_KEY,
+                gender=current_gender,
             )
         except Exception as e:
             log.error("natal.llm_failed", user_id=user.id, error=str(e))
@@ -496,6 +547,7 @@ async def get_natal_full(
         "planets":        planets,
         "houses":         chart.chart_data.get("houses", []),
         "aspects":        chart.chart_data.get("aspects", [])[:10],
+        "reading_gender": current_gender,
         "interpretations": [
             {"planet": b.planet, "category": b.category, "text": b.text}
             for b in interp_blocks
