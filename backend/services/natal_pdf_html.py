@@ -797,9 +797,9 @@ def _planet_pages(
     for name in items:
         planet = planets[name]
         desc = _full_description(planet_desc.get(name), _planet_fallback(name, planet))
-        chunks = _split_words(desc, 285)
-        for chunk_index, chunk in enumerate(chunks or [desc]):
-            blocks.append((name, planet, chunk, chunk_index > 0))
+        text_chunks = _split_words(desc, 285)
+        for chunk_index, text_chunk in enumerate(text_chunks or [desc]):
+            blocks.append((name, planet, text_chunk, chunk_index > 0))
     pages = []
     for idx, (name, planet, text, is_continuation) in enumerate(blocks, start=1):
         body = _section_header(
@@ -831,17 +831,17 @@ def _houses_pages(
     blocks: list[tuple[dict[str, Any], str, bool]] = []
     for house in items:
         desc = _full_description(house_desc.get(str(int(house.get("number") or 0))), _house_fallback(house))
-        chunks = _split_words(desc, 145)
-        for chunk_index, chunk in enumerate(chunks or [desc]):
-            blocks.append((house, chunk, chunk_index > 0))
+        text_chunks = _split_words(desc, 145)
+        for chunk_index, text_chunk in enumerate(text_chunks or [desc]):
+            blocks.append((house, text_chunk, chunk_index > 0))
     page_chunks = [blocks[index : index + 2] for index in range(0, len(blocks), 2)]
     pages = []
-    for idx, chunk in enumerate(page_chunks, start=1):
+    for idx, page_chunk in enumerate(page_chunks, start=1):
         body = _section_header(
             "Дома гороскопа", "12 сфер жизни и их обстановка", f"{idx} / {len(page_chunks)}"
         )
         body += '<div class="houses-grid">'
-        for house, text, is_continuation in chunk:
+        for house, text, is_continuation in page_chunk:
             num = int(house.get("number") or 0)
             sign = house.get("sign_ru") or house.get("sign")
             angle_cls = " angle" if num in axis else ""
@@ -892,8 +892,8 @@ def _aspect_pages(
             desc = _full_description(
                 aspect_desc.get((p1, p2, atype)), _aspect_fallback(aspect)
             )
-            for chunk_index, chunk in enumerate(_split_words(desc, 235) or [desc]):
-                blocks.append((atype, aspect, chunk, chunk_index > 0))
+            for chunk_index, text_chunk in enumerate(_split_words(desc, 235) or [desc]):
+                blocks.append((atype, aspect, text_chunk, chunk_index > 0))
     pages = []
     for idx, (atype, aspect, desc, is_continuation) in enumerate(blocks, start=1):
         page_index = start_page + idx - 1
