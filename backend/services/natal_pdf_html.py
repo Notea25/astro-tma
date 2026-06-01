@@ -222,6 +222,17 @@ def _description(entry: Any, fallback: str, *, words: int) -> str:
     return _lines(source, words)
 
 
+def _full_description(entry: Any, fallback: str) -> str:
+    if isinstance(entry, dict):
+        source = str(entry.get("full") or entry.get("short") or "").strip()
+    else:
+        source = ""
+    fallback = str(fallback or "").strip()
+    if source and fallback and _word_count(source) < 45:
+        return f"{source} {fallback}".strip()
+    return source or fallback
+
+
 def _planet_fallback(name: str, planet: dict[str, Any]) -> str:
     return _planet_fallback_base(name, planet)
 
@@ -517,6 +528,9 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .zero-element-card p {{ font-size: 11px; line-height: 1.38; color: {TEXT_DIM}; margin: 0; }}
 .planet-card {{ min-height: 79mm; }}
 .planet-card .card-icon {{ font-size: 27px; color: var(--planet-color); }}
+.detail-card {{ min-height: auto; }}
+.detail-card p {{ font-size: 11.6px; line-height: 1.46; color: {TEXT}; }}
+.detail-card.continuation h3::after {{ content: " · продолжение"; color: {TEXT_DIM}; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 12px; }}
 .retro {{ display: inline-block; margin-left: 3mm; padding: 1mm 3mm; border: 1px solid {GOLD_DIM}; border-radius: 999px; color: {GOLD}; font-size: 11px; letter-spacing: 1px; }}
 .houses-grid {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 3.4mm 4.5mm; }}
 .house-card {{ min-height: 59mm; padding: 5mm; }}
@@ -527,6 +541,7 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .house-degree {{ color: {TEXT_DIM}; font-size: 11px; }}
 .house-label {{ margin-top: 2mm; color: {TEXT_DIM}; font-size: 10.5px; letter-spacing: 1.4px; text-transform: uppercase; }}
 .house-card p {{ margin-top: 3mm; font-size: 11px; line-height: 1.34; }}
+.house-card.detail-card p {{ font-size: 11.2px; line-height: 1.42; }}
 .metrics {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 4mm; margin: 8mm 0 7mm; }}
 .metric {{ text-align: center; background: {PANEL}; border: 1px solid {BORDER}; border-radius: 7px; padding: 4mm 0 3.5mm; }}
 .metric strong {{ color: var(--metric-color, {GOLD}); display: block; font: 22px "DejaVu Serif", Georgia, serif; }}
@@ -539,6 +554,7 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .aspect-title span:first-child {{ min-width: 0; }}
 .orb {{ color: {TEXT_DIM}; white-space: nowrap; font-size: 11.5px; }}
 .aspect-row p {{ margin: 2.5mm 0 0; color: {TEXT_DIM}; line-height: 1.32; font-size: 12.2px; }}
+.aspect-row.detail-card p {{ color: {TEXT}; font-size: 11.5px; line-height: 1.45; }}
 .reading {{ padding-right: 4mm; }}
 .reading-quote {{ text-align: center; color: {TEXT_DIM}; font: italic 13px "DejaVu Serif", Georgia, serif; margin: 8mm 0 9mm; }}
 .reading h3 {{ color: {GOLD}; font-size: 17px; letter-spacing: 1.5px; margin: 0 0 3mm; }}
@@ -777,28 +793,31 @@ def _planet_pages(
 ) -> list[str]:
     planet_desc = (descriptions or {}).get("planets") or {}
     items = [name for name in PLANET_ORDER if planets.get(name)]
-    chunks = [items[index : index + 4] for index in range(0, len(items), 4)]
+    blocks: list[tuple[str, dict[str, Any], str, bool]] = []
+    for name in items:
+        planet = planets[name]
+        desc = _full_description(planet_desc.get(name), _planet_fallback(name, planet))
+        chunks = _split_words(desc, 285)
+        for chunk_index, chunk in enumerate(chunks or [desc]):
+            blocks.append((name, planet, chunk, chunk_index > 0))
     pages = []
-    for idx, chunk in enumerate(chunks, start=1):
+    for idx, (name, planet, text, is_continuation) in enumerate(blocks, start=1):
         body = _section_header(
             "Планеты в знаках",
             "Где находится каждая планета и что это значит",
-            f"{idx} / {len(chunks)}",
+            f"{idx} / {len(blocks)}",
         )
-        body += '<div class="grid-2">'
-        for name in chunk:
-            planet = planets[name]
-            sign = planet.get("sign_ru") or planet.get("sign")
-            retro = '<span class="retro">℞ РЕТРО</span>' if planet.get("retrograde") else ""
-            meta = f"{_roman(int(planet.get('house') or 0))} дом · {_deg_str(planet.get('sign_degree', planet.get('degree', 0)))}"
-            body += _card(
-                f"{PLANET_RU[name]} в {_sign_ru(sign)} {retro}",
-                _e(_description(planet_desc.get(name), _planet_fallback(name, planet), words=95)),
-                class_name="planet-card",
-                meta=meta,
-                icon=f'<span style="color:{PLANET_COLORS.get(name, GOLD)}">{PLANET_SYMBOLS.get(name, "")}</span>',
-            )
-        body += "</div>"
+        sign = planet.get("sign_ru") or planet.get("sign")
+        retro = '<span class="retro">℞ РЕТРО</span>' if planet.get("retrograde") else ""
+        meta = f"{_roman(int(planet.get('house') or 0))} дом · {_deg_str(planet.get('sign_degree', planet.get('degree', 0)))}"
+        continuation_cls = " continuation" if is_continuation else ""
+        body += _card(
+            f"{PLANET_RU[name]} в {_sign_ru(sign)} {retro}",
+            _e(text),
+            class_name=f"planet-card detail-card{continuation_cls}",
+            meta=meta,
+            icon=f'<span style="color:{PLANET_COLORS.get(name, GOLD)}">{PLANET_SYMBOLS.get(name, "")}</span>',
+        )
         pages.append(_page(start_page + idx - 1, body))
     return pages
 
@@ -809,28 +828,35 @@ def _houses_pages(
     house_desc = (descriptions or {}).get("houses") or {}
     axis = {1: "Асцендент", 4: "Основание (IC)", 7: "Десцендент", 10: "Середина неба (MC)"}
     items = [house for house in houses if int(house.get("number") or 0)]
-    chunks = [items[index : index + 6] for index in range(0, len(items), 6)]
+    blocks: list[tuple[dict[str, Any], str, bool]] = []
+    for house in items:
+        desc = _full_description(house_desc.get(str(int(house.get("number") or 0))), _house_fallback(house))
+        chunks = _split_words(desc, 145)
+        for chunk_index, chunk in enumerate(chunks or [desc]):
+            blocks.append((house, chunk, chunk_index > 0))
+    page_chunks = [blocks[index : index + 2] for index in range(0, len(blocks), 2)]
     pages = []
-    for idx, chunk in enumerate(chunks, start=1):
+    for idx, chunk in enumerate(page_chunks, start=1):
         body = _section_header(
-            "Дома гороскопа", "12 сфер жизни и их обстановка", f"{idx} / {len(chunks)}"
+            "Дома гороскопа", "12 сфер жизни и их обстановка", f"{idx} / {len(page_chunks)}"
         )
         body += '<div class="houses-grid">'
-        for house in chunk:
+        for house, text, is_continuation in chunk:
             num = int(house.get("number") or 0)
             sign = house.get("sign_ru") or house.get("sign")
             angle_cls = " angle" if num in axis else ""
+            continuation_cls = " continuation" if is_continuation else ""
             axis_html = (
                 f'<div class="card-meta" style="color:{GOLD}">{axis[num]}</div>'
                 if num in axis
                 else ""
             )
             body += (
-                f'<article class="card house-card{angle_cls}"><div class="house-top"><div>'
+                f'<article class="card house-card detail-card{angle_cls}{continuation_cls}"><div class="house-top"><div>'
                 f'<span class="house-num">{_roman(num)}</span><span class="house-sign">{_sign_symbol(sign)} {_e(_sign_ru(sign))}</span></div>'
                 f'<div class="house-degree">{_deg_str(house.get("degree"), within_sign=False)}</div></div>{axis_html}'
                 f'<div class="house-label">{_e(HOUSE_LABELS.get(num, f"ДОМ {num}"))}</div>'
-                f"<p>{_e(_description(house_desc.get(str(num)), _house_fallback(house), words=68))}</p></article>"
+                f"<p>{_e(text)}</p></article>"
             )
         body += "</div>"
         pages.append(_page(start_page + idx - 1, body))
@@ -858,32 +884,33 @@ def _aspect_pages(
         f'<div class="metric" style="--metric-color:{TEXT_DIM}"><strong>{neutral}</strong><span>Нейтральных</span></div>'
         "</div>"
     )
-    chunks: list[list[tuple[str, list[dict[str, Any]]]]] = []
+    blocks: list[tuple[str, dict[str, Any], str, bool]] = []
     for atype, group_items in groups:
-        for index in range(0, len(group_items), 3):
-            group_chunk = group_items[index : index + 3]
-            chunks.append([(atype, group_chunk)])
+        for aspect in group_items:
+            p1 = _planet_key(aspect.get("p1"))
+            p2 = _planet_key(aspect.get("p2"))
+            desc = _full_description(
+                aspect_desc.get((p1, p2, atype)), _aspect_fallback(aspect)
+            )
+            for chunk_index, chunk in enumerate(_split_words(desc, 235) or [desc]):
+                blocks.append((atype, aspect, chunk, chunk_index > 0))
     pages = []
-    for idx, chunk in enumerate(chunks, start=1):
+    for idx, (atype, aspect, desc, is_continuation) in enumerate(blocks, start=1):
         page_index = start_page + idx - 1
         body = _section_header("Аспекты", "Связи между планетами вашей карты")
         if idx == 1:
             body += metric_html
-        for atype, group_items in chunk:
-            color = ASPECT_COLORS.get(atype, GOLD)
-            body += f'<section class="aspect-group" style="--aspect-color:{color}"><h3>{ASPECT_SYMBOLS.get(atype, "")} {ASPECT_RU.get(atype, atype)} <em>— {_e(ASPECT_TOPICS.get(atype, ""))}</em></h3>'
-            for aspect in group_items:
-                p1 = _planet_key(aspect.get("p1"))
-                p2 = _planet_key(aspect.get("p2"))
-                desc = _description(
-                    aspect_desc.get((p1, p2, atype)), _aspect_fallback(aspect), words=82
-                )
-                body += (
-                    f'<div class="aspect-row"><div class="aspect-title"><span>{PLANET_SYMBOLS.get(p1, "")} {_e(PLANET_RU.get(p1, p1))} '
-                    f"{ASPECT_SYMBOLS.get(atype, '')} {PLANET_SYMBOLS.get(p2, '')} {_e(PLANET_RU.get(p2, p2))}</span>"
-                    f'<span class="orb">орб {float(aspect.get("orb") or 0):.1f}°</span></div><p>{_e(desc)}</p></div>'
-                )
-            body += "</section>"
+        color = ASPECT_COLORS.get(atype, GOLD)
+        p1 = _planet_key(aspect.get("p1"))
+        p2 = _planet_key(aspect.get("p2"))
+        continuation_label = " · продолжение" if is_continuation else ""
+        body += f'<section class="aspect-group" style="--aspect-color:{color}"><h3>{ASPECT_SYMBOLS.get(atype, "")} {ASPECT_RU.get(atype, atype)} <em>— {_e(ASPECT_TOPICS.get(atype, ""))}</em></h3>'
+        body += (
+            f'<div class="aspect-row detail-card"><div class="aspect-title"><span>{PLANET_SYMBOLS.get(p1, "")} {_e(PLANET_RU.get(p1, p1))} '
+            f"{ASPECT_SYMBOLS.get(atype, '')} {PLANET_SYMBOLS.get(p2, '')} {_e(PLANET_RU.get(p2, p2))}{continuation_label}</span>"
+            f'<span class="orb">орб {float(aspect.get("orb") or 0):.1f}°</span></div><p>{_e(desc)}</p></div>'
+        )
+        body += "</section>"
         pages.append(_page(page_index, body))
     return pages
 

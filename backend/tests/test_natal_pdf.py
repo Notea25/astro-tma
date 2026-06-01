@@ -309,8 +309,9 @@ def test_planet_description_prompt_prioritises_sign_over_house():
     assert "центр разбора — связка планета + знак" in prompt
     assert "Солнце в Козероге" in prompt
     assert "в знаке Козерога" in prompt
-    assert "140-190 слов" in prompt
-    assert "отношения, работа/дела, привычки" in prompt
+    assert "250-350 слов" in prompt
+    assert "отношения, работа/дела, привычки, бытовые проявления" in prompt
+    assert "повторяющиеся жизненные сценарии" in prompt
     assert "full" in prompt
     assert "6-9 предложений" not in prompt
 
@@ -329,7 +330,7 @@ def test_house_description_prompt_requests_scenarios_and_declension():
 
     assert "знак на куспиде — Весы" in prompt
     assert "дом в Весах" in prompt
-    assert "90-130 слов" in prompt
+    assert "180-240 слов" in prompt
     assert "типичные жизненные сценарии" in prompt
     assert "сильная сторона" in prompt
 
@@ -338,7 +339,7 @@ def test_aspect_description_prompt_requests_full_interaction():
     prompt = natal_descriptions._aspect_one_prompt("sun", "moon", "square")
 
     assert "Солнце — квадрат — Луна" in prompt
-    assert "110-160 слов" in prompt
+    assert "220-300 слов" in prompt
     assert "взаимодействуют" in prompt
     assert "отношениях/делах" in prompt
     assert "зоны роста" in prompt
@@ -371,6 +372,76 @@ def test_html_pdf_uses_full_description_before_short():
 
     assert "ПОЛНЫЙ_ТЕКСТ" in document
     assert "КОРОТКИЙ_ТЕКСТ" not in document
+
+
+def test_html_pdf_keeps_long_item_descriptions_untrimmed():
+    planets, houses, aspects = _sample_chart()
+    long_planet = " ".join(f"планета{i}" for i in range(180)) + " ПЛАНЕТА_ФИНАЛ"
+    long_house = " ".join(f"дом{i}" for i in range(150)) + " ДОМ_ФИНАЛ"
+    long_aspect = " ".join(f"аспект{i}" for i in range(190)) + " АСПЕКТ_ФИНАЛ"
+
+    document = natal_pdf_html.build_natal_pdf_html(
+        user_name="Андрей",
+        birth_date="2000-10-20",
+        birth_time="12:00",
+        birth_city="Минск",
+        sun_sign="Scorpio",
+        moon_sign="Aquarius",
+        asc_sign="Aries",
+        planets=planets,
+        houses=houses,
+        aspects=aspects,
+        descriptions={
+            "planets": {"sun": {"full": long_planet}},
+            "houses": {"1": {"full": long_house}},
+            "aspects": [
+                {"p1": "sun", "p2": "moon", "type": "square", "full": long_aspect}
+            ],
+        },
+    )
+
+    assert "ПЛАНЕТА_ФИНАЛ" in document
+    assert "ДОМ_ФИНАЛ" in document
+    assert "АСПЕКТ_ФИНАЛ" in document
+    assert document.count('<section class="page') > 13
+
+
+def test_reportlab_pdf_uses_full_descriptions_without_compact_trimming(monkeypatch):
+    planets, houses, aspects = _sample_chart()
+    descriptions = {
+        "planets": {"sun": {"full": " ".join(f"планета{i}" for i in range(160))}},
+        "houses": {"1": {"full": " ".join(f"дом{i}" for i in range(130))}},
+        "aspects": [
+            {"p1": "sun", "p2": "moon", "type": "square", "full": " ".join(f"аспект{i}" for i in range(160))}
+        ],
+    }
+
+    def fail_compact(*_args, **_kwargs):
+        raise AssertionError("PDF descriptions must not be word-trimmed")
+
+    monkeypatch.setattr(natal_pdf, "_compact_description", fail_compact)
+
+    pdf = generate_natal_pdf(
+        user_name="Андрей",
+        birth_date="2000-10-20",
+        birth_time="12:00",
+        birth_city="Минск",
+        sun_sign="Scorpio",
+        moon_sign="Aquarius",
+        asc_sign="Aries",
+        planets=planets,
+        houses=houses,
+        aspects=aspects,
+        descriptions=descriptions,
+    )
+
+    assert pdf.startswith(b"%PDF-")
+    assert len(pdf) > 10_000
+
+
+def test_natal_description_batches_are_small_for_long_pdf_copy():
+    assert natal_descriptions._BATCH_SIZE == 2
+    assert natal_descriptions._BATCH_MAX_TOKENS >= 4200
 
 
 @pytest.mark.asyncio
