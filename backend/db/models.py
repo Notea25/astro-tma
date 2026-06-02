@@ -1,6 +1,6 @@
 """All ORM models — grouped by domain. One file = easy grep, easy schema overview."""
 import enum
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from sqlalchemy import (
@@ -497,3 +497,102 @@ class DestinyMatrixInterpretation(Base):
     # propagation existed» — route treats those as stale and regenerates
     # on the next call.
     gender_used: Mapped[str | None] = mapped_column(String(8), nullable=True)
+
+
+# ── Destiny Matrix V3 (15-section interpretation pipeline) ──────────────────
+
+
+class ArcanaBase(Base):
+    """22 Major Arcana cards in the Ладини canonical reading. Each row is
+    the full reference text used as LLM context for V3 section generators
+    — distinct from `arcana_meanings` which holds per-context (×9) shorter
+    blurbs for the V2 PDF and the legacy /arcana endpoint.
+
+    Marseille numbering (8=Justice, 11=Strength), same as the Destiny
+    Matrix calculator. Filled by `infra/scripts/seed_arcana_base.py` from
+    `book_arcana_base.json`.
+    """
+    __tablename__ = "arcana_base"
+    __table_args__ = (
+        CheckConstraint("num BETWEEN 1 AND 22", name="ck_arcana_base_num"),
+    )
+    num: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    name_ru: Mapped[str] = mapped_column(Text)
+    essence: Mapped[str] = mapped_column(Text)
+    mission: Mapped[str] = mapped_column(Text)
+    shadow: Mapped[str] = mapped_column(Text)
+    healing: Mapped[str] = mapped_column(Text)
+    activities: Mapped[str] = mapped_column(Text)
+    famous_people: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class KarmicProgram(Base):
+    """A named karmic-tail program identified by the triple of arcana on
+    the bottom axis: ``(bottom, bottom_1, bottom_2)`` rendered as
+    ``"19-22-3"`` etc. Up to 26 unique combinations exist across all
+    valid birth dates 1950-2030. Filled by
+    `infra/scripts/generate_karmic_programs.py` (Sonnet) + manual review.
+    """
+    __tablename__ = "karmic_programs"
+    key: Mapped[str] = mapped_column(Text, primary_key=True)
+    name: Mapped[str] = mapped_column(Text)
+    description: Mapped[str] = mapped_column(Text)
+    manifestations: Mapped[str] = mapped_column(Text)
+    how_to_heal: Mapped[str] = mapped_column(Text)
+
+
+class DestinyInterpretationV3(Base):
+    """One LLM-generated section of the V3 destiny matrix report. The
+    full report is 15 rows per (user, birth_date, gender). Cached
+    permanently — the matrix doesn't change with time.
+
+    Section keys (snake_case): ``visitka``, ``drk``, ``higher_self``,
+    ``soul_tasks``, ``karmic_tail``, ``relationships``, ``money``,
+    ``realization``, ``harmonization``, ``talents``, ``anahata``,
+    ``purposes``, ``power_code``, ``health``, ``year_energy``.
+    """
+    __tablename__ = "destiny_interpretations_v3"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "birth_date", "gender", "section",
+            name="uq_destiny_v3_user_section",
+        ),
+        Index("idx_destiny_v3_user_bd", "user_id", "birth_date"),
+    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"),
+    )
+    birth_date: Mapped[date] = mapped_column(Date)
+    gender: Mapped[str] = mapped_column(String(8))
+    section: Mapped[str] = mapped_column(String(32))
+    content: Mapped[str] = mapped_column(Text)
+    model: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(),
+    )
+
+
+class YearEnergyInterpretation(Base):
+    """Yearly forecast text keyed by ``(user_id, year_arcana)``. Refreshed
+    on the user's birthday by a cron job; in the meantime it's the same
+    text the user saw all year (the year_arcana value itself shifts on
+    BD, so a new row appears then)."""
+    __tablename__ = "year_energy_interpretations"
+    __table_args__ = (
+        CheckConstraint(
+            "year_arcana BETWEEN 1 AND 22",
+            name="ck_year_energy_arcana",
+        ),
+    )
+    user_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    year_arcana: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    content: Mapped[str] = mapped_column(Text)
+    model: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(),
+    )
