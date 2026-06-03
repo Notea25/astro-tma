@@ -780,7 +780,7 @@ async def _upsert(
     await session.execute(stmt)
 
 
-async def _load_cached(
+async def load_cached_sections(
     session: AsyncSession,
     *,
     user_id: int,
@@ -858,7 +858,7 @@ async def get_or_generate(
 
     `force_keys` re-rolls those sections even if cached (used by the
     "обновить раздел" button in the UI)."""
-    cached = await _load_cached(
+    cached = await load_cached_sections(
         session,
         user_id=ctx.user_id,
         birth_date=ctx.birth_date,
