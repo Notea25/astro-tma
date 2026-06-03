@@ -601,6 +601,19 @@ export function Transits() {
     [data],
   );
   const headline = useMemo(() => pickHeadline(sortedAspects), [sortedAspects]);
+  // Mercury-retro double alert — bias-towards-safety banner if Mercury
+  // is currently retrograde in the sky AND today touches it via any
+  // transit. Pure static logic, no LLM cost.
+  const mercuryAlert = useMemo(() => {
+    if (!data) return false;
+    const mercuryIsRetro = data.retrogrades?.some(
+      (r) => r.planet === "mercury",
+    );
+    if (!mercuryIsRetro) return false;
+    return sortedAspects.some(
+      (a) => a.transit_planet === "mercury" || a.natal_planet === "mercury",
+    );
+  }, [data, sortedAspects]);
   const isPremium = user?.is_premium ?? false;
   // Week/Month transit periods now ride on Premium subscription, not on
   // standalone transit products (those were retired in launch v1.1).
@@ -676,6 +689,24 @@ export function Transits() {
 
         {data && (
           <>
+            {mercuryAlert && (
+              <div className="mercury-retro-alert" role="note">
+                <span className="mercury-retro-alert__glyph" aria-hidden="true">
+                  ☿℞
+                </span>
+                <div className="mercury-retro-alert__col">
+                  <div className="mercury-retro-alert__title">
+                    Двойной ретро-удар: Меркурий ℞ + транзит сегодня
+                  </div>
+                  <div className="mercury-retro-alert__body">
+                    Сделай бэкап документов, перепроверь переписку, не подписывай
+                    важные договоры на скорость. Любые недопонимания сегодня
+                    могут раздуться — лучше переспроси, чем додумай.
+                  </div>
+                </div>
+              </div>
+            )}
+
             <HeroCard aspect={headline} />
 
             <div className="horoscope-card">

@@ -8275,6 +8275,50 @@ body::before {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Mercury-retrograde double-alert banner on Transits screen. Fires
+   when Mercury is retrograde in the sky AND today's transits touch
+   Mercury (either side). Static text, $0 LLM cost. */
+.mercury-retro-alert {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  margin: 0 0 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(232, 139, 139, 0.42);
+  background:
+    linear-gradient(
+      135deg,
+      rgba(232, 139, 139, 0.12),
+      rgba(212, 178, 84, 0.06)
+    );
+  color: var(--text);
+}
+.mercury-retro-alert__glyph {
+  font-family: "Playfair Display", serif;
+  font-size: 28px;
+  color: #ff9a9a;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.mercury-retro-alert__col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.mercury-retro-alert__title {
+  color: #ffb4b4;
+  font-family: "Playfair Display", serif;
+  font-size: 0.98rem;
+  line-height: 1.25;
+}
+.mercury-retro-alert__body {
+  color: var(--text-soft);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
 .retro-list {
   display: flex;
   flex-direction: column;
