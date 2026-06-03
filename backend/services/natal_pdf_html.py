@@ -211,7 +211,7 @@ def _split_words(text: str, max_words: int) -> list[str]:
 
 def _description(entry: Any, fallback: str, *, words: int) -> str:
     if isinstance(entry, dict):
-        source = str(entry.get("full") or entry.get("short") or "").strip()
+        source = str(entry.get("full") or "").strip()
     else:
         source = ""
     fallback = str(fallback or "").strip()

@@ -2,6 +2,8 @@
 Redis cache client — singleton pattern via lifespan.
 All cache keys live here to avoid magic strings across the codebase.
 """
+from __future__ import annotations
+
 import json
 from collections.abc import Awaitable
 from typing import Any, cast
