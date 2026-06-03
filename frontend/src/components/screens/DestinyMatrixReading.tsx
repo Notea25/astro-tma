@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ApiError, destinyApi } from "@/services/api";
+import { ApiError, destinyApi, destinyV3Api } from "@/services/api";
 import WebApp from "@twa-dev/sdk";
 import { usePayment } from "@/hooks/usePayment";
 import { useProductPrice, useProductPriceRub } from "@/hooks/useProductPrice";
@@ -208,7 +208,7 @@ export function DestinyMatrixReading() {
     setIsPdfDownloading(true);
     setPdfDownloadError(null);
     try {
-      await destinyApi.downloadPdf();
+      await destinyV3Api.downloadPdf();
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.status === 402) {

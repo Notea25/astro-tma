@@ -1087,6 +1087,41 @@ export const destinyV3Api = {
     request<V3RegenerateResponse>("POST", "/destiny-matrix/v3/regenerate", { keys }),
   getYearEnergy: () =>
     request<V3YearEnergy>("GET", "/destiny-matrix/v3/year-energy"),
+  downloadPdf: async () => {
+    const filename = "destiny-matrix-v3.pdf";
+    if (canUseTelegramOpenLink()) {
+      try {
+        await request<NatalPdfSendResponse>("POST", "/destiny-matrix/v3/pdf-send");
+        WebApp.showAlert?.("PDF-разбор отправлен вам в чат с ботом.");
+      } catch (error) {
+        if (!(error instanceof ApiError) || error.status !== 404) throw error;
+        const blob = await requestBlob("/destiny-matrix/v3/pdf");
+        triggerBlobDownload(blob, filename);
+      }
+      return;
+    }
+    try {
+      const blob = await requestBlob("/destiny-matrix/v3/pdf");
+      triggerBlobDownload(blob, filename);
+      return;
+    } catch (directError) {
+      const popup = openDownloadWindow();
+      try {
+        const link = await request<NatalPdfLinkResponse>(
+          "POST", "/destiny-matrix/v3/pdf-link",
+        );
+        const downloadUrl = apiUrl(link.download_url);
+        if (popup && !popup.closed) {
+          popup.location.href = downloadUrl;
+          return;
+        }
+        triggerDownload(downloadUrl, link.filename || filename);
+      } catch {
+        if (popup && !popup.closed) popup.close();
+        throw directError;
+      }
+    }
+  },
 };
 
 export const destinyApi = {

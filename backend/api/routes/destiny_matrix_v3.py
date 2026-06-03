@@ -18,15 +18,22 @@ a teaser for non-premium users.
 from __future__ import annotations
 
 from datetime import date, datetime
+from io import BytesIO
+from secrets import token_urlsafe
 from typing import Any
+from urllib.parse import quote
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.middleware.telegram_auth import get_tg_user
+from core.cache import cache_get, cache_set, key_destiny_pdf_download
 from core.logging import get_logger
+from core.settings import settings
 from db.database import get_db
 from db.models import DestinyMatrixReading
 from services.destiny_matrix.calculator import calculate_matrix
@@ -40,6 +47,7 @@ from services.destiny_matrix.v3_interpreter import (
     load_v3_context,
     regenerate_sections,
 )
+from services.destiny_matrix_v3_pdf import generate_destiny_matrix_v3_pdf_html
 from services.users import repository as user_repo
 
 router = APIRouter(prefix="/destiny-matrix/v3", tags=["destiny-matrix-v3"])
@@ -291,6 +299,212 @@ async def regenerate(
     )
     updated = await regenerate_sections(db, ctx=ctx, keys=body.keys)
     return V3RegenerateResponse(updated=updated)
+
+
+_PDF_DOWNLOAD_TTL_SECONDS = 300
+
+
+def _pdf_filename(user) -> str:
+    safe = str(user.tg_first_name or "matrix").replace('"', "").strip() or "matrix"
+    return f"destiny_matrix_v3_{safe}.pdf"
+
+
+async def _build_v3_pdf_bytes(db: AsyncSession, user, reading) -> bytes:
+    gender = user.gender.value if user.gender else "any"
+    ctx = await load_v3_context(
+        db,
+        user_id=user.id,
+        birth_date=reading.birth_date,
+        gender=gender,
+        name=user.tg_first_name,
+        positions=reading.positions,
+    )
+    # PDF always needs all 15 sections — generate any missing on the fly.
+    sections_text = await get_or_generate(db, ctx=ctx)
+
+    purposes_payload = {
+        k: {"name": p.name, "key": list(p.key)} for k, p in ctx.purposes.items()
+    }
+    karmic_payload = (
+        {
+            "key": ctx.karmic.key,
+            "name": ctx.karmic.name,
+            "description": ctx.karmic.description,
+            "manifestations": ctx.karmic.manifestations,
+            "how_to_heal": ctx.karmic.how_to_heal,
+        }
+        if ctx.karmic else None
+    )
+    return await generate_destiny_matrix_v3_pdf_html(
+        user_name=user.tg_first_name or "User",
+        birth_date=str(reading.birth_date),
+        positions=reading.positions,
+        sections_text=sections_text,
+        purposes=purposes_payload,
+        karmic_program=karmic_payload,
+        year_energy={
+            "current": ctx.year_energy.current,
+            "upcoming": ctx.year_energy.upcoming,
+        },
+    )
+
+
+async def _build_v3_pdf_response(db: AsyncSession, user, reading) -> Response:
+    try:
+        pdf_bytes = await _build_v3_pdf_bytes(db, user, reading)
+    except Exception as e:  # noqa: BLE001
+        log.error("destiny_matrix_v3.pdf_build_failed", user_id=user.id, error=str(e)[:500])
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            "Не удалось собрать PDF-отчёт. Попробуйте ещё раз.",
+        ) from e
+    filename = _pdf_filename(user)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/octet-stream",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": (
+                f'attachment; filename="destiny-matrix-v3.pdf"; '
+                f"filename*=UTF-8''{quote(filename)}"
+            ),
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
+@router.get("/pdf")
+async def get_v3_pdf(
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """Build + stream the V3 PDF (premium-only). Heavy: cold-start fires
+    all 15 LLM calls if the cache is empty, then Playwright renders ~22
+    A4 pages. Subsequent requests hit cached sections — render takes
+    ~5-8s."""
+    user, reading = await _resolve_user_and_reading(db, tg_user)
+    if not await _has_full_access(db, user.id):
+        raise HTTPException(
+            status.HTTP_402_PAYMENT_REQUIRED,
+            "PDF-отчёт доступен в Premium или после покупки полного разбора",
+        )
+    return await _build_v3_pdf_response(db, user, reading)
+
+
+@router.post("/pdf-link")
+async def create_v3_pdf_link(
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Short-lived token URL for WebViews that block blob downloads."""
+    user, _ = await _resolve_user_and_reading(db, tg_user)
+    if not await _has_full_access(db, user.id):
+        raise HTTPException(
+            status.HTTP_402_PAYMENT_REQUIRED,
+            "PDF-отчёт доступен в Premium или после покупки полного разбора",
+        )
+    token = token_urlsafe(24)
+    await cache_set(
+        key_destiny_pdf_download(token) + ":v3",
+        {"user_id": user.id},
+        _PDF_DOWNLOAD_TTL_SECONDS,
+    )
+    return {
+        "download_url": f"/destiny-matrix/v3/pdf-download/{token}",
+        "filename": _pdf_filename(user),
+        "expires_in": _PDF_DOWNLOAD_TTL_SECONDS,
+    }
+
+
+@router.get("/pdf-download/{token}")
+async def get_v3_pdf_by_token(
+    token: str, db: AsyncSession = Depends(get_db),
+) -> Response:
+    payload = await cache_get(key_destiny_pdf_download(token) + ":v3")
+    if not isinstance(payload, dict) or "user_id" not in payload:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Download link expired")
+    user = await user_repo.get_by_id(db, int(payload["user_id"]))
+    if not user or not user.birth_date:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Profile not found")
+    if not await _has_full_access(db, user.id):
+        raise HTTPException(status.HTTP_402_PAYMENT_REQUIRED, "Access expired")
+    birth = (
+        user.birth_date.date()
+        if isinstance(user.birth_date, datetime)
+        else user.birth_date
+    )
+    result = await db.execute(
+        select(DestinyMatrixReading).where(
+            DestinyMatrixReading.user_id == user.id,
+            DestinyMatrixReading.birth_date == birth,
+        )
+    )
+    reading = result.scalar_one_or_none()
+    if reading is None:
+        reading = DestinyMatrixReading(
+            user_id=user.id, birth_date=birth, positions=calculate_matrix(birth),
+        )
+        db.add(reading)
+        await db.flush()
+    return await _build_v3_pdf_response(db, user, reading)
+
+
+@router.post("/pdf-send")
+async def send_v3_pdf_to_telegram(
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, str]:
+    """Build the V3 PDF and deliver it directly to the user's Telegram chat."""
+    user, reading = await _resolve_user_and_reading(db, tg_user)
+    if not await _has_full_access(db, user.id):
+        raise HTTPException(
+            status.HTTP_402_PAYMENT_REQUIRED,
+            "PDF-отчёт доступен в Premium или после покупки полного разбора",
+        )
+    try:
+        pdf_bytes = await _build_v3_pdf_bytes(db, user, reading)
+    except Exception as e:  # noqa: BLE001
+        log.error("destiny_matrix_v3.pdf_build_failed", user_id=user.id, error=str(e)[:500])
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            "Не удалось собрать PDF-отчёт. Попробуйте ещё раз.",
+        ) from e
+
+    filename = _pdf_filename(user)
+    url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendDocument"
+    data = {
+        "chat_id": str(user.id),
+        "caption": "Ваш полный PDF-разбор Матрицы Судьбы (V3).",
+    }
+    files = {"document": (filename, BytesIO(pdf_bytes), "application/pdf")}
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(url, data=data, files=files)
+        payload = response.json()
+    except Exception as e:  # noqa: BLE001
+        log.error("destiny_matrix_v3.pdf_send_failed", user_id=user.id, error=str(e))
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            "Не удалось отправить PDF в Telegram. Попробуйте ещё раз.",
+        ) from e
+
+    if response.status_code == 403:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Сначала откройте чат с ботом и нажмите /start, затем попробуйте снова.",
+        )
+    if not response.is_success or not payload.get("ok"):
+        description = str(payload.get("description") or response.text)
+        log.error(
+            "destiny_matrix_v3.pdf_send_rejected",
+            user_id=user.id, status_code=response.status_code,
+            error=description[:500],
+        )
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            "Telegram не принял PDF. Попробуйте ещё раз.",
+        )
+    return {"status": "sent", "filename": filename}
 
 
 @router.get("/year-energy", response_model=YearEnergyOut)
