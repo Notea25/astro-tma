@@ -57,7 +57,13 @@ async def invalidate_year_energy_on_birthday() -> None:
             bd_date = user.birth_date
             if isinstance(bd_date, datetime):
                 bd_date = bd_date.date()
-            bd_this_year = bd_date.replace(year=local_now.year)
+            # Feb 29 → use Feb 28 on non-leap years so the rollover still
+            # fires once a year. Trying to call .replace(year=…) would
+            # raise ValueError otherwise.
+            try:
+                bd_this_year = bd_date.replace(year=local_now.year)
+            except ValueError:
+                bd_this_year = bd_date.replace(year=local_now.year, day=28)
             today_local = local_now.date()
             yesterday_local = today_local - timedelta(days=1)
 
