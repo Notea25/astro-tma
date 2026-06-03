@@ -13,3 +13,4 @@ dist/
 docs/
 .specify/
 CLAUDE.md
+ssh_run.py
