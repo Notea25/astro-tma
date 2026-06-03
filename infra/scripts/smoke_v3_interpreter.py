@@ -16,11 +16,13 @@ import asyncio
 import os
 import sys
 from datetime import date
-from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../backend"))
 
+from sqlalchemy import delete  # noqa: E402
+
 from db.database import AsyncSessionLocal  # noqa: E402
+from db.models import DestinyInterpretationV3  # noqa: E402
 from services.destiny_matrix.calculator import calculate_matrix  # noqa: E402
 from services.destiny_matrix.v3_interpreter import (  # noqa: E402
     SECTIONS,
@@ -29,10 +31,12 @@ from services.destiny_matrix.v3_interpreter import (  # noqa: E402
 )
 
 
-SMOKE_USER_ID = 1
-SMOKE_BIRTH = date(2002, 7, 8)
+# Owner's tg_user_id (any real users.id works — the smoke creates one
+# interpretation row, then deletes it). Override via CLI: `… 1234567`.
+SMOKE_USER_ID = int(sys.argv[1]) if len(sys.argv) > 1 else 414053177
+SMOKE_BIRTH = date(2002, 7, 8)        # Юля reference birth
 SMOKE_GENDER = "female"
-SMOKE_NAME = "Юля"
+SMOKE_NAME = "Юля (smoke)"
 SMOKE_SECTION = "anahata"
 
 
@@ -66,7 +70,20 @@ async def main() -> None:
         print(f"\n──── {SMOKE_SECTION} ({len(text)} chars) ────")
         print(text)
         print("\n────────────")
-        print("PHASE 5 SMOKE PASS — section generated + cached.", flush=True)
+
+        # Clean up the smoke row so the user doesn't see a wrong Юля
+        # interpretation in their cache.
+        await session.execute(
+            delete(DestinyInterpretationV3).where(
+                DestinyInterpretationV3.user_id == SMOKE_USER_ID,
+                DestinyInterpretationV3.birth_date == SMOKE_BIRTH,
+                DestinyInterpretationV3.gender == SMOKE_GENDER,
+                DestinyInterpretationV3.section == SMOKE_SECTION,
+            )
+        )
+        await session.commit()
+        print("Smoke row cleaned up.")
+        print("PHASE 5 SMOKE PASS — section generated + cached + cleaned.", flush=True)
 
 
 if __name__ == "__main__":
