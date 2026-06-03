@@ -139,21 +139,3 @@ async def apply_referral(
     await db.commit()
     log.info("referral.applied", referrer=referrer.id, referee=referee.id)
     return ApplyReferralResponse(success=True, message="Спасибо за приглашение!")
-        return
-
-    # Best-effort Telegram notification — separate try because we don't
-    # want a sendMessage hiccup to roll back the bonus grant.
-    try:
-        from services.referrals.notifications import notify_referrer_of_bonus
-
-        await notify_referrer_of_bonus(
-            referrer_id=user.referred_by,
-            referee_name=referee_first_name or "ваш друг",
-            days=bonus,
-        )
-    except Exception as e:  # noqa: BLE001
-        log.warning(
-            "referral.notify_dispatch_failed",
-            referrer=user.referred_by,
-            error=str(e),
-        )
