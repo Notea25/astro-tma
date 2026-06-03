@@ -52,7 +52,7 @@ def _cover_page(user_name: str, birth_date: str) -> str:
     return _page(1, body, class_name="cover-page")
 
 
-def _contents_page(section_pages: dict[str, int], extra_pages: dict[str, int]) -> str:
+def _contents_page(section_pages: dict[str, int], extra_pages: dict[str, str]) -> str:
     items = []
     for spec in SECTIONS:
         page = section_pages.get(spec.key)

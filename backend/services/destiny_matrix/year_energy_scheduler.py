@@ -19,7 +19,7 @@ the app and triggers ``/regenerate``.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import delete, select
@@ -54,9 +54,10 @@ async def invalidate_year_energy_on_birthday() -> None:
             # User.birth_date may be Date or DateTime depending on the column —
             # normalise to `date` before comparing or `.replace()` keeps the
             # datetime type and we'd compare datetime > date below.
-            bd_date = user.birth_date
-            if isinstance(bd_date, datetime):
-                bd_date = bd_date.date()
+            bd_raw = user.birth_date
+            if bd_raw is None:
+                continue
+            bd_date: date = bd_raw.date() if isinstance(bd_raw, datetime) else bd_raw
             # Feb 29 → use Feb 28 on non-leap years so the rollover still
             # fires once a year. Trying to call .replace(year=…) would
             # raise ValueError otherwise.
@@ -79,7 +80,7 @@ async def invalidate_year_energy_on_birthday() -> None:
                     DestinyInterpretationV3.section == "year_energy",
                 )
             )
-            if result.rowcount:
+            if getattr(result, "rowcount", 0):
                 invalidated += 1
                 log.info(
                     "destiny_v3.year_energy.invalidated_user",
