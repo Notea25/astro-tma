@@ -558,6 +558,7 @@ body::after {
 
 /* ── Header Avatar ─────────────────────────────────────────────────────────── */
 .header-avatar {
+  position: relative;
   width: 38px;
   height: 38px;
   border-radius: 50%;
@@ -584,6 +585,14 @@ body::after {
     transform 0.15s;
   -webkit-tap-highlight-color: transparent;
   margin-top: 4px;
+}
+/* Visible avatar stays 38×38; pseudo-element extends the tap target to
+   ≥44×44 so the header touch zone meets WCAG 2.5.5. */
+.header-avatar::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
 }
 .header-avatar:active {
   border-color: var(--gold);
@@ -7962,9 +7971,21 @@ body::before {
     transform 0.15s ease,
     border-color 0.15s ease;
 }
+/* Expand tap target to 44×44 (WCAG 2.5.5) without enlarging the
+   visible pill — pseudo-element extends hit area by 6px each side. */
+.profile-card__edit::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+}
 .profile-card__edit:active {
   transform: scale(0.92);
   border-color: var(--gold);
+}
+.profile-card__edit:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
 }
 
 /* Premium status callout below user card */
