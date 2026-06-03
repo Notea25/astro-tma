@@ -1074,17 +1074,11 @@ export interface V3ReadingResponse {
   generated_at: string;
 }
 
-export interface V3RegenerateResponse {
-  updated: Record<string, string>;
-}
-
 export const destinyV3Api = {
   listSections: () =>
     request<V3SectionsResponse>("GET", "/destiny-matrix/v3/sections"),
   getReading: () =>
     request<V3ReadingResponse>("GET", "/destiny-matrix/v3/reading"),
-  regenerate: (keys: string[]) =>
-    request<V3RegenerateResponse>("POST", "/destiny-matrix/v3/regenerate", { keys }),
   getYearEnergy: () =>
     request<V3YearEnergy>("GET", "/destiny-matrix/v3/year-energy"),
   downloadPdf: async () => {

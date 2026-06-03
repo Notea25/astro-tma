@@ -8,7 +8,6 @@ stay shared.
 Endpoints:
   GET  /destiny-matrix/v3/sections      — section metadata + free keys
   GET  /destiny-matrix/v3/reading       — full reading (positions + 15 sections)
-  POST /destiny-matrix/v3/regenerate    — re-roll specific sections
   GET  /destiny-matrix/v3/year-energy   — current + upcoming year arcana
 
 Free preview: `visitka` + `karmic_tail`. Everything else is masked with
@@ -40,7 +39,6 @@ from services.destiny_matrix.calculator import calculate_matrix
 from services.destiny_matrix.v3_interpreter import (
     MODEL_V3,
     SECTIONS,
-    SECTIONS_BY_KEY,
     V3Context,
     get_or_generate,
     load_cached_sections,
@@ -109,14 +107,6 @@ class V3ReadingResponse(BaseModel):
     has_full_access: bool
     model: str
     generated_at: datetime
-
-
-class V3RegenerateRequest(BaseModel):
-    keys: list[str] = Field(..., min_length=1, max_length=15)
-
-
-class V3RegenerateResponse(BaseModel):
-    updated: dict[str, str]
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
@@ -264,41 +254,6 @@ async def get_reading(
         model=MODEL_V3,
         generated_at=datetime.utcnow(),
     )
-
-
-@router.post("/regenerate", response_model=V3RegenerateResponse)
-async def regenerate(
-    body: V3RegenerateRequest,
-    tg_user: dict = Depends(get_tg_user),
-    db: AsyncSession = Depends(get_db),
-) -> V3RegenerateResponse:
-    """Re-roll specific sections. Premium-only — free users can't bust
-    their preview cache repeatedly to drain LLM budget."""
-    user, reading = await _resolve_user_and_reading(db, tg_user)
-    if not await _has_full_access(db, user.id):
-        raise HTTPException(
-            status.HTTP_402_PAYMENT_REQUIRED,
-            "Перегенерация разделов доступна в полном разборе",
-        )
-
-    invalid = [k for k in body.keys if k not in SECTIONS_BY_KEY]
-    if invalid:
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            f"Неизвестные разделы: {', '.join(invalid)}",
-        )
-
-    gender = user.gender.value if user.gender else "any"
-    ctx = await load_v3_context(
-        db,
-        user_id=user.id,
-        birth_date=reading.birth_date,
-        gender=gender,
-        name=user.tg_first_name,
-        positions=reading.positions,
-    )
-    updated = await regenerate_sections(db, ctx=ctx, keys=body.keys)
-    return V3RegenerateResponse(updated=updated)
 
 
 _PDF_DOWNLOAD_TTL_SECONDS = 300

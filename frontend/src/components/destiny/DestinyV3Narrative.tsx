@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import { destinyV3Api, type V3ReadingResponse } from "@/services/api";
@@ -12,17 +12,14 @@ interface Props {
  * 15-section accordion. Top-level loading state covers the cold-start
  * (~60s while Sonnet generates everything). Once cached in DB, the
  * `/reading` endpoint returns instantly and the accordion shows all
- * sections — premium users can re-roll any single card from its body
- * via the «Перегенерировать» button.
+ * sections.
  *
  * For non-premium users only the two `free_keys` sections come back
  * with real content; the other 13 carry a teaser string and are
  * rendered with a lock badge.
  */
 export function DestinyV3Narrative({ enabled, onUpgrade }: Props) {
-  const queryClient = useQueryClient();
   const [openKey, setOpenKey] = useState<string | null>(null);
-  const [regenKey, setRegenKey] = useState<string | null>(null);
 
   const { data, isLoading, isError, refetch } = useQuery<V3ReadingResponse>({
     queryKey: ["destiny-matrix-v3", "reading"],
@@ -30,27 +27,6 @@ export function DestinyV3Narrative({ enabled, onUpgrade }: Props) {
     enabled,
     staleTime: 1000 * 60 * 60 * 24 * 7,
     gcTime: 1000 * 60 * 60 * 24 * 7,
-  });
-
-  const regenerate = useMutation({
-    mutationFn: (key: string) => destinyV3Api.regenerate([key]),
-    onMutate: (key) => setRegenKey(key),
-    onSettled: () => setRegenKey(null),
-    onSuccess: (resp) => {
-      queryClient.setQueryData<V3ReadingResponse | undefined>(
-        ["destiny-matrix-v3", "reading"],
-        (prev) => {
-          if (!prev) return prev;
-          const next = { ...prev };
-          next.sections = prev.sections.map((s) =>
-            resp.updated[s.key]
-              ? { ...s, content: resp.updated[s.key] }
-              : s,
-          );
-          return next;
-        },
-      );
-    },
   });
 
   if (!enabled) return null;
@@ -94,7 +70,6 @@ export function DestinyV3Narrative({ enabled, onUpgrade }: Props) {
 
       {data.sections.map((section, idx) => {
         const isOpen = openKey === section.key;
-        const isRegen = regenKey === section.key;
         const isLocked = section.locked;
         const titleSuffix = sectionTitleSuffix(section.key, data);
 
@@ -137,19 +112,8 @@ export function DestinyV3Narrative({ enabled, onUpgrade }: Props) {
                   <div className="destiny-narrative__section-text destiny-v3__content">
                     {section.content
                       ? plainText(section.content)
-                      : "Раздел ещё не сгенерирован — попробуйте «Перегенерировать»."}
+                      : "Раздел временно недоступен. Попробуйте обновить страницу."}
                   </div>
-
-                  {!isLocked && data.has_full_access && (
-                    <button
-                      type="button"
-                      className="btn-ghost destiny-v3__regen"
-                      onClick={() => regenerate.mutate(section.key)}
-                      disabled={isRegen}
-                    >
-                      {isRegen ? "Перегенерация…" : "🔄 Перегенерировать раздел"}
-                    </button>
-                  )}
                 </motion.div>
               )}
             </AnimatePresence>
