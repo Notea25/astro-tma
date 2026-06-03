@@ -75,6 +75,48 @@ SECTION_TITLES: dict[str, str] = {
     "power_code":    "Код силы",
     "health":        "Здоровье и чакры",
     "year_energy":   "Энергия года",
+    # 8 per-purpose deep dives — each is a separate Sonnet call so the
+    # tap-to-expand UI shows context-specific text. Without these, all 8
+    # cells pulled the same `arcana_meanings.context='purpose'` row, so
+    # purposes that happened to land on the same arcana got identical
+    # copy and purposes whose arcana row was missing showed empty text.
+    "purpose_celestial_personal": "Предназначение · Небесное личное",
+    "purpose_earthly_personal":   "Предназначение · Земное личное",
+    "purpose_wholeness_personal": "Предназначение · Целостное личное",
+    "purpose_father_lineage":     "Предназначение · Род Отца",
+    "purpose_mother_lineage":     "Предназначение · Род Матери",
+    "purpose_wholeness_lineage":  "Предназначение · Социальная реализация",
+    "purpose_personal_divine":    "Предназначение · Личное Божественное",
+    "purpose_divine_mission":     "Предназначение · Божественная миссия",
+}
+
+# Short framing line injected into each per-purpose prompt so the model
+# orients on the specific role of that linе in the Ладини methodology.
+_PURPOSE_CONTEXT_HINTS: dict[str, str] = {
+    "celestial_personal": (
+        "Небесное личное — духовная жизнь, что ведёт изнутри, источник смысла."
+    ),
+    "earthly_personal": (
+        "Земное личное — материальная сторона жизни, тело, ресурсы, дом."
+    ),
+    "wholeness_personal": (
+        "Целостное личное — баланс между духовным и земным в твоей жизни."
+    ),
+    "father_lineage": (
+        "Что приходит по линии Отца — таланты и кармические задачи рода отца."
+    ),
+    "mother_lineage": (
+        "Что приходит по линии Матери — таланты и кармические задачи рода матери."
+    ),
+    "wholeness_lineage": (
+        "Социальная реализация на пересечении родов — что отдаёшь миру в зрелости."
+    ),
+    "personal_divine": (
+        "Личное Божественное — путь индивидуальной духовной зрелости и интуиции."
+    ),
+    "divine_mission": (
+        "Большая миссия — что значит твоё проявление для других людей."
+    ),
 }
 
 
@@ -566,6 +608,48 @@ def _prompt_anahata(ctx: V3Context) -> tuple[str, int]:
     ), 280
 
 
+def _make_purpose_prompt(purpose_key: str):
+    """Factory for the 8 per-purpose deep-dive prompts.
+
+    Each generated prompt focuses on ONE of the 8 Ладини purposes
+    (`celestial_personal`, `earthly_personal`, …) and asks Sonnet to
+    write ~250 words about THAT specific line — not a general overview.
+    The summary `purposes` section still exists; these are the
+    per-cell expansions for the DestinyPurposes UI block."""
+
+    section_key = f"purpose_{purpose_key}"
+
+    def builder(ctx: V3Context) -> tuple[str, int]:
+        p = ctx.purposes[purpose_key]
+        left, right, total = p.key
+        arcana_blocks = "\n\n".join(
+            _arc_brief(
+                ctx.arcana[n],
+                sections=("essence", "mission", "shadow"),
+            )
+            for n in dict.fromkeys([left, right, total])
+        )
+        return (
+            _header(ctx, section_key)
+            + f"Раздел про одно конкретное предназначение — «{p.name}».\n\n"
+            f"Формула: аркан {left} ({_name(left)}) + аркан {right} "
+            f"({_name(right)}) = аркан {total} ({_name(total)}).\n\n"
+            f"Контекст этой линии: {_PURPOSE_CONTEXT_HINTS[purpose_key]}\n\n"
+            f"Справка по аркaнaм формулы:\n\n{arcana_blocks}\n\n"
+            "Напиши 220-280 слов ИМЕННО про это предназначение. Не обобщай "
+            "и не сравнивай с другими линиями (для них есть отдельные "
+            "разделы). Структура:\n"
+            f"1) Что даёт сложение арканов {left} и {right} через итог "
+            f"{total} ({_name(total)}).\n"
+            "2) Как это проявляется в жизни читателя по этой конкретной "
+            "линии (учитывай пол и тон обращения).\n"
+            "3) Одна конкретная подсказка/практика, чтобы прожить это "
+            "предназначение сильнее."
+        ), 250
+
+    return builder
+
+
 def _prompt_purposes(ctx: V3Context) -> tuple[str, int]:
     """8 предназначений — полная картина."""
     p = ctx.purposes
@@ -719,9 +803,42 @@ SECTIONS: list[SectionSpec] = [
     SectionSpec("power_code",    SECTION_TITLES["power_code"],    _prompt_power_code),
     SectionSpec("health",        SECTION_TITLES["health"],        _prompt_health),
     SectionSpec("year_energy",   SECTION_TITLES["year_energy"],   _prompt_year_energy),
+    # 8 per-purpose deep-dives — driven by the same `purposes` dict on
+    # V3Context, registered as separate sections so each gets its own
+    # Sonnet call and its own cached row.
+    *[
+        SectionSpec(
+            f"purpose_{k}",
+            SECTION_TITLES[f"purpose_{k}"],
+            _make_purpose_prompt(k),
+        )
+        for k in (
+            "celestial_personal",
+            "earthly_personal",
+            "wholeness_personal",
+            "father_lineage",
+            "mother_lineage",
+            "wholeness_lineage",
+            "personal_divine",
+            "divine_mission",
+        )
+    ],
 ]
 
 SECTIONS_BY_KEY: dict[str, SectionSpec] = {s.key: s for s in SECTIONS}
+
+# Section keys for the 8 per-purpose deep-dives — used by the
+# DestinyPurposes UI block to look up content per cell.
+PURPOSE_SECTION_KEYS: tuple[str, ...] = (
+    "purpose_celestial_personal",
+    "purpose_earthly_personal",
+    "purpose_wholeness_personal",
+    "purpose_father_lineage",
+    "purpose_mother_lineage",
+    "purpose_wholeness_lineage",
+    "purpose_personal_divine",
+    "purpose_divine_mission",
+)
 
 
 # ── LLM call + DB cache ─────────────────────────────────────────────────────

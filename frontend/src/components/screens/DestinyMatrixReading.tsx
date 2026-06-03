@@ -360,7 +360,6 @@ export function DestinyMatrixReading() {
                 <DestinyPurposes
                   purposes={reading.positions.purposes}
                   purposesFull={reading.positions.purposes_full}
-                  onTap={openTap}
                 />
                 <DestinyChannels
                   channels={reading.positions.channels}
