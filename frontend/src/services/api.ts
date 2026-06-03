@@ -1025,6 +1025,70 @@ export interface DestinyMatrixInterpretation {
   locked_sections?: string[];
 }
 
+// ── V3 Destiny Matrix (15-section accordion) ─────────────────────────────
+
+export interface V3SectionMeta {
+  key: string;
+  title: string;
+}
+
+export interface V3SectionsResponse {
+  sections: V3SectionMeta[];
+  free_keys: string[];
+}
+
+export interface V3PurposeTriple {
+  name: string;
+  key: [number, number, number];
+}
+
+export interface V3KarmicProgram {
+  key: string;
+  name: string;
+  description: string;
+  manifestations: string;
+  how_to_heal: string;
+}
+
+export interface V3YearEnergy {
+  current: number;
+  upcoming: number;
+}
+
+export interface V3SectionPayload {
+  key: string;
+  title: string;
+  content: string | null;
+  locked: boolean;
+}
+
+export interface V3ReadingResponse {
+  birth_date: string;
+  positions: DestinyMatrixPositions;
+  purposes: Record<string, V3PurposeTriple>;
+  year_energy: V3YearEnergy;
+  karmic_program: V3KarmicProgram | null;
+  sections: V3SectionPayload[];
+  has_full_access: boolean;
+  model: string;
+  generated_at: string;
+}
+
+export interface V3RegenerateResponse {
+  updated: Record<string, string>;
+}
+
+export const destinyV3Api = {
+  listSections: () =>
+    request<V3SectionsResponse>("GET", "/destiny-matrix/v3/sections"),
+  getReading: () =>
+    request<V3ReadingResponse>("GET", "/destiny-matrix/v3/reading"),
+  regenerate: (keys: string[]) =>
+    request<V3RegenerateResponse>("POST", "/destiny-matrix/v3/regenerate", { keys }),
+  getYearEnergy: () =>
+    request<V3YearEnergy>("GET", "/destiny-matrix/v3/year-energy"),
+};
+
 export const destinyApi = {
   calculate: () =>
     request<DestinyMatrixResponse>("POST", "/destiny-matrix/calculate"),

@@ -9803,6 +9803,76 @@ body::before {
   align-self: flex-start;
 }
 
+/* V3 accordion — built on top of .destiny-narrative shell */
+.destiny-v3 {
+  gap: 8px;
+}
+.destiny-v3__year-energy {
+  margin: 0 0 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(232, 200, 98, 0.06);
+  border: 1px solid rgba(212, 178, 84, 0.22);
+  color: var(--text-soft);
+  font-size: 0.92rem;
+}
+.destiny-v3__year-energy strong {
+  color: var(--gold);
+  font-family: "Playfair Display", serif;
+  font-size: 1.05rem;
+  margin: 0 4px;
+}
+.destiny-v3__year-hint {
+  color: var(--text-mute);
+  font-size: 0.82rem;
+  margin-left: 4px;
+}
+.destiny-v3__hint {
+  font-size: 0.85rem;
+  color: var(--text-mute);
+}
+.destiny-v3__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 6px 0;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+}
+.destiny-v3__head:hover .destiny-narrative__section-title {
+  color: var(--gold);
+}
+.destiny-v3__chevron {
+  font-size: 0.95rem;
+  color: var(--gold-soft, #c4a35a);
+  opacity: 0.7;
+  margin-left: 10px;
+  flex-shrink: 0;
+}
+.destiny-v3__title-suffix {
+  color: var(--text-mute);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: normal;
+  letter-spacing: 0;
+}
+.destiny-v3__body {
+  overflow: hidden;
+}
+.destiny-v3__content {
+  white-space: pre-line;
+  padding-top: 6px;
+}
+.destiny-v3__regen {
+  margin-top: 10px;
+  align-self: flex-start;
+  font-size: 0.82rem;
+}
+
 /* 5 life lines */
 
 .destiny-lines {

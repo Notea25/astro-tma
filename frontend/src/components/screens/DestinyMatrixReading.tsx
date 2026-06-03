@@ -23,7 +23,7 @@ import {
   type DestinyNodeId,
   type DestinyNodeMeta,
 } from "@/components/destiny/DestinyOctagram";
-import { DestinyNarrative } from "@/components/destiny/DestinyNarrative";
+import { DestinyV3Narrative } from "@/components/destiny/DestinyV3Narrative";
 import { DestinyPurposes } from "@/components/destiny/DestinyPurposes";
 import { DestinyChannels } from "@/components/destiny/DestinyChannels";
 import { DestinyHealthMap } from "@/components/destiny/DestinyHealthMap";
@@ -321,16 +321,16 @@ export function DestinyMatrixReading() {
 
             {!reading.has_full_access && (
               <>
-                <DestinyNarrative
+                <DestinyV3Narrative
                   enabled={true}
-                  hasFullAccess={false}
                   onUpgrade={handlePurchase}
                 />
                 <section className="destiny-reading__upsell">
                   <h4>Откройте полный разбор</h4>
                   <p>
-                    Личный 8-секционный разбор, 4 предназначения и 10 каналов
-                    судьбы. Один раз за {price} ⭐, доступ остаётся навсегда.
+                    Личный разбор из 15 разделов: визитка, дерево рода, кармический
+                    хвост, 8 предназначений, чакры и энергия года. Один раз за{" "}
+                    {price} ⭐, доступ остаётся навсегда.
                   </p>
                   <button
                     type="button"
@@ -375,13 +375,13 @@ export function DestinyMatrixReading() {
                     onTap={openTap}
                   />
                 )}
-                <DestinyNarrative enabled={true} hasFullAccess={true} />
+                <DestinyV3Narrative enabled={true} />
 
                 <section className="destiny-reading__pdf">
                   <h4>Сохранить разбор</h4>
                   <p>
                     PDF-отчёт со всеми числами, октаграммой и личным разбором
-                    в 8 секциях. Можно перечитать позже.
+                    в 15 разделах. Можно перечитать позже.
                   </p>
                   <button
                     type="button"
