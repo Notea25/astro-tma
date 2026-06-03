@@ -393,6 +393,14 @@ export function Onboarding() {
           </div>
           <h2 className="step-title">Дата рождения</h2>
           <p className="step-desc">Нужна для расчёта персонального гороскопа</p>
+          <div className="onboarding__warning" role="note">
+            <span className="onboarding__warning-icon" aria-hidden="true">⚠️</span>
+            <span>
+              Проверь дату внимательно. После сохранения изменить её
+              <strong> нельзя</strong> — она задаёт всю Матрицу Судьбы и
+              натальную карту.
+            </span>
+          </div>
           <div className="form-group">
             <label className="form-label">Дата рождения</label>
             <div className="date-inputs">

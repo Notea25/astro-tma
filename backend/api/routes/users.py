@@ -211,6 +211,24 @@ async def setup_birth_data(
     if not user:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
 
+    # Birth date is set once and locked thereafter — it drives Destiny
+    # Matrix (date-only) and the natal chart. Letting users flip it
+    # would let one account produce readings for arbitrary people.
+    # Time-only or city-only edits still go through; only the calendar
+    # date is frozen.
+    if user.birth_date is not None:
+        existing = (
+            user.birth_date.date()
+            if hasattr(user.birth_date, "date") else user.birth_date
+        )
+        incoming = body.birth_date.date()
+        if existing != incoming:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "Дата рождения уже сохранена и не может быть изменена. "
+                "Можно поменять только город или время рождения.",
+            )
+
     # Use pre-resolved coordinates if provided, otherwise geocode
     if body.lat is not None and body.lng is not None:
         tz = await _get_timezone(body.lat, body.lng)

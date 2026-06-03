@@ -1622,6 +1622,50 @@ body::after {
   margin-top: 12px;
 }
 
+/* Lock-warning banner above the birth-date inputs in onboarding. The
+   date drives Destiny Matrix + natal chart, so we make the
+   "сохраняется один раз" rule visible BEFORE the user types. */
+.onboarding__warning {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  margin: 0 0 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(232, 200, 98, 0.32);
+  background: rgba(232, 200, 98, 0.08);
+  color: var(--text-soft);
+  font-size: var(--fs-small);
+  line-height: 1.5;
+}
+.onboarding__warning-icon {
+  font-size: 16px;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+.onboarding__warning strong {
+  color: var(--gold);
+}
+
+/* Used by the locked birth-date row in Profile edit form. */
+.form-readonly-value {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(212, 178, 84, 0.18);
+  background: rgba(20, 18, 16, 0.5);
+  color: var(--text);
+  font-size: var(--fs-small);
+}
+.form-hint {
+  font-size: var(--fs-small);
+  color: var(--text-mute);
+  margin-top: 6px;
+  line-height: 1.4;
+}
+.form-hint--locked {
+  color: var(--gold-soft, #c4a35a);
+}
+
 .form-error {
   font-size: var(--fs-small);
   color: #e07070;

@@ -519,10 +519,26 @@ export function Profile() {
                 </div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Дата рождения</label>
-                <BirthDateInput value={birthDate} onChange={setBirthDate} />
-              </div>
+              {birthDate ? (
+                <div className="form-group">
+                  <label className="form-label">Дата рождения</label>
+                  <div className="form-readonly-value">
+                    {formatBirthDateRu(birthDate) ?? birthDate}
+                  </div>
+                  <p className="form-hint form-hint--locked">
+                    🔒 Дата рождения не меняется — она задаёт всю Матрицу
+                    Судьбы и натальную карту.
+                  </p>
+                </div>
+              ) : (
+                <div className="form-group">
+                  <label className="form-label">Дата рождения</label>
+                  <BirthDateInput value={birthDate} onChange={setBirthDate} />
+                  <p className="form-hint form-hint--locked">
+                    ⚠️ Сохраняется один раз — после этого изменить будет нельзя.
+                  </p>
+                </div>
+              )}
 
               <div className="form-group">
                 <button
