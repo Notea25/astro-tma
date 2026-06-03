@@ -38,7 +38,8 @@ from services.payments.pricing import (
     set_product_price,
     set_product_price_rub,
 )
-from services.payments.stars import PRODUCTS
+from services.payments.stars import PRODUCTS, grant_product_access
+from sqlalchemy.exc import IntegrityError
 
 log = get_logger(__name__)
 
@@ -267,6 +268,14 @@ async def stars_overview_html(
         for p in top_products
     ) or "<tr><td colspan='3'><em>пусто</em></td></tr>"
 
+    def _action_cell(t: dict[str, Any]) -> str:
+        if t["matched_in_db"]:
+            return "<td></td>"
+        cid = _esc(t["charge_id"])
+        return (
+            f"<td><button class='recon-btn' data-cid='{cid}'>Восстановить</button></td>"
+        )
+
     tx_rows = "".join(
         f"<tr class='{'ok' if t['matched_in_db'] else 'warn'}'>"
         f"<td>{_esc(t['date'])}</td>"
@@ -278,9 +287,10 @@ async def stars_overview_html(
         f"<td>{'✅ ' + (t['db_kind'] or '') if t['matched_in_db'] else '⚠ нет в БД'}</td>"
         f"<td class='charge-id' title='{_esc(t['charge_id'])}'>"
         f"{_esc((t['charge_id'] or '')[:18])}…</td>"
+        f"{_action_cell(t)}"
         f"</tr>"
         for t in txs
-    ) or "<tr><td colspan='6'><em>транзакций пока нет</em></td></tr>"
+    ) or "<tr><td colspan='7'><em>транзакций пока нет</em></td></tr>"
 
     html = f"""<!doctype html>
 <html lang="ru">
@@ -372,6 +382,33 @@ async def stars_overview_html(
   .charge-id {{ font-family: ui-monospace, "SF Mono", Menlo, monospace; }}
   a {{ color: var(--gold); }}
   .footer {{ margin-top: 24px; color: var(--muted); font-size: 12px; }}
+  .reconcile-bar {{
+    display: flex; align-items: center; gap: 16px;
+    padding: 12px 16px; margin: 0 0 18px;
+    background: rgba(232, 139, 139, 0.08);
+    border: 0.5px solid rgba(232, 139, 139, 0.32);
+    border-radius: 10px;
+    color: var(--red);
+    font-size: 13px;
+  }}
+  .reconcile-bar span {{ flex: 1; }}
+  .recon-btn, .recon-all-btn {{
+    background: var(--gold);
+    color: #0a0906;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }}
+  .recon-btn:hover, .recon-all-btn:hover {{ opacity: 0.85; }}
+  .recon-btn:disabled, .recon-all-btn:disabled {{
+    opacity: 0.5; cursor: progress;
+  }}
+  .recon-btn.done {{ background: var(--green); }}
+  .recon-btn.fail {{ background: var(--red); color: var(--text); }}
 </style>
 </head>
 <body>
@@ -389,7 +426,10 @@ async def stars_overview_html(
     <div class="value">{totals['stars_month']}</div></div>
 </div>
 
-{'<p style="color:var(--red);">⚠ ' + str(totals['unmatched']) + ' транзакций не нашлось в нашей БД — оплата прошла у Telegram, но webhook их не обработал.</p>' if totals['unmatched'] else ''}
+{('<div class="reconcile-bar">'
+  f'<span>⚠ {totals["unmatched"]} транзакций не нашлось в нашей БД — оплата прошла у Telegram, но webhook их не обработал.</span>'
+  '<button class="recon-all-btn" onclick="reconcileAll()">Восстановить все</button>'
+  '</div>') if totals['unmatched'] else ''}
 
 <h2>Топ продуктов</h2>
 <table>
@@ -401,16 +441,173 @@ async def stars_overview_html(
 <table>
   <thead><tr>
     <th>Дата</th><th>⭐</th><th>Пользователь</th><th>Продукт</th>
-    <th>Статус в БД</th><th>Charge ID</th>
+    <th>Статус в БД</th><th>Charge ID</th><th></th>
   </tr></thead>
   <tbody>{tx_rows}</tbody>
 </table>
 
 <p class="footer">JSON: <a href="/api/admin/stars">/api/admin/stars</a> ·
 Бот: @{_esc(settings.TELEGRAM_BOT_USERNAME or 'astrologiyatut_bot')}</p>
+
+<script>
+async function reconcileOne(btn) {{
+  const cid = btn.dataset.cid;
+  if (!cid) return;
+  btn.disabled = true;
+  btn.textContent = '…';
+  try {{
+    const r = await fetch('/api/admin/stars/reconcile/' + encodeURIComponent(cid),
+                          {{method: 'POST'}});
+    const data = await r.json();
+    if (data.status === 'granted' || data.status === 'already') {{
+      btn.classList.add('done');
+      btn.textContent = data.status === 'granted' ? '✓ Выдан' : '✓ Уже есть';
+    }} else {{
+      btn.classList.add('fail');
+      btn.textContent = '✗ ' + (data.status || 'fail');
+    }}
+  }} catch (e) {{
+    btn.classList.add('fail');
+    btn.textContent = '✗ ошибка';
+  }}
+}}
+document.querySelectorAll('.recon-btn').forEach(b =>
+  b.addEventListener('click', () => reconcileOne(b))
+);
+async function reconcileAll() {{
+  const btn = document.querySelector('.recon-all-btn');
+  if (!btn || !confirm('Восстановить все непривязанные транзакции?')) return;
+  btn.disabled = true;
+  btn.textContent = 'Восстанавливаем…';
+  try {{
+    const r = await fetch('/api/admin/stars/reconcile-all', {{method: 'POST'}});
+    const data = await r.json();
+    const s = data.summary || {{}};
+    alert('Готово.\\n'
+        + 'Выдано: ' + (s.granted || 0) + '\\n'
+        + 'Уже было: ' + (s.already || 0) + '\\n'
+        + 'Битый payload: ' + (s.bad_payload || 0) + '\\n'
+        + 'Без user_id: ' + (s.unknown_user || 0) + '\\n'
+        + 'Незнакомый продукт: ' + (s.unknown_product || 0));
+    location.reload();
+  }} catch (e) {{
+    alert('Ошибка: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = 'Восстановить все';
+  }}
+}}
+</script>
 </body>
 </html>"""
     return HTMLResponse(html)
+
+
+# ── Reconciliation: replay grant_product_access for unmatched payments ──────
+
+
+async def _reconcile_charge(
+    db: AsyncSession, tx: dict[str, Any],
+) -> dict[str, Any]:
+    """Apply the same access-grant the webhook would have performed for
+    one Telegram star transaction. Returns a {status, …} dict for the
+    caller to assemble a summary.
+
+    Statuses:
+      * `granted`      — Purchase / Subscription row created.
+      * `already`      — A row with this charge_id already exists.
+      * `bad_payload`  — Telegram's payload couldn't be parsed.
+      * `unknown_user` — Telegram didn't surface a user.id (rare).
+      * `unknown_product` — payload product_id is not in our catalogue.
+    """
+    charge_id = tx.get("id")
+    src = tx.get("source") or {}
+    payload = src.get("invoice_payload") or ""
+    user = src.get("user") or {}
+    user_id = user.get("id")
+    user_name = user.get("first_name")
+    amount = int(tx.get("amount", 0))
+
+    # Already matched? — skip (idempotent).
+    if charge_id:
+        existing = await db.execute(
+            select(Purchase).where(Purchase.tg_payment_charge_id == charge_id)
+        )
+        if existing.scalar_one_or_none():
+            return {"charge_id": charge_id, "status": "already", "kind": "purchase"}
+        existing = await db.execute(
+            select(Subscription).where(
+                Subscription.tg_payment_charge_id == charge_id
+            )
+        )
+        if existing.scalar_one_or_none():
+            return {"charge_id": charge_id, "status": "already", "kind": "subscription"}
+
+    if not user_id:
+        return {"charge_id": charge_id, "status": "unknown_user", "payload": payload}
+
+    parts = payload.split(":", 2)
+    if len(parts) < 2:
+        return {"charge_id": charge_id, "status": "bad_payload", "payload": payload}
+    product_id = parts[1]
+    if product_id not in PRODUCTS:
+        return {
+            "charge_id": charge_id, "status": "unknown_product",
+            "product_id": product_id,
+        }
+
+    try:
+        await grant_product_access(db, user_id, product_id, charge_id or "", payload)
+    except IntegrityError:
+        await db.rollback()
+        return {"charge_id": charge_id, "status": "already"}
+    return {
+        "charge_id": charge_id, "status": "granted",
+        "user_id": user_id, "user_name": user_name,
+        "product_id": product_id, "amount": amount,
+    }
+
+
+@router.post("/stars/reconcile/{charge_id}")
+async def reconcile_one(
+    charge_id: str,
+    _: str = Depends(_require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Replay one specific unmatched payment by its Telegram charge_id."""
+    transactions = await _fetch_star_transactions(limit=100)
+    tx = next((t for t in transactions if t.get("id") == charge_id), None)
+    if tx is None:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "Transaction not found in Telegram's last 100. "
+            "Pull a larger window if it's older.",
+        )
+    result = await _reconcile_charge(db, tx)
+    log.info("admin_stars.reconcile_one", **result)
+    return result
+
+
+@router.post("/stars/reconcile-all")
+async def reconcile_all(
+    _: str = Depends(_require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Walk every Telegram transaction in the recent window and grant
+    access for any that aren't yet in our DB. Idempotent — already-matched
+    rows are skipped via the charge_id UNIQUE constraint."""
+    transactions = await _fetch_star_transactions(limit=100)
+    summary: dict[str, int] = {
+        "granted": 0, "already": 0, "bad_payload": 0,
+        "unknown_user": 0, "unknown_product": 0,
+    }
+    details: list[dict[str, Any]] = []
+    for tx in transactions:
+        result = await _reconcile_charge(db, tx)
+        summary[result["status"]] = summary.get(result["status"], 0) + 1
+        if result["status"] == "granted":
+            details.append(result)
+    log.info("admin_stars.reconcile_all", **summary)
+    return {"summary": summary, "granted": details}
 
 
 # ── Pricing management ───────────────────────────────────────────────────────
