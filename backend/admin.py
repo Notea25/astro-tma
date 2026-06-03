@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 from sqladmin import Admin, ModelView, action
 from sqladmin.authentication import AuthenticationBackend
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
 
@@ -54,14 +55,39 @@ class AdminAuth(AuthenticationBackend):
 
 
 # ── Views ─────────────────────────────────────────────────────────────────────
+def _app_premium_badge(user: User, _attr: str) -> str:
+    """Render «✓ до DD.MM.YYYY» if the user holds any ACTIVE subscription
+    that hasn't expired, otherwise «—». Operates on the in-memory
+    relationship loaded by UserAdmin.list_query — no extra DB hit per
+    row."""
+    now = datetime.now(UTC)
+    best: datetime | None = None
+    for s in user.subscriptions:
+        if s.status != SubscriptionStatus.ACTIVE:
+            continue
+        if not s.expires_at or s.expires_at <= now:
+            continue
+        if best is None or s.expires_at > best:
+            best = s.expires_at
+    if best is None:
+        return "—"
+    return f"✓ до {best.strftime('%d.%m.%Y')}"
+
+
 class UserAdmin(ModelView, model=User):
     name = "Пользователь"
     name_plural = "Пользователи"
     icon = "fa-solid fa-users"
     column_list = [
         User.id, User.tg_first_name, User.tg_username,
-        User.sun_sign, User.birth_city, User.tg_is_premium, User.created_at,
+        User.sun_sign, User.birth_city, User.tg_is_premium,
+        "app_premium", User.created_at,
     ]
+    column_labels = {
+        "app_premium": "Premium доступ",
+        User.tg_is_premium: "Telegram Premium",
+    }
+    column_formatters = {"app_premium": _app_premium_badge}
     column_searchable_list = [User.tg_first_name, User.tg_username]
     column_sortable_list = [User.created_at, User.sun_sign]
     # Show subscriptions + purchases inline on the detail page so an
@@ -72,6 +98,13 @@ class UserAdmin(ModelView, model=User):
     can_delete = True
     can_edit = True
     can_create = False
+
+    def list_query(self, request: Request):
+        # Preload subscriptions so the «Premium доступ» formatter
+        # doesn't issue a SELECT per row (N+1 → one extra query).
+        return super().list_query(request).options(
+            selectinload(User.subscriptions),
+        )
 
     @action(
         name="grant_premium_year",
