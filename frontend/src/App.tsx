@@ -3,7 +3,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion, MotionConfig } from "framer-motion";
 import { BottomNav } from "@/components/ui/BottomNav";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import { TrialEndingModal } from "@/components/ui/TrialEndingModal";
 import { referralsApi, usersApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
 import { useStartParam, useTelegramReady } from "@/hooks/useTelegram";
@@ -285,7 +284,6 @@ export default function App() {
         </Suspense>
 
         {showNav && <BottomNav />}
-        {synced && onboardingComplete && <TrialEndingModal />}
       </div>
     </MotionConfig>
   );

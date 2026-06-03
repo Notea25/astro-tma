@@ -44,7 +44,6 @@ export interface MyPurchasesResponse {
 export interface ReferralStats {
   invited_total: number;
   purchased: number;
-  days_earned: number;
 }
 
 export interface ReferralInfoResponse {
@@ -55,7 +54,6 @@ export interface ReferralInfoResponse {
 
 export interface ApplyReferralResponse {
   success: boolean;
-  days_granted: number;
   message: string;
 }
 

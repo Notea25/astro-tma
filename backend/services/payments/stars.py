@@ -202,23 +202,3 @@ async def grant_product_access(
         product=product_id,
         charge_id=tg_payment_charge_id,
     )
-
-    # Referral programme — Model B: pay the referrer when their friend
-    # converts. Lazy import to avoid a circular dep between payments and
-    # referrals routes.
-    try:
-        from sqlalchemy import select as _select
-
-        from api.routes.referrals import maybe_award_first_purchase
-        from db.models import User as _UserModel
-
-        result = await db.execute(_select(_UserModel).where(_UserModel.id == user_id))
-        u = result.scalar_one_or_none()
-        await maybe_award_first_purchase(
-            db,
-            referee_user_id=user_id,
-            referee_first_name=u.tg_first_name if u else None,
-            product_id=product_id,
-        )
-    except Exception as e:  # noqa: BLE001
-        log.warning("referral.hook_failed", user_id=user_id, error=str(e))

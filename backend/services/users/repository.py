@@ -65,22 +65,6 @@ async def get_or_create(
     db.add(user)
     await db.flush()
 
-    # Welcome trial — every brand-new user gets N days of Premium so they
-    # can taste the product before the first paywall. Failure here must
-    # not prevent the user from being created.
-    from core.settings import settings
-    if settings.FEATURE_WELCOME_TRIAL:
-        try:
-            from services.payments.trial import grant_trial_days
-            await grant_trial_days(
-                db,
-                user_id=user.id,
-                days=settings.WELCOME_TRIAL_DAYS,
-                reason="welcome",
-            )
-        except Exception as e:  # noqa: BLE001
-            log.error("welcome_trial.failed", user_id=user.id, error=str(e))
-
     log.info("user.created", user_id=tg_user_id, name=first_name)
     return user, True
 

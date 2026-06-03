@@ -31,7 +31,7 @@ export function Referral() {
   const handleShare = () => {
     if (!inviteUrl) return;
     impact("light");
-    const message = "Я тут нашёл астро-приложение. Открой по ссылке — получишь 7 дней Premium бесплатно вместо обычных 3.";
+    const message = "Я тут нашёл астро-приложение — посмотри, может зайдёт.";
     WebApp.openTelegramLink(
       `https://t.me/share/url?url=${encodeURIComponent(inviteUrl)}&text=${encodeURIComponent(message)}`,
     );
@@ -70,40 +70,11 @@ export function Referral() {
           transition={{ duration: 0.4 }}
         >
           <div className="referral-hero__crown" aria-hidden="true">✦</div>
-          <h3 className="referral-hero__title">Делитесь — получайте Premium</h3>
+          <h3 className="referral-hero__title">Поделитесь приложением</h3>
           <p className="referral-hero__lead">
-            Когда друг открывает приложение по вашей ссылке, ему достаётся
-            расширенный пробный период. А когда он совершит первую покупку —
-            Premium-дни получаете вы.
+            Отправьте ссылку другу — он сможет открыть приложение в один тап.
+            Здесь же будет видно, сколько человек уже зашло по вашей ссылке.
           </p>
-        </motion.div>
-
-        <motion.div
-          className="referral-rules"
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05, duration: 0.4 }}
-        >
-          <div className="referral-rules__row">
-            <div className="referral-rules__dot referral-rules__dot--soft" />
-            <div className="referral-rules__col">
-              <div className="referral-rules__title">Когда друг откроет ссылку</div>
-              <div className="referral-rules__body">
-                Ему — <strong>7 дней Premium</strong> (вместо обычных 3).
-                Вам — связь, по которой пойдёт бонус.
-              </div>
-            </div>
-          </div>
-          <div className="referral-rules__row">
-            <div className="referral-rules__dot referral-rules__dot--reward" />
-            <div className="referral-rules__col">
-              <div className="referral-rules__title">Когда он сделает первую покупку</div>
-              <div className="referral-rules__body">
-                Вам — <strong>+14 дней Premium</strong>. Мы пришлём
-                сообщение в Telegram, когда это случится.
-              </div>
-            </div>
-          </div>
         </motion.div>
 
         <motion.div
@@ -157,10 +128,6 @@ export function Referral() {
           <div className="referral-stats__cell">
             <div className="referral-stats__value">{data?.stats.purchased ?? 0}</div>
             <div className="referral-stats__label">купили</div>
-          </div>
-          <div className="referral-stats__cell">
-            <div className="referral-stats__value">{data?.stats.days_earned ?? 0}</div>
-            <div className="referral-stats__label">дней вам</div>
           </div>
         </motion.div>
       </div>

@@ -629,7 +629,7 @@ export function Profile() {
           <span className="profile-cta-card__col">
             <span className="profile-cta-card__title">Пригласить друзей</span>
             <span className="profile-cta-card__desc">
-              Когда друг купит — получите 14 дней Premium
+              Поделитесь ссылкой — посмотрите, кто зайдёт
             </span>
           </span>
           <span className="profile-cta-card__chev" aria-hidden="true">›</span>

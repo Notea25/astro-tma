@@ -76,12 +76,10 @@ class Settings(BaseSettings):
     PRICE_SUBSCRIPTION_MONTH_RUB: int = 650
     PRICE_SUBSCRIPTION_YEAR_RUB: int = 4900
 
-    # Feature flags for launch pack — easy off-switch if something goes wrong.
-    FEATURE_WELCOME_TRIAL: bool = True
+    # Referrals still record who-invited-whom for the stats panel, but
+    # without any trial-day rewards. Kept as a flag in case the share
+    # feature itself needs to be turned off.
     FEATURE_REFERRAL_PROGRAM: bool = True
-    WELCOME_TRIAL_DAYS: int = 3
-    REFERRAL_TRIAL_EXTENSION_DAYS: int = 4  # 3 + 4 = 7 total
-    REFERRAL_FIRST_PURCHASE_BONUS_DAYS: int = 14
 
     # URL of the bot WebApp deeplink (e.g. "https://t.me/<bot>/app").
     # Used in referrer-reward Telegram notifications.
