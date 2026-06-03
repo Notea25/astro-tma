@@ -396,9 +396,8 @@ export function Onboarding() {
           <div className="onboarding__warning" role="note">
             <span className="onboarding__warning-icon" aria-hidden="true">⚠️</span>
             <span>
-              Проверь дату внимательно. После сохранения изменить её
-              <strong> нельзя</strong> — она задаёт всю Матрицу Судьбы и
-              натальную карту.
+              Проверь дату внимательно — после сохранения изменить её
+              <strong> нельзя</strong>.
             </span>
           </div>
           <div className="form-group">
