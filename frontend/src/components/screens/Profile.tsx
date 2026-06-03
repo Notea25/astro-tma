@@ -322,7 +322,19 @@ export function Profile() {
               {user?.gender && (
                 <span className="profile-gender">
                   <span className="profile-gender__symbol" aria-hidden="true">
-                    {user.gender === "male" ? "♂" : "♀"}
+                    {user.gender === "male" ? (
+                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="6.5" cy="9.5" r="3.5" />
+                        <path d="M9.5 6.5L14 2" />
+                        <path d="M10 2h4v4" />
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="8" cy="6.5" r="3.5" />
+                        <path d="M8 10v4.5" />
+                        <path d="M5.5 12.5h5" />
+                      </svg>
+                    )}
                   </span>
                   {user.gender === "male" ? "Мужской" : "Женский"}
                 </span>

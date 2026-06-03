@@ -7850,7 +7850,13 @@ body::before {
   border: 1px solid var(--gold-border);
   border-radius: 50%;
   color: var(--gold);
-  font-size: 12px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.profile-gender__symbol svg {
+  width: 11px;
+  height: 11px;
+  display: block;
 }
 
 /* Sign chips (Sun / Moon / Ascendant) */
