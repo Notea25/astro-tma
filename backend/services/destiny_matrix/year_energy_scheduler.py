@@ -51,7 +51,13 @@ async def invalidate_year_energy_on_birthday() -> None:
             except Exception:  # noqa: BLE001
                 local_now = now_utc
 
-            bd_this_year = user.birth_date.replace(year=local_now.year)
+            # User.birth_date may be Date or DateTime depending on the column —
+            # normalise to `date` before comparing or `.replace()` keeps the
+            # datetime type and we'd compare datetime > date below.
+            bd_date = user.birth_date
+            if isinstance(bd_date, datetime):
+                bd_date = bd_date.date()
+            bd_this_year = bd_date.replace(year=local_now.year)
             today_local = local_now.date()
             yesterday_local = today_local - timedelta(days=1)
 
