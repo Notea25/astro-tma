@@ -3858,6 +3858,22 @@ body::after {
 }
 
 /* ── Profile Screen ────────────────────────────────────────────────────────── */
+/* Profile stacks cards of several different types (.profile-card,
+   .premium-status-card, .natal-card, .profile-cta-card) — each ships
+   its own margin elsewhere in this file, which produced uneven gaps on
+   the screen (some glued together, some 32px apart). Here we wipe
+   those per-card margins and use a single flex `gap` so the rhythm is
+   identical between every pair of cards. */
+.profile-screen .screen-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.profile-screen .screen-content > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
 .profile-card {
   display: flex;
   align-items: center;
