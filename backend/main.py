@@ -48,33 +48,37 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await init_redis()
 
-    # Schedule daily horoscope generation at midnight UTC
+    # Schedule daily horoscope generation at midnight UTC.
+    #
+    # NOTE: uvicorn runs with --workers 2, so every cron tick fires in
+    # BOTH worker processes. Without coordination this caused:
+    #   * 2× LLM spend on daily_horoscopes and daily_news
+    #   * duplicate daily horoscope pushes at the user's local 09:00
+    # `with_leader_lock` uses a Redis SET NX so exactly one worker
+    # actually runs the job each tick. TTL is sized < the cron cadence
+    # so a crashed leader doesn't lock out the next tick.
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+    from core.scheduler_lock import with_leader_lock
     scheduler = AsyncIOScheduler(timezone="UTC")
     scheduler.add_job(
-        _generate_daily_horoscopes,
-        trigger="cron",
-        hour=0,
-        minute=5,
-        id="daily_horoscopes",
+        with_leader_lock("daily_horoscopes", ttl_seconds=3600)(
+            _generate_daily_horoscopes,
+        ),
+        trigger="cron", hour=0, minute=5, id="daily_horoscopes",
     )
 
     if settings.FEATURE_PUSH_NOTIFICATIONS:
         from services.notifications.scheduler import send_daily_pushes
         scheduler.add_job(
-            send_daily_pushes,
-            trigger="cron",
-            minute=0,  # every hour on the hour
-            id="daily_pushes",
+            with_leader_lock("daily_pushes", ttl_seconds=300)(send_daily_pushes),
+            trigger="cron", minute=0, id="daily_pushes",
         )
 
     from services.news.scheduler import generate_daily_news
     scheduler.add_job(
-        generate_daily_news,
-        trigger="cron",
-        hour=6,
-        minute=0,
-        id="daily_news",
+        with_leader_lock("daily_news", ttl_seconds=3600)(generate_daily_news),
+        trigger="cron", hour=6, minute=0, id="daily_news",
     )
 
     # V3 destiny matrix — invalidate year_energy section on user's BD.
@@ -83,10 +87,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         invalidate_year_energy_on_birthday,
     )
     scheduler.add_job(
-        invalidate_year_energy_on_birthday,
-        trigger="cron",
-        minute=15,  # every hour at :15 — out of the way of horoscope/push jobs
-        id="destiny_v3_year_energy_invalidate",
+        with_leader_lock("destiny_v3_year_energy_invalidate", ttl_seconds=300)(
+            invalidate_year_energy_on_birthday,
+        ),
+        trigger="cron", minute=15, id="destiny_v3_year_energy_invalidate",
     )
 
     scheduler.start()
