@@ -29,12 +29,10 @@ from services.destiny_matrix_pdf_html import (
     TOTAL_PAGES_TOKEN,
     _css,
     _e,
-    _footer,
     _format_birth_date,
     _octagram_page,
     _page,
 )
-
 
 # ── Page builders ───────────────────────────────────────────────────────────
 
@@ -348,7 +346,6 @@ def build_destiny_matrix_v3_pdf_html(
     pages.append(_cover_page(user_name, birth_date))
     section_pages: dict[str, int] = {}
 
-    octagram_page_num = 3
     next_num = 4
     section_html: list[str] = []
     for spec in SECTIONS:

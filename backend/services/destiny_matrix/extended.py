@@ -30,7 +30,6 @@ from typing import Any
 
 from services.destiny_matrix.calculator import reduce
 
-
 # ── 8 предназначений ────────────────────────────────────────────────────────
 
 
