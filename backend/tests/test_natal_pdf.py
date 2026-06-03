@@ -258,6 +258,44 @@ def test_build_natal_pdf_html_adds_continuation_pages_for_long_reading():
     assert f"{total_pages} / {total_pages}" in document
 
 
+def test_build_natal_pdf_html_packs_multiple_aspects_per_page():
+    planets, houses, _aspects = _sample_chart()
+    aspects = [
+        {"p1": "Sun", "p2": "Moon", "aspect": "square", "orb": 1.2},
+        {"p1": "Sun", "p2": "Mercury", "aspect": "conjunction", "orb": 2.0},
+        {"p1": "Moon", "p2": "Mercury", "aspect": "trine", "orb": 3.1},
+        {"p1": "Mercury", "p2": "Sun", "aspect": "sextile", "orb": 4.0},
+    ]
+    descriptions = {
+        "aspects": [
+            {
+                "p1": a["p1"].lower(),
+                "p2": a["p2"].lower(),
+                "type": a["aspect"],
+                "full": " ".join(f"аспект{i}" for i in range(45)),
+            }
+            for a in aspects
+        ]
+    }
+
+    document = natal_pdf_html.build_natal_pdf_html(
+        user_name="Андрей",
+        birth_date="2000-10-20",
+        birth_time="12:00",
+        birth_city="Минск",
+        sun_sign="Scorpio",
+        moon_sign="Aquarius",
+        asc_sign="Aries",
+        planets=planets,
+        houses=houses,
+        aspects=aspects,
+        descriptions=descriptions,
+    )
+
+    aspect_page_count = document.count("<h2>Аспекты</h2>")
+    assert aspect_page_count < len(aspects)
+
+
 def test_natal_reading_prompt_requests_expanded_interpretation():
     planets, _houses, aspects = _sample_chart()
 
@@ -309,9 +347,10 @@ def test_planet_description_prompt_prioritises_sign_over_house():
     assert "центр разбора — связка планета + знак" in prompt
     assert "Солнце в Козероге" in prompt
     assert "в знаке Козерога" in prompt
-    assert "250-350 слов" in prompt
+    assert "300-420 слов" in prompt
     assert "отношения, работа/дела, привычки, бытовые проявления" in prompt
     assert "повторяющиеся жизненные сценарии" in prompt
+    assert "уникальное последнее предложение" in prompt
     assert "full" in prompt
     assert "6-9 предложений" not in prompt
 
@@ -330,19 +369,21 @@ def test_house_description_prompt_requests_scenarios_and_declension():
 
     assert "знак на куспиде — Весы" in prompt
     assert "дом в Весах" in prompt
-    assert "180-240 слов" in prompt
+    assert "230-320 слов" in prompt
     assert "типичные жизненные сценарии" in prompt
     assert "сильная сторона" in prompt
+    assert "уникальное последнее предложение" in prompt
 
 
 def test_aspect_description_prompt_requests_full_interaction():
     prompt = natal_descriptions._aspect_one_prompt("sun", "moon", "square")
 
     assert "Солнце — квадрат — Луна" in prompt
-    assert "220-300 слов" in prompt
+    assert "300-420 слов" in prompt
     assert "взаимодействуют" in prompt
     assert "отношениях/делах" in prompt
     assert "зоны роста" in prompt
+    assert "уникальное последнее предложение" in prompt
 
 
 def test_html_pdf_uses_full_description_before_short():

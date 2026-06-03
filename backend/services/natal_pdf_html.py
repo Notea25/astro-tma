@@ -546,15 +546,15 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .metric {{ text-align: center; background: {PANEL}; border: 1px solid {BORDER}; border-radius: 7px; padding: 4mm 0 3.5mm; }}
 .metric strong {{ color: var(--metric-color, {GOLD}); display: block; font: 22px "DejaVu Serif", Georgia, serif; }}
 .metric span {{ color: {TEXT_DIM}; font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; }}
-.aspect-group {{ border-left: 3px solid var(--aspect-color); padding-left: 5mm; margin-top: 5.5mm; break-inside: avoid; }}
+.aspect-group {{ border-left: 3px solid var(--aspect-color); padding-left: 4mm; margin-top: 4mm; break-inside: avoid; }}
 .aspect-group h3 {{ color: var(--aspect-color); font-size: 16.5px; letter-spacing: 1.2px; text-transform: uppercase; margin: 0 0 4mm; }}
 .aspect-group h3 em {{ color: {TEXT_DIM}; text-transform: none; font-size: 12.5px; letter-spacing: 0; margin-left: 3mm; }}
-.aspect-row {{ margin-bottom: 4mm; padding: 4mm 4.5mm; background: {PANEL}; border: 1px solid {BORDER}; border-radius: 7px; break-inside: avoid; }}
+.aspect-row {{ margin-bottom: 3.2mm; padding: 3.6mm 4.2mm; background: {PANEL}; border: 1px solid {BORDER}; border-radius: 7px; break-inside: avoid; }}
 .aspect-title {{ display: grid; grid-template-columns: 1fr auto; align-items: start; gap: 5mm; color: {TEXT}; font-size: 13.5px; line-height: 1.2; }}
 .aspect-title span:first-child {{ min-width: 0; }}
 .orb {{ color: {TEXT_DIM}; white-space: nowrap; font-size: 11.5px; }}
 .aspect-row p {{ margin: 2.5mm 0 0; color: {TEXT_DIM}; line-height: 1.32; font-size: 12.2px; }}
-.aspect-row.detail-card p {{ color: {TEXT}; font-size: 11.5px; line-height: 1.45; }}
+.aspect-row.detail-card p {{ color: {TEXT}; font-size: 10.8px; line-height: 1.38; }}
 .reading {{ padding-right: 4mm; }}
 .reading-quote {{ text-align: center; color: {TEXT_DIM}; font: italic 13px "DejaVu Serif", Georgia, serif; margin: 8mm 0 9mm; }}
 .reading h3 {{ color: {GOLD}; font-size: 17px; letter-spacing: 1.5px; margin: 0 0 3mm; }}
@@ -884,6 +884,16 @@ def _aspect_pages(
         f'<div class="metric" style="--metric-color:{TEXT_DIM}"><strong>{neutral}</strong><span>Нейтральных</span></div>'
         "</div>"
     )
+    if not groups:
+        body = _section_header("Аспекты", "Связи между планетами вашей карты", "1 / 1")
+        body += metric_html
+        body += (
+            '<article class="card detail-card"><h3>Основных аспектов не найдено</h3>'
+            '<div class="mini-rule"></div>'
+            "<p>В карте нет основных аспектов из текущего набора расчёта. Остальные разделы отчёта можно читать как главные акценты натальной карты: планеты, знаки и дома покажут основной рисунок характера.</p></article>"
+        )
+        return [_page(start_page, body)]
+
     blocks: list[tuple[str, dict[str, Any], str, bool]] = []
     for atype, group_items in groups:
         for aspect in group_items:
@@ -892,25 +902,62 @@ def _aspect_pages(
             desc = _full_description(
                 aspect_desc.get((p1, p2, atype)), _aspect_fallback(aspect)
             )
-            for chunk_index, text_chunk in enumerate(_split_words(desc, 235) or [desc]):
+            for chunk_index, text_chunk in enumerate(_split_words(desc, 190) or [desc]):
                 blocks.append((atype, aspect, text_chunk, chunk_index > 0))
+
+    page_chunks: list[list[tuple[str, dict[str, Any], str, bool]]] = []
+    current: list[tuple[str, dict[str, Any], str, bool]] = []
+    current_weight = 0
+    for block in blocks:
+        atype, _aspect, desc, is_continuation = block
+        title_weight = 26 if not current or current[-1][0] != atype else 12
+        block_weight = _word_count(desc) + title_weight + (8 if is_continuation else 0)
+        budget = 285 if not page_chunks else 390
+        if current and current_weight + block_weight > budget:
+            page_chunks.append(current)
+            current = []
+            current_weight = 0
+            title_weight = 26
+            block_weight = _word_count(desc) + title_weight + (8 if is_continuation else 0)
+        current.append(block)
+        current_weight += block_weight
+    if current:
+        page_chunks.append(current)
+
     pages = []
-    for idx, (atype, aspect, desc, is_continuation) in enumerate(blocks, start=1):
+    for idx, page_chunk in enumerate(page_chunks, start=1):
         page_index = start_page + idx - 1
-        body = _section_header("Аспекты", "Связи между планетами вашей карты")
+        body = _section_header(
+            "Аспекты",
+            "Связи между планетами вашей карты",
+            f"{idx} / {len(page_chunks)}",
+        )
         if idx == 1:
             body += metric_html
-        color = ASPECT_COLORS.get(atype, GOLD)
-        p1 = _planet_key(aspect.get("p1"))
-        p2 = _planet_key(aspect.get("p2"))
-        continuation_label = " · продолжение" if is_continuation else ""
-        body += f'<section class="aspect-group" style="--aspect-color:{color}"><h3>{ASPECT_SYMBOLS.get(atype, "")} {ASPECT_RU.get(atype, atype)} <em>— {_e(ASPECT_TOPICS.get(atype, ""))}</em></h3>'
-        body += (
-            f'<div class="aspect-row detail-card"><div class="aspect-title"><span>{PLANET_SYMBOLS.get(p1, "")} {_e(PLANET_RU.get(p1, p1))} '
-            f"{ASPECT_SYMBOLS.get(atype, '')} {PLANET_SYMBOLS.get(p2, '')} {_e(PLANET_RU.get(p2, p2))}{continuation_label}</span>"
-            f'<span class="orb">орб {float(aspect.get("orb") or 0):.1f}°</span></div><p>{_e(desc)}</p></div>'
-        )
-        body += "</section>"
+        previous_type = ""
+        group_open = False
+        for atype, aspect, desc, is_continuation in page_chunk:
+            if atype != previous_type:
+                if group_open:
+                    body += "</section>"
+                color = ASPECT_COLORS.get(atype, GOLD)
+                body += (
+                    f'<section class="aspect-group" style="--aspect-color:{color}">'
+                    f'<h3>{ASPECT_SYMBOLS.get(atype, "")} {ASPECT_RU.get(atype, atype)} '
+                    f'<em>— {_e(ASPECT_TOPICS.get(atype, ""))}</em></h3>'
+                )
+                group_open = True
+                previous_type = atype
+            p1 = _planet_key(aspect.get("p1"))
+            p2 = _planet_key(aspect.get("p2"))
+            continuation_label = " · продолжение" if is_continuation else ""
+            body += (
+                f'<div class="aspect-row detail-card"><div class="aspect-title"><span>{PLANET_SYMBOLS.get(p1, "")} {_e(PLANET_RU.get(p1, p1))} '
+                f"{ASPECT_SYMBOLS.get(atype, '')} {PLANET_SYMBOLS.get(p2, '')} {_e(PLANET_RU.get(p2, p2))}{continuation_label}</span>"
+                f'<span class="orb">орб {float(aspect.get("orb") or 0):.1f}°</span></div><p>{_e(desc)}</p></div>'
+            )
+        if group_open:
+            body += "</section>"
         pages.append(_page(page_index, body))
     return pages
 

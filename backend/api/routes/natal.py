@@ -32,10 +32,9 @@ log = get_logger(__name__)
 
 router = APIRouter(prefix="/natal", tags=["natal"])
 _PDF_DOWNLOAD_TTL_SECONDS = 300
-# Bumped to 4 when gender propagation was added — old rows render as
-# stale on first read so they regenerate with adjective/verb agreement
-# matching the reader's profile.
-NATAL_DESCRIPTIONS_VERSION = 4
+# Bumped when description style rules change — old rows render as stale on
+# first read so they regenerate with current length, variety and gender rules.
+NATAL_DESCRIPTIONS_VERSION = 5
 MIN_EXPANDED_READING_HEADINGS = 5
 MIN_EXPANDED_READING_WORDS = 650
 

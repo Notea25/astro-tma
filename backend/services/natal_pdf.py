@@ -1810,7 +1810,7 @@ def _estimate_page_counts(
     house_pages = math.ceil(len(house_items) / 2) if house_items else 1
 
     aspects_start = houses_start + house_pages
-    aspect_pages = max(len(aspects), 1)
+    aspect_pages = max(math.ceil(len(aspects) / 2), 1)
 
     reading_start = aspects_start + aspect_pages
     # Reading: estimate ~180 words per page
@@ -2389,7 +2389,11 @@ def generate_natal_pdf(
     for aspect_type, group in grouped:
         group_title = f"{ASPECT_SYMBOLS.get(aspect_type, '')} {ASPECT_RU[aspect_type].upper()} — {ASPECT_TOPICS.get(aspect_type, 'связь энергий')}"
         for aspect in group:
-            y = title_page("Аспекты", "Связи между планетами вашей карты")
+            if first_aspect_page:
+                y = title_page("Аспекты", "Связи между планетами вашей карты")
+            elif y < 190:
+                finish_page()
+                y = title_page("Аспекты", "Продолжение связей между планетами")
             if first_aspect_page:
                 for metric_x, metric_value, metric_label in (
                     (54, total_aspects, "ВСЕГО"),
@@ -2430,7 +2434,7 @@ def generate_natal_pdf(
             desc = _description(
                 aspect_desc.get((p1_key, p2_key, aspect_type)), _aspect_fallback(aspect)
             )
-            draw_detail_text(
+            y = draw_detail_text(
                 desc,
                 x=58,
                 y=y - 8,
@@ -2440,7 +2444,9 @@ def generate_natal_pdf(
                 size=11.0,
                 line_h=15.0,
             )
-            finish_page()
+            y -= 26
+    if grouped:
+        finish_page()
 
     # Reading.
     final_reading = str(reading or "").strip()
