@@ -304,20 +304,17 @@ export function DestinyMatrixReading() {
               transition={{ duration: 0.5 }}
               className="destiny-reading__chart-wrap"
             >
+              {/* Diagram is always fully calculated and visible — the
+                  paywall is on the textual interpretations below, not on
+                  the matrix numbers. Pass hasFullAccess=true so every
+                  node shows its arcana number. */}
               <DestinyOctagram
                 positions={reading.positions}
-                hasFullAccess={reading.has_full_access}
+                hasFullAccess={true}
                 activeNodeId={activeTap?.octagramNodeId ?? null}
                 onNodeTap={openOctagramTap}
               />
             </motion.div>
-
-            <div className="destiny-reading__legend">
-              <span className="destiny-reading__legend-dot destiny-reading__legend-dot--free" />
-              <span>Бесплатно: ядро и центр</span>
-              <span className="destiny-reading__legend-dot destiny-reading__legend-dot--prem" />
-              <span>Premium: углы рода и каналы</span>
-            </div>
 
             {!reading.has_full_access && (
               <>

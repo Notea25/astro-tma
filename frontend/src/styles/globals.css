@@ -9608,30 +9608,6 @@ body::before {
   opacity: 0.78;
 }
 
-.destiny-reading__legend {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.78rem;
-  color: var(--text-mute);
-  justify-content: center;
-  /* Pull the legend further below the octagram so the karmic-tail outer
-     node (lowest point in the viewBox) stays clear of the text. */
-  margin-top: 16px;
-}
-.destiny-reading__legend-dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--gold);
-}
-.destiny-reading__legend-dot--prem {
-  background: rgba(212, 178, 84, 0.4);
-  border: 1px solid var(--gold);
-}
-
 .destiny-reading__calc {
   display: flex;
   flex-direction: column;
