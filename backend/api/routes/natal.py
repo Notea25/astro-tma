@@ -34,7 +34,7 @@ router = APIRouter(prefix="/natal", tags=["natal"])
 _PDF_DOWNLOAD_TTL_SECONDS = 300
 # Bumped when description style rules change — old rows render as stale on
 # first read so they regenerate with current length, variety and gender rules.
-NATAL_DESCRIPTIONS_VERSION = 6
+NATAL_DESCRIPTIONS_VERSION = 7
 MIN_EXPANDED_READING_HEADINGS = 5
 MIN_EXPANDED_READING_WORDS = 650
 

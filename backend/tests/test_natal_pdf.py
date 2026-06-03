@@ -348,9 +348,13 @@ def test_planet_description_prompt_prioritises_sign_over_house():
     assert "центр разбора — связка планета + знак" in prompt
     assert "Солнце в Козероге" in prompt
     assert "в знаке Козерога" in prompt
-    assert "300-420 слов" in prompt
+    assert "380-560 слов" in prompt
+    assert "роль планеты как архетип" in prompt
     assert "отношения, работа/дела, привычки, бытовые проявления" in prompt
     assert "повторяющиеся жизненные сценарии" in prompt
+    assert "настолько же подробным" in prompt
+    assert "полноценный справочный раздел" in prompt
+    assert "Подробнее" in prompt
     assert "уникальное последнее предложение" in prompt
     assert "full" in prompt
     assert "6-9 предложений" not in prompt
@@ -370,9 +374,10 @@ def test_house_description_prompt_requests_scenarios_and_declension():
 
     assert "знак на куспиде — Весы" in prompt
     assert "дом в Весах" in prompt
-    assert "230-320 слов" in prompt
+    assert "270-420 слов" in prompt
     assert "типичные жизненные сценарии" in prompt
     assert "сильная сторона" in prompt
+    assert "настолько же подробным" in prompt
     assert "уникальное последнее предложение" in prompt
 
 
@@ -380,8 +385,9 @@ def test_aspect_description_prompt_requests_full_interaction():
     prompt = natal_descriptions._aspect_one_prompt("sun", "moon", "square")
 
     assert "Солнце — квадрат — Луна" in prompt
-    assert "300-420 слов" in prompt
+    assert "340-520 слов" in prompt
     assert "взаимодействуют" in prompt
+    assert "орб, знаки и дома обеих планет" in prompt
     assert "отношениях/делах" in prompt
     assert "зоны роста" in prompt
     assert "уникальное последнее предложение" in prompt
@@ -399,8 +405,13 @@ def test_description_batch_prompts_include_full_chart_context():
     assert "Контекст всей натальной карты" in prompt
     assert "Луна:" in prompt
     assert "Все дома:" in prompt
+    assert "Планеты в домах:" in prompt
+    assert "Связанные аспекты по планетам:" in prompt
     assert "sun_moon_square" in prompt
     assert "full\" должен быть полноценным PDF-текстом" in prompt
+    assert "REFERENCE-STYLE BLUEPRINT" in prompt
+    assert "настолько же подробным" in prompt
+    assert "Читать далее" in prompt
 
 
 def test_html_pdf_uses_full_description_before_short():
@@ -532,11 +543,11 @@ def test_reportlab_pdf_uses_full_descriptions_without_compact_trimming(monkeypat
 
 def test_natal_description_batches_are_small_for_long_pdf_copy():
     assert natal_descriptions._BATCH_SIZE == 2
-    assert natal_descriptions._BATCH_MAX_TOKENS >= 4200
+    assert natal_descriptions._BATCH_MAX_TOKENS >= 7600
 
 
 def test_natal_description_quality_detects_duplicate_endings():
-    good_body = " ".join(f"слово{i}" for i in range(170))
+    good_body = " ".join(f"слово{i}" for i in range(340))
     repeated = " Повторяющийся финальный совет должен исчезнуть."
     entries = {
         "sun": {"short": "short", "full": good_body + repeated},
@@ -546,12 +557,44 @@ def test_natal_description_quality_detects_duplicate_endings():
     assert natal_descriptions._quality_repair_keys(entries, "planets") == {"sun", "moon"}
 
 
+def test_natal_description_quality_detects_duplicate_starts():
+    body = " ".join(f"слово{i}" for i in range(340))
+    entries = {
+        "sun": {
+            "short": "short",
+            "full": f"Одинаковое начало должно быть переписано. {body} Первый финал.",
+        },
+        "moon": {
+            "short": "short",
+            "full": f"Одинаковое начало должно быть переписано. {body} Второй финал.",
+        },
+    }
+
+    assert natal_descriptions._quality_repair_keys(entries, "planets") == {"sun", "moon"}
+
+
+def test_natal_description_quality_detects_copy_markers_and_short_like_full():
+    detailed = " ".join(f"слово{i}" for i in range(340))
+    assert natal_descriptions._entry_needs_repair(
+        {"short": "short", "full": f"{detailed} Читать далее..."},
+        "planets",
+    )
+    assert natal_descriptions._entry_needs_repair(
+        {
+            "short": "Это короткое описание почти целиком повторяется.",
+            "full": "Это короткое описание почти целиком повторяется. "
+            + " ".join(f"дополнение{i}" for i in range(250)),
+        },
+        "houses",
+    )
+
+
 @pytest.mark.asyncio
 async def test_natal_description_repair_replaces_bad_entries(monkeypatch):
     async def fake_one_entry(*_args, **_kwargs):
         return {
             "short": "Новый короткий текст.",
-            "full": " ".join(f"новый{i}" for i in range(180))
+            "full": " ".join(f"новый{i}" for i in range(340))
             + " Совершенно другой финал.",
         }
 

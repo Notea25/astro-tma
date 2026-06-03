@@ -452,7 +452,7 @@ def _draw_card_frame(c: canvas.Canvas, x: float, y: float, width: float, height:
 
 def _compact_description(entry: Any, fallback: str, *, words: int = 42) -> str:
     if isinstance(entry, dict):
-        source = str(entry.get("full") or entry.get("short") or "").strip()
+        source = str(entry.get("full") or "").strip()
     else:
         source = ""
     fallback = str(fallback or "").strip()
