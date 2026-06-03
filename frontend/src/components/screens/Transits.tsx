@@ -242,6 +242,33 @@ function DeepDive({
           </ul>
         </div>
       )}
+
+      {details?.risk_warning && (
+        <div className="deep-dive__block deep-dive__risk">
+          <div className="deep-dive__title deep-dive__title--risk">
+            ⚠ Где может рвануть
+          </div>
+          <p className="deep-dive__body">{details.risk_warning}</p>
+        </div>
+      )}
+
+      {details?.affirmation && (
+        <div className="deep-dive__block deep-dive__affirmation">
+          <div className="deep-dive__title deep-dive__title--affirm">
+            💎 Аффирмация на сегодня
+          </div>
+          <p className="deep-dive__quote">«{details.affirmation}»</p>
+        </div>
+      )}
+
+      {details?.ritual && (
+        <div className="deep-dive__block">
+          <div className="deep-dive__title deep-dive__title--ritual">
+            🌱 Мини-ритуал
+          </div>
+          <p className="deep-dive__body">{details.ritual}</p>
+        </div>
+      )}
     </div>
   );
 }

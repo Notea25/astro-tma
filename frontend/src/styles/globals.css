@@ -8726,6 +8726,36 @@ body::before {
 .deep-dive__title--avoid {
   color: #e88b8b;
 }
+.deep-dive__title--risk {
+  color: #ffb070;
+}
+.deep-dive__title--affirm {
+  color: var(--gold);
+}
+.deep-dive__title--ritual {
+  color: #a3d4a8;
+}
+
+/* Risk-warning block — softer red tint than full alert, sits inline
+   with the rest of the deep-dive blocks. */
+.deep-dive__risk {
+  padding: 10px 12px;
+  margin: 0 -4px;
+  background: rgba(232, 139, 139, 0.06);
+  border-left: 2px solid #ffb070;
+  border-radius: 6px;
+}
+
+/* Affirmation: serif blockquote, gold accent. */
+.deep-dive__affirmation .deep-dive__quote {
+  margin: 0;
+  font-family: "Playfair Display", serif;
+  font-size: 1.02rem;
+  font-style: italic;
+  color: var(--gold-soft, #c4a35a);
+  line-height: 1.45;
+  padding: 4px 0 0;
+}
 .deep-dive__body {
   font-size: var(--fs-small);
   color: var(--text);

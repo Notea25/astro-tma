@@ -62,6 +62,11 @@ class TransitDetailsResponse(BaseModel):
     text_ru: str
     advice_do: str | None = None
     advice_avoid: str | None = None
+    affirmation: str | None = None
+    ritual: str | None = None
+    # Only emitted for hard aspects (square / opposition / conjunction
+    # with Mars/Saturn/Pluto/outer). None for soft aspects.
+    risk_warning: str | None = None
     affected_house: int | None = None
     affected_house_topic: str | None = None
 

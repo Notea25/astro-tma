@@ -291,6 +291,11 @@ class TransitInterpretation(TimestampMixin, Base):
     `advice_avoid` back the "What does this mean for me" deep-dive on the
     hero card. The advice columns are lazy-filled the first time a user
     expands the hero details.
+
+    `affirmation` / `ritual` / `risk_warning` were added in 018 — short
+    micro-content rendered in the same deep-dive panel. `risk_warning`
+    is only generated for hard aspects (square / opposition, plus any
+    conjunction with Mars/Saturn/Pluto/outer planets).
     """
     __tablename__ = "transit_interpretations"
     __table_args__ = (UniqueConstraint("transit_planet", "natal_planet", "aspect"),)
@@ -301,6 +306,9 @@ class TransitInterpretation(TimestampMixin, Base):
     text_ru: Mapped[str] = mapped_column(Text, nullable=False)
     advice_do: Mapped[str | None] = mapped_column(Text, nullable=True)
     advice_avoid: Mapped[str | None] = mapped_column(Text, nullable=True)
+    affirmation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ritual: Mapped[str | None] = mapped_column(Text, nullable=True)
+    risk_warning: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class SynastryPairSummary(TimestampMixin, Base):
