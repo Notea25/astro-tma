@@ -77,6 +77,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         id="daily_news",
     )
 
+    # V3 destiny matrix — invalidate year_energy section on user's BD.
+    # Hourly so we catch the BD rollover for every timezone bucket.
+    from services.destiny_matrix.year_energy_scheduler import (
+        invalidate_year_energy_on_birthday,
+    )
+    scheduler.add_job(
+        invalidate_year_energy_on_birthday,
+        trigger="cron",
+        minute=15,  # every hour at :15 — out of the way of horoscope/push jobs
+        id="destiny_v3_year_energy_invalidate",
+    )
+
     scheduler.start()
     log.info("scheduler.started")
 
