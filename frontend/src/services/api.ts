@@ -117,6 +117,8 @@ let localDevUser: UserProfile = {
   sun_sign: "virgo",
   birth_city: "Минск, Беларусь",
   birth_time_known: true,
+  birth_date: "1995-09-13",
+  birth_time: "08:30",
   push_enabled: true,
   is_premium: true,
   created_at: "2026-01-01T00:00:00Z",
@@ -356,10 +358,15 @@ function withLocalDevBirthData(
     birth_city?: string;
   },
 ): UserProfile {
+  // Body's birth_date is a full "YYYY-MM-DDTHH:MM:SS"; split it.
+  const isoDate = body.birth_date?.slice(0, 10) ?? user.birth_date;
+  const isoTime = body.birth_date?.slice(11, 16) ?? user.birth_time;
   return {
     ...user,
     birth_city: body.birth_city || user.birth_city,
     birth_time_known: body.birth_time_known ?? user.birth_time_known,
+    birth_date: isoDate ?? null,
+    birth_time: body.birth_time_known ? (isoTime ?? null) : null,
     sun_sign: user.sun_sign || "virgo",
   };
 }

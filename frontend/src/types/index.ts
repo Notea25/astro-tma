@@ -7,6 +7,11 @@ export interface UserProfile {
   sun_sign: string | null;
   birth_city: string | null;
   birth_time_known: boolean;
+  /** ISO "YYYY-MM-DD" from User.birth_date — present as soon as the
+   *  user finished onboarding, regardless of natal_chart state. */
+  birth_date: string | null;
+  /** "HH:MM" — only present when birth_time_known. */
+  birth_time: string | null;
   push_enabled: boolean;
   is_premium: boolean;
   created_at: string;

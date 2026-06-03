@@ -10,6 +10,11 @@ class UserProfile(BaseModel):
     sun_sign: str | None
     birth_city: str | None
     birth_time_known: bool
+    # ISO "YYYY-MM-DD" and "HH:MM", read from User.birth_date directly
+    # (NOT from natal_chart) so the Profile editor pre-fills even if
+    # the natal chart hasn't been computed or failed.
+    birth_date: str | None = None
+    birth_time: str | None = None
     push_enabled: bool
     is_premium: bool
     created_at: datetime

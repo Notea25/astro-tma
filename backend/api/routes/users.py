@@ -46,6 +46,31 @@ _KERY_TO_ENUM: dict[str, ZodiacSign] = {
 }
 
 
+def _build_user_profile(user, is_prem: bool) -> UserProfile:
+    """Pack a User row into the API response. Single place that knows
+    how to coerce the DateTime birth_date into the ISO strings the
+    Profile editor expects."""
+    birth_date_str = user.birth_date.strftime("%Y-%m-%d") if user.birth_date else None
+    birth_time_str = (
+        user.birth_date.strftime("%H:%M")
+        if user.birth_date and user.birth_time_known
+        else None
+    )
+    return UserProfile(
+        id=user.id,
+        name=user.tg_first_name,
+        gender=user.gender.value if user.gender else None,
+        sun_sign=user.sun_sign.value if user.sun_sign else None,
+        birth_city=user.birth_city,
+        birth_time_known=user.birth_time_known,
+        birth_date=birth_date_str,
+        birth_time=birth_time_str,
+        push_enabled=user.push_enabled,
+        is_premium=is_prem,
+        created_at=user.created_at,
+    )
+
+
 @router.post("/me", response_model=UserProfile)
 async def upsert_me(
     tg_user: dict = Depends(get_tg_user),
@@ -66,18 +91,7 @@ async def upsert_me(
     )
 
     is_prem = await user_repo.is_premium(db, user.id)
-
-    return UserProfile(
-        id=user.id,
-        name=user.tg_first_name,
-        gender=user.gender.value if user.gender else None,
-        sun_sign=user.sun_sign.value if user.sun_sign else None,
-        birth_city=user.birth_city,
-        birth_time_known=user.birth_time_known,
-        push_enabled=user.push_enabled,
-        is_premium=is_prem,
-        created_at=user.created_at,
-    )
+    return _build_user_profile(user, is_prem)
 
 
 @router.post("/me/gender", response_model=UserProfile)
@@ -96,17 +110,7 @@ async def set_gender(
     await db.commit()
 
     is_prem = await user_repo.is_premium(db, user.id)
-    return UserProfile(
-        id=user.id,
-        name=user.tg_first_name,
-        gender=user.gender.value if user.gender else None,
-        sun_sign=user.sun_sign.value if user.sun_sign else None,
-        birth_city=user.birth_city,
-        birth_time_known=user.birth_time_known,
-        push_enabled=user.push_enabled,
-        is_premium=is_prem,
-        created_at=user.created_at,
-    )
+    return _build_user_profile(user, is_prem)
 
 
 @router.get("/me/purchases")
@@ -189,17 +193,7 @@ async def set_push_enabled(
     await db.commit()
 
     is_prem = await user_repo.is_premium(db, user.id)
-    return UserProfile(
-        id=user.id,
-        name=user.tg_first_name,
-        gender=user.gender.value if user.gender else None,
-        sun_sign=user.sun_sign.value if user.sun_sign else None,
-        birth_city=user.birth_city,
-        birth_time_known=user.birth_time_known,
-        push_enabled=user.push_enabled,
-        is_premium=is_prem,
-        created_at=user.created_at,
-    )
+    return _build_user_profile(user, is_prem)
 
 
 @router.post("/me/birth", response_model=SetupBirthDataResponse)

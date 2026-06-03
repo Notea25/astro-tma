@@ -199,15 +199,17 @@ export function Profile() {
   const openEditor = () => {
     impact("light");
     setBirthCity(displayCity ?? "");
-    // Pre-fill date/time/gender from current data so the user sees what is
-    // already saved instead of empty selectors.
-    setBirthDate(natalSummary?.birth_date ?? "");
+    // Pre-fill from `user` first (lives in store, populated from /users/me
+    // immediately after onboarding) and fall back to natalSummary —
+    // natal chart computation can race or fail; user.birth_date is the
+    // canonical record of what the reader entered.
+    setBirthDate(user?.birth_date ?? natalSummary?.birth_date ?? "");
     setBirthTimeKnown(
-      natalSummary?.birth_time_known ?? user?.birth_time_known ?? false,
+      user?.birth_time_known ?? natalSummary?.birth_time_known ?? false,
     );
     setBirthTime(
-      natalSummary?.birth_time_known && natalSummary?.birth_time
-        ? natalSummary.birth_time
+      user?.birth_time_known
+        ? (user?.birth_time ?? natalSummary?.birth_time ?? "")
         : "",
     );
     setGender(user?.gender ?? "");
@@ -420,7 +422,7 @@ export function Profile() {
                     </span>
                     <span className="natal-summary-value">{displayCity}</span>
                   </div>
-                  {natalSummary?.birth_date && (
+                  {(user?.birth_date || natalSummary?.birth_date) && (
                     <div className="natal-summary-row">
                       <span className="natal-summary-label">
                         <svg
@@ -439,7 +441,9 @@ export function Profile() {
                         Дата
                       </span>
                       <span className="natal-summary-value">
-                        {formatBirthDateRu(natalSummary.birth_date)}
+                        {formatBirthDateRu(
+                          user?.birth_date ?? natalSummary?.birth_date,
+                        )}
                       </span>
                     </div>
                   )}
@@ -461,8 +465,8 @@ export function Profile() {
                       Время
                     </span>
                     <span className="natal-summary-value">
-                      {user?.birth_time_known && natalSummary?.birth_time
-                        ? natalSummary.birth_time
+                      {user?.birth_time_known
+                        ? (user?.birth_time ?? natalSummary?.birth_time ?? "—")
                         : "Неизвестно (взяли полдень)"}
                     </span>
                   </div>
