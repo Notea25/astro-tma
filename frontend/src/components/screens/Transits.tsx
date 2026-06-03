@@ -167,9 +167,13 @@ function CategoryBadge({ category }: { category: TransitCategory }) {
 
 function splitLines(s: string | null | undefined): string[] {
   if (!s) return [];
+  // Tolerate any reasonable bullet/separator the LLM emits: newlines,
+  // bullets (•·∙*), em/en-dash with space, semicolons. Each line is
+  // then stripped of its leading bullet/index so the UI doesn't
+  // double-mark items.
   return s
-    .split(/\n|•|·|—\s/)
-    .map((l) => l.replace(/^[\s\d.)\-•·]+/, "").trim())
+    .split(/\n+|[•·∙*]\s*|[—–-]\s|;\s/)
+    .map((l) => l.replace(/^[\s\d.)\-•·∙*]+/, "").trim())
     .filter(Boolean);
 }
 
@@ -564,7 +568,7 @@ export function Transits() {
   const [period, setPeriod] = useState<Period>("today");
   const [showAll, setShowAll] = useState(false);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["transits-current"],
     queryFn: transitsApi.getCurrent,
     // 5 min in memory so revisits feel instant, but a returning user later
@@ -650,15 +654,24 @@ export function Transits() {
         )}
 
         {error && !noBirthData && (
-          <p
-            style={{
-              color: "var(--text-dim)",
-              textAlign: "center",
-              padding: "20px",
-            }}
-          >
-            Не удалось загрузить транзиты.
-          </p>
+          <div className="horoscope-card horoscope-card--error">
+            <p className="horoscope-error__title">
+              Не удалось загрузить транзиты
+            </p>
+            <p className="horoscope-error__hint">
+              Проверьте подключение и попробуйте ещё раз.
+            </p>
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={() => {
+                impact("light");
+                refetch();
+              }}
+            >
+              Повторить
+            </button>
+          </div>
         )}
 
         {data && (

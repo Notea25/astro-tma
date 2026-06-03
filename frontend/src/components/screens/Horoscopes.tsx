@@ -33,13 +33,14 @@ export function Horoscopes() {
   );
   const signInfo = ZODIAC_SIGNS.find((s) => s.value === selectedSign);
 
-  const { data: horoscope, isLoading } = useQuery({
+  const { data: horoscope, isLoading, isError, refetch } = useQuery({
     queryKey: ["horoscope-page", period, selectedSign, user?.id],
     queryFn: () =>
       period === "today"
         ? horoscopeApi.getToday(selectedSign)
         : horoscopeApi.getPeriod(period, selectedSign),
     staleTime: 1000 * 60 * 30,
+    retry: 1,
   });
 
   return (
@@ -96,6 +97,25 @@ export function Horoscopes() {
         {/* Horoscope card */}
         {isLoading ? (
           <HoroscopeSkeleton />
+        ) : isError ? (
+          <div className="horoscope-card glass-gold horoscope-card--error">
+            <p className="horoscope-error__title">
+              Не удалось загрузить гороскоп
+            </p>
+            <p className="horoscope-error__hint">
+              Проверьте подключение и попробуйте ещё раз.
+            </p>
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={() => {
+                impact("light");
+                refetch();
+              }}
+            >
+              Повторить
+            </button>
+          </div>
         ) : (
           <motion.div
             key={`horo-${period}-${selectedSign}`}
