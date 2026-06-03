@@ -430,25 +430,12 @@ export function Home() {
           </section>
         )}
 
-        {/* Quick tiles — links to main practice screens */}
+        {/* Quick tiles — links to main practice screens.
+            Order: Natal → Synastry → Destiny Matrix → Tarot. The lunar
+            calendar tile was replaced by Destiny Matrix per product
+            decision; the moon screen is still reachable from Discover. */}
         {period === "today" && (
           <section className="home-tiles">
-            <button
-              className="home-tile"
-              onClick={() => {
-                impact("light");
-                setScreen("moon");
-              }}
-            >
-              <span className="home-tile__emoji" aria-hidden="true">
-                🌙
-              </span>
-              <span className="home-tile__title">Лунный календарь</span>
-              <span className="home-tile__desc">Фазы Луны и влияние дней</span>
-              <span className="home-tile__arrow" aria-hidden="true">
-                ›
-              </span>
-            </button>
             <button
               className="home-tile"
               onClick={() => {
@@ -479,6 +466,24 @@ export function Home() {
               </span>
               <span className="home-tile__title">Совместимость</span>
               <span className="home-tile__desc">Сравните два знака</span>
+              <span className="home-tile__arrow" aria-hidden="true">
+                ›
+              </span>
+            </button>
+            <button
+              className="home-tile"
+              onClick={() => {
+                impact("light");
+                setScreen("destiny_matrix_info");
+              }}
+            >
+              <span className="home-tile__emoji" aria-hidden="true">
+                ✧
+              </span>
+              <span className="home-tile__title">Матрица судьбы</span>
+              <span className="home-tile__desc">
+                22 аркана по дате рождения
+              </span>
               <span className="home-tile__arrow" aria-hidden="true">
                 ›
               </span>
