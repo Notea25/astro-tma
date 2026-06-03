@@ -167,9 +167,13 @@ function CategoryBadge({ category }: { category: TransitCategory }) {
 
 function splitLines(s: string | null | undefined): string[] {
   if (!s) return [];
+  // Tolerate any reasonable bullet/separator the LLM emits: newlines,
+  // bullets (•·∙*), em/en-dash with space, semicolons. Each line is
+  // then stripped of its leading bullet/index so the UI doesn't
+  // double-mark items.
   return s
-    .split(/\n|•|·|—\s/)
-    .map((l) => l.replace(/^[\s\d.)\-•·]+/, "").trim())
+    .split(/\n+|[•·∙*]\s*|[—–-]\s|;\s/)
+    .map((l) => l.replace(/^[\s\d.)\-•·∙*]+/, "").trim())
     .filter(Boolean);
 }
 
@@ -236,6 +240,33 @@ function DeepDive({
               <li key={`avoid-${i}`}>{line}</li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {details?.risk_warning && (
+        <div className="deep-dive__block deep-dive__risk">
+          <div className="deep-dive__title deep-dive__title--risk">
+            ⚠ Где может рвануть
+          </div>
+          <p className="deep-dive__body">{details.risk_warning}</p>
+        </div>
+      )}
+
+      {details?.affirmation && (
+        <div className="deep-dive__block deep-dive__affirmation">
+          <div className="deep-dive__title deep-dive__title--affirm">
+            💎 Аффирмация на сегодня
+          </div>
+          <p className="deep-dive__quote">«{details.affirmation}»</p>
+        </div>
+      )}
+
+      {details?.ritual && (
+        <div className="deep-dive__block">
+          <div className="deep-dive__title deep-dive__title--ritual">
+            🌱 Мини-ритуал
+          </div>
+          <p className="deep-dive__body">{details.ritual}</p>
         </div>
       )}
     </div>
@@ -564,7 +595,7 @@ export function Transits() {
   const [period, setPeriod] = useState<Period>("today");
   const [showAll, setShowAll] = useState(false);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["transits-current"],
     queryFn: transitsApi.getCurrent,
     // 5 min in memory so revisits feel instant, but a returning user later
@@ -597,6 +628,19 @@ export function Transits() {
     [data],
   );
   const headline = useMemo(() => pickHeadline(sortedAspects), [sortedAspects]);
+  // Mercury-retro double alert — bias-towards-safety banner if Mercury
+  // is currently retrograde in the sky AND today touches it via any
+  // transit. Pure static logic, no LLM cost.
+  const mercuryAlert = useMemo(() => {
+    if (!data) return false;
+    const mercuryIsRetro = data.retrogrades?.some(
+      (r) => r.planet === "mercury",
+    );
+    if (!mercuryIsRetro) return false;
+    return sortedAspects.some(
+      (a) => a.transit_planet === "mercury" || a.natal_planet === "mercury",
+    );
+  }, [data, sortedAspects]);
   const isPremium = user?.is_premium ?? false;
   // Week/Month transit periods now ride on Premium subscription, not on
   // standalone transit products (those were retired in launch v1.1).
@@ -650,19 +694,46 @@ export function Transits() {
         )}
 
         {error && !noBirthData && (
-          <p
-            style={{
-              color: "var(--text-dim)",
-              textAlign: "center",
-              padding: "20px",
-            }}
-          >
-            Не удалось загрузить транзиты.
-          </p>
+          <div className="horoscope-card horoscope-card--error">
+            <p className="horoscope-error__title">
+              Не удалось загрузить транзиты
+            </p>
+            <p className="horoscope-error__hint">
+              Проверьте подключение и попробуйте ещё раз.
+            </p>
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={() => {
+                impact("light");
+                refetch();
+              }}
+            >
+              Повторить
+            </button>
+          </div>
         )}
 
         {data && (
           <>
+            {mercuryAlert && (
+              <div className="mercury-retro-alert" role="note">
+                <span className="mercury-retro-alert__glyph" aria-hidden="true">
+                  ☿℞
+                </span>
+                <div className="mercury-retro-alert__col">
+                  <div className="mercury-retro-alert__title">
+                    Двойной ретро-удар: Меркурий ℞ + транзит сегодня
+                  </div>
+                  <div className="mercury-retro-alert__body">
+                    Сделай бэкап документов, перепроверь переписку, не подписывай
+                    важные договоры на скорость. Любые недопонимания сегодня
+                    могут раздуться — лучше переспроси, чем додумай.
+                  </div>
+                </div>
+              </div>
+            )}
+
             <HeroCard aspect={headline} />
 
             <div className="horoscope-card">

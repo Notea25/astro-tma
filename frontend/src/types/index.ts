@@ -471,6 +471,13 @@ export interface TransitDetails {
   text_ru: string;
   advice_do: string | null;
   advice_avoid: string | null;
+  /** 1 первая-лицо аффирмация для проговаривания. */
+  affirmation: string | null;
+  /** 1-5-минутный микро-ритуал на сегодня. */
+  ritual: string | null;
+  /** Только для жёстких аспектов (квадрат / оппозиция / соединение с
+   *  Mars/Saturn/Pluto/uranus/neptune). На остальных — null. */
+  risk_warning: string | null;
   affected_house: number | null;
   affected_house_topic: string | null;
 }

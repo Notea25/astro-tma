@@ -273,36 +273,72 @@ _HOUSE_TOPIC: dict[int, str] = {
 }
 
 
+# Hard aspects warrant a `risk_warning`. The model also adds it on
+# conjunctions with the heavy/disruptive outer planets, since those can
+# feel just as challenging as a square.
+_HARD_PLANETS_ON_CONJUNCTION = {"mars", "saturn", "pluto", "uranus", "neptune"}
+
+
+def _is_hard_aspect(aspect: str, tp: str, np: str) -> bool:
+    a = aspect.lower()
+    if a in ("square", "opposition"):
+        return True
+    if a == "conjunction" and (
+        tp.lower() in _HARD_PLANETS_ON_CONJUNCTION
+        or np.lower() in _HARD_PLANETS_ON_CONJUNCTION
+    ):
+        return True
+    return False
+
+
 async def _llm_advice(
     tp: str,
     np: str,
     aspect: str,
     text_blurb: str,
     api_key: str,
-) -> tuple[str | None, str | None]:
-    """Generate (advice_do, advice_avoid) for a single transit triple.
-    One LLM call → two short bulletized lists.
+) -> dict[str, str | None]:
+    """Generate the full deep-dive bundle for one transit triple:
+    advice_do, advice_avoid, affirmation, ritual — and risk_warning
+    only for hard aspects. One Sonnet/Haiku call → structured JSON.
+
+    Returns a dict with the same keys as the DB columns; any None means
+    «model didn't return it», so the UI block stays hidden.
     """
     import anthropic
 
     tp_ru = _PLANET_RU.get(tp, tp)
     np_ru = _PLANET_RU.get(np, np)
     aspect_ru = _ASPECT_RU.get(aspect, aspect)
+    needs_risk = _is_hard_aspect(aspect, tp, np)
+
+    risk_clause = (
+        "\n\n5) RISK_WARNING — 1 предложение, конкретный бытовой сценарий, "
+        "где эта энергия может выйти из-под контроля сегодня (например: "
+        "«Если попытаешься продавить решение силой — партнёр закроется на "
+        "несколько дней»). Без катастрофизма, но конкретно."
+        if needs_risk else ""
+    )
+    risk_json = ', "risk_warning": "Сценарий риска"' if needs_risk else ""
 
     prompt = f"""Транзит: {tp_ru} ({aspect_ru}) к натальной точке {np_ru}.
 Уже написанный короткий разбор этого транзита:
 "{text_blurb}"
 
-Теперь напиши практическое руководство на сегодня. Два блока:
+Теперь напиши практическое руководство на сегодня. Пять блоков:
 
 1) ЧТО СДЕЛАТЬ — 2-3 коротких конкретных совета. Каждый совет — одна фраза, начинается с глагола. Без эзотерики, без «вселенная», «энергии», «работа со страхами». Только конкретные действия из обычной жизни.
 
 2) ЧЕГО ИЗБЕГАТЬ — 2-3 коротких предупреждения. Тоже конкретно, тоже одной фразой каждое.
 
-Тон: разговорный, как друг советует. Обращайся на «вы». Без markdown, без нумерации внутри блоков — разделяй советы переносом строки.
+3) AFFIRMATION — 1 фраза от первого лица («Я …»), которую читатель проговаривает вслух утром. 6-12 слов. Просто и тепло, без пафоса.
+
+4) RITUAL — 1 микро-действие на сегодня, занимающее 1-5 минут (например: «Запиши 3 благодарности перед сном» или «Сделай паузу перед каждым ответом — 3 вдоха»). Конкретно.{risk_clause}
+
+Тон: разговорный, как друг советует. Обращайся на «ты». Без markdown, без нумерации внутри блоков — разделяй советы в do/avoid переносом строки.
 
 Верни ТОЛЬКО JSON следующего вида:
-{{"do": "Совет 1\\nСовет 2\\nСовет 3", "avoid": "Предупреждение 1\\nПредупреждение 2"}}"""
+{{"do": "Совет 1\\nСовет 2", "avoid": "Предупреждение 1\\nПредупреждение 2", "affirmation": "Я …", "ritual": "Действие на 1-5 минут"{risk_json}}}"""
 
     try:
         from services.llm_pool import llm_semaphore
@@ -311,7 +347,7 @@ async def _llm_advice(
         async with llm_semaphore:
             message = await client.messages.create(
                 model="claude-haiku-4-5-20251001",
-                max_tokens=600,
+                max_tokens=900,
                 messages=[{"role": "user", "content": prompt}],
             )
         raw = first_text_block(message.content).strip()
@@ -321,12 +357,21 @@ async def _llm_advice(
                 raw = raw.rsplit("```", 1)[0]
             raw = raw.strip()
         data = json.loads(raw)
-        do_ = str(data.get("do", "")).strip() or None
-        avoid_ = str(data.get("avoid", "")).strip() or None
-        return do_, avoid_
+        return {
+            "advice_do":    (str(data.get("do", "")).strip() or None),
+            "advice_avoid": (str(data.get("avoid", "")).strip() or None),
+            "affirmation":  (str(data.get("affirmation", "")).strip() or None),
+            "ritual":       (str(data.get("ritual", "")).strip() or None),
+            "risk_warning": (
+                str(data.get("risk_warning", "")).strip() or None
+            ) if needs_risk else None,
+        }
     except Exception as e:  # noqa: BLE001
         log.error("transit_advice.llm_failed", tp=tp, np=np, aspect=aspect, error=str(e))
-        return None, None
+        return {
+            "advice_do": None, "advice_avoid": None,
+            "affirmation": None, "ritual": None, "risk_warning": None,
+        }
 
 
 async def get_transit_details(
@@ -357,17 +402,40 @@ async def get_transit_details(
     text_ru = row.text_ru if row else _FALLBACK.get(ap, "")
     advice_do = row.advice_do if row else None
     advice_avoid = row.advice_avoid if row else None
+    affirmation = row.affirmation if row else None
+    ritual = row.ritual if row else None
+    risk_warning = row.risk_warning if row else None
 
-    if (advice_do is None or advice_avoid is None) and api_key:
-        do_, avoid_ = await _llm_advice(tp, np, ap, text_ru or "", api_key)
-        if do_ or avoid_:
-            advice_do = advice_do or do_
-            advice_avoid = advice_avoid or avoid_
+    # Trigger one LLM call if anything we want is missing. The model
+    # is told whether to emit risk_warning based on aspect hardness.
+    wants_risk = _is_hard_aspect(ap, tp, np)
+    missing = (
+        advice_do is None
+        or advice_avoid is None
+        or affirmation is None
+        or ritual is None
+        or (wants_risk and risk_warning is None)
+    )
+    if missing and api_key:
+        extras = await _llm_advice(tp, np, ap, text_ru or "", api_key)
+        advice_do = advice_do or extras["advice_do"]
+        advice_avoid = advice_avoid or extras["advice_avoid"]
+        affirmation = affirmation or extras["affirmation"]
+        ritual = ritual or extras["ritual"]
+        risk_warning = risk_warning or extras["risk_warning"]
+        if any([
+            extras["advice_do"], extras["advice_avoid"],
+            extras["affirmation"], extras["ritual"], extras["risk_warning"],
+        ]):
             if row:
                 await db.execute(
                     update(TransitInterpretation)
                     .where(TransitInterpretation.id == row.id)
-                    .values(advice_do=advice_do, advice_avoid=advice_avoid)
+                    .values(
+                        advice_do=advice_do, advice_avoid=advice_avoid,
+                        affirmation=affirmation, ritual=ritual,
+                        risk_warning=risk_warning,
+                    )
                 )
             else:
                 db.add(
@@ -378,6 +446,9 @@ async def get_transit_details(
                         text_ru=text_ru or _FALLBACK.get(ap, ""),
                         advice_do=advice_do,
                         advice_avoid=advice_avoid,
+                        affirmation=affirmation,
+                        ritual=ritual,
+                        risk_warning=risk_warning,
                     )
                 )
             try:
@@ -400,6 +471,9 @@ async def get_transit_details(
         "text_ru": text_ru,
         "advice_do": advice_do,
         "advice_avoid": advice_avoid,
+        "affirmation": affirmation,
+        "ritual": ritual,
+        "risk_warning": risk_warning,
         "affected_house": affected_house,
         "affected_house_topic": affected_house_topic,
     }
