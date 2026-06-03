@@ -558,7 +558,7 @@ def _draw_title(
 
 def _description(entry: Any, fallback: str) -> str:
     if isinstance(entry, dict):
-        text = str(entry.get("full") or entry.get("short") or "").strip()
+        text = str(entry.get("full") or "").strip()
         if text:
             return text
     return fallback

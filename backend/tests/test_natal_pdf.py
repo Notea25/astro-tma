@@ -1,5 +1,6 @@
 """Tests for natal PDF generation and temporary download links."""
 
+import asyncio
 import sys
 from types import SimpleNamespace
 
@@ -386,6 +387,22 @@ def test_aspect_description_prompt_requests_full_interaction():
     assert "уникальное последнее предложение" in prompt
 
 
+def test_description_batch_prompts_include_full_chart_context():
+    planets, houses, aspects = _sample_chart()
+    context = natal_descriptions._chart_context(planets, houses, aspects)
+
+    prompt = natal_descriptions._build_planets_prompt(
+        {"sun": planets["sun"]},
+        chart_context=context,
+    )
+
+    assert "Контекст всей натальной карты" in prompt
+    assert "Луна:" in prompt
+    assert "Все дома:" in prompt
+    assert "sun_moon_square" in prompt
+    assert "full\" должен быть полноценным PDF-текстом" in prompt
+
+
 def test_html_pdf_uses_full_description_before_short():
     planets, houses, aspects = _sample_chart()
     document = natal_pdf_html.build_natal_pdf_html(
@@ -413,6 +430,39 @@ def test_html_pdf_uses_full_description_before_short():
 
     assert "ПОЛНЫЙ_ТЕКСТ" in document
     assert "КОРОТКИЙ_ТЕКСТ" not in document
+
+
+def test_pdf_detail_descriptions_do_not_use_short_as_full_source():
+    planets, houses, aspects = _sample_chart()
+    document = natal_pdf_html.build_natal_pdf_html(
+        user_name="Андрей",
+        birth_date="2000-10-20",
+        birth_time="12:00",
+        birth_city="Минск",
+        sun_sign="Scorpio",
+        moon_sign="Aquarius",
+        asc_sign="Aries",
+        planets=planets,
+        houses=houses,
+        aspects=aspects,
+        descriptions={
+            "planets": {"sun": {"short": "КОРОТКИЙ_НЕ_ДЛЯ_PDF"}},
+            "houses": {"1": {"short": "КОРОТКИЙ_ДОМ_НЕ_ДЛЯ_PDF"}},
+            "aspects": [
+                {
+                    "p1": "sun",
+                    "p2": "moon",
+                    "type": "square",
+                    "short": "КОРОТКИЙ_АСПЕКТ_НЕ_ДЛЯ_PDF",
+                }
+            ],
+        },
+    )
+
+    assert "КОРОТКИЙ_НЕ_ДЛЯ_PDF" not in document
+    assert "КОРОТКИЙ_ДОМ_НЕ_ДЛЯ_PDF" not in document
+    assert "КОРОТКИЙ_АСПЕКТ_НЕ_ДЛЯ_PDF" not in document
+    assert natal_pdf._description({"short": "SHORT"}, "FALLBACK") == "FALLBACK"
 
 
 def test_html_pdf_keeps_long_item_descriptions_untrimmed():
@@ -483,6 +533,40 @@ def test_reportlab_pdf_uses_full_descriptions_without_compact_trimming(monkeypat
 def test_natal_description_batches_are_small_for_long_pdf_copy():
     assert natal_descriptions._BATCH_SIZE == 2
     assert natal_descriptions._BATCH_MAX_TOKENS >= 4200
+
+
+def test_natal_description_quality_detects_duplicate_endings():
+    good_body = " ".join(f"слово{i}" for i in range(170))
+    repeated = " Повторяющийся финальный совет должен исчезнуть."
+    entries = {
+        "sun": {"short": "short", "full": good_body + repeated},
+        "moon": {"short": "short", "full": good_body + repeated},
+    }
+
+    assert natal_descriptions._quality_repair_keys(entries, "planets") == {"sun", "moon"}
+
+
+@pytest.mark.asyncio
+async def test_natal_description_repair_replaces_bad_entries(monkeypatch):
+    async def fake_one_entry(*_args, **_kwargs):
+        return {
+            "short": "Новый короткий текст.",
+            "full": " ".join(f"новый{i}" for i in range(180))
+            + " Совершенно другой финал.",
+        }
+
+    monkeypatch.setattr(natal_descriptions, "_one_entry", fake_one_entry)
+    repaired = await natal_descriptions._repair_entries(
+        client=object(),
+        entries={"sun": {"short": "Коротко.", "full": "Слишком мало."}},
+        labels={"sun": "Солнце в Скорпионе"},
+        section="planets",
+        chart_context="Контекст всей натальной карты",
+        sem=asyncio.Semaphore(1),
+    )
+
+    assert repaired["sun"]["full"].startswith("новый0")
+    assert "Совершенно другой финал" in repaired["sun"]["full"]
 
 
 @pytest.mark.asyncio

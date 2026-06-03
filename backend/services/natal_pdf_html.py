@@ -224,13 +224,10 @@ def _description(entry: Any, fallback: str, *, words: int) -> str:
 
 def _full_description(entry: Any, fallback: str) -> str:
     if isinstance(entry, dict):
-        source = str(entry.get("full") or entry.get("short") or "").strip()
+        source = str(entry.get("full") or "").strip()
     else:
         source = ""
-    fallback = str(fallback or "").strip()
-    if source and fallback and _word_count(source) < 45:
-        return f"{source} {fallback}".strip()
-    return source or fallback
+    return source or str(fallback or "").strip()
 
 
 def _planet_fallback(name: str, planet: dict[str, Any]) -> str:
