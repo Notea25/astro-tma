@@ -239,9 +239,33 @@ async def _get_cached_pdf_reading(user) -> str | None:
     return _reading_is_fresh(cached, _user_gender(user))
 
 
-# Guard so a burst of PDF downloads doesn't kick off several identical
-# reading generations for the same user at once.
+# Guards so a burst of PDF downloads doesn't kick off several identical
+# generations for the same user at once.
 _READING_INFLIGHT: set[int] = set()
+_DESCRIPTIONS_INFLIGHT: set[int] = set()
+
+
+async def _generate_pdf_descriptions_background(user_id: int) -> None:
+    """Generate per-planet/house/aspect descriptions and persist them to the DB
+    so the NEXT PDF download renders full personal copy instead of the short
+    per-item fallback. Shared by both renderers (HTML and the ReportLab
+    fallback) — the texts live in chart_data and the renderer just reads them.
+    Detached from the request, so it opens its own session."""
+    if not settings.ANTHROPIC_API_KEY or user_id in _DESCRIPTIONS_INFLIGHT:
+        return
+    _DESCRIPTIONS_INFLIGHT.add(user_id)
+    try:
+        async with AsyncSessionLocal() as db:
+            user = await user_repo.get_by_id(db, user_id)
+            if not user or not user.natal_chart:
+                return
+            result = await _get_or_generate_descriptions(db, user)
+            if _has_any(result):
+                log.info("natal.pdf_descriptions_backfilled", user_id=user_id)
+    except Exception as e:  # noqa: BLE001
+        log.error("natal.pdf_descriptions_background_failed", user_id=user_id, error=str(e))
+    finally:
+        _DESCRIPTIONS_INFLIGHT.discard(user_id)
 
 
 async def _generate_pdf_reading_background(user_id: int) -> None:
@@ -331,6 +355,12 @@ async def _build_natal_pdf_bytes(db: AsyncSession, user) -> bytes:
     ]
 
     descriptions = _get_stored_descriptions(user)
+    if not _has_any(descriptions):
+        # No personal per-item descriptions yet → this PDF renders on the short
+        # per-item fallback, but we kick off a detached generation so the next
+        # download (HTML or ReportLab) has full personal copy. PDF stays fast.
+        asyncio.create_task(_generate_pdf_descriptions_background(user.id))
+
     reading = await _get_cached_pdf_reading(user)
     if not reading:
         # No personal reading cached yet → render this PDF on the fallback copy
