@@ -348,12 +348,11 @@ def test_planet_description_prompt_prioritises_sign_over_house():
     assert "центр разбора — связка планета + знак" in prompt
     assert "Солнце в Козероге" in prompt
     assert "в знаке Козерога" in prompt
-    assert "380-560 слов" in prompt
+    assert "280-360 слов" in prompt
     assert "роль планеты как архетип" in prompt
-    assert "отношения, работа/дела, привычки, бытовые проявления" in prompt
-    assert "повторяющиеся жизненные сценарии" in prompt
-    assert "настолько же подробным" in prompt
-    assert "полноценный справочный раздел" in prompt
+    assert "проявления в отношениях и работе/делах" in prompt
+    assert "повторяющиеся сценарии" in prompt
+    assert "без воды" in prompt
     assert "Подробнее" in prompt
     assert "уникальное последнее предложение" in prompt
     assert "full" in prompt
@@ -374,10 +373,10 @@ def test_house_description_prompt_requests_scenarios_and_declension():
 
     assert "знак на куспиде — Весы" in prompt
     assert "дом в Весах" in prompt
-    assert "270-420 слов" in prompt
+    assert "200-280 слов" in prompt
     assert "типичные жизненные сценарии" in prompt
     assert "сильная сторона" in prompt
-    assert "настолько же подробным" in prompt
+    assert "без воды" in prompt
     assert "уникальное последнее предложение" in prompt
 
 
@@ -385,11 +384,11 @@ def test_aspect_description_prompt_requests_full_interaction():
     prompt = natal_descriptions._aspect_one_prompt("sun", "moon", "square")
 
     assert "Солнце — квадрат — Луна" in prompt
-    assert "340-520 слов" in prompt
+    assert "240-320 слов" in prompt
     assert "взаимодействуют" in prompt
-    assert "орб, знаки и дома обеих планет" in prompt
-    assert "отношениях/делах" in prompt
-    assert "зоны роста" in prompt
+    assert "сочетаются эти две темы" in prompt
+    assert "отношениях и делах" in prompt
+    assert "зона роста" in prompt
     assert "уникальное последнее предложение" in prompt
 
 
@@ -408,9 +407,9 @@ def test_description_batch_prompts_include_full_chart_context():
     assert "Планеты в домах:" in prompt
     assert "Связанные аспекты по планетам:" in prompt
     assert "sun_moon_square" in prompt
-    assert "full\" должен быть полноценным PDF-текстом" in prompt
+    assert 'full" должен быть полноценным PDF-текстом' in prompt
     assert "REFERENCE-STYLE BLUEPRINT" in prompt
-    assert "настолько же подробным" in prompt
+    assert "плотный, но содержательный" in prompt
     assert "Читать далее" in prompt
 
 
@@ -496,9 +495,7 @@ def test_html_pdf_keeps_long_item_descriptions_untrimmed():
         descriptions={
             "planets": {"sun": {"full": long_planet}},
             "houses": {"1": {"full": long_house}},
-            "aspects": [
-                {"p1": "sun", "p2": "moon", "type": "square", "full": long_aspect}
-            ],
+            "aspects": [{"p1": "sun", "p2": "moon", "type": "square", "full": long_aspect}],
         },
     )
 
@@ -514,7 +511,12 @@ def test_reportlab_pdf_uses_full_descriptions_without_compact_trimming(monkeypat
         "planets": {"sun": {"full": " ".join(f"планета{i}" for i in range(160))}},
         "houses": {"1": {"full": " ".join(f"дом{i}" for i in range(130))}},
         "aspects": [
-            {"p1": "sun", "p2": "moon", "type": "square", "full": " ".join(f"аспект{i}" for i in range(160))}
+            {
+                "p1": "sun",
+                "p2": "moon",
+                "type": "square",
+                "full": " ".join(f"аспект{i}" for i in range(160)),
+            }
         ],
     }
 
@@ -543,7 +545,7 @@ def test_reportlab_pdf_uses_full_descriptions_without_compact_trimming(monkeypat
 
 def test_natal_description_batches_are_small_for_long_pdf_copy():
     assert natal_descriptions._BATCH_SIZE == 2
-    assert natal_descriptions._BATCH_MAX_TOKENS >= 7600
+    assert natal_descriptions._BATCH_MAX_TOKENS >= 4000
 
 
 def test_natal_description_quality_detects_duplicate_endings():
@@ -594,8 +596,7 @@ async def test_natal_description_repair_replaces_bad_entries(monkeypatch):
     async def fake_one_entry(*_args, **_kwargs):
         return {
             "short": "Новый короткий текст.",
-            "full": " ".join(f"новый{i}" for i in range(340))
-            + " Совершенно другой финал.",
+            "full": " ".join(f"новый{i}" for i in range(340)) + " Совершенно другой финал.",
         }
 
     monkeypatch.setattr(natal_descriptions, "_one_entry", fake_one_entry)
@@ -837,7 +838,7 @@ async def test_build_natal_pdf_response_does_not_block_on_llm(monkeypatch):
         raise AssertionError("download must not generate reading")
 
     async def fake_cache_get(key):
-        calls["cache_key"] = key
+        calls.setdefault("cache_keys", []).append(key)
         return None
 
     def fake_generate_natal_pdf(**kwargs):
@@ -856,7 +857,7 @@ async def test_build_natal_pdf_response_does_not_block_on_llm(monkeypatch):
     response = await natal._build_natal_pdf_response(db=object(), user=user)
 
     assert response.body == b"%PDF-fast"
-    assert calls["cache_key"] == "natal:1001"
+    assert "natal:1001" in calls["cache_keys"]
     assert calls["pdf_kwargs"]["descriptions"] == natal._empty_descriptions()
     assert calls["pdf_kwargs"]["reading"] is None
 
