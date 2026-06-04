@@ -19,7 +19,7 @@ from db.models import (
 log = get_logger(__name__)
 # Phrased as a direct invitation to *finish* an interrupted message —
 # matches the cliff-hanger ellipsis at the end of the push body.
-DAILY_OPEN_APP_LABEL = "✦ Дочитать в приложении"
+DAILY_OPEN_APP_LABEL = "✦ Читать продолжение"
 
 _MONTHS_RU = (
     "января",

@@ -72,7 +72,7 @@ def test_open_app_markup_default_label_invites_to_finish_reading(monkeypatch):
     markup = build_open_app_markup()
 
     # The label should match the cliff-hanger framing of the push body.
-    assert DAILY_OPEN_APP_LABEL == "✦ Дочитать в приложении"
+    assert DAILY_OPEN_APP_LABEL == "✦ Читать продолжение"
     assert markup is not None
     assert markup["inline_keyboard"][0][0]["text"] == DAILY_OPEN_APP_LABEL
 
