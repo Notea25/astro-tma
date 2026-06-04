@@ -296,10 +296,9 @@ def _format_birth_date(value: str) -> str:
 
 
 def _section_header(title: str, subtitle: str, aside: str = "") -> str:
-    aside_html = f'<div class="section-aside">{_e(aside)}</div>' if aside else ""
     return (
         f'<div class="section-head"><div><h2>{_e(title)}</h2>'
-        f'<div class="rule"></div><p>{_e(subtitle)}</p></div>{aside_html}</div>'
+        f'<div class="rule"></div><p>{_e(subtitle)}</p></div></div>'
     )
 
 
@@ -478,10 +477,10 @@ h1 {{ margin: 0; color: {GOLD}; font-size: 34px; letter-spacing: 7px; text-trans
 .cover-point .value {{ margin-top: 6mm; font: 15px "DejaVu Serif", Georgia, serif; }}
 .cover-line {{ width: 32mm; height: 1px; background: {GOLD_DIM}; margin-top: 20mm; }}
 .cover-foot {{ margin-top: 8mm; color: #776f8c; font-size: 10px; letter-spacing: 3px; }}
-.section-head {{ display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8mm; }}
-h2 {{ margin: 0; color: {GOLD}; font-size: 24px; letter-spacing: 4px; }}
-.rule {{ height: 1px; width: 170mm; background: rgba(214,184,90,.2); margin: 6mm 0 5mm; }}
-.section-head p {{ margin: 0; color: {TEXT_DIM}; font: italic 12px "DejaVu Serif", Georgia, serif; }}
+.section-head {{ display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4mm; }}
+h2 {{ margin: 0; color: {GOLD}; font-size: 17px; letter-spacing: 3px; }}
+.rule {{ height: 1px; width: 170mm; background: rgba(214,184,90,.2); margin: 3mm 0 2.5mm; }}
+.section-head p {{ margin: 0; color: {TEXT_DIM}; font: italic 10.5px "DejaVu Serif", Georgia, serif; }}
 .section-aside {{ color: #807894; font-size: 12px; margin-top: 5mm; }}
 footer {{ position: absolute; bottom: 7mm; left: 0; right: 0; text-align: center; color: #6d6680; font-size: 10px; letter-spacing: 3px; }}
 footer span {{ letter-spacing: 1px; margin-left: 8px; }}
@@ -801,7 +800,7 @@ def _planet_pages(
     for name in items:
         planet = planets[name]
         desc = _full_description(planet_desc.get(name), _planet_fallback(name, planet))
-        text_chunks = _split_words(desc, 285)
+        text_chunks = _split_words(desc, 430)
         for chunk_index, text_chunk in enumerate(text_chunks or [desc]):
             blocks.append((name, planet, text_chunk, chunk_index > 0))
     pages = []
@@ -837,7 +836,7 @@ def _houses_pages(
         desc = _full_description(
             house_desc.get(str(int(house.get("number") or 0))), _house_fallback(house)
         )
-        text_chunks = _split_words(desc, 145)
+        text_chunks = _split_words(desc, 210)
         for chunk_index, text_chunk in enumerate(text_chunks or [desc]):
             blocks.append((house, text_chunk, chunk_index > 0))
     page_chunks = [blocks[index : index + 2] for index in range(0, len(blocks), 2)]
@@ -906,7 +905,7 @@ def _aspect_pages(
             p1 = _planet_key(aspect.get("p1"))
             p2 = _planet_key(aspect.get("p2"))
             desc = _full_description(aspect_desc.get((p1, p2, atype)), _aspect_fallback(aspect))
-            for chunk_index, text_chunk in enumerate(_split_words(desc, 190) or [desc]):
+            for chunk_index, text_chunk in enumerate(_split_words(desc, 260) or [desc]):
                 blocks.append((atype, aspect, text_chunk, chunk_index > 0))
 
     page_chunks: list[list[tuple[str, dict[str, Any], str, bool]]] = []
@@ -916,7 +915,7 @@ def _aspect_pages(
         atype, _aspect, desc, is_continuation = block
         title_weight = 26 if not current or current[-1][0] != atype else 12
         block_weight = _word_count(desc) + title_weight + (8 if is_continuation else 0)
-        budget = 285 if not page_chunks else 390
+        budget = 360 if not page_chunks else 480
         if current and current_weight + block_weight > budget:
             page_chunks.append(current)
             current = []
@@ -999,7 +998,7 @@ def _reading_pages(
         blocks.append((current_title or "Персональная интерпретация", " ".join(current_lines)))
     expanded_blocks: list[tuple[str, str]] = []
     for title, paragraph in blocks:
-        chunks = _split_words(paragraph, 260)
+        chunks = _split_words(paragraph, 340)
         if not chunks:
             continue
         expanded_blocks.append((title, chunks[0]))
@@ -1008,7 +1007,7 @@ def _reading_pages(
     page_chunks: list[list[tuple[str, str]]] = []
     current: list[tuple[str, str]] = []
     current_words = 0
-    limits = [150, 190]
+    limits = [210, 260]
     for title, paragraph in expanded_blocks:
         block_words = _word_count(paragraph) + 10
         limit = limits[min(len(page_chunks), len(limits) - 1)]

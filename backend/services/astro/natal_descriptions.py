@@ -5,6 +5,7 @@ Produces both a short blurb (shown in the in-app popup) and a compact full
 paragraph (rendered in the downloadable PDF).
 Result is cached by the caller — this module only calls the API.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -26,8 +27,16 @@ from services.astro.planet_names import PLANET_RU as _PLANET_RU  # noqa: E402
 # points; chart axes / nodes / Lilith come through aspects but aren't seeded
 # as standalone descriptions.
 _PLANET_ORDER = [
-    "sun", "moon", "mercury", "venus", "mars",
-    "jupiter", "saturn", "uranus", "neptune", "pluto",
+    "sun",
+    "moon",
+    "mercury",
+    "venus",
+    "mars",
+    "jupiter",
+    "saturn",
+    "uranus",
+    "neptune",
+    "pluto",
 ]
 
 _ASPECT_RU: dict[str, str] = {
@@ -41,9 +50,9 @@ _ASPECT_RU: dict[str, str] = {
 
 
 _MIN_FULL_WORDS = {
-    "planets": 320,
-    "houses": 230,
-    "aspects": 280,
+    "planets": 300,
+    "houses": 220,
+    "aspects": 260,
 }
 
 _FORBIDDEN_COPY_MARKERS = (
@@ -57,9 +66,9 @@ _FORBIDDEN_COPY_MARKERS = (
 _REFERENCE_STYLE_BLUEPRINT = """REFERENCE-STYLE BLUEPRINT:
 - Делай не дословную копию чужого текста, а копию структуры, глубины, подробности и порядка классического справочного разбора натальной карты.
 - Базовый принцип: интерпретация складывается из планет, знаков, домов и аспектов в единый персональный сплав, а не из отдельных шаблонных советов.
-- "full" должен быть настолько же подробным по уровню раскрытия, как полноценный справочный раздел: несколько смысловых блоков, конкретные проявления и объяснение механизма, а не краткий вывод.
-- Каждый "full" раскрывает: что означает элемент, как он проявляется в характере, поведении, отношениях, работе/делах, привычках, повторяющихся сценариях, сильных сторонах, рисках и практическом ориентире.
-- Модель не должна экономить текст, сводить описание к общему совету или заканчивать несколько элементов одинаковыми формулами.
+- "full" — плотный справочный текст: конкретные проявления и объяснение механизма, а не краткий вывод, но без воды и повторов. Держись заданного объёма слов, не раздувай.
+- Каждый "full" раскрывает главное: что означает элемент, как он проявляется в характере и делах, сильную сторону, риск и практический ориентир.
+- Не сводить описание к общему совету и не заканчивать несколько элементов одинаковыми формулами.
 - Запрещено дословно копировать источники и запрещены служебные маркеры: «Подробнее», «Читать далее», «Источник», «Geocult», рекламные переходы."""
 
 
@@ -242,16 +251,8 @@ def _chart_context(
     """Compact full-chart context included in every batch prompt. The batch
     still asks for only 1-2 outputs, but the model can see the whole chart
     and avoid generic copy detached from the real layout."""
-    planet_rows = [
-        _planet_row(key, planets[key])
-        for key in _PLANET_ORDER
-        if planets.get(key)
-    ]
-    house_rows = [
-        _house_row(h)
-        for h in houses
-        if h.get("number")
-    ]
+    planet_rows = [_planet_row(key, planets[key]) for key in _PLANET_ORDER if planets.get(key)]
+    house_rows = [_house_row(h) for h in houses if h.get("number")]
     aspect_rows = [
         _aspect_row(a)
         for a in aspects
@@ -288,8 +289,8 @@ def _chart_context(
 def _quality_rules(section: str) -> str:
     min_words = _MIN_FULL_WORDS[section]
     return f"""КРИТИЧЕСКИЕ ПРАВИЛА КАЧЕСТВА:
-- "full" должен быть полноценным PDF-текстом минимум {min_words} слов и заметно длиннее "short"; не делай из short просто расширенную версию.
-- "full" должен быть настолько же подробным, как полноценный справочный раздел: несколько смысловых блоков, подробное объяснение и конкретные проявления, а не один общий абзац.
+- "full" должен быть полноценным PDF-текстом около {min_words} слов (это ориентир объёма, не раздувай сверх) и заметно длиннее "short"; не делай из short просто расширенную версию.
+- "full" — плотный, но содержательный текст: конкретные проявления и объяснение, а не один общий абзац и не вода ради объёма.
 - Каждый "full" обязан учитывать реальный контекст карты выше: дом, знак, орб, ретроградность и соседние акценты карты, где это применимо.
 - Не используй одинаковый каркас абзацев для разных элементов. Меняй порядок тем, первые предложения, примеры, лексику и финальный вывод.
 - Первое и последнее предложение каждого "full" должны быть уникальными; запрещены повторяющиеся старты и финалы вроде «это поможет проживать аспект мягче», «важно найти баланс», «это ваш ресурс», «стоит действовать осознанно».
@@ -323,7 +324,7 @@ def _build_planets_prompt(
 
 Для КАЖДОЙ из перечисленных планет напиши:
 - "short" — компактное описание (2 предложения, ~35-55 слов): что эта планета в данном знаке означает для человека — характер, проявления в жизни, на что обратить внимание; дом упомяни только одним прикладным штрихом.
-- "full" — масштабное полноценное описание (5-7 абзацев, ~380-560 слов): центр разбора — связка планета + знак. Сначала объясни роль планеты как архетип и жизненную функцию, затем положение планеты в знаке, затем характер, мотивацию, сильные стороны, уязвимости, отношения, работу/дела, привычки, бытовые проявления, повторяющиеся жизненные сценарии и практический совет. Дом, ретроградность и связанные аспекты используй как персональные уточнения, не делай их случайной припиской.
+- "full" — полноценное описание (3-4 абзаца, ~280-360 слов): центр разбора — связка планета + знак. Объясни роль планеты как архетип и жизненную функцию, положение планеты в знаке, характер, мотивацию, сильные стороны и уязвимости, проявления в отношениях и работе/делах, повторяющиеся сценарии и практический совет. Дом, ретроградность и связанные аспекты используй как персональные уточнения, не делай их случайной припиской. Пиши содержательно, но без воды и повторов.
 
 {_quality_rules("planets")}
 
@@ -357,7 +358,7 @@ def _build_houses_prompt(
 
 Для КАЖДОГО дома напиши:
 - "short" — компактное описание (2 предложения, ~35-55 слов): какую сферу жизни описывает этот дом, как знак на куспиде окрашивает её, ключевые проявления.
-- "full" — масштабное полноценное описание (4-6 абзацев, ~270-420 слов): тема дома, стиль знака на куспиде, типичные жизненные сценарии, как это видно в характере и поведении, отношения, работа/дела или быт этой сферы, планеты в доме из контекста карты, сильная сторона, риск, точка внимания и практический ориентир.
+- "full" — полноценное описание (2-3 абзаца, ~200-280 слов): тема дома, стиль знака на куспиде, типичные жизненные сценарии, как это видно в характере и поведении, отношения или работа/дела этой сферы, планеты в доме из контекста карты, сильная сторона, риск и практический ориентир. Пиши содержательно, но без воды.
 
 {_quality_rules("houses")}
 
@@ -405,7 +406,7 @@ def _build_aspects_prompt(
 
 Для КАЖДОГО аспекта напиши:
 - "short" — компактное описание (2 предложения, ~35-55 слов): как эти две планеты взаимодействуют, что человеку даёт или с чем приходится работать.
-- "full" — масштабное полноценное описание (5-7 абзацев, ~340-520 слов): как именно взаимодействуют две планеты, гармония это или напряжение, орб, знаки и дома обеих планет, какие темы жизни затронуты, как проявляется в характере, отношениях/делах, привычных реакциях и повторяющихся ситуациях, что является сильной стороной, где зона роста и какой практический способ проживать аспект мягче. Добавь 1-2 жизненных примера: разговор, выбор, рабочую ситуацию, близость, конфликт или привычную реакцию.
+- "full" — полноценное описание (2-3 абзаца, ~240-320 слов): как именно взаимодействуют две планеты, гармония это или напряжение, какие темы жизни затронуты, как проявляется в характере, отношениях и делах, привычных реакциях, сильная сторона, зона роста и практический способ проживать аспект мягче. Добавь 1-2 жизненных примера. Пиши содержательно, но без воды.
 
 {_quality_rules("aspects")}
 
@@ -524,7 +525,7 @@ _STYLE_BRIEF = """КАК ПИСАТЬ:
 - Без астрологического жаргона: ни «энергии», ни «вселенная», ни «архетипы», ни «эманации», ни «работа со страхами».
 - Без банальностей вроде «вы — творческая натура».
 - Каждый текст должен иметь свой ритм, свои примеры, уникальное первое предложение и уникальное последнее предложение; не используй одинаковые стартовые и финальные формулы в соседних описаниях.
-- Full должен быть настолько же подробным, как полноценный справочный раздел: несколько смысловых блоков, конкретные проявления и практический ориентир, а не короткий вывод.
+- Full — плотный текст в заданном объёме: конкретные проявления и практический ориентир, а не короткий вывод и не вода ради длины.
 - Не копируй чужие тексты; используй только общую структуру глубокого астрологического разбора.
 - Не используй маркеры копипаста: «Подробнее», «Читать далее», «Источник», «Geocult».
 - Следи за склонениями знаков: «в Скорпионе», но «в знаке Скорпиона».
@@ -547,7 +548,7 @@ def _planet_one_prompt(key: str, planet: dict[str, Any]) -> str:
 
 Вызови инструмент submit_entry с двумя полями:
 - "short" (2 предложения, ~35-55 слов): что эта планета в данном знаке значит для человека — как проявляется в характере и в жизни, на что обратить внимание; дом упомяни только одним прикладным штрихом.
-- "full" (5-7 абзацев, ~380-560 слов): подробный справочный текст как в классическом описании «планета в знаке»: роль планеты как архетип и жизненная функция, характер, мотивации, сильные стороны, уязвимости, отношения, работа/дела, привычки, бытовые проявления, повторяющиеся жизненные сценарии и практический совет. Дом добавь только ближе к концу как персональный акцент.
+- "full" (3-4 абзаца, ~280-360 слов): справочный текст «планета в знаке»: роль планеты как архетип и жизненная функция, характер, мотивации, сильные стороны и уязвимости, проявления в отношениях и работе/делах, повторяющиеся сценарии и практический совет. Дом добавь только ближе к концу как персональный акцент. Содержательно, но без воды.
 
 {_STYLE_BRIEF}"""
 
@@ -563,7 +564,7 @@ def _house_one_prompt(num: int, sign_name: str) -> str:
 
 Вызови инструмент submit_entry с двумя полями:
 - "short" (2 предложения, ~35-55 слов): какую сферу жизни описывает этот дом, как знак на куспиде её окрашивает, ключевые проявления.
-- "full" (4-6 абзацев, ~270-420 слов): тема дома подробнее, стиль знака на куспиде, типичные жизненные сценарии, как это видно в характере и поведении, отношения, работа/дела или быт этой сферы, сильная сторона, риск, точка внимания и практический ориентир.
+- "full" (2-3 абзаца, ~200-280 слов): тема дома, стиль знака на куспиде, типичные жизненные сценарии, как это видно в характере и поведении, отношения или работа/дела этой сферы, сильная сторона, риск и практический ориентир. Содержательно, но без воды.
 
 {_STYLE_BRIEF}"""
 
@@ -577,7 +578,7 @@ def _aspect_one_prompt(p1: str, p2: str, atype: str) -> str:
 
 Вызови инструмент submit_entry с двумя полями:
 - "short" (2 предложения, ~35-55 слов): как эти две темы взаимодействуют — что даёт человеку или с чем приходится работать.
-- "full" (5-7 абзацев, ~340-520 слов): как именно сочетаются эти две темы, гармония это или трение, орб, знаки и дома обеих планет, какие сферы жизни затронуты, как проявляется в характере, отношениях/делах, привычных реакциях и повторяющихся ситуациях, сильные стороны, зоны роста и практический способ проживать аспект мягче. Добавь 1-2 бытовых примера проявления аспекта.
+- "full" (2-3 абзаца, ~240-320 слов): как именно сочетаются эти две темы, гармония это или трение, какие сферы жизни затронуты, как проявляется в характере, отношениях и делах, привычных реакциях, сильная сторона, зона роста и практический способ проживать аспект мягче. Добавь 1-2 бытовых примера. Содержательно, но без воды.
 
 {_STYLE_BRIEF}"""
 
@@ -606,7 +607,7 @@ def _repair_prompt(
 
 Вызови инструмент submit_entry с двумя полями:
 - "short": оставь компактным, 2 предложения, без воды.
-- "full": напиши заново как полноценный PDF-разбор минимум {_MIN_FULL_WORDS[section]} слов. Он должен быть настолько же подробным, как полноценный справочный раздел, явно длиннее short, учитывать реальный контекст карты, иметь свои примеры, уникальное первое предложение и уникальное последнее предложение.
+- "full": напиши заново как плотный PDF-разбор около {_MIN_FULL_WORDS[section]} слов (ориентир объёма, без воды). Явно длиннее short, учитывает реальный контекст карты, имеет свои примеры, уникальное первое и последнее предложение.
 
 {_REFERENCE_STYLE_BLUEPRINT}
 
@@ -676,7 +677,11 @@ async def _call_tool_chunk(
         async with sem:
             try:
                 result = await _call_tool(
-                    client, prompt, tool_name, schema, max_tokens,
+                    client,
+                    prompt,
+                    tool_name,
+                    schema,
+                    max_tokens,
                 )
                 if not isinstance(result, dict):
                     return {}
@@ -697,7 +702,9 @@ async def _call_tool_chunk(
                     continue
                 log.warning(
                     "natal_descriptions.batch_failed",
-                    tool=tool_name, keys=keys, error=msg[:200],
+                    tool=tool_name,
+                    keys=keys,
+                    error=msg[:200],
                 )
                 return {}
     return {}
@@ -754,7 +761,9 @@ def _full_too_close_to_short(short: str, full: str) -> bool:
     if not short_words:
         return False
     overlap = len(short_words & full_words) / len(short_words)
-    return overlap > 0.9 and _word_count(full) < max(_word_count(short) * 4, _MIN_FULL_WORDS["houses"])
+    return overlap > 0.9 and _word_count(full) < max(
+        _word_count(short) * 4, _MIN_FULL_WORDS["houses"]
+    )
 
 
 def _entry_needs_repair(entry: dict[str, str], section: str) -> bool:
@@ -832,7 +841,7 @@ async def _repair_entries(
 # Per-chunk cap of items in a single LLM call. Longer PDF copy needs smaller
 # batches so the tool-call payload keeps schema adherence and avoids truncation.
 _BATCH_SIZE = 2
-_BATCH_MAX_TOKENS = 7600
+_BATCH_MAX_TOKENS = 6000
 
 
 async def generate_natal_descriptions(
@@ -867,8 +876,12 @@ async def generate_natal_descriptions(
         keys = [k for k, _ in chunk]
         planet_tasks.append(
             _call_tool_chunk(
-                client, prompt, "submit_planet_descriptions",
-                keys, _BATCH_MAX_TOKENS, sem,
+                client,
+                prompt,
+                "submit_planet_descriptions",
+                keys,
+                _BATCH_MAX_TOKENS,
+                sem,
             )
         )
 
@@ -878,10 +891,12 @@ async def generate_natal_descriptions(
         num = h.get("number")
         if not num:
             continue
-        house_items.append({
-            "number": int(num),
-            "sign_ru": _normalise_sign(h.get("sign_ru") or h.get("sign")),
-        })
+        house_items.append(
+            {
+                "number": int(num),
+                "sign_ru": _normalise_sign(h.get("sign_ru") or h.get("sign")),
+            }
+        )
     house_chunks = _chunked(house_items, _BATCH_SIZE)
     house_tasks = []
     for chunk in house_chunks:
@@ -889,8 +904,12 @@ async def generate_natal_descriptions(
         keys = [str(h["number"]) for h in chunk]
         house_tasks.append(
             _call_tool_chunk(
-                client, prompt, "submit_house_descriptions",
-                keys, _BATCH_MAX_TOKENS, sem,
+                client,
+                prompt,
+                "submit_house_descriptions",
+                keys,
+                _BATCH_MAX_TOKENS,
+                sem,
             )
         )
 
@@ -902,15 +921,18 @@ async def generate_natal_descriptions(
         p2 = (a.get("p2") or "").lower()
         atype = (a.get("aspect") or "").lower()
         if not (
-            p1 and p2 and atype
-            and p1 in _PLANET_RU and p2 in _PLANET_RU
-            and atype in _ASPECT_RU
+            p1 and p2 and atype and p1 in _PLANET_RU and p2 in _PLANET_RU and atype in _ASPECT_RU
         ):
             continue
         aid = f"{p1}_{p2}_{atype}"
-        aspect_items.append({
-            "p1": p1, "p2": p2, "aspect": atype, "orb": a.get("orb", 0),
-        })
+        aspect_items.append(
+            {
+                "p1": p1,
+                "p2": p2,
+                "aspect": atype,
+                "orb": a.get("orb", 0),
+            }
+        )
         aspect_ids_lookup[aid] = (p1, p2, atype)
     aspect_chunks = _chunked(aspect_items, _BATCH_SIZE)
     aspect_tasks = []
@@ -920,14 +942,21 @@ async def generate_natal_descriptions(
             continue
         aspect_tasks.append(
             _call_tool_chunk(
-                client, prompt, "submit_aspect_descriptions",
-                chunk_ids, _BATCH_MAX_TOKENS, sem,
+                client,
+                prompt,
+                "submit_aspect_descriptions",
+                chunk_ids,
+                _BATCH_MAX_TOKENS,
+                sem,
             )
         )
 
     # Fire everything in parallel — semaphore caps actual concurrency.
     all_results = await asyncio.gather(
-        *planet_tasks, *house_tasks, *aspect_tasks, return_exceptions=False,
+        *planet_tasks,
+        *house_tasks,
+        *aspect_tasks,
+        return_exceptions=False,
     )
 
     p_n = len(planet_tasks)
@@ -970,18 +999,32 @@ async def generate_natal_descriptions(
     for aid in aspect_out:
         p1, p2, atype = aspect_ids_lookup.get(aid, ("", "", ""))
         aspect_labels[aid] = (
-            f"{_PLANET_RU.get(p1, p1)} — {_ASPECT_RU.get(atype, atype)} — "
-            f"{_PLANET_RU.get(p2, p2)}"
+            f"{_PLANET_RU.get(p1, p1)} — {_ASPECT_RU.get(atype, atype)} — {_PLANET_RU.get(p2, p2)}"
         )
 
     planet_out = await _repair_entries(
-        client, planet_out, planet_labels, "planets", chart_context, sem,
+        client,
+        planet_out,
+        planet_labels,
+        "planets",
+        chart_context,
+        sem,
     )
     house_out = await _repair_entries(
-        client, house_out, house_labels, "houses", chart_context, sem,
+        client,
+        house_out,
+        house_labels,
+        "houses",
+        chart_context,
+        sem,
     )
     aspect_out = await _repair_entries(
-        client, aspect_out, aspect_labels, "aspects", chart_context, sem,
+        client,
+        aspect_out,
+        aspect_labels,
+        "aspects",
+        chart_context,
+        sem,
     )
 
     out: dict[str, Any] = {"planets": planet_out, "houses": house_out, "aspects": []}

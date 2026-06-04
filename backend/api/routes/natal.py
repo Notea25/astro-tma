@@ -61,7 +61,7 @@ class WheelSvgPayload(BaseModel):
 
 # Bumped when description style rules change — old rows render as stale on
 # first read so they regenerate with current length, variety and gender rules.
-NATAL_DESCRIPTIONS_VERSION = 7
+NATAL_DESCRIPTIONS_VERSION = 9
 MIN_EXPANDED_READING_HEADINGS = 5
 MIN_EXPANDED_READING_WORDS = 650
 
