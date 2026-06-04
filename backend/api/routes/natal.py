@@ -62,9 +62,11 @@ class WheelSvgPayload(BaseModel):
 
 # Bumped when description style rules change — old rows render as stale on
 # first read so they regenerate with current length, variety and gender rules.
-NATAL_DESCRIPTIONS_VERSION = 9
-MIN_EXPANDED_READING_HEADINGS = 5
-MIN_EXPANDED_READING_WORDS = 650
+NATAL_DESCRIPTIONS_VERSION = 10
+# Bumped to 8: the reading prompt now produces an 8-section geocult-style
+# breakdown. Older 7-section readings fall below this and auto-regenerate.
+MIN_EXPANDED_READING_HEADINGS = 8
+MIN_EXPANDED_READING_WORDS = 1100
 
 
 def _empty_descriptions() -> dict[str, Any]:

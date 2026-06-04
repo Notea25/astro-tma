@@ -302,9 +302,12 @@ def test_natal_reading_prompt_requests_expanded_interpretation():
 
     prompt = llm_interpreter._build_prompt("Scorpio", "Aquarius", "Aries", planets, aspects)
 
-    assert "1000–1400 слов" in prompt
+    assert "geocult" in prompt
     assert "полноценными абзацами" in prompt
-    assert "2–3 абзаца" in prompt
+    assert "**Основа личности**" in prompt
+    assert "**Управитель гороскопа**" in prompt
+    assert "**Заключительный синтез**" in prompt
+    assert "натив" in prompt
 
 
 @pytest.mark.asyncio
@@ -335,7 +338,7 @@ async def test_generate_natal_reading_uses_expanded_token_budget(monkeypatch):
 
     assert reading == "Развёрнутое чтение."
     assert calls["api_key"] == "test-key"
-    assert calls["max_tokens"] == 2400
+    assert calls["max_tokens"] >= 6000
 
 
 def test_planet_description_prompt_prioritises_sign_over_house():
@@ -354,7 +357,7 @@ def test_planet_description_prompt_prioritises_sign_over_house():
     assert "повторяющиеся сценарии" in prompt
     assert "без воды" in prompt
     assert "Подробнее" in prompt
-    assert "уникальное последнее предложение" in prompt
+    assert "уникальное первое и последнее предложение" in prompt
     assert "full" in prompt
     assert "6-9 предложений" not in prompt
 
@@ -377,7 +380,7 @@ def test_house_description_prompt_requests_scenarios_and_declension():
     assert "типичные жизненные сценарии" in prompt
     assert "сильная сторона" in prompt
     assert "без воды" in prompt
-    assert "уникальное последнее предложение" in prompt
+    assert "уникальное первое и последнее предложение" in prompt
 
 
 def test_aspect_description_prompt_requests_full_interaction():
@@ -389,7 +392,7 @@ def test_aspect_description_prompt_requests_full_interaction():
     assert "сочетаются эти две темы" in prompt
     assert "отношениях и делах" in prompt
     assert "зона роста" in prompt
-    assert "уникальное последнее предложение" in prompt
+    assert "уникальное первое и последнее предложение" in prompt
 
 
 def test_description_batch_prompts_include_full_chart_context():
@@ -407,9 +410,9 @@ def test_description_batch_prompts_include_full_chart_context():
     assert "Планеты в домах:" in prompt
     assert "Связанные аспекты по планетам:" in prompt
     assert "sun_moon_square" in prompt
-    assert 'full" должен быть полноценным PDF-текстом' in prompt
-    assert "REFERENCE-STYLE BLUEPRINT" in prompt
-    assert "плотный, но содержательный" in prompt
+    assert "ВЕРХНИЙ ориентир" in prompt
+    assert "КОНКРЕТНО, БЕЗ ВОДЫ" in prompt
+    assert "Запрещены абстрактные наполнители" in prompt
     assert "Читать далее" in prompt
 
 
