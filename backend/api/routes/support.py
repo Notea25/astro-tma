@@ -96,8 +96,27 @@ async def support_webhook(request: Request) -> dict[str, bool]:
                 error=result.get("description"),
                 user_id=target_user_id,
             )
-        else:
-            log.info("support.reply.sent", user_id=target_user_id)
+            return {"ok": True}
+
+        log.info("support.reply.sent", user_id=target_user_id)
+
+        # Mark the user's forwarded message with ✅ so the team can see at
+        # a glance which questions still need attention. Best-effort —
+        # reactions can fail (e.g. emoji not allowed in chat) without
+        # impacting the reply itself.
+        reaction_result = await _tg(
+            "setMessageReaction",
+            {
+                "chat_id": chat_id,
+                "message_id": reply["message_id"],
+                "reaction": [{"type": "emoji", "emoji": "✅"}],
+            },
+        )
+        if not reaction_result.get("ok"):
+            log.warning(
+                "support.reply.reaction_failed",
+                error=reaction_result.get("description"),
+            )
         return {"ok": True}
 
     # ── User DM → forward to support group ────────────────────────────────
