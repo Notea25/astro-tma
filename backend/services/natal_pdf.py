@@ -1835,6 +1835,7 @@ def generate_natal_pdf(
     aspects: list[dict[str, Any]],
     reading: str | None = None,
     descriptions: dict[str, Any] | None = None,
+    wheel_svg: str | None = None,  # noqa: ARG001 — accepted for kwargs parity; ReportLab draws its own wheel
 ) -> bytes:
     """Generate a complete natal chart PDF and return it as bytes."""
     _register_fonts()

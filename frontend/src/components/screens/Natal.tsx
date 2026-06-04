@@ -10,7 +10,7 @@ import WebApp from "@twa-dev/sdk";
 import { motion, type PanInfo } from "framer-motion";
 import { NatalBasicSkeleton } from "@/components/ui/Skeleton";
 import { useAppStore } from "@/stores/app";
-import { ApiError, natalApi } from "@/services/api";
+import { ApiError, natalApi, setNatalWheelSvgProvider } from "@/services/api";
 import {
   ZODIAC_SIGNS,
   type NatalDescriptionsResponse,
@@ -21,6 +21,7 @@ import { NatalChart, type NatalChartData } from "@/components/NatalChart";
 import { ZodiacIcon } from "@/components/ui/ZodiacIcon";
 import type { ZodiacSign } from "@/components/NatalChart/types";
 import { toNatalChartData } from "@/components/NatalChart/adapter";
+import { serializeWheelSvg } from "@/components/NatalChart/utils/exportSvg";
 import { PlanetOrb } from "@/components/NatalChart/PlanetOrb";
 import { AspectOrb } from "@/components/NatalChart/AspectOrb";
 import {
@@ -43,10 +44,7 @@ import { BigThreeBlock } from "@/components/natal/BigThreeBlock";
 import { DominantsBlock } from "@/components/natal/DominantsBlock";
 import { HeroInfo } from "@/components/natal/HeroInfo";
 import { KeyAspectsList } from "@/components/natal/KeyAspectsList";
-import type {
-  NatalElementKey,
-  NatalKeyAspect,
-} from "@/types";
+import type { NatalElementKey, NatalKeyAspect } from "@/types";
 import styles from "./Natal.module.css";
 
 type NatalDescSelection = {
@@ -91,8 +89,18 @@ const HOUSE_AXIS_LABELS: Record<number, HouseAxisLabel> = {
 };
 
 const ZODIAC_KEYS = new Set<string>([
-  "aries", "taurus", "gemini", "cancer", "leo", "virgo",
-  "libra", "scorpio", "sagittarius", "capricorn", "aquarius", "pisces",
+  "aries",
+  "taurus",
+  "gemini",
+  "cancer",
+  "leo",
+  "virgo",
+  "libra",
+  "scorpio",
+  "sagittarius",
+  "capricorn",
+  "aquarius",
+  "pisces",
 ]);
 const toZodiacSign = (key: string | null | undefined): ZodiacSign | null =>
   key && ZODIAC_KEYS.has(key) ? (key as ZodiacSign) : null;
@@ -1551,6 +1559,19 @@ function NatalHeroCard({
     ? `${toRu(ascendantSign)} восходящий`
     : `${toRu(sunSign)} солнечный знак`;
 
+  const wheelStageRef = useRef<HTMLDivElement | null>(null);
+
+  // Expose the live wheel SVG to the PDF download flow so the report embeds
+  // the exact on-screen chart. Re-registers when the chart data changes.
+  useEffect(() => {
+    setNatalWheelSvgProvider(async () => {
+      const svgEl = wheelStageRef.current?.querySelector("svg");
+      if (!svgEl) return null;
+      return serializeWheelSvg(svgEl as SVGSVGElement);
+    });
+    return () => setNatalWheelSvgProvider(null);
+  }, [chartData, displayName]);
+
   return (
     <section className={styles.heroCard} aria-label="Основная натальная карта">
       <div className={styles.heroAura} aria-hidden="true" />
@@ -1575,7 +1596,7 @@ function NatalHeroCard({
         <p className={styles.quote}>«Рождённый звёздами»</p>
       </div>
 
-      <div className={styles.wheelStage}>
+      <div className={styles.wheelStage} ref={wheelStageRef}>
         <NatalChart
           data={{ ...chartData, name: displayName }}
           theme="onyx-gold"
@@ -1673,12 +1694,7 @@ function NatalPdfCard({
   const entitled = useEntitlement("natal_full");
   const price = useProductPrice("natal_full") ?? 149;
   const priceRub = useProductPriceRub("natal_full");
-  const {
-    purchase,
-    activating,
-    phase,
-    error: payError,
-  } = usePayment();
+  const { purchase, activating, phase, error: payError } = usePayment();
   const paying = phase === "opening" || phase === "activating";
   const sendToTelegramChat = Boolean(WebApp.initData);
 
@@ -1743,7 +1759,8 @@ function NatalPdfCard({
       )}
       {!entitled && hasChart && !paying && (
         <p className={styles.pdfHint}>
-          Премиум-доступ ко всей карте + PDF-отчёт. Также входит в Premium-подписку.
+          Премиум-доступ ко всей карте + PDF-отчёт. Также входит в
+          Premium-подписку.
         </p>
       )}
       {(error || payError) && (
@@ -1812,9 +1829,7 @@ function NatalElementsPanel({
 
   const elementCountMap = ELEMENT_ORDER.reduce<Record<string, number>>(
     (acc, key) => {
-      acc[key] = planets.filter((p) =>
-        ELEMENTS[key].signs.includes(p),
-      ).length;
+      acc[key] = planets.filter((p) => ELEMENTS[key].signs.includes(p)).length;
       return acc;
     },
     {},
@@ -1833,8 +1848,7 @@ function NatalElementsPanel({
           const count = elementCountMap[key];
           const tone = ELEMENT_TONE[key];
           const meta = ELEMENT_META[key];
-          const accent =
-            meta?.accent ?? tone?.color ?? ELEMENT_COLORS[key];
+          const accent = meta?.accent ?? tone?.color ?? ELEMENT_COLORS[key];
 
           return (
             <button
@@ -1879,9 +1893,7 @@ function NatalElementsPanel({
                 onSelect({
                   title: trait,
                   subtitle: `Качество знака ${
-                    summary.sun_sign
-                      ? normalizeSign(summary.sun_sign)
-                      : ""
+                    summary.sun_sign ? normalizeSign(summary.sun_sign) : ""
                   }`,
                   body:
                     TRAIT_FALLBACK_DESC[trait] ??
@@ -2083,7 +2095,11 @@ function NatalHousesPanel({
             >
               <span className={styles.houseNumber}>{house.number}</span>
               <span className={styles.houseGlyph} aria-hidden="true">
-                {houseZodiac ? <ZodiacIcon sign={houseZodiac} size={20} /> : glyph}
+                {houseZodiac ? (
+                  <ZodiacIcon sign={houseZodiac} size={20} />
+                ) : (
+                  glyph
+                )}
               </span>
               <span className={styles.houseCopy}>
                 <b>{signRu}</b>

@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import html
 import math
+import time
 from datetime import datetime
 from typing import Any
 
+from core.logging import get_logger
 from services.astro.planet_names import PLANET_GLYPH as PLANET_SYMBOLS
 from services.astro.planet_names import PLANET_RU
 from services.astro.sign_cases import sign_ru as _sign_case_ru
@@ -37,6 +39,8 @@ from services.natal_pdf import (
 from services.natal_pdf import (
     _planet_fallback as _planet_fallback_base,
 )
+
+log = get_logger(__name__)
 
 GOLD = "#d6b85a"
 GOLD_DIM = "#8d7842"
@@ -501,7 +505,8 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .dominant-card {{ margin-top: 8mm; border-left: 3px solid {GOLD}; min-height: 35mm; display: grid; grid-template-columns: 12mm 1fr; gap: 5mm; align-items: center; }}
 .dominant-symbol {{ font-size: 27px; color: var(--element-color); }}
 .dominant-card h3 {{ color: {GOLD}; font-size: 17px; }}
-.wheel-wrap {{ width: 164mm; height: 164mm; margin: 9mm auto 7mm; background: {WHEEL_BG}; }}
+.wheel-wrap {{ width: 164mm; height: 164mm; margin: 9mm auto 7mm; background: {WHEEL_BG}; display: flex; align-items: center; justify-content: center; }}
+.wheel-wrap svg {{ width: 100%; height: 100%; max-width: 100%; display: block; }}
 .wheel-svg {{ width: 100%; height: 100%; display: block; }}
 .legend {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 3mm 24mm; width: 154mm; margin: 0 auto; color: {TEXT_DIM}; font-size: 11.5px; }}
 .legend-line {{ display: inline-block; width: 13mm; height: 1px; margin-right: 4mm; vertical-align: middle; background: currentColor; }}
@@ -695,6 +700,7 @@ def _wheel_page(
     houses: list[dict[str, Any]],
     aspects: list[dict[str, Any]],
     asc_sign: str | None,
+    wheel_svg: str | None = None,
 ) -> str:
     legend = [
         ("conjunction", "Соединение · слияние"),
@@ -705,7 +711,8 @@ def _wheel_page(
         ("quincunx", "Квинконс · пересборка"),
     ]
     body = _section_header("Натальное колесо", "Карта неба в момент вашего рождения")
-    body += f'<div class="wheel-wrap">{_natal_wheel_svg(planets, houses, aspects, asc_sign)}</div>'
+    wheel_markup = wheel_svg if wheel_svg else _natal_wheel_svg(planets, houses, aspects, asc_sign)
+    body += f'<div class="wheel-wrap">{wheel_markup}</div>'
     body += (
         '<div class="legend">'
         + "".join(
@@ -827,7 +834,9 @@ def _houses_pages(
     items = [house for house in houses if int(house.get("number") or 0)]
     blocks: list[tuple[dict[str, Any], str, bool]] = []
     for house in items:
-        desc = _full_description(house_desc.get(str(int(house.get("number") or 0))), _house_fallback(house))
+        desc = _full_description(
+            house_desc.get(str(int(house.get("number") or 0))), _house_fallback(house)
+        )
         text_chunks = _split_words(desc, 145)
         for chunk_index, text_chunk in enumerate(text_chunks or [desc]):
             blocks.append((house, text_chunk, chunk_index > 0))
@@ -896,9 +905,7 @@ def _aspect_pages(
         for aspect in group_items:
             p1 = _planet_key(aspect.get("p1"))
             p2 = _planet_key(aspect.get("p2"))
-            desc = _full_description(
-                aspect_desc.get((p1, p2, atype)), _aspect_fallback(aspect)
-            )
+            desc = _full_description(aspect_desc.get((p1, p2, atype)), _aspect_fallback(aspect))
             for chunk_index, text_chunk in enumerate(_split_words(desc, 190) or [desc]):
                 blocks.append((atype, aspect, text_chunk, chunk_index > 0))
 
@@ -940,8 +947,8 @@ def _aspect_pages(
                 color = ASPECT_COLORS.get(atype, GOLD)
                 body += (
                     f'<section class="aspect-group" style="--aspect-color:{color}">'
-                    f'<h3>{ASPECT_SYMBOLS.get(atype, "")} {ASPECT_RU.get(atype, atype)} '
-                    f'<em>— {_e(ASPECT_TOPICS.get(atype, ""))}</em></h3>'
+                    f"<h3>{ASPECT_SYMBOLS.get(atype, '')} {ASPECT_RU.get(atype, atype)} "
+                    f"<em>— {_e(ASPECT_TOPICS.get(atype, ''))}</em></h3>"
                 )
                 group_open = True
                 previous_type = atype
@@ -1075,6 +1082,7 @@ def build_natal_pdf_html(
     aspects: list[dict[str, Any]],
     reading: str | None = None,
     descriptions: dict[str, Any] | None = None,
+    wheel_svg: str | None = None,
 ) -> str:
     planet_pages = _planet_pages(planets, descriptions, start_page=6)
     houses_start = 6 + len(planet_pages)
@@ -1091,7 +1099,7 @@ def build_natal_pdf_html(
             reading_page=reading_start,
         ),
         _key_points_page(planets, sun_sign, moon_sign, asc_sign, descriptions),
-        _wheel_page(planets, houses, aspects, asc_sign),
+        _wheel_page(planets, houses, aspects, asc_sign, wheel_svg=wheel_svg),
         _elements_page(planets),
         *planet_pages,
         *house_pages,
@@ -1116,6 +1124,7 @@ async def generate_natal_pdf_html(
     aspects: list[dict[str, Any]],
     reading: str | None = None,
     descriptions: dict[str, Any] | None = None,
+    wheel_svg: str | None = None,
 ) -> bytes:
     from playwright.async_api import async_playwright
 
@@ -1134,20 +1143,59 @@ async def generate_natal_pdf_html(
         aspects=aspects,
         reading=reading,
         descriptions=descriptions,
+        wheel_svg=wheel_svg,
     )
+    log.info(
+        "natal.pdf_html_render_start",
+        html_bytes=len(document.encode("utf-8")),
+        has_wheel_svg=bool(wheel_svg),
+        has_descriptions=bool(
+            descriptions
+            and (
+                descriptions.get("planets")
+                or descriptions.get("houses")
+                or descriptions.get("aspects")
+            )
+        ),
+        has_reading=bool(reading and reading.strip()),
+    )
+    started = time.monotonic()
+    stage = "acquire_semaphore"
     async with pdf_semaphore:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(args=["--no-sandbox", "--disable-dev-shm-usage"])
-            try:
-                page = await browser.new_page(
-                    viewport={"width": 794, "height": 1123}, device_scale_factor=1
-                )
-                await page.set_content(document, wait_until="load")
-                return await page.pdf(
-                    format="A4",
-                    print_background=True,
-                    margin={"top": "0", "right": "0", "bottom": "0", "left": "0"},
-                    prefer_css_page_size=True,
-                )
-            finally:
-                await browser.close()
+        try:
+            stage = "playwright_start"
+            async with async_playwright() as p:
+                stage = "chromium_launch"
+                browser = await p.chromium.launch(args=["--no-sandbox", "--disable-dev-shm-usage"])
+                try:
+                    stage = "new_page"
+                    page = await browser.new_page(
+                        viewport={"width": 794, "height": 1123}, device_scale_factor=1
+                    )
+                    stage = "set_content"
+                    await page.set_content(document, wait_until="load")
+                    stage = "render_pdf"
+                    pdf_bytes = await page.pdf(
+                        format="A4",
+                        print_background=True,
+                        margin={"top": "0", "right": "0", "bottom": "0", "left": "0"},
+                        prefer_css_page_size=True,
+                    )
+                finally:
+                    await browser.close()
+        except Exception as e:
+            log.error(
+                "natal.pdf_html_render_failed",
+                stage=stage,
+                error_type=type(e).__name__,
+                error=str(e),
+                elapsed_ms=round((time.monotonic() - started) * 1000),
+                exc_info=True,
+            )
+            raise
+    log.info(
+        "natal.pdf_html_render_ok",
+        pdf_bytes=len(pdf_bytes),
+        elapsed_ms=round((time.monotonic() - started) * 1000),
+    )
+    return pdf_bytes

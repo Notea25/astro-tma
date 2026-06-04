@@ -1,5 +1,6 @@
 """Natal chart endpoints — full chart retrieval and SVG generation."""
 
+import re
 from io import BytesIO
 from secrets import token_urlsafe
 from typing import Any
@@ -8,10 +9,17 @@ from urllib.parse import quote
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.middleware.telegram_auth import get_tg_user
-from core.cache import cache_get, cache_set, key_natal, key_natal_pdf_download
+from core.cache import (
+    cache_get,
+    cache_set,
+    key_natal,
+    key_natal_pdf_download,
+    key_natal_wheel_svg,
+)
 from core.logging import get_logger
 from core.settings import settings
 from db.database import get_db
@@ -32,6 +40,25 @@ log = get_logger(__name__)
 
 router = APIRouter(prefix="/natal", tags=["natal"])
 _PDF_DOWNLOAD_TTL_SECONDS = 300
+_WHEEL_SVG_MAX_BYTES = 512 * 1024
+_WHEEL_SVG_TTL_SECONDS = 24 * 60 * 60
+
+_SCRIPT_RE = re.compile(r"<script\b[^>]*>.*?</script\s*>", re.IGNORECASE | re.DOTALL)
+_ON_HANDLER_RE = re.compile(r"\son[a-z]+\s*=\s*(\"[^\"]*\"|'[^']*'|[^\s>]+)", re.IGNORECASE)
+
+
+def _sanitize_wheel_svg(svg: str) -> str:
+    """Strip scripts and inline event handlers before storing — the SVG is
+    later injected into our own Chromium HTML, so keep it inert."""
+    svg = _SCRIPT_RE.sub("", svg)
+    svg = _ON_HANDLER_RE.sub("", svg)
+    return svg
+
+
+class WheelSvgPayload(BaseModel):
+    svg: str = Field(min_length=1)
+
+
 # Bumped when description style rules change — old rows render as stale on
 # first read so they regenerate with current length, variety and gender rules.
 NATAL_DESCRIPTIONS_VERSION = 7
@@ -253,6 +280,11 @@ async def _build_natal_pdf_bytes(db: AsyncSession, user) -> bytes:
     descriptions = _get_stored_descriptions(user)
     reading = await _get_cached_pdf_reading(user)
 
+    wheel_svg = None
+    cached_wheel = await cache_get(key_natal_wheel_svg(user.id))
+    if isinstance(cached_wheel, dict):
+        wheel_svg = cached_wheel.get("svg")
+
     pdf_kwargs = dict(
         user_name=user.tg_first_name or "User",
         birth_date=str(user.birth_date) if user.birth_date else "",
@@ -268,12 +300,37 @@ async def _build_natal_pdf_bytes(db: AsyncSession, user) -> bytes:
         aspects=aspects,
         reading=reading,
         descriptions=descriptions,
+        wheel_svg=wheel_svg,
     )
     try:
-        return await generate_natal_pdf_html(**pdf_kwargs)
+        pdf_bytes = await generate_natal_pdf_html(**pdf_kwargs)
+        log.info(
+            "natal.pdf_built_html",
+            user_id=user.id,
+            renderer="html_playwright",
+            pdf_bytes=len(pdf_bytes),
+        )
+        return pdf_bytes
     except Exception as e:  # noqa: BLE001
-        log.error("natal.pdf_html_failed_fallback_reportlab", user_id=user.id, error=str(e))
-        return generate_natal_pdf(**pdf_kwargs)
+        # The HTML/Chromium path is the intended renderer. Falling back to
+        # ReportLab still returns a PDF, but it is the degraded layout — so
+        # log loudly (with type + traceback) to make every fallback visible
+        # and actionable in prod, not silent.
+        log.error(
+            "natal.pdf_html_failed_fallback_reportlab",
+            user_id=user.id,
+            error_type=type(e).__name__,
+            error=str(e),
+            exc_info=True,
+        )
+        reportlab_bytes = generate_natal_pdf(**pdf_kwargs)
+        log.warning(
+            "natal.pdf_built_reportlab_fallback",
+            user_id=user.id,
+            renderer="reportlab_fallback",
+            pdf_bytes=len(reportlab_bytes),
+        )
+        return reportlab_bytes
 
 
 async def _build_natal_pdf_response(db: AsyncSession, user) -> Response:
@@ -582,6 +639,29 @@ async def get_natal_descriptions(
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "No birth data")
 
     return await _get_or_generate_descriptions(db, user)
+
+
+@router.post("/wheel-svg")
+async def upload_natal_wheel_svg(
+    payload: WheelSvgPayload,
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Store the frontend-rendered natal wheel SVG so the PDF can embed the
+    exact same chart. Cached per-user in Redis."""
+    user = await user_repo.get_by_id(db, tg_user["id"])
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+
+    svg = payload.svg.strip()
+    if not svg.startswith("<svg"):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Not an SVG")
+    if len(svg.encode("utf-8")) > _WHEEL_SVG_MAX_BYTES:
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "SVG too large")
+
+    svg = _sanitize_wheel_svg(svg)
+    await cache_set(key_natal_wheel_svg(user.id), {"svg": svg}, _WHEEL_SVG_TTL_SECONDS)
+    return {"status": "stored"}
 
 
 @router.get("/pdf")

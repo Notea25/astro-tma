@@ -2,6 +2,7 @@
 Redis cache client — singleton pattern via lifespan.
 All cache keys live here to avoid magic strings across the codebase.
 """
+
 from __future__ import annotations
 
 import json
@@ -47,29 +48,41 @@ def get_redis() -> aioredis.Redis:
 
 # ── Cache key builders (centralised naming) ───────────────────────────────────
 
+
 def key_horoscope(sign: str, date: str, period: str) -> str:
     return f"horoscope:{sign}:{date}:{period}"
+
 
 def key_natal(user_id: int) -> str:
     return f"natal:{user_id}"
 
+
 def key_natal_pdf_download(token: str) -> str:
     return f"natal:pdf-download:{token}"
+
+
+def key_natal_wheel_svg(user_id: int) -> str:
+    return f"natal:wheel-svg:{user_id}"
+
 
 def key_destiny_pdf_download(token: str) -> str:
     return f"destiny:pdf-download:{token}"
 
+
 def key_moon(date: str) -> str:
     return f"moon:{date}"
 
+
 def key_user_premium(user_id: int) -> str:
     return f"user:premium:{user_id}"
+
 
 def key_tarot_interpret(reading_id: int) -> str:
     return f"tarot:interpret:{reading_id}"
 
 
 # ── Generic helpers ───────────────────────────────────────────────────────────
+
 
 async def cache_get(key: str) -> Any | None:
     r = get_redis()

@@ -337,17 +337,16 @@ const localDevDescriptions: NatalDescriptionsResponse = {
 };
 
 const LOCAL_DEV_PDF_BYTES = new Uint8Array([
-  0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, 0x0a, 0x31, 0x20, 0x30,
-  0x20, 0x6f, 0x62, 0x6a, 0x0a, 0x3c, 0x3c, 0x2f, 0x54, 0x79, 0x70, 0x65,
-  0x2f, 0x43, 0x61, 0x74, 0x61, 0x6c, 0x6f, 0x67, 0x2f, 0x50, 0x61, 0x67,
-  0x65, 0x73, 0x20, 0x32, 0x20, 0x30, 0x20, 0x52, 0x3e, 0x3e, 0x0a, 0x65,
-  0x6e, 0x64, 0x6f, 0x62, 0x6a, 0x0a, 0x32, 0x20, 0x30, 0x20, 0x6f, 0x62,
-  0x6a, 0x0a, 0x3c, 0x3c, 0x2f, 0x54, 0x79, 0x70, 0x65, 0x2f, 0x50, 0x61,
-  0x67, 0x65, 0x73, 0x2f, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x20, 0x30, 0x3e,
-  0x3e, 0x0a, 0x65, 0x6e, 0x64, 0x6f, 0x62, 0x6a, 0x0a, 0x74, 0x72, 0x61,
-  0x69, 0x6c, 0x65, 0x72, 0x0a, 0x3c, 0x3c, 0x2f, 0x52, 0x6f, 0x6f, 0x74,
-  0x20, 0x31, 0x20, 0x30, 0x20, 0x52, 0x3e, 0x3e, 0x0a, 0x25, 0x25, 0x45,
-  0x4f, 0x46, 0x0a,
+  0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, 0x0a, 0x31, 0x20, 0x30, 0x20,
+  0x6f, 0x62, 0x6a, 0x0a, 0x3c, 0x3c, 0x2f, 0x54, 0x79, 0x70, 0x65, 0x2f, 0x43,
+  0x61, 0x74, 0x61, 0x6c, 0x6f, 0x67, 0x2f, 0x50, 0x61, 0x67, 0x65, 0x73, 0x20,
+  0x32, 0x20, 0x30, 0x20, 0x52, 0x3e, 0x3e, 0x0a, 0x65, 0x6e, 0x64, 0x6f, 0x62,
+  0x6a, 0x0a, 0x32, 0x20, 0x30, 0x20, 0x6f, 0x62, 0x6a, 0x0a, 0x3c, 0x3c, 0x2f,
+  0x54, 0x79, 0x70, 0x65, 0x2f, 0x50, 0x61, 0x67, 0x65, 0x73, 0x2f, 0x43, 0x6f,
+  0x75, 0x6e, 0x74, 0x20, 0x30, 0x3e, 0x3e, 0x0a, 0x65, 0x6e, 0x64, 0x6f, 0x62,
+  0x6a, 0x0a, 0x74, 0x72, 0x61, 0x69, 0x6c, 0x65, 0x72, 0x0a, 0x3c, 0x3c, 0x2f,
+  0x52, 0x6f, 0x6f, 0x74, 0x20, 0x31, 0x20, 0x30, 0x20, 0x52, 0x3e, 0x3e, 0x0a,
+  0x25, 0x25, 0x45, 0x4f, 0x46, 0x0a,
 ]);
 
 function withLocalDevBirthData(
@@ -561,6 +560,45 @@ export const horoscopeApi = {
 };
 
 // ── Natal ──────────────────────────────────────────────────────────────────────
+/**
+ * Natal screen registers a provider that lazily serializes the live wheel SVG.
+ * downloadPdf() awaits a one-shot upload so even the first download embeds the
+ * exact on-screen chart in the PDF.
+ */
+let wheelSvgProvider: (() => Promise<string | null>) | null = null;
+let wheelSvgUploaded = false;
+let wheelSvgUploadInflight: Promise<void> | null = null;
+
+export function setNatalWheelSvgProvider(
+  provider: (() => Promise<string | null>) | null,
+): void {
+  wheelSvgProvider = provider;
+  // A new chart was mounted — re-upload on next demand.
+  wheelSvgUploaded = false;
+  wheelSvgUploadInflight = null;
+}
+
+async function ensureWheelSvgUploaded(): Promise<void> {
+  if (wheelSvgUploaded || !wheelSvgProvider) return;
+  if (wheelSvgUploadInflight) return wheelSvgUploadInflight;
+
+  wheelSvgUploadInflight = (async () => {
+    try {
+      const svg = await wheelSvgProvider?.();
+      if (svg) {
+        await natalApi.uploadWheelSvg(svg);
+        wheelSvgUploaded = true;
+      }
+    } catch {
+      // Non-fatal: PDF falls back to the server-drawn wheel.
+    } finally {
+      wheelSvgUploadInflight = null;
+    }
+  })();
+
+  return wheelSvgUploadInflight;
+}
+
 export const natalApi = {
   getSummary: () =>
     request<import("@/types").NatalSummaryResponse>("GET", "/natal/summary"),
@@ -571,8 +609,14 @@ export const natalApi = {
       "GET",
       "/natal/descriptions",
     ),
+  uploadWheelSvg: async (svg: string) => {
+    await request<{ status: string }>("POST", "/natal/wheel-svg", { svg });
+  },
+
   downloadPdf: async () => {
     const filename = "natal-chart.pdf";
+
+    await ensureWheelSvgUploaded();
 
     if (canUseTelegramOpenLink()) {
       try {
@@ -705,9 +749,13 @@ const TAROT_CARD_ORDER = [
   "King of Pentacles",
 ] as const;
 
-function remoteTarotImageByName(nameEn: string | null | undefined): string | null {
+function remoteTarotImageByName(
+  nameEn: string | null | undefined,
+): string | null {
   if (!nameEn) return null;
-  const idx = TAROT_CARD_ORDER.indexOf(nameEn as (typeof TAROT_CARD_ORDER)[number]);
+  const idx = TAROT_CARD_ORDER.indexOf(
+    nameEn as (typeof TAROT_CARD_ORDER)[number],
+  );
   if (idx < 0) return null;
   return `${TAROT_IMAGE_BASE}${String(idx).padStart(2, "0")}_${nameEn.replace(/ /g, "_")}.svg`;
 }
@@ -857,9 +905,13 @@ export const referralsApi = {
   getMe: () =>
     request<import("@/types").ReferralInfoResponse>("GET", "/referrals/me"),
   apply: (code: string) =>
-    request<import("@/types").ApplyReferralResponse>("POST", "/referrals/apply", {
-      code,
-    }),
+    request<import("@/types").ApplyReferralResponse>(
+      "POST",
+      "/referrals/apply",
+      {
+        code,
+      },
+    ),
 };
 
 export const paymentsApi = {
@@ -983,8 +1035,8 @@ export interface DestinySpecials {
 }
 
 export interface DestinyFamilyLines {
-  male_upper: number[];   // [near_center, near_corner] к TL
-  male_lower: number[];   // [near_center, near_corner] к BR
+  male_upper: number[]; // [near_center, near_corner] к TL
+  male_lower: number[]; // [near_center, near_corner] к BR
   female_upper: number[]; // [near_center, near_corner] к TR
   female_lower: number[]; // [near_center, near_corner] к BL
 }
@@ -1092,7 +1144,10 @@ export const destinyV3Api = {
     const filename = "destiny-matrix-v3.pdf";
     if (canUseTelegramOpenLink()) {
       try {
-        await request<NatalPdfSendResponse>("POST", "/destiny-matrix/v3/pdf-send");
+        await request<NatalPdfSendResponse>(
+          "POST",
+          "/destiny-matrix/v3/pdf-send",
+        );
         WebApp.showAlert?.("PDF-разбор отправлен вам в чат с ботом.");
       } catch (error) {
         if (!(error instanceof ApiError) || error.status !== 404) throw error;
@@ -1109,7 +1164,8 @@ export const destinyV3Api = {
       const popup = openDownloadWindow();
       try {
         const link = await request<NatalPdfLinkResponse>(
-          "POST", "/destiny-matrix/v3/pdf-link",
+          "POST",
+          "/destiny-matrix/v3/pdf-link",
         );
         const downloadUrl = apiUrl(link.download_url);
         if (popup && !popup.closed) {
@@ -1128,12 +1184,14 @@ export const destinyV3Api = {
 export const destinyApi = {
   calculate: () =>
     request<DestinyMatrixResponse>("POST", "/destiny-matrix/calculate"),
-  getMe: () =>
-    request<DestinyMatrixResponse>("GET", "/destiny-matrix/me"),
+  getMe: () => request<DestinyMatrixResponse>("GET", "/destiny-matrix/me"),
   getArcana: (num: number) =>
     request<ArcanaResponse>("GET", `/destiny-matrix/arcana/${num}`),
   getInterpretation: () =>
-    request<DestinyMatrixInterpretation>("GET", "/destiny-matrix/interpretation"),
+    request<DestinyMatrixInterpretation>(
+      "GET",
+      "/destiny-matrix/interpretation",
+    ),
   downloadPdf: async () => {
     const filename = "destiny-matrix.pdf";
 
