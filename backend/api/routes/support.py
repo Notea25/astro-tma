@@ -75,12 +75,26 @@ async def support_webhook(request: Request) -> dict[str, bool]:
         and chat_id == settings.SUPPORT_GROUP_CHAT_ID
         and (reply := msg.get("reply_to_message"))
     ):
-        target_user_id = await cache_get(_key_fwd(reply["message_id"]))
-        if not target_user_id:
+        mapping = await cache_get(_key_fwd(reply["message_id"]))
+        if not mapping:
             log.info(
                 "support.reply.no_mapping",
                 reply_to=reply.get("message_id"),
             )
+            return {"ok": True}
+
+        # Backwards-compat: older mappings stored just an int user_id.
+        if isinstance(mapping, dict):
+            target_user_id = mapping.get("user_id")
+            header_msg_id = mapping.get("header_msg_id")
+            header_text = mapping.get("header_text")
+        else:
+            target_user_id = mapping
+            header_msg_id = None
+            header_text = None
+
+        if not target_user_id:
+            log.info("support.reply.no_user_id")
             return {"ok": True}
 
         # Plain text reply only (no markdown to avoid escape issues).
@@ -100,23 +114,28 @@ async def support_webhook(request: Request) -> dict[str, bool]:
 
         log.info("support.reply.sent", user_id=target_user_id)
 
-        # Mark the user's forwarded message with ✅ so the team can see at
-        # a glance which questions still need attention. Best-effort —
-        # reactions can fail (e.g. emoji not allowed in chat) without
-        # impacting the reply itself.
-        reaction_result = await _tg(
-            "setMessageReaction",
-            {
-                "chat_id": chat_id,
-                "message_id": reply["message_id"],
-                "reaction": [{"type": "emoji", "emoji": "✅"}],
-            },
-        )
-        if not reaction_result.get("ok"):
-            log.warning(
-                "support.reply.reaction_failed",
-                error=reaction_result.get("description"),
-            )
+        # Mark the question as answered by flipping the header's 📩 → ✅.
+        # Basic groups don't support setMessageReaction (REACTION_INVALID),
+        # so we edit the header message we sent ourselves — works in any
+        # chat type. Best-effort: failure shouldn't break the reply.
+        if header_msg_id and header_text:
+            new_text = header_text.replace("📩", "✅", 1)
+            if new_text != header_text:
+                edit_result = await _tg(
+                    "editMessageText",
+                    {
+                        "chat_id": chat_id,
+                        "message_id": header_msg_id,
+                        "text": new_text,
+                        "parse_mode": "HTML",
+                        "disable_web_page_preview": True,
+                    },
+                )
+                if not edit_result.get("ok"):
+                    log.warning(
+                        "support.reply.header_edit_failed",
+                        error=edit_result.get("description"),
+                    )
         return {"ok": True}
 
     # ── User DM → forward to support group ────────────────────────────────
@@ -161,8 +180,9 @@ async def support_webhook(request: Request) -> dict[str, bool]:
     # original message right after. Using forwardMessage means stickers,
     # photos, voice notes, documents all carry over without us needing to
     # special-case media types. The forwarded message_id becomes the
-    # mapping key — that's what Reply attaches to.
-    await _tg(
+    # mapping key — that's what Reply attaches to. We also remember the
+    # header's message_id so we can flip its 📩 → ✅ once an admin replies.
+    header_result = await _tg(
         "sendMessage",
         {
             "chat_id": settings.SUPPORT_GROUP_CHAT_ID,
@@ -170,6 +190,11 @@ async def support_webhook(request: Request) -> dict[str, bool]:
             "parse_mode": "HTML",
             "disable_web_page_preview": True,
         },
+    )
+    header_msg_id = (
+        header_result["result"]["message_id"]
+        if header_result.get("ok")
+        else None
     )
 
     fwd_result = await _tg(
@@ -189,7 +214,15 @@ async def support_webhook(request: Request) -> dict[str, bool]:
         return {"ok": True}
 
     forwarded_msg_id = fwd_result["result"]["message_id"]
-    await cache_set(_key_fwd(forwarded_msg_id), user_id, _FWD_TTL)
+    await cache_set(
+        _key_fwd(forwarded_msg_id),
+        {
+            "user_id": user_id,
+            "header_msg_id": header_msg_id,
+            "header_text": header,
+        },
+        _FWD_TTL,
+    )
 
     # Acknowledge to the user so they know the message was received.
     await _tg(
