@@ -297,8 +297,9 @@ def _format_birth_date(value: str) -> str:
 
 def _section_header(title: str, subtitle: str, aside: str = "") -> str:
     return (
-        f'<div class="section-head"><div><h2>{_e(title)}</h2>'
-        f'<div class="rule"></div><p>{_e(subtitle)}</p></div></div>'
+        f'<div class="section-head"><div class="section-head-row">'
+        f"<h2>{_e(title)}</h2><p>{_e(subtitle)}</p></div>"
+        f'<div class="rule"></div></div>'
     )
 
 
@@ -477,10 +478,11 @@ h1 {{ margin: 0; color: {GOLD}; font-size: 34px; letter-spacing: 7px; text-trans
 .cover-point .value {{ margin-top: 6mm; font: 15px "DejaVu Serif", Georgia, serif; }}
 .cover-line {{ width: 32mm; height: 1px; background: {GOLD_DIM}; margin-top: 20mm; }}
 .cover-foot {{ margin-top: 8mm; color: #776f8c; font-size: 10px; letter-spacing: 3px; }}
-.section-head {{ display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4mm; }}
+.section-head {{ margin-bottom: 4mm; }}
+.section-head-row {{ display: flex; justify-content: space-between; align-items: baseline; gap: 6mm; }}
 h2 {{ margin: 0; color: {GOLD}; font-size: 17px; letter-spacing: 3px; }}
-.rule {{ height: 1px; width: 170mm; background: rgba(214,184,90,.2); margin: 3mm 0 2.5mm; }}
-.section-head p {{ margin: 0; color: {TEXT_DIM}; font: italic 10.5px "DejaVu Serif", Georgia, serif; }}
+.rule {{ height: 1px; width: 170mm; background: rgba(214,184,90,.2); margin: 3mm 0 0; }}
+.section-head p {{ margin: 0; color: {TEXT_DIM}; font: italic 10.5px "DejaVu Serif", Georgia, serif; white-space: nowrap; }}
 .section-aside {{ color: #807894; font-size: 12px; margin-top: 5mm; }}
 footer {{ position: absolute; bottom: 7mm; left: 0; right: 0; text-align: center; color: #6d6680; font-size: 10px; letter-spacing: 3px; }}
 footer span {{ letter-spacing: 1px; margin-left: 8px; }}
@@ -491,16 +493,19 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .toc-page {{ color: {TEXT_DIM}; text-align: right; font-size: 13px; }}
 .cards-3 {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm; }}
 .grid-2 {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 4.5mm; }}
-.card {{ background: {PANEL}; border: 1px solid {BORDER}; border-radius: 8px; padding: 7mm 6mm; min-height: 39mm; }}
-.card h3 {{ margin: 0; color: {TEXT}; font-size: 15px; line-height: 1.25; }}
-.card p {{ margin: 4mm 0 0; font-size: 11.4px; line-height: 1.43; color: {TEXT}; }}
+.card {{ background: {PANEL}; border: 1px solid {BORDER}; border-radius: 8px; padding: 5mm 6mm; min-height: 39mm; }}
+.card h3 {{ margin: 0; color: {TEXT}; font-size: 13.5px; line-height: 1.25; }}
+.card p {{ margin: 3mm 0 0; font-size: 10.4px; line-height: 1.34; color: {TEXT}; }}
 .card-icon {{ color: {GOLD}; font-size: 25px; margin-bottom: 4mm; }}
 .card-meta {{ color: {TEXT_DIM}; font-size: 10px; letter-spacing: .8px; text-transform: uppercase; margin-top: 1.5mm; }}
-.mini-rule {{ width: 14mm; height: 1px; margin-top: 4mm; background: {GOLD_DIM}; }}
+.mini-rule {{ width: 14mm; height: 1px; margin-top: 3mm; background: {GOLD_DIM}; }}
 .key-card {{ text-align: center; min-height: 86mm; padding: 8mm 6mm 7mm; }}
+.key-card .card-icon {{ margin-bottom: 2mm; }}
 .key-card .zodiac-dot {{ margin: 5mm auto 3mm; width: 7mm; height: 7mm; border-radius: 50%; display: grid; place-items: center; color: white; font-size: 15px; }}
-.key-card .quote {{ margin-top: 5mm; color: {TEXT_DIM}; font: italic 11px "DejaVu Serif", Georgia, serif; }}
-.key-card p {{ text-align: left; }}
+.key-card h3 {{ font-size: 19px; }}
+.key-card .mini-rule {{ margin: 4mm auto 0; }}
+.key-card .quote {{ margin-top: 3mm; color: {TEXT_DIM}; font: italic 11px "DejaVu Serif", Georgia, serif; }}
+.key-card p {{ text-align: center; color: {TEXT_DIM}; margin-top: 4mm; }}
 .dominant-card {{ margin-top: 8mm; border-left: 3px solid {GOLD}; min-height: 35mm; display: grid; grid-template-columns: 12mm 1fr; gap: 5mm; align-items: center; }}
 .dominant-symbol {{ font-size: 27px; color: var(--element-color); }}
 .dominant-card h3 {{ color: {GOLD}; font-size: 17px; }}
@@ -527,39 +532,45 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .zero-element-card {{ min-height: auto; padding: 4mm 5mm; background: {PANEL_DARK}; }}
 .zero-element-card h3 {{ font-size: 13px; margin-bottom: 2mm; }}
 .zero-element-card p {{ font-size: 11px; line-height: 1.38; color: {TEXT_DIM}; margin: 0; }}
-.planet-card {{ min-height: 79mm; }}
-.planet-card .card-icon {{ font-size: 27px; color: var(--planet-color); }}
+.planet-card {{ display: flex; flex-wrap: wrap; align-items: center; }}
+.planet-card .card-icon {{ font-size: 22px; color: var(--planet-color); margin: 0 4mm 0 0; flex: 0 0 auto; }}
+.planet-card > h3 {{ margin: 0; flex: 1 1 auto; }}
+.planet-card .card-meta {{ margin: 0 0 0 4mm; flex: 0 0 auto; white-space: nowrap; }}
+.planet-card .mini-rule {{ flex-basis: 100%; margin-top: 3mm; }}
+.planet-card > p {{ flex-basis: 100%; }}
 .detail-card {{ min-height: auto; }}
-.detail-card p {{ font-size: 11.6px; line-height: 1.46; color: {TEXT}; }}
+.detail-card p {{ font-size: 10.6px; line-height: 1.36; color: {TEXT}; }}
 .detail-card.continuation h3::after {{ content: " · продолжение"; color: {TEXT_DIM}; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 12px; }}
 .retro {{ display: inline-block; margin-left: 3mm; padding: 1mm 3mm; border: 1px solid {GOLD_DIM}; border-radius: 999px; color: {GOLD}; font-size: 11px; letter-spacing: 1px; }}
-.houses-grid {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 3.4mm 4.5mm; }}
-.house-card {{ min-height: 59mm; padding: 5mm; }}
-.house-card.angle {{ border-left: 3px solid {GOLD}; background: {PANEL_DARK}; }}
+.houses-grid {{ display: grid; grid-template-columns: 1fr; gap: 3mm; }}
+.house-card {{ padding: 4mm 5mm; }}
 .house-top {{ display: flex; justify-content: space-between; align-items: baseline; gap: 4mm; }}
-.house-num {{ color: {GOLD}; font: 15.5px "DejaVu Serif", Georgia, serif; margin-right: 2mm; }}
+.house-head {{ display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 2.5mm; }}
+.house-num {{ color: {GOLD}; font: 15.5px "DejaVu Serif", Georgia, serif; }}
 .house-sign {{ font: 12px "DejaVu Serif", Georgia, serif; }}
-.house-degree {{ color: {TEXT_DIM}; font-size: 11px; }}
-.house-label {{ margin-top: 2mm; color: {TEXT_DIM}; font-size: 10.5px; letter-spacing: 1.4px; text-transform: uppercase; }}
+.house-degree {{ color: {TEXT_DIM}; font-size: 11px; white-space: nowrap; }}
+.house-label {{ color: {TEXT_DIM}; font-size: 10.5px; letter-spacing: 1.4px; text-transform: uppercase; }}
+.house-label::before {{ content: "· "; }}
+.house-axis {{ font-weight: 700; }}
 .house-card p {{ margin-top: 3mm; font-size: 11px; line-height: 1.34; }}
-.house-card.detail-card p {{ font-size: 11.2px; line-height: 1.42; }}
+.house-card.detail-card p {{ font-size: 10.2px; line-height: 1.34; }}
 .metrics {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 4mm; margin: 8mm 0 7mm; }}
 .metric {{ text-align: center; background: {PANEL}; border: 1px solid {BORDER}; border-radius: 7px; padding: 4mm 0 3.5mm; }}
 .metric strong {{ color: var(--metric-color, {GOLD}); display: block; font: 22px "DejaVu Serif", Georgia, serif; }}
 .metric span {{ color: {TEXT_DIM}; font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; }}
-.aspect-group {{ border-left: 3px solid var(--aspect-color); padding-left: 4mm; margin-top: 4mm; break-inside: avoid; }}
-.aspect-group h3 {{ color: var(--aspect-color); font-size: 16.5px; letter-spacing: 1.2px; text-transform: uppercase; margin: 0 0 4mm; }}
-.aspect-group h3 em {{ color: {TEXT_DIM}; text-transform: none; font-size: 12.5px; letter-spacing: 0; margin-left: 3mm; }}
-.aspect-row {{ margin-bottom: 3.2mm; padding: 3.6mm 4.2mm; background: {PANEL}; border: 1px solid {BORDER}; border-radius: 7px; break-inside: avoid; }}
+.aspect-group {{ margin-top: 3mm; break-inside: avoid; }}
+.aspect-group h3 {{ color: var(--aspect-color); font-size: 15px; letter-spacing: 1.2px; text-transform: uppercase; margin: 0 0 2.5mm; }}
+.aspect-group h3 em {{ color: {TEXT_DIM}; text-transform: none; font-size: 11.5px; letter-spacing: 0; margin-left: 3mm; }}
+.aspect-row {{ margin-bottom: 2.4mm; padding: 3mm 4mm; background: {PANEL}; border: 1px solid {BORDER}; border-radius: 7px; break-inside: avoid; }}
 .aspect-title {{ display: grid; grid-template-columns: 1fr auto; align-items: start; gap: 5mm; color: {TEXT}; font-size: 13.5px; line-height: 1.2; }}
 .aspect-title span:first-child {{ min-width: 0; }}
 .orb {{ color: {TEXT_DIM}; white-space: nowrap; font-size: 11.5px; }}
 .aspect-row p {{ margin: 2.5mm 0 0; color: {TEXT_DIM}; line-height: 1.32; font-size: 12.2px; }}
-.aspect-row.detail-card p {{ color: {TEXT}; font-size: 10.8px; line-height: 1.38; }}
+.aspect-row.detail-card p {{ color: {TEXT}; font-size: 9.8px; line-height: 1.3; }}
 .reading {{ padding-right: 4mm; }}
 .reading-quote {{ text-align: center; color: {TEXT_DIM}; font: italic 13px "DejaVu Serif", Georgia, serif; margin: 8mm 0 9mm; }}
-.reading h3 {{ color: {GOLD}; font-size: 17px; letter-spacing: 1.5px; margin: 0 0 3mm; }}
-.reading p {{ font-size: 13px; line-height: 1.48; margin: 0 0 7mm; }}
+.reading h3 {{ color: {GOLD}; font-size: 15.5px; letter-spacing: 1.5px; margin: 0 0 2.5mm; }}
+.reading p {{ font-size: 11.5px; line-height: 1.4; margin: 0 0 5mm; }}
 .final {{ display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 18mm; }}
 .final .mark {{ margin-bottom: 8mm; }}
 .final-hero {{ display: flex; flex-direction: column; align-items: center; margin-bottom: 8mm; }}
@@ -791,86 +802,145 @@ def _elements_page(planets: dict[str, dict[str, Any]]) -> str:
     return _page(5, body)
 
 
-def _planet_pages(
-    planets: dict[str, dict[str, Any]], descriptions: dict[str, Any] | None, *, start_page: int
-) -> list[str]:
+class _SectionItem:
+    """A packable card. `group`/`group_open`/`group_close` let cards that share a
+    visual wrapper (aspect groups) re-open that wrapper at the top of each page."""
+
+    __slots__ = ("html", "group", "group_open", "group_close", "wrap_open", "wrap_close")
+
+    def __init__(
+        self,
+        html: str,
+        *,
+        group: str | None = None,
+        group_open: str = "",
+        group_close: str = "",
+        wrap_open: str = "",
+        wrap_close: str = "",
+    ) -> None:
+        self.html = html
+        self.group = group
+        self.group_open = group_open
+        self.group_close = group_close
+        self.wrap_open = wrap_open  # per-page container (e.g. .houses-grid)
+        self.wrap_close = wrap_close
+
+
+class _Section:
+    """Title/subtitle + a flat list of packable items, plus optional prefix HTML
+    (aspect metrics) shown only on the section's first page."""
+
+    __slots__ = ("title", "subtitle", "items", "prefix_html")
+
+    def __init__(
+        self, title: str, subtitle: str, items: list[_SectionItem], prefix_html: str = ""
+    ) -> None:
+        self.title = title
+        self.subtitle = subtitle
+        self.items = items
+        self.prefix_html = prefix_html
+
+
+def _render_section_page(
+    section: _Section, items: list[_SectionItem], *, page_index: int, sub_idx: int, sub_total: int
+) -> str:
+    """Render one page of a section from a slice of its items, restoring any
+    group / wrapper containers so cards keep their visual chrome per page."""
+    body = _section_header(section.title, section.subtitle, f"{sub_idx} / {sub_total}")
+    if sub_idx == 1 and section.prefix_html:
+        body += section.prefix_html
+    cur_wrap: str | None = None
+    cur_wrap_close = ""
+    cur_group: str | None = None
+    cur_group_close = ""
+    for item in items:
+        if item.wrap_open != (cur_wrap or ""):
+            if cur_group is not None:
+                body += cur_group_close
+                cur_group = None
+            if cur_wrap is not None:
+                body += cur_wrap_close
+            cur_wrap = item.wrap_open or None
+            cur_wrap_close = item.wrap_close
+            if cur_wrap:
+                body += cur_wrap
+        if item.group != cur_group:
+            if cur_group is not None:
+                body += cur_group_close
+            cur_group = item.group
+            cur_group_close = item.group_close
+            if cur_group is not None:
+                body += item.group_open
+        body += item.html
+    if cur_group is not None:
+        body += cur_group_close
+    if cur_wrap is not None:
+        body += cur_wrap_close
+    return _page(page_index, body)
+
+
+def _planet_section(
+    planets: dict[str, dict[str, Any]], descriptions: dict[str, Any] | None
+) -> _Section:
     planet_desc = (descriptions or {}).get("planets") or {}
-    items = [name for name in PLANET_ORDER if planets.get(name)]
-    blocks: list[tuple[str, dict[str, Any], str, bool]] = []
-    for name in items:
+    names = [name for name in PLANET_ORDER if planets.get(name)]
+    items: list[_SectionItem] = []
+    for name in names:
         planet = planets[name]
         desc = _full_description(planet_desc.get(name), _planet_fallback(name, planet))
-        text_chunks = _split_words(desc, 430)
-        for chunk_index, text_chunk in enumerate(text_chunks or [desc]):
-            blocks.append((name, planet, text_chunk, chunk_index > 0))
-    pages = []
-    for idx, (name, planet, text, is_continuation) in enumerate(blocks, start=1):
-        body = _section_header(
-            "Планеты в знаках",
-            "Где находится каждая планета и что это значит",
-            f"{idx} / {len(blocks)}",
-        )
         sign = planet.get("sign_ru") or planet.get("sign")
         retro = '<span class="retro">℞ РЕТРО</span>' if planet.get("retrograde") else ""
         meta = f"{_roman(int(planet.get('house') or 0))} дом · {_deg_str(planet.get('sign_degree', planet.get('degree', 0)))}"
-        continuation_cls = " continuation" if is_continuation else ""
-        body += _card(
-            f"{PLANET_RU[name]} в {_sign_ru(sign)} {retro}",
-            _e(text),
-            class_name=f"planet-card detail-card{continuation_cls}",
-            meta=meta,
-            icon=f'<span style="color:{PLANET_COLORS.get(name, GOLD)}">{PLANET_SYMBOLS.get(name, "")}</span>',
-        )
-        pages.append(_page(start_page + idx - 1, body))
-    return pages
+        icon = f'<span style="color:{PLANET_COLORS.get(name, GOLD)}">{PLANET_SYMBOLS.get(name, "")}</span>'
+        for chunk_index, text_chunk in enumerate(_split_words(desc, 520) or [desc]):
+            continuation_cls = " continuation" if chunk_index else ""
+            card = _card(
+                f"{PLANET_RU[name]} в {_sign_ru(sign)} {retro}",
+                _e(text_chunk),
+                class_name=f"planet-card detail-card{continuation_cls}",
+                meta=meta,
+                icon=icon,
+            )
+            items.append(_SectionItem(card))
+    return _Section("Планеты в знаках", "Где находится каждая планета и что это значит", items)
 
 
-def _houses_pages(
-    houses: list[dict[str, Any]], descriptions: dict[str, Any] | None, *, start_page: int
-) -> list[str]:
+def _houses_section(houses: list[dict[str, Any]], descriptions: dict[str, Any] | None) -> _Section:
     house_desc = (descriptions or {}).get("houses") or {}
     axis = {1: "Асцендент", 4: "Основание (IC)", 7: "Десцендент", 10: "Середина неба (MC)"}
-    items = [house for house in houses if int(house.get("number") or 0)]
-    blocks: list[tuple[dict[str, Any], str, bool]] = []
-    for house in items:
+    house_items = [house for house in houses if int(house.get("number") or 0)]
+    items: list[_SectionItem] = []
+    for house in house_items:
         desc = _full_description(
             house_desc.get(str(int(house.get("number") or 0))), _house_fallback(house)
         )
-        text_chunks = _split_words(desc, 210)
-        for chunk_index, text_chunk in enumerate(text_chunks or [desc]):
-            blocks.append((house, text_chunk, chunk_index > 0))
-    page_chunks = [blocks[index : index + 2] for index in range(0, len(blocks), 2)]
-    pages = []
-    for idx, page_chunk in enumerate(page_chunks, start=1):
-        body = _section_header(
-            "Дома гороскопа", "12 сфер жизни и их обстановка", f"{idx} / {len(page_chunks)}"
+        num = int(house.get("number") or 0)
+        sign = house.get("sign_ru") or house.get("sign")
+        angle_cls = " angle" if num in axis else ""
+        axis_html = (
+            f'<span class="house-axis" style="color:{GOLD}">{axis[num]} · </span>'
+            if num in axis
+            else ""
         )
-        body += '<div class="houses-grid">'
-        for house, text, is_continuation in page_chunk:
-            num = int(house.get("number") or 0)
-            sign = house.get("sign_ru") or house.get("sign")
-            angle_cls = " angle" if num in axis else ""
-            continuation_cls = " continuation" if is_continuation else ""
-            axis_html = (
-                f'<div class="card-meta" style="color:{GOLD}">{axis[num]}</div>'
-                if num in axis
-                else ""
+        head = (
+            f'<div class="house-top"><div class="house-head">'
+            f'<span class="house-num">{_roman(num)}</span><span class="house-sign">{_sign_symbol(sign)} {_e(_sign_ru(sign))}</span>'
+            f'<span class="house-label">{axis_html}{_e(HOUSE_LABELS.get(num, f"ДОМ {num}"))}</span></div>'
+            f'<div class="house-degree">{_deg_str(house.get("degree"), within_sign=False)}</div></div>'
+        )
+        for chunk_index, text_chunk in enumerate(_split_words(desc, 330) or [desc]):
+            continuation_cls = " continuation" if chunk_index else ""
+            card = (
+                f'<article class="card house-card detail-card{angle_cls}{continuation_cls}">'
+                f"{head}<p>{_e(text_chunk)}</p></article>"
             )
-            body += (
-                f'<article class="card house-card detail-card{angle_cls}{continuation_cls}"><div class="house-top"><div>'
-                f'<span class="house-num">{_roman(num)}</span><span class="house-sign">{_sign_symbol(sign)} {_e(_sign_ru(sign))}</span></div>'
-                f'<div class="house-degree">{_deg_str(house.get("degree"), within_sign=False)}</div></div>{axis_html}'
-                f'<div class="house-label">{_e(HOUSE_LABELS.get(num, f"ДОМ {num}"))}</div>'
-                f"<p>{_e(text)}</p></article>"
+            items.append(
+                _SectionItem(card, wrap_open='<div class="houses-grid">', wrap_close="</div>")
             )
-        body += "</div>"
-        pages.append(_page(start_page + idx - 1, body))
-    return pages
+    return _Section("Дома гороскопа", "12 сфер жизни и их обстановка", items)
 
 
-def _aspect_pages(
-    aspects: list[dict[str, Any]], descriptions: dict[str, Any] | None, *, start_page: int
-) -> list[str]:
+def _aspect_section(aspects: list[dict[str, Any]], descriptions: dict[str, Any] | None) -> _Section:
     aspect_desc = _aspect_description_map(descriptions)
     groups = [
         (atype, [a for a in aspects if _aspect_key(a.get("aspect")) == atype])
@@ -890,79 +960,38 @@ def _aspect_pages(
         "</div>"
     )
     if not groups:
-        body = _section_header("Аспекты", "Связи между планетами вашей карты", "1 / 1")
-        body += metric_html
-        body += (
+        empty = _SectionItem(
             '<article class="card detail-card"><h3>Основных аспектов не найдено</h3>'
             '<div class="mini-rule"></div>'
             "<p>В карте нет основных аспектов из текущего набора расчёта. Остальные разделы отчёта можно читать как главные акценты натальной карты: планеты, знаки и дома покажут основной рисунок характера.</p></article>"
         )
-        return [_page(start_page, body)]
+        return _Section(
+            "Аспекты", "Связи между планетами вашей карты", [empty], prefix_html=metric_html
+        )
 
-    blocks: list[tuple[str, dict[str, Any], str, bool]] = []
+    items: list[_SectionItem] = []
     for atype, group_items in groups:
+        color = ASPECT_COLORS.get(atype, GOLD)
+        group_open = (
+            f'<section class="aspect-group" style="--aspect-color:{color}">'
+            f"<h3>{ASPECT_SYMBOLS.get(atype, '')} {ASPECT_RU.get(atype, atype)} "
+            f"<em>— {_e(ASPECT_TOPICS.get(atype, ''))}</em></h3>"
+        )
         for aspect in group_items:
             p1 = _planet_key(aspect.get("p1"))
             p2 = _planet_key(aspect.get("p2"))
             desc = _full_description(aspect_desc.get((p1, p2, atype)), _aspect_fallback(aspect))
             for chunk_index, text_chunk in enumerate(_split_words(desc, 260) or [desc]):
-                blocks.append((atype, aspect, text_chunk, chunk_index > 0))
-
-    page_chunks: list[list[tuple[str, dict[str, Any], str, bool]]] = []
-    current: list[tuple[str, dict[str, Any], str, bool]] = []
-    current_weight = 0
-    for block in blocks:
-        atype, _aspect, desc, is_continuation = block
-        title_weight = 26 if not current or current[-1][0] != atype else 12
-        block_weight = _word_count(desc) + title_weight + (8 if is_continuation else 0)
-        budget = 360 if not page_chunks else 480
-        if current and current_weight + block_weight > budget:
-            page_chunks.append(current)
-            current = []
-            current_weight = 0
-            title_weight = 26
-            block_weight = _word_count(desc) + title_weight + (8 if is_continuation else 0)
-        current.append(block)
-        current_weight += block_weight
-    if current:
-        page_chunks.append(current)
-
-    pages = []
-    for idx, page_chunk in enumerate(page_chunks, start=1):
-        page_index = start_page + idx - 1
-        body = _section_header(
-            "Аспекты",
-            "Связи между планетами вашей карты",
-            f"{idx} / {len(page_chunks)}",
-        )
-        if idx == 1:
-            body += metric_html
-        previous_type = ""
-        group_open = False
-        for atype, aspect, desc, is_continuation in page_chunk:
-            if atype != previous_type:
-                if group_open:
-                    body += "</section>"
-                color = ASPECT_COLORS.get(atype, GOLD)
-                body += (
-                    f'<section class="aspect-group" style="--aspect-color:{color}">'
-                    f"<h3>{ASPECT_SYMBOLS.get(atype, '')} {ASPECT_RU.get(atype, atype)} "
-                    f"<em>— {_e(ASPECT_TOPICS.get(atype, ''))}</em></h3>"
+                continuation_label = " · продолжение" if chunk_index else ""
+                row = (
+                    f'<div class="aspect-row detail-card"><div class="aspect-title"><span>{PLANET_SYMBOLS.get(p1, "")} {_e(PLANET_RU.get(p1, p1))} '
+                    f"{ASPECT_SYMBOLS.get(atype, '')} {PLANET_SYMBOLS.get(p2, '')} {_e(PLANET_RU.get(p2, p2))}{continuation_label}</span>"
+                    f'<span class="orb">орб {float(aspect.get("orb") or 0):.1f}°</span></div><p>{_e(text_chunk)}</p></div>'
                 )
-                group_open = True
-                previous_type = atype
-            p1 = _planet_key(aspect.get("p1"))
-            p2 = _planet_key(aspect.get("p2"))
-            continuation_label = " · продолжение" if is_continuation else ""
-            body += (
-                f'<div class="aspect-row detail-card"><div class="aspect-title"><span>{PLANET_SYMBOLS.get(p1, "")} {_e(PLANET_RU.get(p1, p1))} '
-                f"{ASPECT_SYMBOLS.get(atype, '')} {PLANET_SYMBOLS.get(p2, '')} {_e(PLANET_RU.get(p2, p2))}{continuation_label}</span>"
-                f'<span class="orb">орб {float(aspect.get("orb") or 0):.1f}°</span></div><p>{_e(desc)}</p></div>'
-            )
-        if group_open:
-            body += "</section>"
-        pages.append(_page(page_index, body))
-    return pages
+                items.append(
+                    _SectionItem(row, group=atype, group_open=group_open, group_close="</section>")
+                )
+    return _Section("Аспекты", "Связи между планетами вашей карты", items, prefix_html=metric_html)
 
 
 def _reading_pages(
@@ -1007,7 +1036,7 @@ def _reading_pages(
     page_chunks: list[list[tuple[str, str]]] = []
     current: list[tuple[str, str]] = []
     current_words = 0
-    limits = [210, 260]
+    limits = [300, 380]
     for title, paragraph in expanded_blocks:
         block_words = _word_count(paragraph) + 10
         limit = limits[min(len(page_chunks), len(limits) - 1)]
@@ -1068,7 +1097,39 @@ def _final_page(page: int) -> str:
     return _page(page, body, class_name="final")
 
 
-def build_natal_pdf_html(
+# Usable content height of one .page in CSS px at the 794×1123 viewport:
+# page is 297mm tall with 22mm top + 17mm bottom padding → 258mm of content.
+# 1123px == 297mm ⇒ 258mm ≈ 975px. Keep a small safety margin.
+_PAGE_CONTENT_PX = 1090
+# Approx px height the section header (title + rule) eats on a section's pages.
+_SECTION_HEAD_PX = 96
+
+
+def _pack_section_by_words(section: _Section) -> list[list[_SectionItem]]:
+    """Word-count fallback packing (used when measured heights are unavailable,
+    e.g. in unit tests). Mirrors the old per-section budgets loosely."""
+    if not section.items:
+        return [[]]
+    pages: list[list[_SectionItem]] = []
+    current: list[_SectionItem] = []
+    weight = 0
+    for item in section.items:
+        words = _word_count(item.html)
+        cost = words + 14  # card chrome
+        budget = 360 if not pages else 470
+        if current and weight + cost > budget:
+            pages.append(current)
+            current = []
+            weight = 0
+        current.append(item)
+        weight += cost
+    if current:
+        pages.append(current)
+    return pages
+
+
+def _assemble_natal_html(
+    *,
     user_name: str,
     birth_date: str,
     birth_time: str | None,
@@ -1079,20 +1140,51 @@ def build_natal_pdf_html(
     planets: dict[str, dict[str, Any]],
     houses: list[dict[str, Any]],
     aspects: list[dict[str, Any]],
-    reading: str | None = None,
-    descriptions: dict[str, Any] | None = None,
-    wheel_svg: str | None = None,
+    reading: str | None,
+    descriptions: dict[str, Any] | None,
+    wheel_svg: str | None,
+    planet_split: list[list[_SectionItem]],
+    house_split: list[list[_SectionItem]],
+    aspect_split: list[list[_SectionItem]],
 ) -> str:
-    planet_pages = _planet_pages(planets, descriptions, start_page=6)
-    houses_start = 6 + len(planet_pages)
-    house_pages = _houses_pages(houses, descriptions, start_page=houses_start)
+    planet_sec = _planet_section(planets, descriptions)
+    house_sec = _houses_section(houses, descriptions)
+    aspect_sec = _aspect_section(aspects, descriptions)
+
+    planets_page = 6
+    planet_pages = [
+        _render_section_page(
+            planet_sec,
+            chunk,
+            page_index=planets_page + i,
+            sub_idx=i + 1,
+            sub_total=len(planet_split),
+        )
+        for i, chunk in enumerate(planet_split)
+    ]
+    houses_start = planets_page + len(planet_pages)
+    house_pages = [
+        _render_section_page(
+            house_sec, chunk, page_index=houses_start + i, sub_idx=i + 1, sub_total=len(house_split)
+        )
+        for i, chunk in enumerate(house_split)
+    ]
     aspects_start = houses_start + len(house_pages)
-    aspect_pages = _aspect_pages(aspects, descriptions, start_page=aspects_start)
+    aspect_pages = [
+        _render_section_page(
+            aspect_sec,
+            chunk,
+            page_index=aspects_start + i,
+            sub_idx=i + 1,
+            sub_total=len(aspect_split),
+        )
+        for i, chunk in enumerate(aspect_split)
+    ]
     reading_start = aspects_start + len(aspect_pages)
     pages = [
         _cover_page(user_name, birth_date, birth_time, birth_city, sun_sign, moon_sign, asc_sign),
         _content_page(
-            planets_page=6,
+            planets_page=planets_page,
             houses_page=houses_start,
             aspects_page=aspects_start,
             reading_page=reading_start,
@@ -1108,6 +1200,108 @@ def build_natal_pdf_html(
     pages.append(_final_page(len(pages) + 1))
     body = "".join(pages).replace(TOTAL_PAGES_TOKEN, str(len(pages)))
     return f"<!doctype html><html><head><meta charset='utf-8'><style>{_css()}</style></head><body>{body}</body></html>"
+
+
+def build_natal_pdf_html(
+    user_name: str,
+    birth_date: str,
+    birth_time: str | None,
+    birth_city: str,
+    sun_sign: str,
+    moon_sign: str,
+    asc_sign: str | None,
+    planets: dict[str, dict[str, Any]],
+    houses: list[dict[str, Any]],
+    aspects: list[dict[str, Any]],
+    reading: str | None = None,
+    descriptions: dict[str, Any] | None = None,
+    wheel_svg: str | None = None,
+) -> str:
+    """Synchronous build with word-count packing (fallback / tests). The async
+    renderer uses measured heights for tighter, overflow-free packing."""
+    return _assemble_natal_html(
+        user_name=user_name,
+        birth_date=birth_date,
+        birth_time=birth_time,
+        birth_city=birth_city,
+        sun_sign=sun_sign,
+        moon_sign=moon_sign,
+        asc_sign=asc_sign,
+        planets=planets,
+        houses=houses,
+        aspects=aspects,
+        reading=reading,
+        descriptions=descriptions,
+        wheel_svg=wheel_svg,
+        planet_split=_pack_section_by_words(_planet_section(planets, descriptions)),
+        house_split=_pack_section_by_words(_houses_section(houses, descriptions)),
+        aspect_split=_pack_section_by_words(_aspect_section(aspects, descriptions)),
+    )
+
+
+def _measure_doc(sections: list[_Section]) -> str:
+    """A standalone HTML whose body lays out every packable item inside a
+    page-width column, each tagged ``data-mid`` so we can read its rendered
+    height in the browser. Group/grid wrappers are included so width-dependent
+    reflow matches the real layout."""
+    blocks: list[str] = []
+    mid = 0
+    for s_idx, section in enumerate(sections):
+        for item in section.items:
+            wrap_o = item.wrap_open or ""
+            wrap_c = item.wrap_close or ""
+            grp_o = item.group_open or ""
+            grp_c = item.group_close or ""
+            blocks.append(
+                f'<div class="page measure" data-mid="{s_idx}:{mid}">'
+                f"{wrap_o}{grp_o}{item.html}{grp_c}{wrap_c}</div>"
+            )
+            mid += 1
+        mid = 0
+    extra = (
+        ".measure{{height:auto !important;overflow:visible !important;"
+        "break-after:auto !important;page-break-after:auto !important;}}"
+    )
+    body = "".join(blocks)
+    return (
+        "<!doctype html><html><head><meta charset='utf-8'>"
+        f"<style>{_css()}{extra}</style></head><body>{body}</body></html>"
+    )
+
+
+def _pack_section_by_heights(
+    section: _Section, heights: list[float], *, gap: float = 11.0
+) -> list[list[_SectionItem]]:
+    """Greedily fill pages so the summed measured item heights (plus a small
+    inter-item gap and a group-header allowance) stay under the page budget.
+    Overflow is impossible: an item only starts a new page when it doesn't fit."""
+    if not section.items:
+        return [[]]
+    pages: list[list[_SectionItem]] = []
+    current: list[_SectionItem] = []
+    used = 0.0
+    prefix_px = 96.0 if section.prefix_html else 0.0  # metrics block on first page
+    prev_group: str | None = "<<none>>"
+    for item, h in zip(section.items, heights):
+        # every section page carries the header; the section's first page also
+        # carries the prefix (aspect metrics).
+        budget = _PAGE_CONTENT_PX - _SECTION_HEAD_PX - (prefix_px if not pages else 0.0)
+        # group header re-emitted at the top of a page or on group change
+        group_cost = 34.0 if item.group is not None and item.group != prev_group else 0.0
+        cost = h + (gap if current else 0.0) + group_cost
+        if current and used + cost > budget:
+            pages.append(current)
+            current = []
+            used = 0.0
+            prev_group = "<<none>>"
+            group_cost = 34.0 if item.group is not None else 0.0
+            cost = h + group_cost
+        current.append(item)
+        used += cost
+        prev_group = item.group
+    if current:
+        pages.append(current)
+    return pages
 
 
 async def generate_natal_pdf_html(
@@ -1129,24 +1323,12 @@ async def generate_natal_pdf_html(
 
     from services.playwright_pool import pdf_semaphore
 
-    document = build_natal_pdf_html(
-        user_name=user_name,
-        birth_date=birth_date,
-        birth_time=birth_time,
-        birth_city=birth_city,
-        sun_sign=sun_sign,
-        moon_sign=moon_sign,
-        asc_sign=asc_sign,
-        planets=planets,
-        houses=houses,
-        aspects=aspects,
-        reading=reading,
-        descriptions=descriptions,
-        wheel_svg=wheel_svg,
-    )
+    planet_sec = _planet_section(planets, descriptions)
+    house_sec = _houses_section(houses, descriptions)
+    aspect_sec = _aspect_section(aspects, descriptions)
+    sections = [planet_sec, house_sec, aspect_sec]
     log.info(
         "natal.pdf_html_render_start",
-        html_bytes=len(document.encode("utf-8")),
         has_wheel_svg=bool(wheel_svg),
         has_descriptions=bool(
             descriptions
@@ -1171,6 +1353,54 @@ async def generate_natal_pdf_html(
                     page = await browser.new_page(
                         viewport={"width": 794, "height": 1123}, device_scale_factor=1
                     )
+                    # ── Phase 1: measure item heights for height-based packing ──
+                    stage = "measure"
+                    try:
+                        await page.set_content(_measure_doc(sections), wait_until="load")
+                        raw = await page.evaluate(
+                            """() => {
+                                const out = {};
+                                document.querySelectorAll('[data-mid]').forEach(el => {
+                                    out[el.getAttribute('data-mid')] =
+                                        el.firstElementChild
+                                            ? el.firstElementChild.getBoundingClientRect().height
+                                            : el.getBoundingClientRect().height;
+                                });
+                                return out;
+                            }"""
+                        )
+                        per_section: list[list[float]] = [[] for _ in sections]
+                        for key, h in raw.items():
+                            s_idx, _mid = key.split(":")
+                            per_section[int(s_idx)].append(float(h))
+                        planet_split = _pack_section_by_heights(planet_sec, per_section[0])
+                        house_split = _pack_section_by_heights(house_sec, per_section[1])
+                        aspect_split = _pack_section_by_heights(aspect_sec, per_section[2])
+                    except Exception as me:  # noqa: BLE001
+                        log.warning("natal.pdf_measure_failed_fallback", error=str(me))
+                        planet_split = _pack_section_by_words(planet_sec)
+                        house_split = _pack_section_by_words(house_sec)
+                        aspect_split = _pack_section_by_words(aspect_sec)
+
+                    document = _assemble_natal_html(
+                        user_name=user_name,
+                        birth_date=birth_date,
+                        birth_time=birth_time,
+                        birth_city=birth_city,
+                        sun_sign=sun_sign,
+                        moon_sign=moon_sign,
+                        asc_sign=asc_sign,
+                        planets=planets,
+                        houses=houses,
+                        aspects=aspects,
+                        reading=reading,
+                        descriptions=descriptions,
+                        wheel_svg=wheel_svg,
+                        planet_split=planet_split,
+                        house_split=house_split,
+                        aspect_split=aspect_split,
+                    )
+                    # ── Phase 2: render the final packed document ──
                     stage = "set_content"
                     await page.set_content(document, wait_until="load")
                     stage = "render_pdf"

@@ -502,7 +502,9 @@ def test_html_pdf_keeps_long_item_descriptions_untrimmed():
     assert "ПЛАНЕТА_ФИНАЛ" in document
     assert "ДОМ_ФИНАЛ" in document
     assert "АСПЕКТ_ФИНАЛ" in document
-    assert document.count('<section class="page') > 13
+    # Long descriptions must not be truncated (final markers above) and must
+    # span beyond the fixed pages (cover/TOC/key-points/wheel/elements/final).
+    assert document.count('<section class="page') >= 12
 
 
 def test_reportlab_pdf_uses_full_descriptions_without_compact_trimming(monkeypatch):

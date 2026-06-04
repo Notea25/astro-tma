@@ -1,5 +1,6 @@
 """Natal chart endpoints — full chart retrieval and SVG generation."""
 
+import asyncio
 import re
 from io import BytesIO
 from secrets import token_urlsafe
@@ -22,7 +23,7 @@ from core.cache import (
 )
 from core.logging import get_logger
 from core.settings import settings
-from db.database import get_db
+from db.database import AsyncSessionLocal, get_db
 from services.astro.dominants import compute_dominants
 from services.astro.interpreter import get_natal_interpretation
 from services.astro.key_aspects import top_n_aspects
@@ -238,6 +239,58 @@ async def _get_cached_pdf_reading(user) -> str | None:
     return _reading_is_fresh(cached, _user_gender(user))
 
 
+# Guard so a burst of PDF downloads doesn't kick off several identical
+# reading generations for the same user at once.
+_READING_INFLIGHT: set[int] = set()
+
+
+async def _generate_pdf_reading_background(user_id: int) -> None:
+    """Generate the personal reading and persist it to the Redis cache so the
+    NEXT PDF download (and the Natal screen) gets the full multi-section text
+    instead of the short fallback. Runs detached from the request: the
+    request-scoped session is gone by now, so open a fresh one."""
+    if not settings.ANTHROPIC_API_KEY or user_id in _READING_INFLIGHT:
+        return
+    _READING_INFLIGHT.add(user_id)
+    try:
+        async with AsyncSessionLocal() as db:
+            user = await user_repo.get_by_id(db, user_id)
+            if not user or not user.natal_chart:
+                return
+            chart = user.natal_chart
+            chart_data = chart.chart_data or {}
+            current_gender = _user_gender(user)
+            cache_key = key_natal(user.id)
+
+            # Re-check the cache: another request may have filled it while we
+            # were queued behind the inflight guard / LLM semaphore.
+            cached = await cache_get(cache_key)
+            if _reading_is_fresh(cached, current_gender):
+                return
+
+            reading = await generate_natal_reading(
+                sun_sign=chart.sun_sign,
+                moon_sign=chart.moon_sign,
+                ascendant_sign=chart.ascendant_sign,
+                planets=chart_data.get("planets", {}),
+                aspects=chart_data.get("aspects", []),
+                api_key=settings.ANTHROPIC_API_KEY,
+                gender=current_gender,
+            )
+            if reading and reading.strip():
+                cached_payload = cached if isinstance(cached, dict) else {}
+                await cache_set(
+                    cache_key,
+                    {**cached_payload, "reading": reading, "reading_gender": current_gender},
+                    settings.CACHE_TTL_NATAL,
+                )
+                log.info("natal.pdf_reading_backfilled", user_id=user_id)
+    except Exception as e:  # noqa: BLE001
+        log.error("natal.pdf_reading_background_failed", user_id=user_id, error=str(e))
+    finally:
+        _READING_INFLIGHT.discard(user_id)
+
+
 def _get_stored_descriptions(user) -> dict[str, Any]:
     """Return persisted descriptions only if the version AND the gender they
     were generated for match the reader's current profile. Mismatch falls
@@ -279,6 +332,11 @@ async def _build_natal_pdf_bytes(db: AsyncSession, user) -> bytes:
 
     descriptions = _get_stored_descriptions(user)
     reading = await _get_cached_pdf_reading(user)
+    if not reading:
+        # No personal reading cached yet → render this PDF on the fallback copy
+        # but kick off a detached generation so the next download is complete.
+        # PDF stays fast; we never block on the LLM here.
+        asyncio.create_task(_generate_pdf_reading_background(user.id))
 
     wheel_svg = None
     cached_wheel = await cache_get(key_natal_wheel_svg(user.id))
