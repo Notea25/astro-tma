@@ -28,6 +28,7 @@ from api.routes import (
     news,
     payments,
     referrals,
+    support,
     synastry,
     tarot,
     transits,
@@ -95,6 +96,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     scheduler.start()
     log.info("scheduler.started")
+
+    # Idempotently (re-)register the support bot webhook with Telegram.
+    # No-op when SUPPORT_BOT_TOKEN is unset.
+    from api.routes.support import setup_support_webhook
+    await setup_support_webhook()
 
     yield
 
@@ -199,6 +205,7 @@ app.include_router(referrals.router,     prefix="/api")
 app.include_router(destiny_matrix.router, prefix="/api")
 app.include_router(destiny_matrix_v3.router, prefix="/api")
 app.include_router(admin_stars.router,   prefix="/api")
+app.include_router(support.router,       prefix="/api")
 
 
 # ── Admin ─────────────────────────────────────────────────────────────────────

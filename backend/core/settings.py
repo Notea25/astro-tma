@@ -26,6 +26,16 @@ class Settings(BaseSettings):
     # configured as the bot's WebApp URL in @BotFather.
     TELEGRAM_WEBAPP_URL: str = "https://astro-tma.vercel.app/"
 
+    # Support bot — a separate Telegram bot used for user questions.
+    # Empty token disables the feature (webhook returns 404). When set,
+    # incoming user messages are forwarded to SUPPORT_GROUP_CHAT_ID; admin
+    # replies in that group (using Telegram's native Reply to forwarded
+    # message) are routed back to the original user.
+    SUPPORT_BOT_TOKEN: str = ""
+    SUPPORT_BOT_USERNAME: str = ""
+    SUPPORT_GROUP_CHAT_ID: int = 0
+    SUPPORT_WEBHOOK_SECRET: str = ""
+
     # Push scheduling
     PUSH_DAILY_HOUR: int = 9
 

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import WebApp from "@twa-dev/sdk";
 import { usersApi, natalApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
 import { useHaptic, useTelegramUser } from "@/hooks/useTelegram";
@@ -9,6 +10,10 @@ import {
   CityAutocomplete,
   type CityOption,
 } from "@/components/ui/CityAutocomplete";
+
+const SUPPORT_BOT_USERNAME = (
+  import.meta.env.VITE_SUPPORT_BOT_USERNAME ?? ""
+).replace(/^@/, "");
 
 const MONTHS_RU = [
   "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
@@ -679,6 +684,50 @@ export function Profile() {
             </button>
           </div>
         </motion.div>
+
+        {SUPPORT_BOT_USERNAME && (
+          <motion.button
+            type="button"
+            className="profile-cta-card profile-cta-card--support"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.14 }}
+            onClick={() => {
+              impact("light");
+              WebApp.openTelegramLink(
+                `https://t.me/${SUPPORT_BOT_USERNAME}`,
+              );
+            }}
+          >
+            <span
+              className="profile-cta-card__icon"
+              aria-hidden="true"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 18 18"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 4h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H7l-4 3v-3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" />
+                <circle cx="6.5" cy="9" r="0.6" fill="currentColor" />
+                <circle cx="9" cy="9" r="0.6" fill="currentColor" />
+                <circle cx="11.5" cy="9" r="0.6" fill="currentColor" />
+              </svg>
+            </span>
+            <span className="profile-cta-card__col">
+              <span className="profile-cta-card__title">Поддержка</span>
+              <span className="profile-cta-card__desc">
+                Задайте вопрос — ответим в чате бота
+              </span>
+            </span>
+            <span className="profile-cta-card__chev" aria-hidden="true">›</span>
+          </motion.button>
+        )}
       </div>
     </div>
   );
