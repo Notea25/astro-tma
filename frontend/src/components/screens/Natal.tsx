@@ -10,7 +10,7 @@ import WebApp from "@twa-dev/sdk";
 import { motion, type PanInfo } from "framer-motion";
 import { NatalBasicSkeleton } from "@/components/ui/Skeleton";
 import { useAppStore } from "@/stores/app";
-import { ApiError, natalApi, setNatalWheelSvgProvider } from "@/services/api";
+import { natalApi, setNatalWheelSvgProvider } from "@/services/api";
 import {
   ZODIAC_SIGNS,
   type NatalDescriptionsResponse,
@@ -30,6 +30,7 @@ import {
 import { NatalDescriptionSheet } from "./NatalDescriptionSheet";
 import { useEntitlement } from "@/hooks/useEntitlement";
 import { usePayment } from "@/hooks/usePayment";
+import { usePdfGeneration } from "@/hooks/usePdfGeneration";
 import { useProductPrice, useProductPriceRub } from "@/hooks/useProductPrice";
 import {
   ASPECT_FALLBACK_DESC,
@@ -623,20 +624,6 @@ const toRu = (s: string | null | undefined) =>
       ZODIAC_SIGNS.find((sign) => sign.value === s.toLowerCase())?.label ??
       s)
     : "—";
-
-function getPdfDownloadError(error: unknown): string {
-  if (error instanceof ApiError) {
-    if (error.status === 402) {
-      return "PDF доступен после покупки полной натальной карты.";
-    }
-    if (error.status === 422) {
-      return "Для PDF нужны дата, время и город рождения.";
-    }
-    return error.message || "Не удалось подготовить PDF.";
-  }
-
-  return "Не удалось подготовить PDF. Попробуйте ещё раз.";
-}
 
 const ELEMENT_COLORS: Record<string, string> = {
   fire: "#ff6b6b",
@@ -1559,19 +1546,6 @@ function NatalHeroCard({
     ? `${toRu(ascendantSign)} восходящий`
     : `${toRu(sunSign)} солнечный знак`;
 
-  const wheelStageRef = useRef<HTMLDivElement | null>(null);
-
-  // Expose the live wheel SVG to the PDF download flow so the report embeds
-  // the exact on-screen chart. Re-registers when the chart data changes.
-  useEffect(() => {
-    setNatalWheelSvgProvider(async () => {
-      const svgEl = wheelStageRef.current?.querySelector("svg");
-      if (!svgEl) return null;
-      return serializeWheelSvg(svgEl as SVGSVGElement);
-    });
-    return () => setNatalWheelSvgProvider(null);
-  }, [chartData, displayName]);
-
   return (
     <section className={styles.heroCard} aria-label="Основная натальная карта">
       <div className={styles.heroAura} aria-hidden="true" />
@@ -1596,7 +1570,7 @@ function NatalHeroCard({
         <p className={styles.quote}>«Рождённый звёздами»</p>
       </div>
 
-      <div className={styles.wheelStage} ref={wheelStageRef}>
+      <div className={styles.wheelStage}>
         <NatalChart
           data={{ ...chartData, name: displayName }}
           theme="onyx-gold"
@@ -1683,11 +1657,13 @@ function NatalBirthDetails({
 function NatalPdfCard({
   hasChart,
   isDownloading,
+  pdfPhase,
   error,
   onDownload,
 }: {
   hasChart: boolean;
   isDownloading: boolean;
+  pdfPhase: import("@/hooks/usePdfGeneration").PdfPhase;
   error: string | null;
   onDownload: () => void;
 }) {
@@ -1716,6 +1692,10 @@ function NatalPdfCard({
     label = "Активируем доступ…";
   } else if (paying) {
     label = "Открываем оплату…";
+  } else if (pdfPhase === "queued") {
+    label = "В очереди…";
+  } else if (pdfPhase === "processing") {
+    label = "Генерируем отчёт…";
   } else if (isDownloading) {
     label = "Готовим PDF…";
   } else if (entitled) {
@@ -2274,8 +2254,12 @@ export function Natal() {
   const { user, setScreen } = useAppStore();
   const hasBirthData = !!user?.birth_city;
   const [tab, setTab] = useState<NatalTab>("circle");
-  const [isPdfDownloading, setIsPdfDownloading] = useState(false);
-  const [pdfDownloadError, setPdfDownloadError] = useState<string | null>(null);
+  const {
+    start: startPdfGeneration,
+    busy: isPdfDownloading,
+    phase: pdfPhase,
+    error: pdfDownloadError,
+  } = usePdfGeneration();
 
   const { data: summary, isLoading: summaryLoading } = useQuery({
     queryKey: ["natal-summary"],
@@ -2402,6 +2386,21 @@ export function Natal() {
     () => (summary ? toNatalChartData(summary) : null),
     [summary],
   );
+  const pdfWheelStageRef = useRef<HTMLDivElement | null>(null);
+  const pdfWheelName = user?.name?.trim() || "Моя карта";
+
+  useEffect(() => {
+    if (!chartData) {
+      setNatalWheelSvgProvider(null);
+      return;
+    }
+    setNatalWheelSvgProvider(async () => {
+      const svgEl = pdfWheelStageRef.current?.querySelector("svg");
+      if (!svgEl) return null;
+      return serializeWheelSvg(svgEl as SVGSVGElement);
+    });
+    return () => setNatalWheelSvgProvider(null);
+  }, [chartData]);
   const interpretationSlides = useMemo<NatalInterpretationSlide[]>(() => {
     const readingSlides = mini?.mini_reading
       ? parseReadingSections(mini.mini_reading).map((section, index) => {
@@ -2450,19 +2449,7 @@ export function Natal() {
     return slides;
   }, [mini, summary?.has_chart]);
 
-  const handlePdfDownload = async () => {
-    if (isPdfDownloading) return;
-
-    setIsPdfDownloading(true);
-    setPdfDownloadError(null);
-    try {
-      await natalApi.downloadPdf();
-    } catch (error) {
-      setPdfDownloadError(getPdfDownloadError(error));
-    } finally {
-      setIsPdfDownloading(false);
-    }
-  };
+  const handlePdfDownload = startPdfGeneration;
 
   const renderFullPanel = () => {
     if (summaryLoading) {
@@ -2577,6 +2564,7 @@ export function Natal() {
           <NatalPdfCard
             hasChart={summary?.has_chart ?? false}
             isDownloading={isPdfDownloading}
+            pdfPhase={pdfPhase}
             error={pdfDownloadError}
             onDownload={handlePdfDownload}
           />
@@ -2604,6 +2592,7 @@ export function Natal() {
           <NatalPdfCard
             hasChart={summary?.has_chart ?? false}
             isDownloading={isPdfDownloading}
+            pdfPhase={pdfPhase}
             error={pdfDownloadError}
             onDownload={handlePdfDownload}
           />
@@ -2617,6 +2606,7 @@ export function Natal() {
         <NatalPdfCard
           hasChart={summary?.has_chart ?? false}
           isDownloading={isPdfDownloading}
+          pdfPhase={pdfPhase}
           error={pdfDownloadError}
           onDownload={handlePdfDownload}
         />
@@ -2627,6 +2617,29 @@ export function Natal() {
   return (
     <div className={`screen natal-screen ${styles.screen}`}>
       <div className={styles.sky} aria-hidden="true" />
+      {chartData && (
+        <div
+          ref={pdfWheelStageRef}
+          aria-hidden="true"
+          style={{
+            position: "fixed",
+            left: "-10000px",
+            top: 0,
+            width: 650,
+            height: 650,
+            opacity: 0,
+            pointerEvents: "none",
+            overflow: "hidden",
+          }}
+        >
+          <NatalChart
+            data={{ ...chartData, name: pdfWheelName }}
+            theme="onyx-gold"
+            variant="reference-wheel"
+            size={650}
+          />
+        </div>
+      )}
 
       <div className={styles.content}>
         <NatalTopBar />

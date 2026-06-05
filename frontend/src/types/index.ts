@@ -149,6 +149,23 @@ export interface NatalPlanetData {
   speed?: number;
 }
 
+// Queued PDF generation (worker + polling).
+export type NatalPdfJobStatus = "queued" | "processing" | "ready" | "failed";
+
+export interface NatalPdfGenerateResponse {
+  job_id: string;
+  status: NatalPdfJobStatus;
+  download_token?: string | null;
+  filename?: string | null;
+}
+
+export interface NatalPdfStatusResponse {
+  status: NatalPdfJobStatus;
+  error?: string | null;
+  download_token?: string | null;
+  filename?: string | null;
+}
+
 export interface NatalHouseData {
   number: number;
   degree: number;

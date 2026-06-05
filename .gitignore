@@ -13,5 +13,10 @@ dist/
 docs/
 .specify/
 CLAUDE.md
+AGENTS.md
 ssh_run.py
 .playwright-mcp/
+
+# generated natal PDF artifacts
+natal-report.pdf
+*.pdf

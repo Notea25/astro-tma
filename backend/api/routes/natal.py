@@ -1,6 +1,5 @@
 """Natal chart endpoints — full chart retrieval and SVG generation."""
 
-import asyncio
 import re
 from io import BytesIO
 from secrets import token_urlsafe
@@ -17,13 +16,15 @@ from api.middleware.telegram_auth import get_tg_user
 from core.cache import (
     cache_get,
     cache_set,
+    get_redis,
     key_natal,
     key_natal_pdf_download,
+    key_natal_pdf_job,
     key_natal_wheel_svg,
 )
 from core.logging import get_logger
 from core.settings import settings
-from db.database import AsyncSessionLocal, get_db
+from db.database import get_db
 from services.astro.dominants import compute_dominants
 from services.astro.interpreter import get_natal_interpretation
 from services.astro.key_aspects import top_n_aspects
@@ -46,6 +47,7 @@ router = APIRouter(prefix="/natal", tags=["natal"])
 _PDF_DOWNLOAD_TTL_SECONDS = 300
 _WHEEL_SVG_MAX_BYTES = 512 * 1024
 _WHEEL_SVG_TTL_SECONDS = 24 * 60 * 60
+_PDF_DESCRIPTION_ASPECT_LIMIT = 12
 
 _SCRIPT_RE = re.compile(r"<script\b[^>]*>.*?</script\s*>", re.IGNORECASE | re.DOTALL)
 _ON_HANDLER_RE = re.compile(r"\son[a-z]+\s*=\s*(\"[^\"]*\"|'[^']*'|[^\s>]+)", re.IGNORECASE)
@@ -80,6 +82,17 @@ def _has_any(descriptions: dict[str, Any]) -> bool:
     return bool(
         descriptions.get("planets") or descriptions.get("houses") or descriptions.get("aspects")
     )
+
+
+def _pdf_description_aspects(aspects: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Personal LLM copy is generated for the strongest aspects only.
+
+    Rendering still receives the full aspect list, but the expensive generated
+    prose is limited to the aspects a reader is most likely to care about.
+    """
+    if len(aspects) <= _PDF_DESCRIPTION_ASPECT_LIMIT:
+        return aspects
+    return top_n_aspects(aspects, n=_PDF_DESCRIPTION_ASPECT_LIMIT)
 
 
 def _is_expanded_reading(reading: Any) -> bool:
@@ -126,7 +139,7 @@ async def _get_or_generate_descriptions(
 
     planets = chart_data.get("planets", {})
     houses = chart_data.get("houses", [])
-    aspects = chart_data.get("aspects", [])
+    aspects = _pdf_description_aspects(chart_data.get("aspects", []))
 
     try:
         result = await generate_natal_descriptions(
@@ -285,79 +298,7 @@ async def _get_cached_pdf_reading(user) -> str | None:
 
 # Guards so a burst of PDF downloads doesn't kick off several identical
 # generations for the same user at once.
-_READING_INFLIGHT: set[int] = set()
-_DESCRIPTIONS_INFLIGHT: set[int] = set()
 _MINI_INFLIGHT: set[int] = set()
-
-
-async def _generate_pdf_descriptions_background(user_id: int) -> None:
-    """Generate per-planet/house/aspect descriptions and persist them to the DB
-    so the NEXT PDF download renders full personal copy instead of the short
-    per-item fallback. Shared by both renderers (HTML and the ReportLab
-    fallback) — the texts live in chart_data and the renderer just reads them.
-    Detached from the request, so it opens its own session."""
-    if not settings.ANTHROPIC_API_KEY or user_id in _DESCRIPTIONS_INFLIGHT:
-        return
-    _DESCRIPTIONS_INFLIGHT.add(user_id)
-    try:
-        async with AsyncSessionLocal() as db:
-            user = await user_repo.get_by_id(db, user_id)
-            if not user or not user.natal_chart:
-                return
-            result = await _get_or_generate_descriptions(db, user)
-            if _has_any(result):
-                log.info("natal.pdf_descriptions_backfilled", user_id=user_id)
-    except Exception as e:  # noqa: BLE001
-        log.error("natal.pdf_descriptions_background_failed", user_id=user_id, error=str(e))
-    finally:
-        _DESCRIPTIONS_INFLIGHT.discard(user_id)
-
-
-async def _generate_pdf_reading_background(user_id: int) -> None:
-    """Generate the personal reading and persist it to the Redis cache so the
-    NEXT PDF download (and the Natal screen) gets the full multi-section text
-    instead of the short fallback. Runs detached from the request: the
-    request-scoped session is gone by now, so open a fresh one."""
-    if not settings.ANTHROPIC_API_KEY or user_id in _READING_INFLIGHT:
-        return
-    _READING_INFLIGHT.add(user_id)
-    try:
-        async with AsyncSessionLocal() as db:
-            user = await user_repo.get_by_id(db, user_id)
-            if not user or not user.natal_chart:
-                return
-            chart = user.natal_chart
-            chart_data = chart.chart_data or {}
-            current_gender = _user_gender(user)
-            cache_key = key_natal(user.id)
-
-            # Re-check the cache: another request may have filled it while we
-            # were queued behind the inflight guard / LLM semaphore.
-            cached = await cache_get(cache_key)
-            if _reading_is_fresh(cached, current_gender):
-                return
-
-            reading = await generate_natal_reading(
-                sun_sign=chart.sun_sign,
-                moon_sign=chart.moon_sign,
-                ascendant_sign=chart.ascendant_sign,
-                planets=chart_data.get("planets", {}),
-                aspects=chart_data.get("aspects", []),
-                api_key=settings.ANTHROPIC_API_KEY,
-                gender=current_gender,
-            )
-            if reading and reading.strip():
-                cached_payload = cached if isinstance(cached, dict) else {}
-                await cache_set(
-                    cache_key,
-                    {**cached_payload, "reading": reading, "reading_gender": current_gender},
-                    settings.CACHE_TTL_NATAL,
-                )
-                log.info("natal.pdf_reading_backfilled", user_id=user_id)
-    except Exception as e:  # noqa: BLE001
-        log.error("natal.pdf_reading_background_failed", user_id=user_id, error=str(e))
-    finally:
-        _READING_INFLIGHT.discard(user_id)
 
 
 def _get_stored_descriptions(user) -> dict[str, Any]:
@@ -381,7 +322,12 @@ def _get_stored_descriptions(user) -> dict[str, Any]:
     return _empty_descriptions()
 
 
-async def _build_natal_pdf_bytes(db: AsyncSession, user) -> bytes:
+async def _build_natal_pdf_bytes(
+    db: AsyncSession,
+    user,
+    *,
+    require_ready_cache: bool = False,
+) -> bytes:
     from services.natal_pdf import generate_natal_pdf
     from services.natal_pdf_html import generate_natal_pdf_html
 
@@ -399,24 +345,29 @@ async def _build_natal_pdf_bytes(db: AsyncSession, user) -> bytes:
         for a in aspects_raw
     ]
 
-    descriptions = _get_stored_descriptions(user)
-    if not _has_any(descriptions):
-        # No personal per-item descriptions yet → this PDF renders on the short
-        # per-item fallback, but we kick off a detached generation so the next
-        # download (HTML or ReportLab) has full personal copy. PDF stays fast.
-        asyncio.create_task(_generate_pdf_descriptions_background(user.id))
+    if require_ready_cache:
+        descriptions = _get_stored_descriptions(user)
+        reading = await _get_cached_pdf_reading(user)
+        if not _has_any(descriptions) or not reading:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "PDF report is still being generated",
+            )
+    else:
+        descriptions = await _get_or_generate_descriptions(db, user)
+        reading = await _get_or_generate_pdf_reading(user, chart, planets, aspects)
 
-    reading = await _get_cached_pdf_reading(user)
-    if not reading:
-        # No personal reading cached yet → render this PDF on the fallback copy
-        # but kick off a detached generation so the next download is complete.
-        # PDF stays fast; we never block on the LLM here.
-        asyncio.create_task(_generate_pdf_reading_background(user.id))
-
+    # Prefer the hot Redis copy, but fall back to the DB-persisted SVG so the
+    # PDF embeds the exact frontend wheel even when generated outside the UI
+    # (curl/worker/tests) or after a Redis flush/TTL.
     wheel_svg = None
     cached_wheel = await cache_get(key_natal_wheel_svg(user.id))
     if isinstance(cached_wheel, dict):
         wheel_svg = cached_wheel.get("svg")
+    if not wheel_svg:
+        stored_wheel = (chart.chart_data or {}).get("wheel_svg")
+        if isinstance(stored_wheel, str) and stored_wheel.startswith("<svg"):
+            wheel_svg = stored_wheel
 
     pdf_kwargs = dict(
         user_name=user.tg_first_name or "User",
@@ -850,6 +801,14 @@ async def upload_natal_wheel_svg(
 
     svg = _sanitize_wheel_svg(svg)
     await cache_set(key_natal_wheel_svg(user.id), {"svg": svg}, _WHEEL_SVG_TTL_SECONDS)
+
+    # Also persist to the DB so any later generation path (curl/worker/tests,
+    # or after a Redis flush/TTL) still embeds this exact frontend wheel.
+    if user.natal_chart:
+        chart_data = user.natal_chart.chart_data or {}
+        if chart_data.get("wheel_svg") != svg:
+            user.natal_chart.chart_data = {**chart_data, "wheel_svg": svg}
+            await db.commit()
     return {"status": "stored"}
 
 
@@ -906,4 +865,118 @@ async def get_natal_pdf_by_token(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Download link expired")
 
     user = await _get_pdf_user_or_error(db, int(payload["user_id"]))
-    return await _build_natal_pdf_response(db, user)
+    require_ready_cache = payload.get("ready") is True
+    pdf_bytes = await _build_natal_pdf_bytes(db, user, require_ready_cache=require_ready_cache)
+    filename = _natal_pdf_filename(user)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"},
+    )
+
+
+# ── Queued PDF generation (scales to many concurrent users) ──────────────────
+# Heavy LLM work runs in the arq worker, not the HTTP request. The client polls
+# status, then downloads via the existing /pdf-download/{token} once ready.
+
+_PDF_JOB_LOCK_TTL = settings.ARQ_JOB_TIMEOUT + 100  # outlives a running job
+
+
+class PdfGenerateResponse(BaseModel):
+    job_id: str
+    status: str
+    download_token: str | None = None
+    filename: str | None = None
+
+
+class PdfStatusResponse(BaseModel):
+    status: str
+    error: str | None = None
+    download_token: str | None = None
+    filename: str | None = None
+
+
+@router.post("/pdf/generate", response_model=PdfGenerateResponse)
+async def start_natal_pdf(
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Kick off (or reuse) a natal-PDF generation job. Returns immediately."""
+    from services.arq_pool import get_arq_pool
+    from services.job_status import get_job_status, set_job_status
+
+    user = await _get_pdf_user_or_error(db, tg_user["id"])
+
+    # Fast-path: texts already fresh → mint a token and report ready, no queue.
+    descriptions = _get_stored_descriptions(user)
+    cached_reading = _reading_is_fresh(await cache_get(key_natal(user.id)), _user_gender(user))
+    if _has_any(descriptions) and cached_reading:
+        token = token_urlsafe(24)
+        await cache_set(
+            key_natal_pdf_download(token),
+            {"user_id": user.id, "ready": True},
+            _PDF_DOWNLOAD_TTL_SECONDS,
+        )
+        return PdfGenerateResponse(
+            job_id=f"ready-{user.id}",
+            status="ready",
+            download_token=token,
+            filename=_natal_pdf_filename(user),
+        )
+
+    # Dedup: one active job per user. Atomic SET NX (same pattern as the
+    # scheduler leader lock). value = job_id.
+    job_id = token_urlsafe(16)
+    redis = get_redis()
+    acquired = await redis.set(key_natal_pdf_job(user.id), job_id, nx=True, ex=_PDF_JOB_LOCK_TTL)
+    if not acquired:
+        existing = await redis.get(key_natal_pdf_job(user.id))
+        st = await get_job_status(existing) if existing else None
+        return PdfGenerateResponse(
+            job_id=existing or job_id,
+            status=(st or {}).get("status", "processing"),
+            download_token=(st or {}).get("download_token"),
+            filename=(st or {}).get("filename"),
+        )
+
+    await set_job_status(job_id, "queued")
+    # Pass our app-level job_id so the worker writes status under the same key
+    # the client polls. _job_id dedups on arq's side too (no second task while
+    # one is queued).
+    await get_arq_pool().enqueue_job(
+        "generate_natal_pdf_task", user.id, job_id, _job_id=f"natalpdf:{user.id}"
+    )
+    return PdfGenerateResponse(job_id=job_id, status="queued")
+
+
+@router.get("/pdf/status/{job_id}", response_model=PdfStatusResponse)
+async def natal_pdf_status(
+    job_id: str,
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Poll a PDF job's status.
+
+    The status blob (keyed by the opaque job_id) is the source of truth. The
+    per-user lock is short-lived (released the moment the worker finishes), so
+    we must NOT 404 just because the lock is gone — the blob lives 30 min. A
+    missing blob is reported as still-processing rather than a hard 404, to ride
+    out the brief window between enqueue and the worker's first status write.
+    """
+    from services.job_status import get_job_status
+
+    # ready-{uid} jobs are synthetic (fast-path) — accept them for the owner.
+    if job_id == f"ready-{tg_user['id']}":
+        return PdfStatusResponse(status="ready")
+
+    st = await get_job_status(job_id)
+    if not st:
+        # Blob not written yet (or expired). Treat as still in flight so the
+        # client keeps polling instead of erroring on a transient gap.
+        return PdfStatusResponse(status="processing")
+    return PdfStatusResponse(
+        status=st["status"],
+        error=st.get("error"),
+        download_token=st.get("download_token"),
+        filename=st.get("filename"),
+    )

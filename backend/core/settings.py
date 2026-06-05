@@ -1,4 +1,5 @@
 """Single source of truth for all configuration. Values from env vars / .env file."""
+
 from functools import lru_cache
 from typing import Literal
 
@@ -47,10 +48,15 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: RedisDsn = "redis://localhost:6379/0"  # type: ignore[assignment]
 
+    # Natal-PDF queue (arq worker) + Anthropic rate limiting
+    ANTHROPIC_OUTPUT_TPM: int = 9000  # per-minute output-token budget (under free-tier 10k)
+    ARQ_MAX_JOBS: int = 10  # jobs a single worker pulls at once
+    ARQ_JOB_TIMEOUT: int = 600  # seconds; free-tier generation can be slow
+
     # Cache TTLs (seconds)
-    CACHE_TTL_HOROSCOPE: int = 86400    # 24h
-    CACHE_TTL_MOON: int = 3600          # 1h
-    CACHE_TTL_NATAL: int = 604800       # 7d — natal never changes
+    CACHE_TTL_HOROSCOPE: int = 86400  # 24h
+    CACHE_TTL_MOON: int = 3600  # 1h
+    CACHE_TTL_NATAL: int = 604800  # 7d — natal never changes
     CACHE_TTL_TAROT_INTERPRET: int = 2592000  # 30d — readings are immutable
 
     # Admin panel — no defaults. If these are missing from .env, Pydantic
@@ -119,9 +125,7 @@ class Settings(BaseSettings):
         payments webhook into an open endpoint (anyone can POST a fake
         successful_payment). Require at least 16 chars of entropy."""
         if not v or len(v) < 16:
-            raise ValueError(
-                "TELEGRAM_WEBHOOK_SECRET must be set and at least 16 chars long"
-            )
+            raise ValueError("TELEGRAM_WEBHOOK_SECRET must be set and at least 16 chars long")
         return v
 
     @field_validator("ADMIN_PASSWORD")
@@ -130,9 +134,7 @@ class Settings(BaseSettings):
         """SECURITY_AUDIT.md C2 — reject the historic 'changeme' default and
         any obviously short password, even when read from .env."""
         if not v or len(v) < 12 or v.lower() in {"changeme", "admin", "password"}:
-            raise ValueError(
-                "ADMIN_PASSWORD is missing or too weak — set ≥12 random chars"
-            )
+            raise ValueError("ADMIN_PASSWORD is missing or too weak — set ≥12 random chars")
         return v
 
     @property
@@ -143,5 +145,6 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()  # type: ignore[call-arg]
+
 
 settings = get_settings()

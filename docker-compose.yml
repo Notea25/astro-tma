@@ -65,6 +65,27 @@ services:
     labels:
       - "traefik.enable=false"  # managed by nginx
 
+  # ── Worker (arq) ────────────────────────────────────────────────────────────
+  # Background natal-PDF generation. Same image as backend (Chromium/Playwright
+  # already installed), just a different command. Scale with --scale worker=N;
+  # the Redis token bucket keeps all replicas under the Anthropic key's TPM.
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://astro:${POSTGRES_PASSWORD}@postgres:5432/astro_tma
+      REDIS_URL:    redis://redis:6379/0
+    command: ["arq", "worker.WorkerSettings"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+    volumes:
+      - ./backend:/app          # remove in production
+    networks: [astro-net]
+
   # ── Nginx ───────────────────────────────────────────────────────────────────
   nginx:
     image: nginx:alpine

@@ -49,6 +49,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await init_redis()
 
+    # arq enqueue pool for the natal-PDF queue (worker runs in its own container).
+    from services.arq_pool import init_arq_pool
+
+    await init_arq_pool()
+
     # Schedule daily horoscope generation at midnight UTC.
     #
     # NOTE: uvicorn runs with --workers 2, so every cron tick fires in
@@ -61,25 +66,36 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
     from core.scheduler_lock import with_leader_lock
+
     scheduler = AsyncIOScheduler(timezone="UTC")
     scheduler.add_job(
         with_leader_lock("daily_horoscopes", ttl_seconds=3600)(
             _generate_daily_horoscopes,
         ),
-        trigger="cron", hour=0, minute=5, id="daily_horoscopes",
+        trigger="cron",
+        hour=0,
+        minute=5,
+        id="daily_horoscopes",
     )
 
     if settings.FEATURE_PUSH_NOTIFICATIONS:
         from services.notifications.scheduler import send_daily_pushes
+
         scheduler.add_job(
             with_leader_lock("daily_pushes", ttl_seconds=300)(send_daily_pushes),
-            trigger="cron", minute=0, id="daily_pushes",
+            trigger="cron",
+            minute=0,
+            id="daily_pushes",
         )
 
     from services.news.scheduler import generate_daily_news
+
     scheduler.add_job(
         with_leader_lock("daily_news", ttl_seconds=3600)(generate_daily_news),
-        trigger="cron", hour=6, minute=0, id="daily_news",
+        trigger="cron",
+        hour=6,
+        minute=0,
+        id="daily_news",
     )
 
     # V3 destiny matrix — invalidate year_energy section on user's BD.
@@ -87,11 +103,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     from services.destiny_matrix.year_energy_scheduler import (
         invalidate_year_energy_on_birthday,
     )
+
     scheduler.add_job(
         with_leader_lock("destiny_v3_year_energy_invalidate", ttl_seconds=300)(
             invalidate_year_energy_on_birthday,
         ),
-        trigger="cron", minute=15, id="destiny_v3_year_energy_invalidate",
+        trigger="cron",
+        minute=15,
+        id="destiny_v3_year_energy_invalidate",
     )
 
     scheduler.start()
@@ -100,11 +119,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Idempotently (re-)register the support bot webhook with Telegram.
     # No-op when SUPPORT_BOT_TOKEN is unset.
     from api.routes.support import setup_support_webhook
+
     await setup_support_webhook()
 
     yield
 
     scheduler.shutdown(wait=False)
+    from services.arq_pool import close_arq_pool
+
+    await close_arq_pool()
     await close_redis()
     log.info("app.shutdown")
 
@@ -140,7 +163,7 @@ app.add_middleware(
         "https://webk.telegram.org",
         "https://webz.telegram.org",
         "https://astro-tma.vercel.app",
-        "http://localhost:5173",   # Vite dev server
+        "http://localhost:5173",  # Vite dev server
         "http://localhost:3000",
     ],
     allow_credentials=True,
@@ -168,6 +191,7 @@ SLOW_REQUEST_MS = 1500
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     import time
+
     start = time.perf_counter()
     response = await call_next(request)
     duration_ms = round((time.perf_counter() - start) * 1000, 1)
@@ -191,21 +215,21 @@ async def log_requests(request: Request, call_next):
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
-app.include_router(users.router,         prefix="/api")
-app.include_router(horoscope.router,     prefix="/api")
-app.include_router(tarot.router,         prefix="/api")
-app.include_router(natal.router,         prefix="/api")
-app.include_router(payments.router,      prefix="/api")
-app.include_router(mac.router,           prefix="/api")
-app.include_router(transits.router,      prefix="/api")
-app.include_router(synastry.router,      prefix="/api")
-app.include_router(glossary.router,      prefix="/api")
-app.include_router(news.router,          prefix="/api")
-app.include_router(referrals.router,     prefix="/api")
+app.include_router(users.router, prefix="/api")
+app.include_router(horoscope.router, prefix="/api")
+app.include_router(tarot.router, prefix="/api")
+app.include_router(natal.router, prefix="/api")
+app.include_router(payments.router, prefix="/api")
+app.include_router(mac.router, prefix="/api")
+app.include_router(transits.router, prefix="/api")
+app.include_router(synastry.router, prefix="/api")
+app.include_router(glossary.router, prefix="/api")
+app.include_router(news.router, prefix="/api")
+app.include_router(referrals.router, prefix="/api")
 app.include_router(destiny_matrix.router, prefix="/api")
 app.include_router(destiny_matrix_v3.router, prefix="/api")
-app.include_router(admin_stars.router,   prefix="/api")
-app.include_router(support.router,       prefix="/api")
+app.include_router(admin_stars.router, prefix="/api")
+app.include_router(support.router, prefix="/api")
 
 
 # ── Admin ─────────────────────────────────────────────────────────────────────
