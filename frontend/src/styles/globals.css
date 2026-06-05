@@ -1034,36 +1034,6 @@ body::after {
   cursor: not-allowed;
 }
 
-/* Compact ruble badge — used under the subscription plan tiles
-   (Premium screen) where the stars price already lives inside the
-   bigger button. */
-.premium-plan-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.premium-plan__rub {
-  width: 100%;
-  margin-top: 0;
-  padding: 8px 14px;
-  font-size: 0.86rem;
-  letter-spacing: 0.05em;
-}
-
-/* The one-off catalogue row wraps the stars button + the ruble
-   button as siblings; the row no longer is a button itself, so it
-   needs no hover state but we keep the spacing tight. */
-.premium-list__row {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.premium-list__rub {
-  margin-top: 0;
-  font-size: 0.86rem;
-  padding: 10px 16px;
-}
-
 /* ── Premium Gate ──────────────────────────────────────────────────────────── */
 .premium-gate {
   position: relative;
@@ -3997,26 +3967,6 @@ body::after {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.profile-meta {
-  display: flex;
-  gap: 8px;
-  margin-top: 4px;
-  font-size: var(--fs-small);
-  color: var(--text-dim);
-}
-.profile-meta span {
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 6px;
-  padding: 2px 8px;
-}
-.profile-signs-triple {
-  display: flex;
-  gap: 4px;
-  margin-top: 6px;
-  font-size: var(--fs-xs);
-  color: var(--gold-dim);
-  letter-spacing: 0.03em;
-}
 .profile-birth-info {
   display: flex;
   flex-direction: column;
@@ -4374,18 +4324,6 @@ body::after {
   overflow-wrap: anywhere;
   text-wrap: balance;
 }
-.tarot-flip__free {
-  position: relative;
-  z-index: 1;
-  font-family: var(--tarot-font-display);
-  font-size: var(--tarot-label-size);
-  line-height: 1.35;
-  color: var(--gold);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
-  overflow-wrap: anywhere;
-}
 .tarot-flip__face--front {
   transform: rotateY(180deg);
   display: flex;
@@ -4415,13 +4353,6 @@ body::after {
   font-family: var(--tarot-font-display);
   font-size: var(--tarot-body-size);
   color: var(--text-dim);
-}
-.tarot-flip__free {
-  font-family: var(--tarot-font-display);
-  font-size: var(--tarot-label-size);
-  color: var(--gold-dim);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 .tarot-flip__loading {
   display: flex;
@@ -5687,47 +5618,6 @@ body::after {
   font-size: 12px;
   color: var(--text-dim);
   line-height: 1.4;
-}
-
-.glossary-markdown {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  color: var(--text-soft);
-  font-size: clamp(18px, 4.9vw, 24px);
-  line-height: 1.56;
-}
-.glossary-markdown__heading {
-  margin: 0;
-  color: var(--gold-light);
-  line-height: 1.18;
-}
-.glossary-markdown__heading--1 {
-  font-family: "Playfair Display", Georgia, serif;
-  font-size: clamp(25px, 7vw, 34px);
-  font-weight: 600;
-}
-.glossary-markdown__heading--2,
-.glossary-markdown__heading--3 {
-  font-size: clamp(20px, 5.4vw, 26px);
-  font-weight: 600;
-}
-.glossary-markdown__paragraph {
-  margin: 0;
-}
-.glossary-markdown strong {
-  color: var(--text);
-  font-weight: 700;
-}
-.glossary-markdown__list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 0;
-  padding-left: 20px;
-}
-.glossary-markdown__list li::marker {
-  color: var(--gold-dim);
 }
 
 .news-card {
@@ -7390,102 +7280,6 @@ body::before {
   cursor: not-allowed;
 }
 
-/* ── Bottom Nav with central FAB (Practices) ───────────────────────────── */
-.bottom-nav.bottom-nav--fab {
-  height: calc(var(--nav-height) + var(--safe-bottom) + 8px);
-  align-items: stretch;
-  overflow: visible;
-}
-
-.bottom-nav.bottom-nav--fab .nav-item {
-  flex: 1;
-  position: relative;
-}
-
-/* Central FAB tab — wraps the FAB button + label */
-.nav-fab-item {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 4px;
-  padding: 4px 4px 8px;
-  border: none;
-  background: transparent;
-  color: var(--text-dim);
-  cursor: pointer;
-  position: relative;
-  -webkit-tap-highlight-color: transparent;
-}
-.nav-fab-item.active {
-  color: var(--gold);
-}
-.nav-fab-item:active {
-  transform: scale(0.95);
-}
-
-/* The actual round FAB element */
-.nav-fab {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background:
-    radial-gradient(
-      circle at 50% 35%,
-      rgba(212, 178, 84, 0.18),
-      rgba(14, 11, 32, 0.92) 70%
-    ),
-    var(--bg-deep);
-  border: 1px solid rgba(212, 178, 84, 0.45);
-  box-shadow:
-    0 8px 22px rgba(0, 0, 0, 0.55),
-    0 0 0 4px rgba(7, 6, 15, 0.92),
-    inset 0 0 0 1px rgba(212, 178, 84, 0.12);
-  color: var(--gold);
-  transform: translateY(-18px);
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    border-color 0.2s ease;
-}
-.nav-fab.active {
-  border-color: var(--gold);
-  box-shadow:
-    0 10px 26px rgba(0, 0, 0, 0.6),
-    0 0 0 4px rgba(7, 6, 15, 0.92),
-    0 0 18px rgba(212, 178, 84, 0.32),
-    inset 0 0 0 1px rgba(240, 212, 138, 0.22);
-}
-.nav-fab svg {
-  width: 24px;
-  height: 24px;
-  stroke: currentColor;
-  stroke-width: 1.3;
-  fill: none;
-}
-
-.nav-fab-item .nav-label {
-  margin-top: -10px;
-}
-
-/* Filled icon variants for non-FAB items */
-.bottom-nav.bottom-nav--fab .nav-icon svg {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-/* When active in horoscopes/premium, slightly fill the icon */
-.bottom-nav.bottom-nav--fab .nav-item.active .nav-icon svg {
-  fill: rgba(212, 178, 84, 0.16);
-}
-
 /* ── Horoscopes — Zodiac picker grid ───────────────────────────────────── */
 .horoscopes-screen .zodiac-grid {
   display: grid;
@@ -7578,74 +7372,6 @@ body::before {
   font-size: var(--fs-tiny);
 }
 
-/* Two-up subscription plan picker (month / year) */
-.premium-plans {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  width: 100%;
-  margin-top: 14px;
-}
-.premium-plan {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 16px 12px 14px;
-  border-radius: 14px;
-  border: 1px solid rgba(212, 178, 84, 0.3);
-  background: rgba(20, 18, 16, 0.7);
-  color: var(--text);
-  cursor: pointer;
-  transition: border-color 200ms ease, transform 120ms ease, background 200ms ease;
-  font: inherit;
-}
-.premium-plan:hover {
-  border-color: rgba(212, 178, 84, 0.6);
-  background: rgba(28, 24, 20, 0.8);
-}
-.premium-plan:active {
-  transform: scale(0.98);
-}
-.premium-plan:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-.premium-plan__label {
-  font-family: "Playfair Display", serif;
-  font-size: 1rem;
-  color: var(--gold-soft);
-  letter-spacing: 0.04em;
-}
-.premium-plan__price {
-  font-family: "Playfair Display", serif;
-  font-size: 1.35rem;
-  color: var(--gold);
-  font-weight: 600;
-}
-.premium-plan__period {
-  font-size: 0.78rem;
-  color: var(--text-mute);
-}
-.premium-plan--best {
-  border-color: rgba(232, 200, 98, 0.7);
-  background: rgba(40, 32, 18, 0.85);
-}
-.premium-plan__badge {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #f0d48a, #c49530);
-  color: #0a0906;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  box-shadow: 0 6px 16px rgba(196, 149, 48, 0.4);
-}
-
 /* List of unlockable products */
 .premium-list {
   display: flex;
@@ -7693,17 +7419,6 @@ body::before {
   color: var(--text-dim);
   line-height: 1.4;
 }
-.premium-list__price {
-  font-weight: 600;
-  font-size: var(--fs-small);
-  color: var(--gold);
-  white-space: nowrap;
-  padding: 6px 12px;
-  border: 1px solid var(--gold-border);
-  border-radius: 999px;
-  background: rgba(212, 178, 84, 0.08);
-}
-
 .premium-list-skeleton {
   display: flex;
   flex-direction: column;
@@ -7939,55 +7654,6 @@ body::before {
   background-clip: text;
   color: transparent;
 }
-.profile-gender {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--text-soft);
-  font-size: var(--fs-small);
-}
-.profile-gender__symbol {
-  width: 18px;
-  height: 18px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--gold-border);
-  border-radius: 50%;
-  color: var(--gold);
-  box-sizing: border-box;
-  flex-shrink: 0;
-}
-.profile-gender__symbol svg {
-  width: 11px;
-  height: 11px;
-  display: block;
-}
-
-/* Sign chips (Sun / Moon / Ascendant) */
-.profile-signs-triple--chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
-}
-.sign-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px 4px 8px;
-  border: 1px solid var(--gold-border);
-  border-radius: 999px;
-  background: rgba(212, 178, 84, 0.08);
-  color: var(--gold-light);
-  font-size: var(--fs-xs);
-  font-weight: 500;
-}
-.sign-chip__icon {
-  color: var(--gold);
-  font-size: 13px;
-}
-
 /* Edit pencil in the corner of the user card */
 .profile-card__edit {
   position: absolute;
@@ -8022,78 +7688,6 @@ body::before {
 .profile-card__edit:focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 2px;
-}
-
-/* Premium status callout below user card */
-.premium-status-card {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  width: 100%;
-  margin-top: var(--space-md);
-  padding: 14px 16px;
-  border-radius: var(--card-radius);
-  border: 1px solid var(--gold-border);
-  background:
-    linear-gradient(
-      135deg,
-      rgba(212, 178, 84, 0.12),
-      rgba(139, 106, 208, 0.08)
-    ),
-    var(--glass);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
-}
-.premium-status-card:active {
-  transform: scale(0.99);
-}
-.premium-status-card--upsell {
-  background:
-    linear-gradient(
-      135deg,
-      rgba(232, 200, 98, 0.18),
-      rgba(212, 178, 84, 0.05)
-    ),
-    var(--glass);
-  border-color: rgba(232, 200, 98, 0.5);
-  box-shadow: 0 6px 22px rgba(212, 178, 84, 0.15);
-}
-.premium-status-card--upsell .premium-status-card__star {
-  color: var(--gold);
-  text-shadow: 0 0 14px var(--gold-glow);
-}
-.premium-status-card__star {
-  width: 36px;
-  height: 36px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--gold-border);
-  border-radius: 50%;
-  color: var(--gold);
-  font-size: 18px;
-  background: rgba(212, 178, 84, 0.08);
-}
-.premium-status-card__main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-.premium-status-card__title {
-  font-family: "Playfair Display", serif;
-  font-size: var(--fs-h3);
-  color: var(--gold-light);
-}
-.premium-status-card__desc {
-  font-size: var(--fs-xs);
-  color: var(--text-dim);
-}
-.premium-status-card__arrow {
-  color: var(--gold);
-  font-size: 22px;
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
@@ -9379,51 +8973,6 @@ body::before {
   padding: 6px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-}
-
-/* Profile → Пригласить друзей CTA card */
-.profile-cta-card {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  width: 100%;
-  padding: 14px 16px;
-  background: rgba(212, 178, 84, 0.08);
-  border: 0.5px solid var(--gold-border);
-  border-radius: var(--card-radius);
-  color: var(--text);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  text-align: left;
-}
-.profile-cta-card__icon {
-  font-size: 22px;
-  color: var(--gold);
-  width: 32px;
-  text-align: center;
-  flex-shrink: 0;
-}
-.profile-cta-card__col {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1;
-  min-width: 0;
-}
-.profile-cta-card__title {
-  font-size: 14px;
-  color: var(--gold-light);
-  font-weight: 500;
-}
-.profile-cta-card__desc {
-  font-size: 12px;
-  color: var(--text-soft);
-  line-height: 1.45;
-}
-.profile-cta-card__chev {
-  color: var(--gold);
-  font-size: 22px;
-  line-height: 1;
 }
 
 /* Referral screen */
