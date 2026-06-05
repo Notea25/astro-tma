@@ -474,6 +474,7 @@ function NatalInterpretationSlider({
     slides[Math.min(activeIndex, slides.length - 1)] ?? slides[0];
   const canGoPrevious = activeIndex > 0;
   const canGoNext = activeIndex < slides.length - 1;
+  const isSingle = slides.length <= 1;
 
   const goToSlide = (index: number) => {
     setActiveIndex(Math.max(0, Math.min(slides.length - 1, index)));
@@ -499,79 +500,83 @@ function NatalInterpretationSlider({
 
   return (
     <div className="natal-interpretation-slider">
-      <div className="natal-interpretation-tabs" role="tablist" ref={tabsRef}>
-        {slides.map((slide, index) => (
-          <button
-            key={slide.id}
-            ref={(node) => {
-              tabRefs.current[index] = node;
-            }}
-            type="button"
-            role="tab"
-            aria-selected={index === activeIndex}
-            className={`natal-interpretation-tab${
-              index === activeIndex ? " is-active" : ""
-            }`}
-            onClick={() => goToSlide(index)}
-          >
-            {slide.label}
-          </button>
-        ))}
-      </div>
+      {!isSingle && (
+        <div className="natal-interpretation-tabs" role="tablist" ref={tabsRef}>
+          {slides.map((slide, index) => (
+            <button
+              key={slide.id}
+              ref={(node) => {
+                tabRefs.current[index] = node;
+              }}
+              type="button"
+              role="tab"
+              aria-selected={index === activeIndex}
+              className={`natal-interpretation-tab${
+                index === activeIndex ? " is-active" : ""
+              }`}
+              onClick={() => goToSlide(index)}
+            >
+              {slide.label}
+            </button>
+          ))}
+        </div>
+      )}
 
-      <div className="natal-interpretation-progress">
-        <div
-          className="natal-interpretation-controls"
-          aria-label="Переключение слайдов интерпретации"
-        >
-          <button
-            type="button"
-            className="natal-interpretation-nav"
-            onClick={() => goToSlide(activeIndex - 1)}
-            disabled={!canGoPrevious}
-            aria-label="Предыдущий слайд"
+      {!isSingle && (
+        <div className="natal-interpretation-progress">
+          <div
+            className="natal-interpretation-controls"
+            aria-label="Переключение слайдов интерпретации"
           >
-            <span aria-hidden="true">‹</span>
-            <span>Назад</span>
-          </button>
-          <div className="natal-interpretation-progress__count">
-            {activeIndex + 1}/{slides.length}
+            <button
+              type="button"
+              className="natal-interpretation-nav"
+              onClick={() => goToSlide(activeIndex - 1)}
+              disabled={!canGoPrevious}
+              aria-label="Предыдущий слайд"
+            >
+              <span aria-hidden="true">‹</span>
+              <span>Назад</span>
+            </button>
+            <div className="natal-interpretation-progress__count">
+              {activeIndex + 1}/{slides.length}
+            </div>
+            <button
+              type="button"
+              className="natal-interpretation-nav"
+              onClick={() => goToSlide(activeIndex + 1)}
+              disabled={!canGoNext}
+              aria-label="Следующий слайд"
+            >
+              <span>Далее</span>
+              <span aria-hidden="true">›</span>
+            </button>
           </div>
-          <button
-            type="button"
-            className="natal-interpretation-nav"
-            onClick={() => goToSlide(activeIndex + 1)}
-            disabled={!canGoNext}
-            aria-label="Следующий слайд"
-          >
-            <span>Далее</span>
-            <span aria-hidden="true">›</span>
-          </button>
-        </div>
-        <div className="natal-interpretation-dots">
-          {slides.map((slide, index) => {
-            const distance = Math.abs(index - activeIndex);
-            const sizeClass =
-              distance === 0
-                ? " is-active"
-                : distance === 1
-                  ? " is-near"
-                  : distance === 2
-                    ? " is-mid"
-                    : "";
+          <div className="natal-interpretation-dots">
+            {slides.map((slide, index) => {
+              const distance = Math.abs(index - activeIndex);
+              const sizeClass =
+                distance === 0
+                  ? " is-active"
+                  : distance === 1
+                    ? " is-near"
+                    : distance === 2
+                      ? " is-mid"
+                      : "";
 
-            return (
-              <button
-                key={`dot-${slide.id}`}
-                type="button"
-                className={`natal-interpretation-dot${sizeClass}`}
-                onClick={() => goToSlide(index)}
-                aria-label={`Открыть слайд ${index + 1}`}
-              />
-            );
-          })}
+              return (
+                <button
+                  key={`dot-${slide.id}`}
+                  type="button"
+                  className={`natal-interpretation-dot${sizeClass}`}
+                  onClick={() => goToSlide(index)}
+                  aria-label={`Открыть слайд ${index + 1}`}
+                />
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="natal-interpretation-stage">
         <motion.div
