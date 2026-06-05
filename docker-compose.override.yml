@@ -9,6 +9,13 @@ services:
       APP_ENV: development
       APP_DEBUG: "true"
 
+  worker:
+    command: ["arq", "worker.WorkerSettings"]
+    environment:
+      APP_ENV: development
+      APP_DEBUG: "true"
+      ANTHROPIC_OUTPUT_TPM: "0"   # local: disable throttle to measure raw gen time
+
   postgres:
     ports:
       - "5433:5432"   # expose locally for DB GUI tools (5433 to avoid conflicts)

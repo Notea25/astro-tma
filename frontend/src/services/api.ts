@@ -615,6 +615,34 @@ export const natalApi = {
     await request<{ status: string }>("POST", "/natal/wheel-svg", { svg });
   },
 
+  // Queue-based generation: enqueue → poll status → download by token.
+  startPdf: () =>
+    request<import("@/types").NatalPdfGenerateResponse>(
+      "POST",
+      "/natal/pdf/generate",
+    ),
+  pdfStatus: (jobId: string) =>
+    request<import("@/types").NatalPdfStatusResponse>(
+      "GET",
+      `/natal/pdf/status/${jobId}`,
+    ),
+  ensureWheelSvgUploaded,
+  // Download a ready PDF by its one-shot token (reuses the existing
+  // /pdf-download/{token} endpoint the queue worker mints).
+  downloadByToken: async (token: string, filename = "natal-chart.pdf") => {
+    const path = `/natal/pdf-download/${token}`;
+    if (canUseTelegramOpenLink()) {
+      triggerDownload(apiUrl(path), filename);
+      return;
+    }
+    try {
+      const blob = await requestBlob(path);
+      triggerBlobDownload(blob, filename);
+    } catch {
+      triggerDownload(apiUrl(path), filename);
+    }
+  },
+
   downloadPdf: async () => {
     const filename = "natal-chart.pdf";
 

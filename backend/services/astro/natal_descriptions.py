@@ -49,10 +49,14 @@ _ASPECT_RU: dict[str, str] = {
 }
 
 
+# Free-tier Anthropic keys cap output at ~10k tokens/min. Output tokens are the
+# bottleneck (the bucket throttles them), so these targets are kept tight —
+# halved from the earlier values to roughly halve generation time on any tier.
+# Upper hints, not floors — the prompt tells the model "shorter is better".
 _MIN_FULL_WORDS = {
-    "planets": 300,
-    "houses": 220,
-    "aspects": 260,
+    "planets": 90,
+    "houses": 75,
+    "aspects": 85,
 }
 
 _FORBIDDEN_COPY_MARKERS = (
@@ -326,7 +330,7 @@ def _build_planets_prompt(
 
 Для КАЖДОЙ из перечисленных планет напиши:
 - "short" — компактное описание (2 предложения, ~35-55 слов): что эта планета в данном знаке означает для человека — характер, проявления в жизни, на что обратить внимание; дом упомяни только одним прикладным штрихом.
-- "full" — полноценное описание (3-4 абзаца, ~280-360 слов): центр разбора — связка планета + знак. Объясни роль планеты как архетип и жизненную функцию, положение планеты в знаке, характер, мотивацию, сильные стороны и уязвимости, проявления в отношениях и работе/делах, повторяющиеся сценарии и практический совет. Дом, ретроградность и связанные аспекты используй как персональные уточнения, не делай их случайной припиской. Пиши содержательно, но без воды и повторов.
+- "full" — полноценное описание (1-2 абзаца, ~80-100 слов): центр разбора — связка планета + знак. Объясни роль планеты как архетип и жизненную функцию, положение планеты в знаке, характер, мотивацию, сильные стороны и уязвимости, проявления в отношениях и работе/делах, практический совет. Дом, ретроградность и связанные аспекты используй как персональные уточнения, не делай их случайной припиской. Пиши плотно, без воды и повторов — лучше короче и по делу.
 
 {_quality_rules("planets")}
 
@@ -360,7 +364,7 @@ def _build_houses_prompt(
 
 Для КАЖДОГО дома напиши:
 - "short" — компактное описание (2 предложения, ~35-55 слов): какую сферу жизни описывает этот дом, как знак на куспиде окрашивает её, ключевые проявления.
-- "full" — полноценное описание (2-3 абзаца, ~200-280 слов): тема дома, стиль знака на куспиде, типичные жизненные сценарии, как это видно в характере и поведении, отношения или работа/дела этой сферы, планеты в доме из контекста карты, сильная сторона, риск и практический ориентир. Пиши содержательно, но без воды.
+- "full" — полноценное описание (1-2 абзаца, ~110-150 слов): тема дома, стиль знака на куспиде, типичные жизненные сценарии, как это видно в характере и поведении, отношения или работа/дела этой сферы, сильная сторона, риск и практический ориентир. Пиши плотно, без воды — лучше короче и по делу.
 
 {_quality_rules("houses")}
 
@@ -408,7 +412,7 @@ def _build_aspects_prompt(
 
 Для КАЖДОГО аспекта напиши:
 - "short" — компактное описание (2 предложения, ~35-55 слов): как эти две планеты взаимодействуют, что человеку даёт или с чем приходится работать.
-- "full" — полноценное описание (2-3 абзаца, ~240-320 слов): как именно взаимодействуют две планеты, гармония это или напряжение, какие темы жизни затронуты, как проявляется в характере, отношениях и делах, привычных реакциях, сильная сторона, зона роста и практический способ проживать аспект мягче. Добавь 1-2 жизненных примера. Пиши содержательно, но без воды.
+- "full" — полноценное описание (1-2 абзаца, ~130-170 слов): как именно взаимодействуют две планеты, гармония это или напряжение, какие темы жизни затронуты, как проявляется в характере, отношениях и делах, сильная сторона, зона роста и практический способ проживать аспект мягче. Добавь 1 жизненный пример. Пиши плотно, без воды — лучше короче и по делу.
 
 {_quality_rules("aspects")}
 
@@ -476,8 +480,9 @@ async def _call_tool(
     block carries an already-parsed dict matching `input_schema`. No JSON
     string handling needed on our side."""
     from services.llm_pool import llm_semaphore
+    from services.rate_limiter import AnthropicLimiter
 
-    async with llm_semaphore:
+    async with llm_semaphore, AnthropicLimiter(max_tokens):
         message = await client.messages.create(
             model=_MODEL,
             max_tokens=max_tokens,
@@ -500,8 +505,9 @@ async def _call_tool(
 async def _call_llm(client: Any, prompt: str, max_tokens: int) -> str:
     """Legacy plain-text call — kept for any future free-form prompt."""
     from services.llm_pool import llm_semaphore
+    from services.rate_limiter import AnthropicLimiter
 
-    async with llm_semaphore:
+    async with llm_semaphore, AnthropicLimiter(max_tokens):
         message = await client.messages.create(
             model=_MODEL,
             max_tokens=max_tokens,
@@ -551,7 +557,7 @@ def _planet_one_prompt(key: str, planet: dict[str, Any]) -> str:
 
 Вызови инструмент submit_entry с двумя полями:
 - "short" (2 предложения, ~35-55 слов): что эта планета в данном знаке значит для человека — как проявляется в характере и в жизни, на что обратить внимание; дом упомяни только одним прикладным штрихом.
-- "full" (3-4 абзаца, ~280-360 слов): справочный текст «планета в знаке»: роль планеты как архетип и жизненная функция, характер, мотивации, сильные стороны и уязвимости, проявления в отношениях и работе/делах, повторяющиеся сценарии и практический совет. Дом добавь только ближе к концу как персональный акцент. Содержательно, но без воды.
+- "full" (1-2 абзаца, ~80-100 слов): справочный текст «планета в знаке»: роль планеты как архетип и жизненная функция, характер, мотивации, сильные стороны и уязвимости, проявления в отношениях и работе/делах, практический совет. Дом добавь только ближе к концу как персональный акцент. Плотно, без воды — лучше короче и по делу.
 
 {_STYLE_BRIEF}"""
 
@@ -567,7 +573,7 @@ def _house_one_prompt(num: int, sign_name: str) -> str:
 
 Вызови инструмент submit_entry с двумя полями:
 - "short" (2 предложения, ~35-55 слов): какую сферу жизни описывает этот дом, как знак на куспиде её окрашивает, ключевые проявления.
-- "full" (2-3 абзаца, ~200-280 слов): тема дома, стиль знака на куспиде, типичные жизненные сценарии, как это видно в характере и поведении, отношения или работа/дела этой сферы, сильная сторона, риск и практический ориентир. Содержательно, но без воды.
+- "full" (1-2 абзаца, ~110-150 слов): тема дома, стиль знака на куспиде, типичные жизненные сценарии, как это видно в характере и поведении, отношения или работа/дела этой сферы, сильная сторона, риск и практический ориентир. Плотно, без воды — лучше короче и по делу.
 
 {_STYLE_BRIEF}"""
 
@@ -581,7 +587,7 @@ def _aspect_one_prompt(p1: str, p2: str, atype: str) -> str:
 
 Вызови инструмент submit_entry с двумя полями:
 - "short" (2 предложения, ~35-55 слов): как эти две темы взаимодействуют — что даёт человеку или с чем приходится работать.
-- "full" (2-3 абзаца, ~240-320 слов): как именно сочетаются эти две темы, гармония это или трение, какие сферы жизни затронуты, как проявляется в характере, отношениях и делах, привычных реакциях, сильная сторона, зона роста и практический способ проживать аспект мягче. Добавь 1-2 бытовых примера. Содержательно, но без воды.
+- "full" (1-2 абзаца, ~130-170 слов): как именно сочетаются эти две темы, гармония это или трение, какие сферы жизни затронуты, как проявляется в характере, отношениях и делах, сильная сторона, зона роста и практический способ проживать аспект мягче. Добавь 1 бытовой пример. Плотно, без воды — лучше короче и по делу.
 
 {_STYLE_BRIEF}"""
 
@@ -619,40 +625,56 @@ def _repair_prompt(
 Без markdown, списков и заголовков."""
 
 
+# Rate-limit handling for the descriptions batch. The key may be on a low
+# RPM tier, and ~15 batched calls fire near-simultaneously — so a single
+# 20s retry is not enough. Retry several times with exponential backoff.
+_RATE_LIMIT_MAX_ATTEMPTS = 5
+_RATE_LIMIT_BASE_DELAY = 15.0
+
+
+def _is_rate_limit_error(msg: str) -> bool:
+    low = msg.lower()
+    return "429" in msg or "rate_limit" in low or "overloaded" in low or "529" in msg
+
+
+def _rate_limit_delay(attempt: int) -> float:
+    # 15s, 30s, 60s, 120s — capped. attempt is 0-based.
+    return min(_RATE_LIMIT_BASE_DELAY * (2**attempt), 120.0)
+
+
 async def _one_entry(
     client: Any,
     prompt: str,
-    sem: asyncio.Semaphore,
     max_tokens: int = 3000,
 ) -> dict[str, str]:
-    """Single LLM call → dict with {short, full}. Semaphore-limited and
-    auto-retries once on a 429 rate-limit response. Returns empty strings
-    on permanent failure."""
-    for attempt in range(2):
-        async with sem:
-            try:
-                result = await _call_tool(
-                    client,
-                    prompt,
-                    "submit_entry",
-                    _single_entry_schema(),
-                    max_tokens,
-                )
-                if isinstance(result, dict):
-                    return {
-                        "short": str(result.get("short", "")),
-                        "full": str(result.get("full", "")),
-                    }
-                return {"short": "", "full": ""}
-            except Exception as e:  # noqa: BLE001
-                msg = str(e)
-                is_rate_limit = "429" in msg or "rate_limit" in msg.lower()
-                if is_rate_limit and attempt == 0:
-                    log.info("natal_descriptions.rate_limit_retry")
-                    await asyncio.sleep(20)
-                    continue
-                log.warning("natal_descriptions.entry_failed", error=msg[:200])
-                return {"short": "", "full": ""}
+    """Single LLM call → dict with {short, full}. Concurrency is governed by
+    the global ``llm_semaphore`` + distributed token bucket inside ``_call_tool``.
+    Retries with exponential backoff on a 429 rate-limit response. Returns
+    empty strings on permanent failure."""
+    for attempt in range(_RATE_LIMIT_MAX_ATTEMPTS):
+        try:
+            result = await _call_tool(
+                client,
+                prompt,
+                "submit_entry",
+                _single_entry_schema(),
+                max_tokens,
+            )
+            if isinstance(result, dict):
+                return {
+                    "short": str(result.get("short", "")),
+                    "full": str(result.get("full", "")),
+                }
+            return {"short": "", "full": ""}
+        except Exception as e:  # noqa: BLE001
+            msg = str(e)
+            if _is_rate_limit_error(msg) and attempt < _RATE_LIMIT_MAX_ATTEMPTS - 1:
+                delay = _rate_limit_delay(attempt)
+                log.info("natal_descriptions.rate_limit_retry", attempt=attempt + 1, delay=delay)
+                await asyncio.sleep(delay)
+                continue
+            log.warning("natal_descriptions.entry_failed", error=msg[:200])
+            return {"short": "", "full": ""}
     return {"short": "", "full": ""}
 
 
@@ -667,49 +689,54 @@ async def _call_tool_chunk(
     tool_name: str,
     keys: list[str],
     max_tokens: int,
-    sem: asyncio.Semaphore,
 ) -> dict[str, dict[str, str]]:
-    """Single batched LLM call → flat {key → {short, full}} dict. Retries
-    once on 429. Returns empty dict on permanent failure."""
+    """Single batched LLM call → flat {key → {short, full}} dict. Concurrency
+    is governed by the global ``llm_semaphore`` + distributed token bucket
+    inside ``_call_tool``. Retries with exponential backoff on 429. Returns
+    empty dict on permanent failure."""
     schema = {
         "type": "object",
         "properties": {k: _entry_schema() for k in keys},
         "required": keys,
     }
-    for attempt in range(2):
-        async with sem:
-            try:
-                result = await _call_tool(
-                    client,
-                    prompt,
-                    tool_name,
-                    schema,
-                    max_tokens,
-                )
-                if not isinstance(result, dict):
-                    return {}
-                out: dict[str, dict[str, str]] = {}
-                for k, v in result.items():
-                    if isinstance(v, dict):
-                        out[str(k)] = {
-                            "short": str(v.get("short", "")),
-                            "full": str(v.get("full", "")),
-                        }
-                return out
-            except Exception as e:  # noqa: BLE001
-                msg = str(e)
-                is_rate_limit = "429" in msg or "rate_limit" in msg.lower()
-                if is_rate_limit and attempt == 0:
-                    log.info("natal_descriptions.batch_rate_limit_retry")
-                    await asyncio.sleep(20)
-                    continue
-                log.warning(
-                    "natal_descriptions.batch_failed",
-                    tool=tool_name,
-                    keys=keys,
-                    error=msg[:200],
-                )
+    for attempt in range(_RATE_LIMIT_MAX_ATTEMPTS):
+        try:
+            result = await _call_tool(
+                client,
+                prompt,
+                tool_name,
+                schema,
+                max_tokens,
+            )
+            if not isinstance(result, dict):
                 return {}
+            out: dict[str, dict[str, str]] = {}
+            for k, v in result.items():
+                if isinstance(v, dict):
+                    out[str(k)] = {
+                        "short": str(v.get("short", "")),
+                        "full": str(v.get("full", "")),
+                    }
+            return out
+        except Exception as e:  # noqa: BLE001
+            msg = str(e)
+            if _is_rate_limit_error(msg) and attempt < _RATE_LIMIT_MAX_ATTEMPTS - 1:
+                delay = _rate_limit_delay(attempt)
+                log.info(
+                    "natal_descriptions.batch_rate_limit_retry",
+                    tool=tool_name,
+                    attempt=attempt + 1,
+                    delay=delay,
+                )
+                await asyncio.sleep(delay)
+                continue
+            log.warning(
+                "natal_descriptions.batch_failed",
+                tool=tool_name,
+                keys=keys,
+                error=msg[:200],
+            )
+            return {}
     return {}
 
 
@@ -770,42 +797,16 @@ def _full_too_close_to_short(short: str, full: str) -> bool:
 
 
 def _entry_needs_repair(entry: dict[str, str], section: str) -> bool:
-    short = str(entry.get("short") or "").strip()
     full = str(entry.get("full") or "").strip()
+    if not full:
+        return True
     if _has_forbidden_copy_marker(full):
-        return True
-    if _word_count(full) < _MIN_FULL_WORDS[section]:
-        return True
-    if short and _word_count(full) < max(_word_count(short) * 3, _MIN_FULL_WORDS[section]):
-        return True
-    if short and _full_too_close_to_short(short, full):
         return True
     return False
 
 
 def _quality_repair_keys(entries: dict[str, dict[str, str]], section: str) -> set[str]:
-    repair: set[str] = {
-        key for key, entry in entries.items() if _entry_needs_repair(entry, section)
-    }
-    endings: dict[str, str] = {}
-    starts: dict[str, str] = {}
-    for key, entry in entries.items():
-        start = _normalise_first_sentence(str(entry.get("full") or ""))
-        if len(start.split()) >= 5:
-            if start in starts:
-                repair.add(key)
-                repair.add(starts[start])
-            else:
-                starts[start] = key
-        ending = _normalise_sentence(str(entry.get("full") or ""))
-        if len(ending.split()) < 4:
-            continue
-        if ending in endings:
-            repair.add(key)
-            repair.add(endings[ending])
-        else:
-            endings[ending] = key
-    return repair
+    return {key for key, entry in entries.items() if _entry_needs_repair(entry, section)}
 
 
 async def _repair_entries(
@@ -814,7 +815,6 @@ async def _repair_entries(
     labels: dict[str, str],
     section: str,
     chart_context: str,
-    sem: asyncio.Semaphore,
 ) -> dict[str, dict[str, str]]:
     repair_keys = _quality_repair_keys(entries, section)
     if not repair_keys:
@@ -828,8 +828,7 @@ async def _repair_entries(
                 current=entries.get(key, {}),
                 chart_context=chart_context,
             ),
-            sem,
-            max_tokens=3600,
+            max_tokens=2000,
         )
         for key in repair_keys
     }
@@ -841,10 +840,10 @@ async def _repair_entries(
     return out
 
 
-# Per-chunk cap of items in a single LLM call. Longer PDF copy needs smaller
-# batches so the tool-call payload keeps schema adherence and avoids truncation.
-_BATCH_SIZE = 2
-_BATCH_MAX_TOKENS = 6000
+# Per-chunk cap of items in a single LLM call. The PDF copy is now compact, so a
+# 4-item tool payload stays small while cutting request count sharply.
+_BATCH_SIZE = 4
+_BATCH_MAX_TOKENS = 1800
 
 
 async def generate_natal_descriptions(
@@ -864,9 +863,10 @@ async def generate_natal_descriptions(
     import anthropic
 
     client = anthropic.AsyncAnthropic(api_key=api_key)
-    # Anthropic free-tier rate limit is 50 RPM with low concurrent-conn cap.
-    # 3 in flight is plenty for 6-7 batched calls and keeps us under both.
-    sem = asyncio.Semaphore(3)
+    # Concurrency and the Anthropic per-minute output-token limit are now
+    # governed globally: llm_semaphore (in-process conn cap) + the distributed
+    # token bucket, both inside _call_tool. Backoff in _call_tool_chunk still
+    # absorbs residual 429/529 spikes.
     chart_context = _chart_context(planets, houses, aspects)
 
     # ── Planets ─────────────────────────────────────────────────────────
@@ -884,7 +884,6 @@ async def generate_natal_descriptions(
                 "submit_planet_descriptions",
                 keys,
                 _BATCH_MAX_TOKENS,
-                sem,
             )
         )
 
@@ -912,7 +911,6 @@ async def generate_natal_descriptions(
                 "submit_house_descriptions",
                 keys,
                 _BATCH_MAX_TOKENS,
-                sem,
             )
         )
 
@@ -950,11 +948,10 @@ async def generate_natal_descriptions(
                 "submit_aspect_descriptions",
                 chunk_ids,
                 _BATCH_MAX_TOKENS,
-                sem,
             )
         )
 
-    # Fire everything in parallel — semaphore caps actual concurrency.
+    # Fire everything in parallel — llm_semaphore + token bucket cap concurrency.
     all_results = await asyncio.gather(
         *planet_tasks,
         *house_tasks,
@@ -1011,7 +1008,6 @@ async def generate_natal_descriptions(
         planet_labels,
         "planets",
         chart_context,
-        sem,
     )
     house_out = await _repair_entries(
         client,
@@ -1019,7 +1015,6 @@ async def generate_natal_descriptions(
         house_labels,
         "houses",
         chart_context,
-        sem,
     )
     aspect_out = await _repair_entries(
         client,
@@ -1027,7 +1022,6 @@ async def generate_natal_descriptions(
         aspect_labels,
         "aspects",
         chart_context,
-        sem,
     )
 
     out: dict[str, Any] = {"planets": planet_out, "houses": house_out, "aspects": []}

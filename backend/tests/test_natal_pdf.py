@@ -1,11 +1,9 @@
 """Tests for natal PDF generation and temporary download links."""
 
-import asyncio
 import sys
 from types import SimpleNamespace
 
 import pytest
-from fastapi.responses import Response
 
 from services import natal_pdf, natal_pdf_html
 from services.astro import llm_interpreter, natal_descriptions
@@ -351,10 +349,9 @@ def test_planet_description_prompt_prioritises_sign_over_house():
     assert "центр разбора — связка планета + знак" in prompt
     assert "Солнце в Козероге" in prompt
     assert "в знаке Козерога" in prompt
-    assert "280-360 слов" in prompt
+    assert "80-100 слов" in prompt
     assert "роль планеты как архетип" in prompt
     assert "проявления в отношениях и работе/делах" in prompt
-    assert "повторяющиеся сценарии" in prompt
     assert "без воды" in prompt
     assert "Подробнее" in prompt
     assert "уникальное первое и последнее предложение" in prompt
@@ -376,7 +373,7 @@ def test_house_description_prompt_requests_scenarios_and_declension():
 
     assert "знак на куспиде — Весы" in prompt
     assert "дом в Весах" in prompt
-    assert "200-280 слов" in prompt
+    assert "110-150 слов" in prompt
     assert "типичные жизненные сценарии" in prompt
     assert "сильная сторона" in prompt
     assert "без воды" in prompt
@@ -387,7 +384,7 @@ def test_aspect_description_prompt_requests_full_interaction():
     prompt = natal_descriptions._aspect_one_prompt("sun", "moon", "square")
 
     assert "Солнце — квадрат — Луна" in prompt
-    assert "240-320 слов" in prompt
+    assert "130-170 слов" in prompt
     assert "взаимодействуют" in prompt
     assert "сочетаются эти две темы" in prompt
     assert "отношениях и делах" in prompt
@@ -549,11 +546,12 @@ def test_reportlab_pdf_uses_full_descriptions_without_compact_trimming(monkeypat
 
 
 def test_natal_description_batches_are_small_for_long_pdf_copy():
-    assert natal_descriptions._BATCH_SIZE == 2
-    assert natal_descriptions._BATCH_MAX_TOKENS >= 4000
+    assert natal_descriptions._BATCH_SIZE == 4
+    # Compact 4-item batches keep request count low without bloating max_tokens.
+    assert 1500 <= natal_descriptions._BATCH_MAX_TOKENS <= 2200
 
 
-def test_natal_description_quality_detects_duplicate_endings():
+def test_natal_description_quality_does_not_repair_style_only_duplicates():
     good_body = " ".join(f"слово{i}" for i in range(340))
     repeated = " Повторяющийся финальный совет должен исчезнуть."
     entries = {
@@ -561,10 +559,10 @@ def test_natal_description_quality_detects_duplicate_endings():
         "moon": {"short": "short", "full": good_body + repeated},
     }
 
-    assert natal_descriptions._quality_repair_keys(entries, "planets") == {"sun", "moon"}
+    assert natal_descriptions._quality_repair_keys(entries, "planets") == set()
 
 
-def test_natal_description_quality_detects_duplicate_starts():
+def test_natal_description_quality_keeps_duplicate_starts_without_extra_llm_calls():
     body = " ".join(f"слово{i}" for i in range(340))
     entries = {
         "sun": {
@@ -577,16 +575,16 @@ def test_natal_description_quality_detects_duplicate_starts():
         },
     }
 
-    assert natal_descriptions._quality_repair_keys(entries, "planets") == {"sun", "moon"}
+    assert natal_descriptions._quality_repair_keys(entries, "planets") == set()
 
 
-def test_natal_description_quality_detects_copy_markers_and_short_like_full():
+def test_natal_description_quality_repairs_copy_markers_only():
     detailed = " ".join(f"слово{i}" for i in range(340))
     assert natal_descriptions._entry_needs_repair(
         {"short": "short", "full": f"{detailed} Читать далее..."},
         "planets",
     )
-    assert natal_descriptions._entry_needs_repair(
+    assert not natal_descriptions._entry_needs_repair(
         {
             "short": "Это короткое описание почти целиком повторяется.",
             "full": "Это короткое описание почти целиком повторяется. "
@@ -607,11 +605,10 @@ async def test_natal_description_repair_replaces_bad_entries(monkeypatch):
     monkeypatch.setattr(natal_descriptions, "_one_entry", fake_one_entry)
     repaired = await natal_descriptions._repair_entries(
         client=object(),
-        entries={"sun": {"short": "Коротко.", "full": "Слишком мало."}},
+        entries={"sun": {"short": "Коротко.", "full": ""}},
         labels={"sun": "Солнце в Скорпионе"},
         section="planets",
         chart_context="Контекст всей натальной карты",
-        sem=asyncio.Semaphore(1),
     )
 
     assert repaired["sun"]["full"].startswith("новый0")
@@ -764,19 +761,47 @@ async def test_natal_pdf_token_download_does_not_require_telegram_auth(monkeypat
 
     async def fake_get_user(_db, user_id):
         assert user_id == 1001
-        return SimpleNamespace(id=user_id)
+        return SimpleNamespace(id=user_id, tg_first_name="Андрей")
 
-    async def fake_build_response(_db, user):
+    async def fake_build_pdf(_db, user, *, require_ready_cache=False):
         assert user.id == 1001
-        return Response(content=b"%PDF-test", media_type="application/pdf")
+        assert require_ready_cache is False
+        return b"%PDF-test"
 
     monkeypatch.setattr(natal, "cache_get", fake_cache_get)
     monkeypatch.setattr(natal, "_get_pdf_user_or_error", fake_get_user)
-    monkeypatch.setattr(natal, "_build_natal_pdf_response", fake_build_response)
+    monkeypatch.setattr(natal, "_build_natal_pdf_bytes", fake_build_pdf)
 
     response = await natal.get_natal_pdf_by_token("token-123", db=object())
 
     assert response.body == b"%PDF-test"
+    assert response.media_type == "application/pdf"
+
+
+@pytest.mark.asyncio
+async def test_ready_pdf_token_download_does_not_generate_llm(monkeypatch):
+    from api.routes import natal
+
+    async def fake_cache_get(key):
+        assert key == "natal:pdf-download:token-123"
+        return {"user_id": 1001, "ready": True}
+
+    async def fake_get_user(_db, user_id):
+        assert user_id == 1001
+        return SimpleNamespace(id=user_id, tg_first_name="Андрей")
+
+    async def fake_build_pdf(_db, user, *, require_ready_cache=False):
+        assert user.id == 1001
+        assert require_ready_cache is True
+        return b"%PDF-ready"
+
+    monkeypatch.setattr(natal, "cache_get", fake_cache_get)
+    monkeypatch.setattr(natal, "_get_pdf_user_or_error", fake_get_user)
+    monkeypatch.setattr(natal, "_build_natal_pdf_bytes", fake_build_pdf)
+
+    response = await natal.get_natal_pdf_by_token("token-123", db=object())
+
+    assert response.body == b"%PDF-ready"
     assert response.media_type == "application/pdf"
 
 
@@ -811,7 +836,9 @@ async def test_send_natal_pdf_to_telegram_generates_and_sends_document(monkeypat
 
 
 @pytest.mark.asyncio
-async def test_build_natal_pdf_response_does_not_block_on_llm(monkeypatch):
+async def test_build_natal_pdf_response_blocks_until_full_copy_ready(monkeypatch):
+    # On-demand model: the download BLOCKS until personal descriptions and
+    # reading are generated, then renders one complete PDF — no fallback-first.
     from api.routes import natal
     from services import natal_pdf, natal_pdf_html
 
@@ -835,12 +862,15 @@ async def test_build_natal_pdf_response_does_not_block_on_llm(monkeypatch):
         gender=None,
     )
     calls = {}
+    full_descriptions = {"planets": {"sun": {"short": "s", "full": "f"}}}
 
-    async def fail_descriptions(*_args, **_kwargs):
-        raise AssertionError("download must not generate descriptions")
+    async def fake_descriptions(_db, _user):
+        calls["descriptions_called"] = True
+        return full_descriptions
 
-    async def fail_reading(*_args, **_kwargs):
-        raise AssertionError("download must not generate reading")
+    async def fake_reading(_user, _chart, _planets, _aspects):
+        calls["reading_called"] = True
+        return "Полный персональный разбор."
 
     async def fake_cache_get(key):
         calls.setdefault("cache_keys", []).append(key)
@@ -848,23 +878,24 @@ async def test_build_natal_pdf_response_does_not_block_on_llm(monkeypatch):
 
     def fake_generate_natal_pdf(**kwargs):
         calls["pdf_kwargs"] = kwargs
-        return b"%PDF-fast"
+        return b"%PDF-full"
 
     async def fake_generate_natal_pdf_html(**_kwargs):
         raise RuntimeError("chromium unavailable")
 
-    monkeypatch.setattr(natal, "_get_or_generate_descriptions", fail_descriptions)
-    monkeypatch.setattr(natal, "_get_or_generate_pdf_reading", fail_reading)
+    monkeypatch.setattr(natal, "_get_or_generate_descriptions", fake_descriptions)
+    monkeypatch.setattr(natal, "_get_or_generate_pdf_reading", fake_reading)
     monkeypatch.setattr(natal, "cache_get", fake_cache_get)
     monkeypatch.setattr(natal_pdf_html, "generate_natal_pdf_html", fake_generate_natal_pdf_html)
     monkeypatch.setattr(natal_pdf, "generate_natal_pdf", fake_generate_natal_pdf)
 
     response = await natal._build_natal_pdf_response(db=object(), user=user)
 
-    assert response.body == b"%PDF-fast"
-    assert "natal:1001" in calls["cache_keys"]
-    assert calls["pdf_kwargs"]["descriptions"] == natal._empty_descriptions()
-    assert calls["pdf_kwargs"]["reading"] is None
+    assert response.body == b"%PDF-full"
+    assert calls["descriptions_called"] is True
+    assert calls["reading_called"] is True
+    assert calls["pdf_kwargs"]["descriptions"] == full_descriptions
+    assert calls["pdf_kwargs"]["reading"] == "Полный персональный разбор."
 
 
 @pytest.mark.asyncio
@@ -901,5 +932,96 @@ async def test_pdf_reading_is_generated_when_full_chart_cache_is_cold(monkeypatc
 
     assert reading == "Полное итоговое чтение карты."
     assert calls["reading_kwargs"]["aspects"] == aspects
-    assert calls["cache_set"][0] == "natal:1001"
-    assert calls["cache_set"][1]["reading"] == "Полное итоговое чтение карты."
+
+
+class _FakeRedis:
+    """Minimal Redis stand-in for the dedup SET NX behaviour."""
+
+    def __init__(self, store=None):
+        self.store = dict(store or {})
+
+    async def set(self, key, value, nx=False, ex=None):
+        if nx and key in self.store:
+            return None
+        self.store[key] = value
+        return True
+
+    async def get(self, key):
+        return self.store.get(key)
+
+
+@pytest.mark.asyncio
+async def test_start_pdf_fast_path_returns_ready_without_enqueue(monkeypatch):
+    # Warm cache: descriptions fresh + reading fresh → mint token, status ready,
+    # never touch the queue.
+    from api.routes import natal
+
+    user = SimpleNamespace(id=1001, tg_first_name="Андрей", gender=None)
+    calls = {}
+
+    async def fake_user(_db, _uid):
+        return user
+
+    async def fake_cache_get(_key):
+        return {"reading": "x", "reading_gender": None}
+
+    async def fake_cache_set(key, value, ttl):
+        calls.setdefault("cache_set", []).append(key)
+
+    def fail_enqueue():
+        raise AssertionError("fast-path must not enqueue")
+
+    monkeypatch.setattr(natal, "_get_pdf_user_or_error", fake_user)
+    monkeypatch.setattr(natal, "_get_stored_descriptions", lambda u: {"planets": {"sun": {}}})
+    monkeypatch.setattr(natal, "_reading_is_fresh", lambda c, g: "reading-text")
+    monkeypatch.setattr(natal, "cache_get", fake_cache_get)
+    monkeypatch.setattr(natal, "cache_set", fake_cache_set)
+    monkeypatch.setattr("services.arq_pool.get_arq_pool", fail_enqueue)
+
+    res = await natal.start_natal_pdf(tg_user={"id": 1001}, db=object())
+
+    assert res.status == "ready"
+    assert res.download_token
+    assert any("pdf-download" in k for k in calls["cache_set"])
+
+
+@pytest.mark.asyncio
+async def test_start_pdf_dedups_concurrent_requests(monkeypatch):
+    # Second call while a job lock is held returns the existing job, no 2nd enqueue.
+    from api.routes import natal
+
+    user = SimpleNamespace(id=1001, tg_first_name="Андрей", gender=None)
+    redis = _FakeRedis()
+    enqueue_count = {"n": 0}
+
+    async def fake_user(_db, _uid):
+        return user
+
+    async def fake_cache_get(_key):
+        return None  # reading not fresh → no fast-path
+
+    async def fake_set_status(job_id, status, **fields):
+        pass
+
+    async def fake_get_status(job_id):
+        return {"status": "processing"}
+
+    class FakePool:
+        async def enqueue_job(self, *a, **k):
+            enqueue_count["n"] += 1
+
+    monkeypatch.setattr(natal, "_get_pdf_user_or_error", fake_user)
+    monkeypatch.setattr(natal, "_get_stored_descriptions", lambda u: {})
+    monkeypatch.setattr(natal, "_reading_is_fresh", lambda c, g: None)
+    monkeypatch.setattr(natal, "cache_get", fake_cache_get)
+    monkeypatch.setattr(natal, "get_redis", lambda: redis)
+    monkeypatch.setattr("services.job_status.set_job_status", fake_set_status)
+    monkeypatch.setattr("services.job_status.get_job_status", fake_get_status)
+    monkeypatch.setattr("services.arq_pool.get_arq_pool", lambda: FakePool())
+
+    first = await natal.start_natal_pdf(tg_user={"id": 1001}, db=object())
+    second = await natal.start_natal_pdf(tg_user={"id": 1001}, db=object())
+
+    assert first.status == "queued"
+    assert second.job_id == first.job_id  # same job returned
+    assert enqueue_count["n"] == 1  # enqueued exactly once

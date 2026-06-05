@@ -65,6 +65,16 @@ def key_natal_wheel_svg(user_id: int) -> str:
     return f"natal:wheel-svg:{user_id}"
 
 
+def key_natal_pdf_job(user_id: int) -> str:
+    """Dedup lock + user→job pointer: one active PDF job per user. Value = job_id."""
+    return f"natal:pdf-job:{user_id}"
+
+
+def key_natal_pdf_jobstatus(job_id: str) -> str:
+    """JSON status blob for a PDF generation job, polled by the frontend."""
+    return f"natal:pdf-jobstatus:{job_id}"
+
+
 def key_destiny_pdf_download(token: str) -> str:
     return f"destiny:pdf-download:{token}"
 
