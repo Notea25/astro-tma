@@ -4,10 +4,9 @@ import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
 
 /**
- * Bottom navigation — 5 entries with a centered FAB-style "Practices"
- * compass-rose button. Mapping below decides which tab is highlighted
- * for any given screen, including nested screens (e.g. tarot, moon and
- * mac all live under the Practices tab).
+ * Bottom navigation — 5 equal-width tabs (no FAB). SCREEN_TO_TAB
+ * decides which tab is highlighted for any given screen, including
+ * nested screens (tarot/moon/mac all live under Practices).
  */
 const SCREEN_TO_TAB: Partial<Record<Screen, NavId>> = {
   home: "home",
@@ -24,9 +23,8 @@ const SCREEN_TO_TAB: Partial<Record<Screen, NavId>> = {
   glossary_term: "discover",
   news: "discover",
   news_detail: "discover",
-  // Premium screen opens from Profile's status card now; the dedicated tab
-  // was reclaimed for Natal. Highlight Profile while Premium is visible
-  // so the user has a clear "back to profile" hint.
+  // Premium opens from Profile's status card; highlight Profile so the
+  // user has a clear "back to profile" hint while it's open.
   premium: "profile",
   profile: "profile",
 };
@@ -38,41 +36,14 @@ interface NavItem {
   screen: Screen;
   label: string;
   icon: JSX.Element;
-  fab?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  {
-    id: "home",
-    screen: "home",
-    label: "Главная",
-    icon: <HomeIcon />,
-  },
-  {
-    id: "horoscopes",
-    screen: "horoscopes",
-    label: "Гороскопы",
-    icon: <PlanetIcon />,
-  },
-  {
-    id: "discover",
-    screen: "discover",
-    label: "Практики",
-    icon: <CompassRoseIcon />,
-    fab: true,
-  },
-  {
-    id: "natal",
-    screen: "natal",
-    label: "Моя карта",
-    icon: <NatalWheelIcon />,
-  },
-  {
-    id: "profile",
-    screen: "profile",
-    label: "Профиль",
-    icon: <UserIcon />,
-  },
+  { id: "home",       screen: "home",       label: "Главная",   icon: <HomeIcon /> },
+  { id: "horoscopes", screen: "horoscopes", label: "Гороскопы", icon: <HoroscopesIcon /> },
+  { id: "discover",   screen: "discover",   label: "Практики",  icon: <DiscoverIcon /> },
+  { id: "natal",      screen: "natal",      label: "Моя карта", icon: <NatalWheelIcon /> },
+  { id: "profile",    screen: "profile",    label: "Профиль",   icon: <UserIcon /> },
 ];
 
 export function BottomNav() {
@@ -87,25 +58,9 @@ export function BottomNav() {
   };
 
   return (
-    <nav className="bottom-nav bottom-nav--fab">
+    <nav className="bottom-nav">
       {NAV_ITEMS.map((item) => {
         const active = activeTab === item.id;
-        if (item.fab) {
-          return (
-            <button
-              key={item.id}
-              className={`nav-fab-item ${active ? "active" : ""}`}
-              onClick={() => handleNav(item)}
-              aria-label={item.label}
-              aria-current={active ? "page" : undefined}
-            >
-              <span className={`nav-fab ${active ? "active" : ""}`}>
-                {item.icon}
-              </span>
-              <span className="nav-label">{item.label}</span>
-            </button>
-          );
-        }
         return (
           <button
             key={item.id}
@@ -130,57 +85,70 @@ export function BottomNav() {
   );
 }
 
-/* ── Icons ───────────────────────────────────────────────────────────────── */
+/* ── Icons (24×24 line SVG, stroke from currentColor) ──────────────────── */
 
 function HomeIcon() {
   return (
-    <svg viewBox="0 0 20 20" aria-hidden="true">
-      <path d="M3 9.5L10 3l7 6.5V17a1 1 0 0 1-1 1h-3v-5h-6v5H4a1 1 0 0 1-1-1V9.5z" />
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 11l8-7 8 7" />
+      <path d="M6 9.5V20h12V9.5" />
+      <rect x="10" y="14.5" width="4" height="5.5" />
     </svg>
   );
 }
 
-function PlanetIcon() {
-  return (
-    <svg viewBox="0 0 20 20" aria-hidden="true">
-      <circle cx="10" cy="10" r="5" />
-      <ellipse cx="10" cy="10" rx="9" ry="2.6" transform="rotate(-22 10 10)" />
-    </svg>
-  );
-}
-
-function CompassRoseIcon() {
-  // Compass rose used for the central FAB
+function HoroscopesIcon() {
+  // Crescent moon with a small four-point star — the planet/sparkle motif.
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="12" r="9" />
-      <polygon points="12,3 13.5,11 12,21 10.5,11" />
-      <polygon points="3,12 11,10.5 21,12 11,13.5" />
-      <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
+      <path d="M19 14.5A8.5 8.5 0 0 1 9 5a8.5 8.5 0 1 0 10 9.5z" />
+      <path
+        d="M17 4l.7 1.8L19.5 6.5 17.7 7.2 17 9l-.7-1.8L14.5 6.5l1.8-.7z"
+        fill="currentColor"
+        stroke="none"
+      />
+    </svg>
+  );
+}
+
+function DiscoverIcon() {
+  // Crystal-ball / discover motif — circle with base lines.
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="10" r="6.5" />
+      <path d="M7.5 18.5h9" />
+      <path d="M9 15.5l-1 3M15 15.5l1 3" />
+      <path d="M9.5 8.5a3.5 3.5 0 0 1 3-2" opacity="0.7" />
     </svg>
   );
 }
 
 function NatalWheelIcon() {
-  // Astrology wheel — concentric circles with a four-quadrant cross
+  // Astrology wheel — outer circle, 8 ray ticks, center dot.
   return (
-    <svg viewBox="0 0 20 20" aria-hidden="true">
-      <circle cx="10" cy="10" r="8.5" />
-      <circle cx="10" cy="10" r="5" />
-      <circle cx="10" cy="10" r="1.5" />
-      <line x1="10" y1="1.5" x2="10" y2="5" />
-      <line x1="10" y1="15" x2="10" y2="18.5" />
-      <line x1="1.5" y1="10" x2="5" y2="10" />
-      <line x1="15" y1="10" x2="18.5" y2="10" />
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <g strokeWidth="1.1">
+        <line x1="12" y1="3" x2="12" y2="5" />
+        <line x1="12" y1="19" x2="12" y2="21" />
+        <line x1="3" y1="12" x2="5" y2="12" />
+        <line x1="19" y1="12" x2="21" y2="12" />
+        <line x1="5.6" y1="5.6" x2="7" y2="7" />
+        <line x1="17" y1="17" x2="18.4" y2="18.4" />
+        <line x1="18.4" y1="5.6" x2="17" y2="7" />
+        <line x1="7" y1="17" x2="5.6" y2="18.4" />
+      </g>
+      <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
     </svg>
   );
 }
 
 function UserIcon() {
   return (
-    <svg viewBox="0 0 20 20" aria-hidden="true">
-      <circle cx="10" cy="7" r="3.5" />
-      <path d="M2.5 18c0-4.142 3.358-7 7.5-7s7.5 2.858 7.5 7" />
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="9.5" r="3" />
+      <path d="M6.5 18a5.7 5.7 0 0 1 11 0" />
     </svg>
   );
 }

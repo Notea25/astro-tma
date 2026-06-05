@@ -262,3 +262,51 @@ export function IconEye({ size, ...p }: IconProps) {
     </svg>
   )
 }
+
+// Diamond with crossed diagonals + center dot — Destiny Matrix tile.
+export function IconMatrix({ size, ...p }: IconProps) {
+  return (
+    <svg {...defaults(size)} {...p}>
+      <path d="M12 2.5l9.5 9.5L12 21.5 2.5 12z" />
+      <path d="M5 5l14 14M19 5L5 19" strokeWidth="1" opacity="0.6" />
+      <circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
+export function IconEnergy({ size, ...p }: IconProps) {
+  return (
+    <svg {...defaults(size)} {...p}>
+      <path d="M13 2.5L5.5 13.5H11l-1 8 7.5-11H12l1-8z" />
+    </svg>
+  )
+}
+
+export function IconLink({ size, ...p }: IconProps) {
+  return (
+    <svg {...defaults(size)} {...p}>
+      <path d="M9.5 14.5l5-5" />
+      <path d="M7.5 11.5l-2 2a3.5 3.5 0 0 0 5 5l2-2" />
+      <path d="M16.5 12.5l2-2a3.5 3.5 0 0 0-5-5l-2 2" />
+    </svg>
+  )
+}
+
+export function IconEdit({ size, ...p }: IconProps) {
+  return (
+    <svg {...defaults(size)} {...p}>
+      <path d="M16 3.5l4.5 4.5-12 12H4v-4.5l12-12z" />
+      <path d="M13.5 6L18 10.5" />
+    </svg>
+  )
+}
+
+export function IconHistory({ size, ...p }: IconProps) {
+  return (
+    <svg {...defaults(size)} {...p}>
+      <path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1" />
+      <path d="M5.5 3v3h3" />
+      <path d="M12 7.5V12l3 2" />
+    </svg>
+  )
+}

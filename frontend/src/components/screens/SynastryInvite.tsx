@@ -5,6 +5,7 @@ import { useHaptic, useStartParam } from "@/hooks/useTelegram";
 import type { SynastryResult } from "@/types";
 import { useState } from "react";
 import { SynastryReport } from "@/components/synastry/SynastryReport";
+import { IconHeart } from "@/components/ui/Icons";
 
 export function SynastryInvite() {
   const { setScreen, pendingInviteToken, setPendingInviteToken } =
@@ -122,7 +123,16 @@ export function SynastryInvite() {
             className="horoscope-card"
             style={{ textAlign: "center", padding: "24px 20px" }}
           >
-            <div style={{ fontSize: 48, marginBottom: 12 }}>💞</div>
+            <div
+              style={{
+                marginBottom: 12,
+                color: "var(--gold-light)",
+                display: "flex",
+                justifyContent: "center",
+              }}
+            >
+              <IconHeart size={52} />
+            </div>
             <p style={{ marginBottom: 16, fontSize: 15 }}>
               {inviterName ? (
                 <>

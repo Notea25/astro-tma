@@ -10,6 +10,7 @@ import { useAppStore } from "@/stores/app";
 import { synastryApi, ApiError } from "@/services/api";
 import { useHaptic } from "@/hooks/useTelegram";
 import { SynastryReport } from "@/components/synastry/SynastryReport";
+import { IconEdit, IconLink } from "@/components/ui/Icons";
 import type {
   SynastryHistoryItem,
   SynastryResult,
@@ -300,7 +301,17 @@ export function Synastry() {
                   }}
                   whileTap={{ scale: 0.97 }}
                 >
-                  <div className="synastry-mode-card__icon">🔗</div>
+                  <div
+                    className="synastry-mode-card__icon"
+                    style={{
+                      color: "var(--gold-light)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <IconLink size={26} />
+                  </div>
                   <div className="synastry-mode-card__body">
                     <div className="synastry-mode-card__title">
                       Пригласить по ссылке
@@ -320,7 +331,17 @@ export function Synastry() {
                   }}
                   whileTap={{ scale: 0.97 }}
                 >
-                  <div className="synastry-mode-card__icon">✍</div>
+                  <div
+                    className="synastry-mode-card__icon"
+                    style={{
+                      color: "var(--gold-light)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <IconEdit size={26} />
+                  </div>
                   <div className="synastry-mode-card__body">
                     <div className="synastry-mode-card__title">
                       Ввести данные партнёра

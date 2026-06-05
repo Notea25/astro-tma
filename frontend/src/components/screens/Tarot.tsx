@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import WebApp from "@twa-dev/sdk";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { HeaderAvatarButton } from "@/components/ui/HeaderAvatarButton";
+import { IconHistory } from "@/components/ui/Icons";
 import { SpreadIntro } from "./SpreadIntro";
 import { CelticCrossFlow } from "@/components/tarot/CelticCrossFlow";
 import { DrawSpreadFlow } from "@/components/tarot/DrawSpreadFlow";
@@ -191,7 +192,20 @@ export function Tarot() {
             style={{ marginTop: 8, opacity: 0.9 }}
           >
             <div className="spread-option__info">
-              <div className="spread-option__name">📜 История раскладов</div>
+              <div
+                className="spread-option__name"
+                style={{ display: "flex", alignItems: "center", gap: 8 }}
+              >
+                <span
+                  style={{
+                    color: "var(--gold-light)",
+                    display: "inline-flex",
+                  }}
+                >
+                  <IconHistory size={18} />
+                </span>
+                История раскладов
+              </div>
               <div className="spread-option__count">
                 Ваши прошлые расклады
               </div>

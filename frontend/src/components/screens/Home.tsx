@@ -12,6 +12,13 @@ import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
 import { ZODIAC_SIGNS, type TarotSpreadResponse } from "@/types";
 import { ZodiacIcon } from "@/components/ui/ZodiacIcon";
+import {
+  IconCards,
+  IconEnergy,
+  IconHeart,
+  IconMatrix,
+  IconNatal,
+} from "@/components/ui/Icons";
 
 const DAILY_CARD_STORAGE_KEY = "tarot-daily-state-v4";
 const TAROT_IMAGE_BASE =
@@ -130,31 +137,6 @@ function readStoredDailyCard(): StoredDailyCard | null {
     localStorage.removeItem(DAILY_CARD_STORAGE_KEY);
     return null;
   }
-}
-
-const POWER_EMOJIS: Record<string, string[]> = {
-  aries: ["🔥", "⚡", "🗡️", "🏆", "🚀", "💥"],
-  taurus: ["🌿", "💎", "🍯", "🏔️", "🌸", "💰"],
-  gemini: ["🦋", "💬", "📚", "🎭", "✨", "🌀"],
-  cancer: ["🌙", "🏠", "💧", "🐚", "🌊", "💫"],
-  leo: ["☀️", "👑", "🦁", "🔥", "💛", "⭐"],
-  virgo: ["🌾", "💚", "📋", "🌿", "🔬", "✅"],
-  libra: ["⚖️", "🌹", "💎", "🎨", "💕", "🕊️"],
-  scorpio: ["🦂", "🔮", "🌑", "💀", "🖤", "🌌"],
-  sagittarius: ["🏹", "🌍", "🔥", "🗺️", "🐎", "🎯"],
-  capricorn: ["🏔️", "⛰️", "🧱", "💼", "🪨", "🏗️"],
-  aquarius: ["💡", "🌐", "⚡", "🔭", "🛸", "🌈"],
-  pisces: ["🐟", "🌊", "💜", "🔮", "🎵", "🌙"],
-};
-
-function getPowerEmoji(sign?: string): string {
-  if (!sign) return "✨";
-  const emojis = POWER_EMOJIS[sign.toLowerCase()] ?? ["✨"];
-  const dayOfYear = Math.floor(
-    (Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) /
-      86400000,
-  );
-  return emojis[dayOfYear % emojis.length];
 }
 
 type Period = "today" | "tomorrow" | "week" | "month";
@@ -319,8 +301,15 @@ export function Home() {
             <p className="horoscope-text">{horoscope?.text_ru}</p>
             {horoscope?.energy && <EnergyBars scores={horoscope.energy} />}
             <div className="power-emoji-row">
-              <span className="power-emoji-row__icon">
-                {getPowerEmoji(user?.sun_sign ?? undefined)}
+              <span
+                className="power-emoji-row__icon"
+                style={{
+                  color: "var(--gold-light)",
+                  display: "inline-flex",
+                  verticalAlign: "middle",
+                }}
+              >
+                <IconEnergy size={17} />
               </span>
               <span className="power-emoji-row__text">Ваша энергия дня</span>
             </div>
@@ -444,7 +433,7 @@ export function Home() {
               }}
             >
               <span className="home-tile__emoji" aria-hidden="true">
-                ✦
+                <IconNatal size={26} />
               </span>
               <span className="home-tile__title">Натальная карта</span>
               <span className="home-tile__desc">
@@ -462,7 +451,7 @@ export function Home() {
               }}
             >
               <span className="home-tile__emoji" aria-hidden="true">
-                ♥
+                <IconHeart size={26} />
               </span>
               <span className="home-tile__title">Совместимость</span>
               <span className="home-tile__desc">Сравните два знака</span>
@@ -478,7 +467,7 @@ export function Home() {
               }}
             >
               <span className="home-tile__emoji" aria-hidden="true">
-                ✧
+                <IconMatrix size={26} />
               </span>
               <span className="home-tile__title">Матрица судьбы</span>
               <span className="home-tile__desc">
@@ -496,7 +485,7 @@ export function Home() {
               }}
             >
               <span className="home-tile__emoji" aria-hidden="true">
-                🎴
+                <IconCards size={26} />
               </span>
               <span className="home-tile__title">Таро</span>
               <span className="home-tile__desc">Расклады и совет дня</span>
@@ -588,7 +577,6 @@ export function Home() {
                     <p className="tarot-day-card__hint-desc">
                       Нажмите на карту слева, чтобы узнать совет на сегодня.
                     </p>
-                    <span className="tarot-flip__free">Бесплатно</span>
                   </>
                 ) : cardError ? (
                   <div className="tarot-flip__empty">
