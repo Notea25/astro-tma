@@ -158,3 +158,76 @@ async def generate_natal_reading(
     text = first_text_block(message.content)
     log.info("llm_interpreter.done", chars=len(text))
     return text
+
+
+def _build_mini_prompt(
+    sun_sign: str,
+    moon_sign: str,
+    ascendant_sign: str | None,
+    gender: str | None = None,
+) -> str:
+    asc_line = f"Восходящий знак (Асцендент): {ascendant_sign}" if ascendant_sign else ""
+    gender_directive = ""
+    if gender in ("male", "female"):
+        ru = "мужчина" if gender == "male" else "женщина"
+        forms = (
+            "все формы глаголов прошедшего времени, прилагательных и причастий — в мужском роде"
+            if gender == "male"
+            else "все формы глаголов прошедшего времени, прилагательных и причастий — в женском роде"
+        )
+        gender_directive = f"\nПол читателя: {ru.upper()}. {forms.upper()}.\n"
+
+    return f"""Ты — опытный астролог, пишущий в стиле российского портала geocult.ru. Напиши КОРОТКОЕ ознакомительное описание натальной карты по триаде Солнце / Луна / Асцендент.
+{gender_directive}
+--- ВХОДНЫЕ ДАННЫЕ ---
+Солнце: {sun_sign}
+Луна: {moon_sign}
+{asc_line}
+
+--- ФОРМАТ ВЫВОДА (ВАЖНО) ---
+Ровно три раздела, каждый начинается с названия в **двойных звёздочках** на отдельной строке, затем один абзац обычного текста. Никакого другого markdown: ни решёток, ни списков, ни звёздочек внутри текста. Используй РОВНО эти три заголовка в этом порядке:
+
+**Солнце**
+Ядро личности, воля, призвание — через знак Солнца. 2–3 предложения.
+
+**Луна**
+Эмоциональная природа, интуиция, внутренние потребности — через знак Луны. 2–3 предложения.
+
+**Восходящий**
+{"Маска, стиль поведения, первое впечатление — через знак Асцендента. 2–3 предложения." if ascendant_sign else "Асцендент в этом разборе не рассчитан (нет точного времени рождения) — одной фразой отметь это и кратко опиши общий вектор личности по Солнцу и Луне."}
+
+--- СТИЛЬ ---
+- Пиши по-русски, живым образным языком. Называй человека «натив».
+- Каждое предложение несёт факт об ЭТОМ нативе, без абстрактных наполнителей и вступлений.
+- Это ТИЗЕР: всего ~150–220 слов на все три раздела. Заверши лёгким намёком, что полный разбор раскрывает планеты, дома и аспекты подробнее."""
+
+
+async def generate_natal_mini_reading(
+    sun_sign: str,
+    moon_sign: str,
+    ascendant_sign: str | None,
+    api_key: str,
+    gender: str | None = None,
+) -> str:
+    """
+    Cheap teaser reading (Sun/Moon/Ascendant triad only, ~700 max_tokens).
+    Shown on the natal screen before the user requests the full PDF reading.
+    Raises on API error — caller should catch and handle gracefully.
+    """
+    import anthropic
+
+    from services.llm_pool import llm_semaphore
+
+    prompt = _build_mini_prompt(sun_sign, moon_sign, ascendant_sign, gender)
+
+    client = anthropic.AsyncAnthropic(api_key=api_key)
+    async with llm_semaphore:
+        message = await client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=700,
+            messages=[{"role": "user", "content": prompt}],
+        )
+
+    text = first_text_block(message.content)
+    log.info("llm_interpreter.mini_done", chars=len(text))
+    return text

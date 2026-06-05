@@ -14,7 +14,6 @@ import { ApiError, natalApi, setNatalWheelSvgProvider } from "@/services/api";
 import {
   ZODIAC_SIGNS,
   type NatalDescriptionsResponse,
-  type NatalFullResponse,
   type NatalSummaryResponse,
 } from "@/types";
 import { NatalChart, type NatalChartData } from "@/components/NatalChart";
@@ -37,6 +36,7 @@ import {
   ASPECT_PAIR_FALLBACK_HINT,
   ELEMENT_FALLBACK_DESC,
   HOUSE_FALLBACK_DESC,
+  MINI_READING_FALLBACK,
   PLANET_FALLBACK_DESC,
   TRAIT_FALLBACK_DESC,
 } from "@/utils/natalFallbacks";
@@ -1124,12 +1124,11 @@ function pluralizeAspects(n: number): string {
 
 function getPlanetData(
   summary: NatalSummaryResponse | undefined,
-  full: NatalFullResponse | undefined,
   planet: string,
 ):
   | { sign?: string | null; sign_ru?: string; sign_degree?: number }
   | undefined {
-  return full?.planets?.[planet] ?? summary?.planets?.[planet];
+  return summary?.planets?.[planet];
 }
 
 function getElementSummary(summary: NatalSummaryResponse | undefined): {
@@ -1474,15 +1473,13 @@ function DecorativeOrbit({
 
 function NatalKeyChips({
   summary,
-  full,
   chartData,
 }: {
   summary: NatalSummaryResponse | undefined;
-  full: NatalFullResponse | undefined;
   chartData: NatalChartData;
 }) {
-  const sun = getPlanetData(summary, full, "sun");
-  const moon = getPlanetData(summary, full, "moon");
+  const sun = getPlanetData(summary, "sun");
+  const moon = getPlanetData(summary, "moon");
   const ascendantDegree =
     chartData.ascendant.degree != null
       ? formatDegreeFromParts(
@@ -1543,12 +1540,10 @@ function NatalKeyChips({
 function NatalHeroCard({
   chartData,
   summary,
-  full,
   userName,
 }: {
   chartData: NatalChartData;
   summary: NatalSummaryResponse | undefined;
-  full: NatalFullResponse | undefined;
   userName?: string | null;
 }) {
   const displayName = userName?.trim() || "Моя карта";
@@ -1606,7 +1601,7 @@ function NatalHeroCard({
         />
       </div>
 
-      <NatalKeyChips summary={summary} full={full} chartData={chartData} />
+      <NatalKeyChips summary={summary} chartData={chartData} />
     </section>
   );
 }
@@ -1932,15 +1927,15 @@ function NatalInterpretationPanel({
 }
 
 function NatalPlanetsPanel({
-  full,
+  summary,
   descriptions,
   onSelect,
 }: {
-  full: NatalFullResponse;
+  summary: NatalSummaryResponse;
   descriptions: NatalDescriptionsResponse | undefined;
   onSelect: (selection: NatalDescSelection) => void;
 }) {
-  const visibleRows = PLANET_ROWS.filter((row) => full.planets?.[row.key]);
+  const visibleRows = PLANET_ROWS.filter((row) => summary.planets?.[row.key]);
 
   return (
     <motion.div
@@ -1963,13 +1958,17 @@ function NatalPlanetsPanel({
 
       <div className={styles.planetList}>
         {visibleRows.map((row) => {
-          const planet = full.planets[row.key];
+          const planet = summary.planets![row.key];
           const accent = row.color ?? PLANET_ACCENTS[row.key] ?? "#ffd476";
           const degText = `${formatDegreeShort(planet.sign_degree)}${
             planet.retrograde ? " ℞" : ""
           }`;
           const desc = descriptions?.planets?.[row.key];
-          const subtitle = `${planet.sign_ru} · ${degText} · Дом ${planet.house}`;
+          const signRu =
+            planet.sign_ru ??
+            SIGN_EN_TO_RU[normalizeSign(planet.sign)] ??
+            planet.sign;
+          const subtitle = `${signRu} · ${degText} · Дом ${planet.house}`;
 
           return (
             <button
@@ -1984,7 +1983,7 @@ function NatalPlanetsPanel({
               }
               onClick={() =>
                 onSelect({
-                  title: `${row.name} в ${planet.sign_ru}`,
+                  title: `${row.name} в ${signRu}`,
                   subtitle,
                   symbol: row.symbol,
                   body:
@@ -1999,9 +1998,7 @@ function NatalPlanetsPanel({
               <span className={styles.planetCopy}>
                 <h3>{row.name}</h3>
                 <span className={styles.planetMeta}>
-                  <span className={styles.planetMetaSign}>
-                    {planet.sign_ru}
-                  </span>
+                  <span className={styles.planetMetaSign}>{signRu}</span>
                   <span
                     className={styles.planetMetaDeg}
                     style={{ color: accent }}
@@ -2035,11 +2032,11 @@ function NatalPlanetsPanel({
 }
 
 function NatalHousesPanel({
-  full,
+  summary,
   descriptions,
   onSelect,
 }: {
-  full: NatalFullResponse;
+  summary: NatalSummaryResponse;
   descriptions: NatalDescriptionsResponse | undefined;
   onSelect: (selection: NatalDescSelection) => void;
 }) {
@@ -2059,7 +2056,7 @@ function NatalHousesPanel({
       </section>
 
       <div className={styles.housesGrid}>
-        {full.houses.map((house) => {
+        {(summary.houses ?? []).map((house) => {
           const houseSignKey = signKey(house.sign);
           const signRu =
             SIGN_EN_TO_RU[normalizeSign(house.sign)] ??
@@ -2126,14 +2123,15 @@ function NatalHousesPanel({
 }
 
 function NatalAspectsPanel({
-  full,
+  summary,
   descriptions,
   onSelect,
 }: {
-  full: NatalFullResponse;
+  summary: NatalSummaryResponse;
   descriptions: NatalDescriptionsResponse | undefined;
   onSelect: (selection: NatalDescSelection) => void;
 }) {
+  const aspects = summary.aspects ?? [];
   return (
     <motion.section
       className={styles.aspectsPage}
@@ -2150,13 +2148,13 @@ function NatalAspectsPanel({
         <p>Гармония и напряжение между планетами</p>
       </div>
 
-      {full.aspects.length === 0 && (
+      {aspects.length === 0 && (
         <div className={styles.loadingState}>Значимые аспекты не найдены.</div>
       )}
 
       <div className={styles.aspectGroups}>
         {ASPECT_ORDER.map((type) => {
-          const group = full.aspects.filter((aspect) => aspect.aspect === type);
+          const group = aspects.filter((aspect) => aspect.aspect === type);
           const meta = ASPECT_META[type];
           if (!meta || group.length === 0) return null;
 
@@ -2281,21 +2279,20 @@ export function Natal() {
     staleTime: 1000 * 60 * 10,
   });
 
-  const { data: full, isLoading: fullLoading } = useQuery({
-    queryKey: ["natal-full"],
-    queryFn: natalApi.getFull,
+  // Cheap teaser reading (~700 tokens). The expensive full reading and
+  // per-item descriptions are NOT loaded here — they generate in the
+  // background only when the user downloads the PDF (NatalPdfCard).
+  const { data: mini } = useQuery({
+    queryKey: ["natal-mini"],
+    queryFn: natalApi.getMini,
     enabled: hasBirthData && (summary?.has_chart ?? false),
     staleTime: 1000 * 60 * 60,
   });
 
-  const isFullPanel =
-    tab === "planets" || tab === "houses" || tab === "aspects";
-  const { data: descriptions, isLoading: descriptionsLoading } = useQuery({
-    queryKey: ["natal-descriptions"],
-    queryFn: natalApi.getDescriptions,
-    enabled: hasBirthData && (summary?.has_chart ?? false) && isFullPanel,
-    staleTime: 1000 * 60 * 60 * 24,
-  });
+  // Per-item descriptions stay unloaded on screen — cards fall back to
+  // generic copy; personal text lives in the downloaded PDF.
+  const descriptions = undefined as NatalDescriptionsResponse | undefined;
+  const descriptionsLoading = false;
 
   const [selectedDesc, setSelectedDesc] = useState<NatalDescSelection | null>(
     null,
@@ -2401,10 +2398,8 @@ export function Natal() {
     [summary],
   );
   const interpretationSlides = useMemo<NatalInterpretationSlide[]>(() => {
-    if (!full) return [];
-
-    const readingSlides = full.reading
-      ? parseReadingSections(full.reading).map((section, index) => {
+    const readingSlides = mini?.mini_reading
+      ? parseReadingSections(mini.mini_reading).map((section, index) => {
           const title = section.title || "Вступление";
           return {
             id: `reading-${index}`,
@@ -2416,7 +2411,7 @@ export function Natal() {
       : [];
 
     const planetSlides =
-      full.interpretations?.map((interp, index) => {
+      mini?.interpretations?.map((interp, index) => {
         const symbol = PLANET_SYMBOLS[interp.planet] ?? "✦";
         const planet = PLANET_RU[interp.planet] ?? interp.planet;
         const category = CATEGORY_RU[interp.category] ?? interp.category;
@@ -2430,10 +2425,25 @@ export function Natal() {
         };
       }) ?? [];
 
-    return [...readingSlides, ...planetSlides].filter((slide) =>
+    const slides = [...readingSlides, ...planetSlides].filter((slide) =>
       slide.body.trim(),
     );
-  }, [full]);
+
+    // No LLM mini-reading and no DB interpretations (e.g. no API key) —
+    // keep the slider alive with a static teaser.
+    if (slides.length === 0 && (summary?.has_chart ?? false)) {
+      return [
+        {
+          id: "mini-fallback",
+          label: "О карте",
+          title: "Ваша натальная карта",
+          body: MINI_READING_FALLBACK,
+        },
+      ];
+    }
+
+    return slides;
+  }, [mini, summary?.has_chart]);
 
   const handlePdfDownload = async () => {
     if (isPdfDownloading) return;
@@ -2450,7 +2460,7 @@ export function Natal() {
   };
 
   const renderFullPanel = () => {
-    if (fullLoading) {
+    if (summaryLoading) {
       return (
         <motion.div
           className={styles.referencePanel}
@@ -2462,7 +2472,7 @@ export function Natal() {
       );
     }
 
-    if (!full) {
+    if (!summary?.has_chart) {
       return (
         <motion.div
           className={styles.referencePanel}
@@ -2482,7 +2492,7 @@ export function Natal() {
           <>
             <HeroInfo info={summary?.hero_info?.planets} eyebrow="Планеты" />
             <NatalPlanetsPanel
-              full={full}
+              summary={summary}
               descriptions={descriptions}
               onSelect={setSelectedDesc}
             />
@@ -2492,7 +2502,7 @@ export function Natal() {
           <>
             <HeroInfo info={summary?.hero_info?.houses} eyebrow="Дома" />
             <NatalHousesPanel
-              full={full}
+              summary={summary}
               descriptions={descriptions}
               onSelect={setSelectedDesc}
             />
@@ -2508,7 +2518,7 @@ export function Natal() {
               />
             )}
             <NatalAspectsPanel
-              full={full}
+              summary={summary}
               descriptions={descriptions}
               onSelect={setSelectedDesc}
             />
@@ -2539,7 +2549,6 @@ export function Natal() {
               <NatalHeroCard
                 chartData={chartData}
                 summary={summary}
-                full={full}
                 userName={user?.name}
               />
             </motion.div>

@@ -143,14 +143,17 @@ export interface NatalPlanetData {
   degree: number; // absolute 0–360
   sign_degree: number; // within-sign 0–30
   sign: string;
+  sign_ru?: string;
   house: number;
   retrograde: boolean;
+  speed?: number;
 }
 
 export interface NatalHouseData {
   number: number;
   degree: number;
   sign: string;
+  sign_ru?: string;
 }
 
 export interface NatalAspectData {
@@ -258,6 +261,13 @@ export interface NatalFullResponse {
   }[];
   interpretations: { planet: string; category: string; text: string }[];
   reading: string | null;
+}
+
+export interface NatalMiniResponse {
+  mini_reading: string | null;
+  mini_reading_gender: string | null;
+  interpretations: { planet: string; category: string; text: string }[];
+  has_chart: boolean;
 }
 
 export interface NatalDescriptionEntry {

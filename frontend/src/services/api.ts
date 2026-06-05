@@ -602,6 +602,8 @@ async function ensureWheelSvgUploaded(): Promise<void> {
 export const natalApi = {
   getSummary: () =>
     request<import("@/types").NatalSummaryResponse>("GET", "/natal/summary"),
+  getMini: () =>
+    request<import("@/types").NatalMiniResponse>("GET", "/natal/mini"),
   getFull: () =>
     request<import("@/types").NatalFullResponse>("GET", "/natal/full"),
   getDescriptions: () =>

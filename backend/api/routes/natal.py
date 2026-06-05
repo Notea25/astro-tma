@@ -27,7 +27,10 @@ from db.database import AsyncSessionLocal, get_db
 from services.astro.dominants import compute_dominants
 from services.astro.interpreter import get_natal_interpretation
 from services.astro.key_aspects import top_n_aspects
-from services.astro.llm_interpreter import generate_natal_reading
+from services.astro.llm_interpreter import (
+    generate_natal_mini_reading,
+    generate_natal_reading,
+)
 from services.astro.natal_descriptions import generate_natal_descriptions
 from services.astro.natal_hero import (
     build_aspects_hero,
@@ -195,6 +198,45 @@ def _reading_is_fresh(cached: Any, current_gender: str | None) -> str | None:
     return reading
 
 
+def _mini_is_fresh(cached: Any, current_gender: str | None) -> str | None:
+    """Return the cached mini-reading only if it matches the reader's
+    current gender. Stored in the same `key_natal` payload as the full
+    reading, under `mini_reading` / `mini_reading_gender`."""
+    if not isinstance(cached, dict):
+        return None
+    mini = cached.get("mini_reading")
+    if not isinstance(mini, str) or not mini.strip():
+        return None
+    if cached.get("mini_reading_gender") != current_gender:
+        return None
+    return mini
+
+
+async def _load_db_interpretations(db: AsyncSession, chart) -> list[dict[str, Any]]:
+    """DB-backed per-planet interpretation blocks (no LLM). Shared by the
+    full-chart and mini endpoints so the on-screen slider has content
+    without triggering the expensive reading generation."""
+    planets = chart.chart_data.get("planets", {})
+    planet_signs = {
+        planet: data["sign"].lower()
+        for planet, data in planets.items()
+        if planet not in ("sun", "moon")
+    }
+    planet_houses = {
+        planet: int(data["house"]) for planet, data in planets.items() if data.get("house")
+    }
+    interp_blocks = await get_natal_interpretation(
+        db,
+        sun_sign=chart.sun_sign.lower(),
+        moon_sign=chart.moon_sign.lower(),
+        asc_sign=chart.ascendant_sign.lower() if chart.ascendant_sign else None,
+        planet_signs=planet_signs,
+        planet_houses=planet_houses,
+        aspects=chart.chart_data.get("aspects", []),
+    )
+    return [{"planet": b.planet, "category": b.category, "text": b.text} for b in interp_blocks]
+
+
 async def _get_or_generate_pdf_reading(
     user,
     chart,
@@ -245,6 +287,7 @@ async def _get_cached_pdf_reading(user) -> str | None:
 # generations for the same user at once.
 _READING_INFLIGHT: set[int] = set()
 _DESCRIPTIONS_INFLIGHT: set[int] = set()
+_MINI_INFLIGHT: set[int] = set()
 
 
 async def _generate_pdf_descriptions_background(user_id: int) -> None:
@@ -514,8 +557,10 @@ async def get_natal_summary(
             "degree": data.get("degree", 0),  # absolute 0–360
             "sign_degree": data.get("sign_degree", 0),  # within-sign 0–30
             "sign": data.get("sign", ""),
+            "sign_ru": data.get("sign_ru", ""),
             "house": data.get("house", 1),
             "retrograde": data.get("retrograde", False),
+            "speed": data.get("speed", 0),
         }
 
     # House cusps with sign
@@ -526,6 +571,7 @@ async def get_natal_summary(
                 "number": h.get("number", 0),
                 "degree": h.get("degree", 0),
                 "sign": h.get("sign", ""),
+                "sign_ru": h.get("sign_ru", ""),
             }
         )
 
@@ -584,6 +630,80 @@ async def get_natal_summary(
         "dominants": dominants,
         "key_aspects": key_aspects,
         "hero_info": hero_info,
+    }
+
+
+@router.get("/mini")
+async def get_natal_mini(
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Cheap teaser reading (Sun/Moon/Ascendant) + DB interpretation blocks.
+    No premium gate — shown on the natal screen before the user requests
+    the full PDF reading. Spends ~700 tokens at most (vs 7000 for /full),
+    cached in the same `key_natal` payload under `mini_reading`.
+    """
+    user = await user_repo.get_by_id(db, tg_user["id"])
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+
+    if not user.natal_chart:
+        return {
+            "mini_reading": None,
+            "mini_reading_gender": None,
+            "interpretations": [],
+            "has_chart": False,
+        }
+
+    chart = user.natal_chart
+    current_gender = _user_gender(user)
+    interpretations = await _load_db_interpretations(db, chart)
+
+    cache_key = key_natal(user.id)
+    cached = await cache_get(cache_key)
+    fresh = _mini_is_fresh(cached, current_gender)
+    if fresh:
+        return {
+            "mini_reading": fresh,
+            "mini_reading_gender": current_gender,
+            "interpretations": interpretations,
+            "has_chart": True,
+        }
+
+    mini_reading: str | None = None
+    if settings.ANTHROPIC_API_KEY and user.id not in _MINI_INFLIGHT:
+        _MINI_INFLIGHT.add(user.id)
+        try:
+            mini_reading = await generate_natal_mini_reading(
+                sun_sign=chart.sun_sign,
+                moon_sign=chart.moon_sign,
+                ascendant_sign=chart.ascendant_sign,
+                api_key=settings.ANTHROPIC_API_KEY,
+                gender=current_gender,
+            )
+        except Exception as e:
+            log.error("natal.mini_failed", user_id=user.id, error=str(e))
+        finally:
+            _MINI_INFLIGHT.discard(user.id)
+
+        if mini_reading and mini_reading.strip():
+            cached_payload = cached if isinstance(cached, dict) else {}
+            await cache_set(
+                cache_key,
+                {
+                    **cached_payload,
+                    "mini_reading": mini_reading,
+                    "mini_reading_gender": current_gender,
+                },
+                settings.CACHE_TTL_NATAL,
+            )
+
+    return {
+        "mini_reading": mini_reading,
+        "mini_reading_gender": current_gender if mini_reading else None,
+        "interpretations": interpretations,
+        "has_chart": True,
     }
 
 
@@ -656,26 +776,7 @@ async def get_natal_full(
     if cached:
         return cached
 
-    # Build the three lookup dictionaries the interpreter needs:
-    # planet → sign, planet → house, and the raw aspects list.
-    planet_signs = {
-        planet: data["sign"].lower()
-        for planet, data in planets.items()
-        if planet not in ("sun", "moon")
-    }
-    planet_houses = {
-        planet: int(data["house"]) for planet, data in planets.items() if data.get("house")
-    }
-
-    interp_blocks = await get_natal_interpretation(
-        db,
-        sun_sign=chart.sun_sign.lower(),
-        moon_sign=chart.moon_sign.lower(),
-        asc_sign=chart.ascendant_sign.lower() if chart.ascendant_sign else None,
-        planet_signs=planet_signs,
-        planet_houses=planet_houses,
-        aspects=aspects,
-    )
+    interpretations = await _load_db_interpretations(db, chart)
 
     # Generate LLM interpretation if API key is set
     llm_reading: str | None = None
@@ -701,9 +802,7 @@ async def get_natal_full(
         "houses": chart.chart_data.get("houses", []),
         "aspects": chart.chart_data.get("aspects", [])[:10],
         "reading_gender": current_gender,
-        "interpretations": [
-            {"planet": b.planet, "category": b.category, "text": b.text} for b in interp_blocks
-        ],
+        "interpretations": interpretations,
         "reading": llm_reading,
     }
 
