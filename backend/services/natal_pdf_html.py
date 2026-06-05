@@ -538,11 +538,11 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .planet-card .card-meta {{ margin: 0 0 0 4mm; flex: 0 0 auto; white-space: nowrap; }}
 .planet-card .mini-rule {{ flex-basis: 100%; margin-top: 3mm; }}
 .planet-card > p {{ flex-basis: 100%; }}
-.detail-card {{ min-height: auto; }}
+.detail-card {{ min-height: auto; margin-bottom: 3mm; }}
 .detail-card p {{ font-size: 10.6px; line-height: 1.36; color: {TEXT}; }}
 .detail-card.continuation h3::after {{ content: " · продолжение"; color: {TEXT_DIM}; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 12px; }}
 .retro {{ display: inline-block; margin-left: 3mm; padding: 1mm 3mm; border: 1px solid {GOLD_DIM}; border-radius: 999px; color: {GOLD}; font-size: 11px; letter-spacing: 1px; }}
-.houses-grid {{ display: grid; grid-template-columns: 1fr; gap: 3mm; }}
+.houses-grid {{ display: grid; grid-template-columns: 1fr; gap: 0; }}
 .house-card {{ padding: 4mm 5mm; }}
 .house-top {{ display: flex; justify-content: space-between; align-items: baseline; gap: 4mm; }}
 .house-head {{ display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 2.5mm; }}
@@ -561,7 +561,7 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .aspect-group {{ margin-top: 3mm; break-inside: avoid; }}
 .aspect-group h3 {{ color: var(--aspect-color); font-size: 15px; letter-spacing: 1.2px; text-transform: uppercase; margin: 0 0 2.5mm; }}
 .aspect-group h3 em {{ color: {TEXT_DIM}; text-transform: none; font-size: 11.5px; letter-spacing: 0; margin-left: 3mm; }}
-.aspect-row {{ margin-bottom: 2.4mm; padding: 3mm 4mm; background: {PANEL}; border: 1px solid {BORDER}; border-radius: 7px; break-inside: avoid; }}
+.aspect-row {{ padding: 3mm 4mm; background: {PANEL}; border: 1px solid {BORDER}; border-radius: 7px; break-inside: avoid; }}
 .aspect-title {{ display: grid; grid-template-columns: 1fr auto; align-items: start; gap: 5mm; color: {TEXT}; font-size: 13.5px; line-height: 1.2; }}
 .aspect-title span:first-child {{ min-width: 0; }}
 .orb {{ color: {TEXT_DIM}; white-space: nowrap; font-size: 11.5px; }}
