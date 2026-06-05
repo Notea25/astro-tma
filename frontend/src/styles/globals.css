@@ -10778,3 +10778,365 @@ body::before {
   margin-top: 4px;
   opacity: 0.85;
 }
+
+/* ── Iteration 2: Profile rows + Premium redesign ───────────────────────── */
+
+/* Generic profile row used by both states of Profile (Premium and Free).
+   Icon tile on the left, two-line label in the middle, chevron on the right. */
+.pr-row2 {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  padding: 14px 15px;
+  border-radius: 14px;
+  background: var(--glass);
+  border: 0.5px solid var(--glass-border);
+  color: var(--text);
+  cursor: pointer;
+  margin-bottom: 10px;
+  text-align: left;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.15s ease;
+}
+.pr-row2:active {
+  transform: scale(0.99);
+}
+.pr-row2--upsell {
+  background: linear-gradient(
+    135deg,
+    rgba(212, 178, 84, 0.14),
+    rgba(212, 178, 84, 0.04)
+  );
+  border: 0.5px solid var(--gold-border);
+  border-radius: 16px;
+}
+.pr-row2__ic {
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gold-glow);
+  border: 0.5px solid var(--gold-border);
+  color: var(--gold-light);
+}
+.pr-row2__ic svg {
+  width: 19px;
+  height: 19px;
+}
+.pr-row2__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pr-row2__t {
+  font-size: 14.5px;
+  font-weight: 500;
+  display: block;
+  color: var(--text);
+}
+.pr-row2__s {
+  font-size: 12px;
+  color: var(--text-dim);
+  display: block;
+}
+.pr-row2--upsell .pr-row2__t {
+  color: var(--gold-light);
+}
+.pr-row2__chev {
+  color: var(--text-muted);
+  font-size: 18px;
+}
+
+/* Lavender "Free план" badge — distinct from the gold paid badge. */
+.plan-badge-free {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  background: rgba(160, 140, 220, 0.14);
+  border: 0.5px solid rgba(180, 165, 235, 0.35);
+  color: rgba(200, 188, 245, 0.85);
+}
+.plan-badge-free__dot {
+  font-size: 9px;
+  opacity: 0.7;
+}
+
+/* Premium plan cards — equal 2-up grid with stars/rubles inline. */
+.pf-plans2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.pf-card {
+  position: relative;
+  text-align: center;
+  padding: 16px 12px 14px;
+  border-radius: 16px;
+  background: var(--glass);
+  border: 0.5px solid var(--gold-border);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: inherit;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease;
+}
+.pf-card:active {
+  transform: scale(0.98);
+}
+.pf-card:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.pf-card--best {
+  background: linear-gradient(
+    160deg,
+    rgba(212, 178, 84, 0.16),
+    rgba(212, 178, 84, 0.04)
+  );
+  box-shadow: 0 0 0 1px var(--gold-border);
+}
+.pf-card__badge {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #f0d48a, #d4b254);
+  color: #1c1408;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.pf-card__name {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 17px;
+  color: #fff;
+  margin-top: 2px;
+}
+.pf-card__price {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.pf-card__stars {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--gold-light);
+}
+.pf-card__sep {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.pf-card__rub {
+  font-size: 13px;
+  color: var(--text-soft);
+}
+.pf-card__period {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.pf-pay-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+/* "Что входит в Premium" benefits list with circular SVG checks. */
+.pf-bens {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+.pf-ben {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  font-size: 14px;
+  color: var(--text-soft);
+  line-height: 1.4;
+}
+.pf-ben__ic {
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--gold-glow);
+  border: 0.5px solid var(--gold-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gold-light);
+  margin-top: 1px;
+}
+.pf-ben__ic svg {
+  width: 11px;
+  height: 11px;
+}
+
+/* Cart-button on the right of every one-off product row.
+   Tapping it opens the PaymentSheet — prices live there, not on the row. */
+.premium-list__cart {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gold-glow);
+  border: 0.5px solid var(--gold-border);
+  color: var(--gold-light);
+  margin-left: auto;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+.premium-list__cart svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* ── Payment sheet ───────────────────────────────────────────────────────── */
+.payment-sheet__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 1, 7, 0.66);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  z-index: 200;
+}
+.payment-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 201;
+  padding: 8px 18px calc(18px + var(--safe-bottom));
+  border-radius: 22px 22px 0 0;
+  background: #0c0a18;
+  border-top: 0.5px solid var(--gold-border);
+  box-shadow: 0 -16px 48px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.payment-sheet__handle {
+  width: 38px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.18);
+  align-self: center;
+  margin-bottom: 4px;
+}
+.payment-sheet__title {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: #fff;
+  text-align: center;
+  margin: 0;
+}
+.payment-sheet__sub {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-dim);
+  margin: -8px 0 4px;
+}
+.payment-sheet__option {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 0.5px solid var(--glass-border);
+  background: var(--glass);
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.15s ease;
+}
+.payment-sheet__option--primary {
+  background: linear-gradient(
+    160deg,
+    rgba(212, 178, 84, 0.18),
+    rgba(212, 178, 84, 0.04)
+  );
+  border-color: var(--gold-border);
+}
+.payment-sheet__option:active {
+  transform: scale(0.99);
+}
+.payment-sheet__option-ic {
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gold-glow);
+  border: 0.5px solid var(--gold-border);
+  color: var(--gold-light);
+}
+.payment-sheet__option-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.payment-sheet__option-name {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.payment-sheet__option-desc {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.payment-sheet__option-price {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--gold-light);
+  white-space: nowrap;
+}
+.payment-sheet__cancel {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 14px;
+  padding: 8px 0 2px;
+  cursor: pointer;
+  font-family: inherit;
+}

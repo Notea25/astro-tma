@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import WebApp from "@twa-dev/sdk";
 import { HeaderAvatarButton } from "@/components/ui/HeaderAvatarButton";
+import { PaymentSheet } from "@/components/ui/PaymentSheet";
 import { paymentsApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
@@ -20,6 +22,22 @@ function notifyRubSoon(): void {
   }
 }
 
+const BENEFITS = [
+  "Все гороскопы: сегодня, завтра, неделя, месяц",
+  "Полная натальная карта + PDF-отчёт",
+  "Расклады Таро без лимитов",
+  "Синастрия и совместимость",
+  "Транзиты на неделю и месяц",
+  "Матрица судьбы — полный разбор",
+];
+
+type SheetTarget = {
+  productId: string;
+  item: string;
+  stars: number;
+  rub: number | null;
+};
+
 /**
  * Premium / Stars screen — overview of available paid products and the
  * monthly subscription. Reads the catalog from the backend and renders
@@ -29,6 +47,7 @@ export function Premium() {
   const { user } = useAppStore();
   const { impact } = useHaptic();
   const { purchase, loading } = usePayment();
+  const [sheet, setSheet] = useState<SheetTarget | null>(null);
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["payments-products"],
@@ -47,13 +66,20 @@ export function Premium() {
       ? Math.max(0, Math.round((1 - yearly.stars / (monthly.stars * 12)) * 100))
       : 0;
 
-  const handleBuy = async (productId: string) => {
-    impact("medium");
-    await purchase(productId);
-  };
-
-  const handleBuyRub = () => {
+  const openSheet = (t: SheetTarget) => {
     impact("light");
+    setSheet(t);
+  };
+  const closeSheet = () => setSheet(null);
+
+  const handlePayStars = async () => {
+    if (!sheet) return;
+    const id = sheet.productId;
+    setSheet(null);
+    await purchase(id);
+  };
+  const handlePayCard = () => {
+    setSheet(null);
     notifyRubSoon();
   };
 
@@ -73,6 +99,7 @@ export function Premium() {
           className="premium-hero glass-gold"
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
+          style={{ textAlign: "center" }}
         >
           <div className="premium-hero__icon" aria-hidden="true">
             ✦
@@ -83,66 +110,107 @@ export function Premium() {
           <p className="premium-hero__desc">
             {user?.is_premium
               ? "Все разделы и подробные прогнозы открыты для вас."
-              : "Доступ ко всем гороскопам, полной натальной карте, раскладам Таро и синастрии."}
+              : "Весь космос в одной подписке — гороскопы, карта, Таро и совместимость без ограничений."}
           </p>
+        </motion.div>
 
-          {!user?.is_premium && (monthly || yearly) && (
-            <div className="premium-plans">
+        {!user?.is_premium && (monthly || yearly) && (
+          <>
+            <div className="pf-plans2">
               {monthly && (
-                <div className="premium-plan-wrap">
-                  <button
-                    className="premium-plan"
-                    onClick={() => handleBuy(monthly.id)}
-                    disabled={loading}
-                  >
-                    <span className="premium-plan__label">Месяц</span>
-                    <span className="premium-plan__price">⭐ {monthly.stars}</span>
-                    <span className="premium-plan__period">30 дней</span>
-                  </button>
-                  {monthly.price_rub ? (
-                    <button
-                      type="button"
-                      className="btn-rub premium-plan__rub"
-                      onClick={handleBuyRub}
-                    >
-                      {monthly.price_rub} ₽
-                    </button>
-                  ) : null}
-                </div>
+                <button
+                  type="button"
+                  className="pf-card"
+                  onClick={() =>
+                    openSheet({
+                      productId: monthly.id,
+                      item: "Премиум · Месяц",
+                      stars: monthly.stars,
+                      rub: monthly.price_rub ?? null,
+                    })
+                  }
+                  disabled={loading}
+                >
+                  <div className="pf-card__name">Месяц</div>
+                  <div className="pf-card__price">
+                    <span className="pf-card__stars">⭐ {monthly.stars}</span>
+                    {monthly.price_rub != null && (
+                      <>
+                        <span className="pf-card__sep">/</span>
+                        <span className="pf-card__rub">
+                          {monthly.price_rub} ₽
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  <div className="pf-card__period">30 дней</div>
+                </button>
               )}
               {yearly && (
-                <div className="premium-plan-wrap">
-                  <button
-                    className="premium-plan premium-plan--best"
-                    onClick={() => handleBuy(yearly.id)}
-                    disabled={loading}
-                  >
-                    {yearlySavingsPct > 0 && (
-                      <span className="premium-plan__badge">
-                        −{yearlySavingsPct}%
-                      </span>
+                <button
+                  type="button"
+                  className="pf-card pf-card--best"
+                  onClick={() =>
+                    openSheet({
+                      productId: yearly.id,
+                      item: "Премиум · Год",
+                      stars: yearly.stars,
+                      rub: yearly.price_rub ?? null,
+                    })
+                  }
+                  disabled={loading}
+                >
+                  {yearlySavingsPct > 0 && (
+                    <span className="pf-card__badge">
+                      Выгодно · −{yearlySavingsPct}%
+                    </span>
+                  )}
+                  <div className="pf-card__name">Год</div>
+                  <div className="pf-card__price">
+                    <span className="pf-card__stars">⭐ {yearly.stars}</span>
+                    {yearly.price_rub != null && (
+                      <>
+                        <span className="pf-card__sep">/</span>
+                        <span className="pf-card__rub">
+                          {yearly.price_rub} ₽
+                        </span>
+                      </>
                     )}
-                    <span className="premium-plan__label">Год</span>
-                    <span className="premium-plan__price">⭐ {yearly.stars}</span>
-                    <span className="premium-plan__period">365 дней</span>
-                  </button>
-                  {yearly.price_rub ? (
-                    <button
-                      type="button"
-                      className="btn-rub premium-plan__rub"
-                      onClick={handleBuyRub}
-                    >
-                      {yearly.price_rub} ₽
-                    </button>
-                  ) : null}
-                </div>
+                  </div>
+                  <div className="pf-card__period">365 дней</div>
+                </button>
               )}
             </div>
-          )}
-          {!user?.is_premium && loading && (
-            <p className="premium-hero__hint">⏳ Открываем оплату…</p>
-          )}
-        </motion.div>
+            <p className="pf-pay-note">
+              Оплата звёздами Telegram или картой в рублях
+            </p>
+          </>
+        )}
+
+        {!user?.is_premium && (
+          <>
+            <h2 className="section-title">Что входит в Premium</h2>
+            <ul className="pf-bens">
+              {BENEFITS.map((b) => (
+                <li key={b} className="pf-ben">
+                  <span className="pf-ben__ic" aria-hidden="true">
+                    <svg
+                      viewBox="0 0 12 12"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M2.5 6.2l2.3 2.3 4.7-5" />
+                    </svg>
+                  </span>
+                  <span>{b}</span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
 
         {/* Catalogue */}
         {isLoading ? (
@@ -156,39 +224,58 @@ export function Premium() {
             <h2 className="section-title">Открыть отдельно</h2>
             <div className="premium-list">
               {oneOffs.map((p) => (
-                <motion.div
+                <motion.button
                   key={p.id}
-                  className="premium-list__row"
+                  type="button"
+                  className="premium-list__item"
                   whileTap={{ scale: 0.99 }}
+                  onClick={() =>
+                    openSheet({
+                      productId: p.id,
+                      item: p.name,
+                      stars: p.stars,
+                      rub: p.price_rub ?? null,
+                    })
+                  }
+                  disabled={loading || user?.is_premium}
                 >
-                  <button
-                    type="button"
-                    className="premium-list__item"
-                    onClick={() => handleBuy(p.id)}
-                    disabled={loading || user?.is_premium}
+                  <div className="premium-list__main">
+                    <div className="premium-list__name">{p.name}</div>
+                    <div className="premium-list__desc">{p.description}</div>
+                  </div>
+                  <span
+                    className="premium-list__cart"
+                    aria-label="Купить"
                   >
-                    <div className="premium-list__main">
-                      <div className="premium-list__name">{p.name}</div>
-                      <div className="premium-list__desc">{p.description}</div>
-                    </div>
-                    <div className="premium-list__price">⭐ {p.stars}</div>
-                  </button>
-                  {p.price_rub ? (
-                    <button
-                      type="button"
-                      className="btn-rub premium-list__rub"
-                      onClick={handleBuyRub}
-                      disabled={user?.is_premium}
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                     >
-                      Оплатить {p.price_rub} ₽
-                    </button>
-                  ) : null}
-                </motion.div>
+                      <path d="M2.5 3.5H5l2.1 10.6a1.5 1.5 0 0 0 1.5 1.2h8.1a1.5 1.5 0 0 0 1.5-1.18L21 7H6" />
+                      <circle cx="9.5" cy="19.2" r="1.45" />
+                      <circle cx="17" cy="19.2" r="1.45" />
+                    </svg>
+                  </span>
+                </motion.button>
               ))}
             </div>
           </>
         )}
       </div>
+
+      <PaymentSheet
+        isOpen={sheet != null}
+        item={sheet?.item ?? ""}
+        starsPrice={sheet?.stars ?? 0}
+        rubPrice={sheet?.rub ?? null}
+        onClose={closeSheet}
+        onPayStars={handlePayStars}
+        onPayCard={handlePayCard}
+      />
     </div>
   );
 }

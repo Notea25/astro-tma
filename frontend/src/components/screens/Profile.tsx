@@ -5,7 +5,6 @@ import WebApp from "@twa-dev/sdk";
 import { usersApi, natalApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
 import { useHaptic, useTelegramUser } from "@/hooks/useTelegram";
-import { ZODIAC_SIGNS } from "@/types";
 import {
   CityAutocomplete,
   type CityOption,
@@ -137,22 +136,23 @@ function PurchasesCard() {
   const purchases = data?.purchases ?? [];
   const active = data?.active_subscription ?? null;
   const totalCount = purchases.length + (active ? 1 : 0);
-  if (totalCount === 0) return null;
 
   const previewLabel = active
     ? "Премиум-подписка активна"
-    : `${totalCount} ${
-        totalCount === 1
-          ? "покупка"
-          : totalCount < 5
-            ? "покупки"
-            : "покупок"
-      }`;
+    : totalCount === 0
+      ? "Нет активных покупок"
+      : `${totalCount} ${
+          totalCount === 1
+            ? "покупка"
+            : totalCount < 5
+              ? "покупки"
+              : "покупок"
+        }`;
 
   return (
     <motion.button
       type="button"
-      className="premium-status-card purchases-card-button"
+      className="pr-row2"
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.11 }}
@@ -161,12 +161,25 @@ function PurchasesCard() {
         setScreen("purchases");
       }}
     >
-      <span className="premium-status-card__star" aria-hidden="true">✦</span>
-      <span className="premium-status-card__main">
-        <span className="premium-status-card__title">Мои покупки</span>
-        <span className="premium-status-card__desc">{previewLabel}</span>
+      <span className="pr-row2__ic" aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M2.5 3.5H5l2.1 10.6a1.5 1.5 0 0 0 1.5 1.2h8.1a1.5 1.5 0 0 0 1.5-1.18L21 7H6" />
+          <circle cx="9.5" cy="19.2" r="1.45" />
+          <circle cx="17" cy="19.2" r="1.45" />
+        </svg>
       </span>
-      <span className="premium-status-card__arrow" aria-hidden="true">›</span>
+      <span className="pr-row2__main">
+        <span className="pr-row2__t">Мои покупки</span>
+        <span className="pr-row2__s">{previewLabel}</span>
+      </span>
+      <span className="pr-row2__chev" aria-hidden="true">›</span>
     </motion.button>
   );
 }
@@ -191,8 +204,6 @@ export function Profile() {
   } | null>(null);
   const [savedCity, setSavedCity] = useState<string | null>(null);
   const [gender, setGender] = useState(user?.gender ?? "");
-
-  const userSign = ZODIAC_SIGNS.find((s) => s.value === user?.sun_sign);
 
   const { data: natalSummary } = useQuery({
     queryKey: ["natal-summary"],
@@ -220,21 +231,6 @@ export function Profile() {
     setGender(user?.gender ?? "");
     setSelectedCoords(null);
     setEditing(true);
-  };
-
-  const SIGN_RU: Record<string, string> = {
-    Aries: "Овен",
-    Taurus: "Телец",
-    Gemini: "Близнецы",
-    Cancer: "Рак",
-    Leo: "Лев",
-    Virgo: "Дева",
-    Libra: "Весы",
-    Scorpio: "Скорпион",
-    Sagittarius: "Стрелец",
-    Capricorn: "Козерог",
-    Aquarius: "Водолей",
-    Pisces: "Рыбы",
   };
 
   const birthMutation = useMutation({
@@ -322,49 +318,29 @@ export function Profile() {
             )}
           </div>
           <div className="profile-info">
-            <div className="profile-name profile-name--script">{user?.name ?? "Пользователь"}</div>
-            <div className="profile-meta">
-              {user?.gender && (
-                <span className="profile-gender">
-                  <span className="profile-gender__symbol" aria-hidden="true">
-                    {user.gender === "male" ? (
-                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="6.5" cy="9.5" r="3.5" />
-                        <path d="M9.5 6.5L14 2" />
-                        <path d="M10 2h4v4" />
-                      </svg>
-                    ) : (
-                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="8" cy="6.5" r="3.5" />
-                        <path d="M8 10v4.5" />
-                        <path d="M5.5 12.5h5" />
-                      </svg>
-                    )}
-                  </span>
-                  {user.gender === "male" ? "Мужской" : "Женский"}
-                </span>
-              )}
+            <div className="profile-name profile-name--script">
+              {user?.name ?? "Пользователь"}
             </div>
-            {(natalSummary?.moon_sign || userSign) && (
-              <div className="profile-signs-triple profile-signs-triple--chips">
-                <span className="sign-chip">
-                  <span className="sign-chip__icon">☉</span>
-                  {(natalSummary?.sun_sign && SIGN_RU[natalSummary.sun_sign]) ??
-                    userSign?.label}
+            {user?.is_premium ? (
+              <span
+                className="entitlement-badge entitlement-badge--paid"
+                style={{ marginTop: 8 }}
+              >
+                <span
+                  className="entitlement-badge__glyph"
+                  aria-hidden="true"
+                >
+                  ✦
                 </span>
-                {natalSummary?.moon_sign && (
-                  <span className="sign-chip">
-                    <span className="sign-chip__icon">☽</span>
-                    {SIGN_RU[natalSummary.moon_sign]}
-                  </span>
-                )}
-                {natalSummary?.ascendant_sign && (
-                  <span className="sign-chip">
-                    <span className="sign-chip__icon">↑</span>
-                    {SIGN_RU[natalSummary.ascendant_sign]}
-                  </span>
-                )}
-              </div>
+                Premium активен
+              </span>
+            ) : (
+              <span className="plan-badge-free">
+                <span className="plan-badge-free__dot" aria-hidden="true">
+                  ✦
+                </span>
+                Free план
+              </span>
             )}
           </div>
           {!editing && (
@@ -381,31 +357,34 @@ export function Profile() {
           )}
         </motion.div>
 
-        {/* Premium status card — active or upsell */}
-        <motion.button
-          type="button"
-          className={`premium-status-card ${user?.is_premium ? "" : "premium-status-card--upsell"}`}
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-          onClick={() => {
-            impact("light");
-            useAppStore.getState().setScreen("premium");
-          }}
-        >
-          <span className="premium-status-card__star" aria-hidden="true">★</span>
-          <span className="premium-status-card__main">
-            <span className="premium-status-card__title">
-              {user?.is_premium ? "Премиум-доступ" : "Открыть Premium"}
+        {/* Free-state upsell row — premium status moved to the avatar badge,
+            paid users don't need this CTA. */}
+        {!user?.is_premium && (
+          <motion.button
+            type="button"
+            className="pr-row2 pr-row2--upsell"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            onClick={() => {
+              impact("light");
+              useAppStore.getState().setScreen("premium");
+            }}
+          >
+            <span className="pr-row2__ic" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                <path d="M12 3l2.5 5.6 6.1.6-4.6 4 1.4 6L12 16.9 6.6 19.2l1.4-6-4.6-4 6.1-.6z" />
+              </svg>
             </span>
-            <span className="premium-status-card__desc">
-              {user?.is_premium
-                ? "Активен"
-                : "Все интерпретации, прогнозы и Таро · от 199 ⭐ / мес"}
+            <span className="pr-row2__main">
+              <span className="pr-row2__t">Открыть Premium</span>
+              <span className="pr-row2__s">
+                Все гороскопы, карта, Таро без ограничений
+              </span>
             </span>
-          </span>
-          <span className="premium-status-card__arrow" aria-hidden="true">›</span>
-        </motion.button>
+            <span className="pr-row2__chev" aria-hidden="true">›</span>
+          </motion.button>
+        )}
 
         {/* Birth data section */}
         <motion.div
@@ -633,29 +612,6 @@ export function Profile() {
           )}
         </motion.div>
 
-        <PurchasesCard />
-
-        <motion.button
-          type="button"
-          className="profile-cta-card"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.115 }}
-          onClick={() => {
-            impact("light");
-            useAppStore.getState().setScreen("referral");
-          }}
-        >
-          <span className="profile-cta-card__icon" aria-hidden="true">✦</span>
-          <span className="profile-cta-card__col">
-            <span className="profile-cta-card__title">Пригласить друзей</span>
-            <span className="profile-cta-card__desc">
-              Поделитесь ссылкой — посмотрите, кто зайдёт
-            </span>
-          </span>
-          <span className="profile-cta-card__chev" aria-hidden="true">›</span>
-        </motion.button>
-
         <motion.div
           className="natal-card"
           initial={{ opacity: 0, y: 16 }}
@@ -685,10 +641,45 @@ export function Profile() {
           </div>
         </motion.div>
 
+        <PurchasesCard />
+
+        <motion.button
+          type="button"
+          className="pr-row2"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.115 }}
+          onClick={() => {
+            impact("light");
+            useAppStore.getState().setScreen("referral");
+          }}
+        >
+          <span className="pr-row2__ic" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="9" cy="8" r="3.2" />
+              <path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
+              <path d="M16 6.2a3 3 0 0 1 0 5.6" />
+              <path d="M17.5 19a5.3 5.3 0 0 0-3-4.8" />
+            </svg>
+          </span>
+          <span className="pr-row2__main">
+            <span className="pr-row2__t">Пригласить друзей</span>
+            <span className="pr-row2__s">Поделитесь ссылкой</span>
+          </span>
+          <span className="pr-row2__chev" aria-hidden="true">›</span>
+        </motion.button>
+
         {SUPPORT_BOT_USERNAME && (
           <motion.button
             type="button"
-            className="profile-cta-card profile-cta-card--support"
+            className="pr-row2"
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.14 }}
@@ -699,33 +690,28 @@ export function Profile() {
               );
             }}
           >
-            <span
-              className="profile-cta-card__icon"
-              aria-hidden="true"
-            >
+            <span className="pr-row2__ic" aria-hidden="true">
               <svg
-                width="18"
-                height="18"
-                viewBox="0 0 18 18"
+                viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="1.4"
+                strokeWidth="1.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
-                <path d="M3 4h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H7l-4 3v-3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" />
-                <circle cx="6.5" cy="9" r="0.6" fill="currentColor" />
-                <circle cx="9" cy="9" r="0.6" fill="currentColor" />
-                <circle cx="11.5" cy="9" r="0.6" fill="currentColor" />
+                <path d="M3.5 5h17a1 1 0 0 1 1 1v10.5a1 1 0 0 1-1 1H8.5l-5 4v-4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />
+                <circle cx="9" cy="11" r="0.8" fill="currentColor" />
+                <circle cx="12" cy="11" r="0.8" fill="currentColor" />
+                <circle cx="15" cy="11" r="0.8" fill="currentColor" />
               </svg>
             </span>
-            <span className="profile-cta-card__col">
-              <span className="profile-cta-card__title">Поддержка</span>
-              <span className="profile-cta-card__desc">
+            <span className="pr-row2__main">
+              <span className="pr-row2__t">Поддержка</span>
+              <span className="pr-row2__s">
                 Задайте вопрос — ответим в чате бота
               </span>
             </span>
-            <span className="profile-cta-card__chev" aria-hidden="true">›</span>
+            <span className="pr-row2__chev" aria-hidden="true">›</span>
           </motion.button>
         )}
       </div>
