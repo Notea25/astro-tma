@@ -2183,7 +2183,7 @@ function NatalAspectsPanel({
               const hint =
                 ASPECT_PAIR_FALLBACK_HINT[type] ??
                 "взаимодействуют между собой";
-              const fallback = `${name1} и ${name2} ${hint}. Подробнее эта пара раскроется в полном PDF-отчёте.`;
+              const fallback = `${name1} и ${name2} ${hint}.`;
               const text = desc?.short ?? fallback;
               blocks.push(`${heading}\n\n${text}`);
             }
