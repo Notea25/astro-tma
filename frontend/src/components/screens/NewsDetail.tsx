@@ -29,6 +29,19 @@ function formatDate(iso: string): string {
   return `${d.getDate()} ${months[d.getMonth()]}`;
 }
 
+/**
+ * Split a markdown-ish body into an array of paragraphs. We don't run a
+ * full markdown parser — backend currently returns plain prose with empty
+ * lines between paragraphs, so a simple split is enough. Markdown-style
+ * markers are stripped by cleanMarkdownText upstream.
+ */
+function splitParagraphs(body: string): string[] {
+  return cleanMarkdownText(body)
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+}
+
 export function NewsDetail() {
   const { setScreen, newsId } = useAppStore();
 
@@ -38,6 +51,10 @@ export function NewsDetail() {
     enabled: !!newsId,
     staleTime: 1000 * 60 * 30,
   });
+
+  const paragraphs = data ? splitParagraphs(data.body_md) : [];
+  const firstChar = paragraphs[0]?.charAt(0) ?? "";
+  const firstRest = paragraphs[0]?.slice(1) ?? "";
 
   return (
     <div className="screen news-screen">
@@ -75,25 +92,27 @@ export function NewsDetail() {
           </p>
         )}
         {data && (
-          <div className="horoscope-card">
-            <div className="horoscope-card__period" style={{ marginBottom: 8 }}>
+          <article className="gx-article">
+            <div className="gx-article__eyebrow">
               {CATEGORY_LABEL[data.category] ?? data.category} ·{" "}
               {formatDate(data.date)}
             </div>
-            <h3 style={{ fontSize: 18, marginBottom: 12, lineHeight: 1.3 }}>
+            <h1 className="gx-article__title">
               {cleanMarkdownText(data.title_ru)}
-            </h3>
-            <div
-              style={{
-                fontSize: 14,
-                lineHeight: 1.6,
-                whiteSpace: "pre-wrap",
-                color: "var(--text-soft)",
-              }}
-            >
-              {cleanMarkdownText(data.body_md)}
+            </h1>
+            <div className="gx-article__rule" />
+            <div className="gx-article__body">
+              {paragraphs.length > 0 && (
+                <p>
+                  <span className="gx-article__dropcap">{firstChar}</span>
+                  {firstRest}
+                </p>
+              )}
+              {paragraphs.slice(1).map((p, i) => (
+                <p key={i}>{p}</p>
+              ))}
             </div>
-          </div>
+          </article>
         )}
       </div>
     </div>

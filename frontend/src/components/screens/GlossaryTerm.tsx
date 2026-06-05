@@ -89,18 +89,22 @@ function formatMarkdownHeading(text: string): string {
   return sanitizeRussianText(text);
 }
 
-function MarkdownText({ text }: { text: string }) {
+/**
+ * Render markdown-ish glossary body into the editorial gx-article format.
+ * The first non-heading paragraph gets a Playfair dropcap.
+ */
+function ArticleBody({ text }: { text: string }) {
   const lines = text.replace(/\r\n/g, "\n").split("\n");
   const blocks: JSX.Element[] = [];
   let listItems: string[] = [];
+  let dropcapUsed = false;
 
   const flushList = () => {
     if (listItems.length === 0) return;
-
     const items = listItems;
     listItems = [];
     blocks.push(
-      <ul key={`list-${blocks.length}`} className="glossary-markdown__list">
+      <ul key={`list-${blocks.length}`} className="gx-article__list">
         {items.map((item, index) => (
           <li key={index}>{renderInlineMarkdown(item)}</li>
         ))}
@@ -119,15 +123,10 @@ function MarkdownText({ text }: { text: string }) {
     const heading = line.match(/^(#{1,3})\s+(.+)$/);
     if (heading) {
       flushList();
-      const level = heading[1].length;
-      const Tag = level === 1 ? "h3" : "h4";
       blocks.push(
-        <Tag
-          key={`heading-${blocks.length}`}
-          className={`glossary-markdown__heading glossary-markdown__heading--${level}`}
-        >
+        <h2 key={`h-${blocks.length}`} className="gx-article__h">
           {renderInlineMarkdown(formatMarkdownHeading(heading[2]))}
-        </Tag>,
+        </h2>,
       );
       return;
     }
@@ -139,16 +138,29 @@ function MarkdownText({ text }: { text: string }) {
     }
 
     flushList();
+    const sanitized = sanitizeRussianText(line);
+    if (!dropcapUsed && sanitized.length > 0) {
+      dropcapUsed = true;
+      const first = sanitized.charAt(0);
+      const rest = sanitized.slice(1);
+      blocks.push(
+        <p key={`p-${blocks.length}`}>
+          <span className="gx-article__dropcap">{first}</span>
+          {renderInlineMarkdown(rest).map((node, i) =>
+            typeof node === "string" ? node : <span key={i}>{node}</span>,
+          )}
+        </p>,
+      );
+      return;
+    }
     blocks.push(
-      <p key={`paragraph-${blocks.length}`} className="glossary-markdown__paragraph">
-        {renderInlineMarkdown(line)}
-      </p>,
+      <p key={`p-${blocks.length}`}>{renderInlineMarkdown(line)}</p>,
     );
   });
 
   flushList();
 
-  return <div className="glossary-markdown">{blocks}</div>;
+  return <div className="gx-article__body">{blocks}</div>;
 }
 
 export function GlossaryTerm() {
@@ -204,21 +216,19 @@ export function GlossaryTerm() {
         )}
         {data && (
           <>
-            <div className="horoscope-card">
-              <div
-                className="horoscope-card__period"
-                style={{ marginBottom: 8 }}
-              >
+            <article className="gx-article">
+              <div className="gx-article__eyebrow">
                 {CATEGORY_LABEL[data.category] ?? data.category}
               </div>
-              <MarkdownText text={data.full_ru} />
-            </div>
+              <div className="gx-article__rule" />
+              <ArticleBody text={data.full_ru} />
+            </article>
 
             {data.related.length > 0 && (
-              <div className="horoscope-card">
+              <>
                 <div
-                  className="horoscope-card__period"
-                  style={{ marginBottom: 12 }}
+                  className="gx-article__eyebrow"
+                  style={{ margin: "24px 0 12px" }}
                 >
                   См. также
                 </div>
@@ -238,7 +248,7 @@ export function GlossaryTerm() {
                     </button>
                   ))}
                 </div>
-              </div>
+              </>
             )}
           </>
         )}

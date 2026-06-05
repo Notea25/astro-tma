@@ -11140,3 +11140,80 @@ body::before {
   cursor: pointer;
   font-family: inherit;
 }
+
+/* ── Iteration 3: Article typography (News + Glossary detail) ─────────── */
+
+.gx-article {
+  padding-top: 2px;
+}
+.gx-article__eyebrow {
+  font-family: "Inter", sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-dim);
+}
+.gx-article__title {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: clamp(24px, 7vw, 30px);
+  font-weight: 600;
+  line-height: 1.18;
+  color: #fff;
+  margin: 11px 0 0;
+}
+.gx-article__rule {
+  width: 42px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+  margin: 16px 0 20px;
+}
+.gx-article__body {
+  display: block;
+}
+.gx-article__body p {
+  font-size: 16.5px;
+  line-height: 1.75;
+  color: var(--text-soft);
+  margin: 0 0 15px;
+}
+.gx-article__dropcap {
+  float: left;
+  font-family: "Playfair Display", Georgia, serif;
+  font-weight: 600;
+  font-size: 52px;
+  line-height: 0.82;
+  padding: 4px 10px 0 0;
+  color: var(--gold-light);
+}
+.gx-article__h {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--gold-light);
+  margin: 22px 0 9px;
+}
+.gx-article__list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 15px;
+}
+.gx-article__list li {
+  position: relative;
+  padding-left: 20px;
+  margin-bottom: 8px;
+  color: var(--text-soft);
+  font-size: 15.5px;
+  line-height: 1.6;
+}
+.gx-article__list li::before {
+  content: "✦";
+  position: absolute;
+  left: 0;
+  top: 3px;
+  color: var(--gold-dim);
+  font-size: 11px;
+}
+.gx-article__body strong {
+  color: var(--text);
+  font-weight: 600;
+}
