@@ -19,6 +19,7 @@ import {
   IconMatrix,
   IconNatal,
 } from "@/components/ui/Icons";
+import { MoonGlyph } from "@/components/ui/MoonGlyph";
 
 const DAILY_CARD_STORAGE_KEY = "tarot-daily-state-v4";
 const TAROT_IMAGE_BASE =
@@ -342,7 +343,13 @@ export function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.08 }}
           >
-            <span className="moon-card__emoji">{moon.emoji}</span>
+            <span className="moon-card__emoji">
+              <MoonGlyph
+                size={40}
+                illumination={moon.illumination}
+                emoji={moon.emoji}
+              />
+            </span>
             <div>
               <div className="moon-card__title">{moon.phase_name_ru}</div>
               <div className="moon-card__illum">

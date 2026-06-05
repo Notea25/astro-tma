@@ -11217,3 +11217,24 @@ body::before {
   color: var(--text);
   font-weight: 600;
 }
+
+/* ── Parametric moon glyph (Home + Moon screen + calendar cells) ──────── */
+.gx-moon {
+  position: relative;
+  display: inline-block;
+  border-radius: 50%;
+  overflow: hidden;
+  vertical-align: middle;
+}
+.gx-moon__sh {
+  position: absolute;
+  inset: -2%;
+  border-radius: 50%;
+  background: #09081a;
+}
+.gx-moon__rim {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+}

@@ -5,6 +5,7 @@ import {
   MoonPhaseSkeleton,
   MoonCalendarSkeleton,
 } from "@/components/ui/Skeleton";
+import { MoonGlyph } from "@/components/ui/MoonGlyph";
 import { horoscopeApi } from "@/services/api";
 import { useHaptic } from "@/hooks/useTelegram";
 import { useAppStore } from "@/stores/app";
@@ -172,7 +173,13 @@ export function Moon() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
           >
-            {selectedData?.emoji ?? moonPhase?.emoji ?? "🌙"}
+            <MoonGlyph
+              size={150}
+              illumination={
+                selectedData?.illumination ?? moonPhase?.illumination ?? 0.5
+              }
+              emoji={selectedData?.emoji ?? moonPhase?.emoji}
+            />
           </motion.div>
         </div>
 
@@ -321,7 +328,13 @@ export function Moon() {
                     whileTap={{ scale: 0.88 }}
                     title={day.phase_name_ru}
                   >
-                    <span className="moon-calendar__phase">{day.emoji}</span>
+                    <span className="moon-calendar__phase">
+                      <MoonGlyph
+                        size={22}
+                        illumination={day.illumination ?? 0.5}
+                        emoji={day.emoji}
+                      />
+                    </span>
                     <span className="moon-calendar__num">{day.day}</span>
                   </motion.div>
                 );
