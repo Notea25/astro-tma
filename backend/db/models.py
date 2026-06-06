@@ -536,10 +536,12 @@ class ArcanaBase(Base):
 
 class KarmicProgram(Base):
     """A named karmic-tail program identified by the triple of arcana on
-    the bottom axis: ``(bottom, bottom_1, bottom_2)`` rendered as
-    ``"19-22-3"`` etc. Up to 26 unique combinations exist across all
+    the bottom axis. Canonical order is ``(bottom_2, bottom_1, bottom)``
+    — read from the centre of the octagram outwards — rendered as
+    ``"3-22-19"`` etc. Up to 26 unique combinations exist across all
     valid birth dates 1950-2030. Filled by
-    `infra/scripts/generate_karmic_programs.py` (Sonnet) + manual review.
+    `infra/scripts/regen_karmic_programs_v2.py` (Sonnet, reads canonical
+    JSON from `content/karmic_programs_canonical.json`) + manual review.
     """
     __tablename__ = "karmic_programs"
     key: Mapped[str] = mapped_column(Text, primary_key=True)

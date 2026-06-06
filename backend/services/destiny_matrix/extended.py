@@ -14,7 +14,7 @@ untouched. The V3 LLM prompts pull from this module to get:
     on birth date and a reference date (defaults to today). Refreshed
     by a cron job on the user's birthday.
 
-  * `karmic_program_key()` — `"19-22-3"` style string formed from the
+  * `karmic_program_key()` — `"3-22-19"` style string formed from the
     bottom-axis triple, used to look up the canonical karmic program
     name in the `karmic_programs` table.
 
@@ -139,11 +139,16 @@ def calculate_year_energy(birth: date, on_date: date | None = None) -> YearEnerg
 
 
 def karmic_program_key(positions: dict[str, Any]) -> str:
-    """`"bottom-bottom_1-bottom_2"` triple for `karmic_programs` lookup.
+    """`"bottom_2-bottom_1-bottom"` triple for `karmic_programs` lookup.
+
+    Canonical reading order is from the centre of the octagram outwards:
+    bottom_2 (mid, partner-entry) → bottom_1 (near_corner, self-realisation)
+    → bottom (B angle, main lesson from past life). Matches the format used
+    in ``content/karmic_programs_canonical.json``.
 
     bottom_1 = near_corner of B = `channels.karmic_tail[0]` in our
     payload. bottom_2 = mid of B = `specials.love`."""
     bottom = positions["personality"]["bottom"]
     bottom_1 = positions["channels"]["karmic_tail"][0]
     bottom_2 = positions["specials"]["love"]
-    return f"{bottom}-{bottom_1}-{bottom_2}"
+    return f"{bottom_2}-{bottom_1}-{bottom}"
