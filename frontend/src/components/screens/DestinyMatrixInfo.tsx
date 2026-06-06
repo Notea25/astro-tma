@@ -75,22 +75,6 @@ const STEPS: StepDef[] = [
   },
 ];
 
-const FREE_ITEMS = [
-  "Расчёт всей матрицы — все 22 числа видны сразу",
-  "Визитка личности — портрет по 5 центральным арканам",
-  "Кармический хвост — главный урок и каноническое название программы",
-];
-
-const PREM_ITEMS = [
-  "Полная октаграмма — родовой квадрат, 10 каналов судьбы, чакры",
-  "Кармическая программа — каноническое описание (до 26 вариантов) + как прорабатывать",
-  "8 предназначений в формате композиции арканов: личные, родовые, Божественные, миссия",
-  "7 чакр на Небесной и Земной линиях — карта энергетики и зон внимания",
-  "Энергия текущего и следующего года — что задаёт тон до следующего ДР",
-  "Личный разбор от астролога-AI — 15 разделов, ~5000 слов, адаптация под пол",
-  "PDF-отчёт на ~22 A4 страницы — можно перечитать позже",
-];
-
 export function DestinyMatrixInfo() {
   const { setScreen, user } = useAppStore();
   const { impact } = useHaptic();
@@ -209,34 +193,6 @@ export function DestinyMatrixInfo() {
               ))}
             </ol>
           )}
-        </section>
-
-        {/* Free vs Premium — upfront so user knows what they're paying for */}
-        <section className="destiny-info__section destiny-info__tiers">
-          <h4 className="destiny-info__section-title">
-            Что доступно бесплатно
-          </h4>
-          <ul className="destiny-info__tier destiny-info__tier--free">
-            {FREE_ITEMS.map((it) => (
-              <li key={it}>
-                <span className="destiny-info__tier-mark" aria-hidden="true">✓</span>
-                {it}
-              </li>
-            ))}
-          </ul>
-
-          <h4 className="destiny-info__section-title destiny-info__tier-prem-title">
-            <span className="destiny-info__prem-badge">Premium</span>
-            <span>Полный разбор за 150 ⭐, доступ навсегда</span>
-          </h4>
-          <ul className="destiny-info__tier destiny-info__tier--prem">
-            {PREM_ITEMS.map((it) => (
-              <li key={it}>
-                <span className="destiny-info__tier-mark" aria-hidden="true">★</span>
-                {it}
-              </li>
-            ))}
-          </ul>
         </section>
 
         {/* Disclaimer */}
