@@ -44,9 +44,25 @@ from db.database import AsyncSessionLocal  # noqa: E402
 from db.models import KarmicProgram  # noqa: E402
 
 _MODEL = "claude-sonnet-4-5-20250929"
-_CANONICAL_JSON = (
-    Path(__file__).resolve().parents[2] / "content" / "karmic_programs_canonical.json"
-)
+
+
+def _find_canonical_json() -> Path:
+    """Walk up from the script's directory until we find a `content/` sibling
+    holding the canonical JSON. Works both locally (script lives in
+    `infra/scripts/`) and inside the container (script is at `/app/scripts/`,
+    JSON is at `/app/content/`)."""
+    start = Path(__file__).resolve().parent
+    for candidate in [start, *start.parents]:
+        path = candidate / "content" / "karmic_programs_canonical.json"
+        if path.exists():
+            return path
+    raise FileNotFoundError(
+        "karmic_programs_canonical.json not found near the script. "
+        "Expected at <repo>/content/ or /app/content/."
+    )
+
+
+_CANONICAL_JSON: Path | None = None  # lazy — resolved on first use
 
 _REFERENCE_KEY = "3-22-19"
 _REFERENCE_FULL = {
@@ -210,7 +226,8 @@ async def _upsert(session, program: dict[str, Any]) -> None:
 
 
 def _load_canonical() -> dict[str, dict[str, Any]]:
-    raw = json.loads(_CANONICAL_JSON.read_text(encoding="utf-8"))
+    path = _find_canonical_json()
+    raw = json.loads(path.read_text(encoding="utf-8"))
     return raw["programs"]
 
 
