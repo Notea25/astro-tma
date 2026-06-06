@@ -14,7 +14,9 @@ function renderBoldInline(line: string): ReactNode[] {
   const parts = line.split(/\*\*(.+?)\*\*/g);
   return parts.map((part, i) =>
     i % 2 === 1 ? (
-      <strong key={i} className={styles.descSheetHeading}>{part}</strong>
+      <strong key={i} className={styles.descSheetHeading}>
+        {part}
+      </strong>
     ) : (
       <Fragment key={i}>{part}</Fragment>
     ),
@@ -124,7 +126,7 @@ export function NatalDescriptionSheet({
             </div>
 
             <p className={styles.descSheetFootnote}>
-              Полный разбор — в скачанном PDF-отчёте.
+              Полный разбор — в полном отчёте.
             </p>
           </motion.div>
         </motion.div>

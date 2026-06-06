@@ -1700,8 +1700,8 @@ function NatalPdfCard({
     label = "Готовим PDF…";
   } else if (entitled) {
     label = sendToTelegramChat
-      ? "Получить полный отчёт в Telegram"
-      : "Скачать полный отчёт (PDF)";
+      ? "Получить полный отчёт"
+      : "Скачать полный отчёт";
   } else {
     label = `Открыть отчёт — ${price} ⭐`;
   }
