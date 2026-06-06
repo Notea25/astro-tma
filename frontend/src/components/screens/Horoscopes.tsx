@@ -8,6 +8,7 @@ import { horoscopeApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
 import { ZODIAC_SIGNS, type ZodiacSign } from "@/types";
+import { cleanMarkdownText } from "@/utils/text";
 import { ZodiacIcon } from "@/components/ui/ZodiacIcon";
 
 type Period = "today" | "tomorrow" | "week" | "month";
@@ -133,7 +134,9 @@ export function Horoscopes() {
                 <div className="sign-dates">{signInfo?.dates}</div>
               </div>
             </div>
-            <p className="horoscope-text">{horoscope?.text_ru}</p>
+            <p className="horoscope-text">
+              {cleanMarkdownText(horoscope?.text_ru)}
+            </p>
             {horoscope?.energy && <EnergyBars scores={horoscope.energy} />}
           </motion.div>
         )}

@@ -8,6 +8,7 @@ import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
 import { transitsApi } from "@/services/api";
 import { ApiError } from "@/services/api";
+import { cleanMarkdownText } from "@/utils/text";
 import type {
   PeriodEvent,
   RetrogradeInfo,
@@ -167,11 +168,12 @@ function CategoryBadge({ category }: { category: TransitCategory }) {
 
 function splitLines(s: string | null | undefined): string[] {
   if (!s) return [];
-  // Tolerate any reasonable bullet/separator the LLM emits: newlines,
-  // bullets (•·∙*), em/en-dash with space, semicolons. Each line is
-  // then stripped of its leading bullet/index so the UI doesn't
+  // Strip markdown bold/italic first so "**Сделай X**" doesn't shatter on the
+  // bullet split below. Tolerate any reasonable bullet/separator the LLM
+  // emits: newlines, bullets (•·∙*), em/en-dash with space, semicolons. Each
+  // line is then stripped of its leading bullet/index so the UI doesn't
   // double-mark items.
-  return s
+  return cleanMarkdownText(s)
     .split(/\n+|[•·∙*]\s*|[—–-]\s|;\s/)
     .map((l) => l.replace(/^[\s\d.)\-•·∙*]+/, "").trim())
     .filter(Boolean);
@@ -248,7 +250,9 @@ function DeepDive({
           <div className="deep-dive__title deep-dive__title--risk">
             ⚠ Где может рвануть
           </div>
-          <p className="deep-dive__body">{details.risk_warning}</p>
+          <p className="deep-dive__body">
+            {cleanMarkdownText(details.risk_warning)}
+          </p>
         </div>
       )}
 
@@ -257,7 +261,9 @@ function DeepDive({
           <div className="deep-dive__title deep-dive__title--affirm">
             💎 Аффирмация на сегодня
           </div>
-          <p className="deep-dive__quote">«{details.affirmation}»</p>
+          <p className="deep-dive__quote">
+            «{cleanMarkdownText(details.affirmation)}»
+          </p>
         </div>
       )}
 
@@ -266,7 +272,9 @@ function DeepDive({
           <div className="deep-dive__title deep-dive__title--ritual">
             🌱 Мини-ритуал
           </div>
-          <p className="deep-dive__body">{details.ritual}</p>
+          <p className="deep-dive__body">
+            {cleanMarkdownText(details.ritual)}
+          </p>
         </div>
       )}
     </div>
@@ -337,7 +345,9 @@ function HeroCard({ aspect }: { aspect: TransitAspect | null }) {
         {aspect.natal_planet_ru}
       </h3>
       <p className="transit-hero__text">
-        {aspect.text_ru || ASPECT_HINT[aspect.aspect] || "Значимая конфигурация."}
+        {cleanMarkdownText(aspect.text_ru) ||
+          ASPECT_HINT[aspect.aspect] ||
+          "Значимая конфигурация."}
       </p>
       <AnimatePresence initial={false}>
         {expanded && (
@@ -424,7 +434,7 @@ function TransitCardV2({
             transition={{ duration: 0.25 }}
           >
             <p>
-              {aspect.text_ru ||
+              {cleanMarkdownText(aspect.text_ru) ||
                 ASPECT_HINT[aspect.aspect] ||
                 "Значимая конфигурация."}
             </p>
@@ -498,7 +508,7 @@ function PeriodEventCard({ event, idx }: { event: PeriodEvent; idx: number }) {
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.25 }}
           >
-            <p>{event.text_ru}</p>
+            <p>{cleanMarkdownText(event.text_ru)}</p>
           </motion.div>
         )}
       </AnimatePresence>

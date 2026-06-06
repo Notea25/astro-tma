@@ -67,6 +67,11 @@ function sanitizeRussianText(text: string): string {
   }
 
   return cleaned
+    // Strip markdown bold/italic markers — backend prose mixes **жирный** with
+    // plain text and our dropcap split breaks them mid-pair (see GlossaryTerm
+    // body), leaving stray `*` / `**` in the rendered output. We don't render
+    // <strong> from markdown anyway; the gold dropcap is enough emphasis.
+    .replace(/\*+/g, "")
     .replace(/\s+([.,;:!?])/g, "$1")
     .replace(/[ \t]{2,}/g, " ")
     .trim();

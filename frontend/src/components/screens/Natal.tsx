@@ -409,6 +409,10 @@ function cleanReadingMarkdown(text: string): string {
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     .replace(/\*([^*\n]+)\*/g, "$1")
     .replace(/^[ \t]*[-*][ \t]+/gm, "")
+    // Sweep stray asterisks from unbalanced markers — LLM occasionally emits
+    // "**Венера" without a closing pair, and we never want raw "*" leaking
+    // into the rendered card.
+    .replace(/\*+/g, "")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();

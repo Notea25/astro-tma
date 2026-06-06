@@ -145,6 +145,8 @@ function plainText(raw: string): string {
     .replace(/^#{1,6}\s*/gm, "")
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     .replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, "$1")
+    // Sweep stray asterisks from unbalanced markers — never leak raw "*" into UI.
+    .replace(/\*+/g, "")
     .replace(/```[\s\S]*?```/g, "")
     .trim();
 }

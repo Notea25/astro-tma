@@ -20,6 +20,7 @@ import {
   IconNatal,
 } from "@/components/ui/Icons";
 import { MoonGlyph } from "@/components/ui/MoonGlyph";
+import { cleanMarkdownText } from "@/utils/text";
 
 const DAILY_CARD_STORAGE_KEY = "tarot-daily-state-v4";
 const TAROT_IMAGE_BASE =
@@ -299,7 +300,9 @@ export function Home() {
                 <div className="sign-dates">{signInfo?.dates}</div>
               </div>
             </div>
-            <p className="horoscope-text">{horoscope?.text_ru}</p>
+            <p className="horoscope-text">
+              {cleanMarkdownText(horoscope?.text_ru)}
+            </p>
             {horoscope?.energy && <EnergyBars scores={horoscope.energy} />}
             <div className="power-emoji-row">
               <span
@@ -323,7 +326,9 @@ export function Home() {
             animate={{ opacity: 1, y: 0 }}
           >
             <div className="card-tag">✦ {PERIOD_LABELS[period]}</div>
-            <p className="horoscope-text">{horoscope?.text_ru}</p>
+            <p className="horoscope-text">
+              {cleanMarkdownText(horoscope?.text_ru)}
+            </p>
           </motion.div>
         )}
 

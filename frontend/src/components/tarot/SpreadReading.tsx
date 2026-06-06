@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { tarotApi } from '@/services/api'
 import { useHaptic } from '@/hooks/useTelegram'
 import type { TarotCardDetail } from '@/types'
+import { cleanMarkdownText } from '@/utils/text'
 import styles from './SpreadReading.module.css'
 
 type SpreadType = 'three_card' | 'celtic_cross' | 'week' | 'relationship'
@@ -129,7 +130,9 @@ export function SpreadReading({ spreadType, readingId, cards }: Props) {
                   <span className={styles.reversed}> · перевёрнута</span>
                 )}
               </div>
-              <p className={styles.narrative}>{pos.narrative}</p>
+              <p className={styles.narrative}>
+                {cleanMarkdownText(pos.narrative)}
+              </p>
             </div>
           </div>
         )
@@ -138,7 +141,9 @@ export function SpreadReading({ spreadType, readingId, cards }: Props) {
       {data.summary && (
         <div className={styles.summaryBlock}>
           <h3 className={styles.summaryTitle}>✦ Итог ✦</h3>
-          <p className={styles.summaryText}>{data.summary}</p>
+          <p className={styles.summaryText}>
+            {cleanMarkdownText(data.summary)}
+          </p>
         </div>
       )}
 
