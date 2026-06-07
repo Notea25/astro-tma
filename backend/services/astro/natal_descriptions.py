@@ -64,10 +64,14 @@ _ASPECT_RU: dict[str, str] = {
 # bottleneck (the bucket throttles them), so these targets are kept tight —
 # halved from the earlier values to roughly halve generation time on any tier.
 # Upper hints, not floors — the prompt tells the model "shorter is better".
+# Согласовано с верхними ориентирами промптов (planets ~80-100, houses
+# ~110-150, aspects ~130-170). thin-floor = target * _THIN_RATIO даёт
+# 72 / 96 / 112 — ниже того, что промпт реально просит, поэтому штатный
+# текст не уходит в repair, но Венера-60 / дома-65 / аспекты-80 ловятся.
 _MIN_FULL_WORDS = {
     "planets": 90,
-    "houses": 75,
-    "aspects": 85,
+    "houses": 120,
+    "aspects": 140,
 }
 
 _FORBIDDEN_COPY_MARKERS = (
@@ -809,10 +813,15 @@ def _full_too_close_to_short(short: str, full: str) -> bool:
 
 
 def _validate_full(full: str, section: str, subject: str = "") -> list:
-    """Прогон валидатора по тексту секции (planets/houses/aspects)."""
+    """Прогон валидатора по тексту секции (planets/houses/aspects).
+
+    target_words = целевой объём секции, чтобы thin-порог валидатора был
+    согласован с промптом генератора (а не зашит константой).
+    """
     ctx = ValidationContext(
         section_kind=_SECTION_KIND.get(section, "planet_in_sign"),
         subject=subject,
+        target_words=_MIN_FULL_WORDS.get(section),
     )
     return _VALIDATOR.validate(full, ctx)
 
@@ -828,7 +837,7 @@ def _entry_needs_repair(entry: dict[str, str], section: str) -> bool:
     # болванки тоже отправляем на регенерацию, чтобы не было «расслоения качества».
     if any(i.severity == Severity.CRITICAL for i in issues):
         return True
-    bad_codes = {"TEMPLATE_PHRASE", "GENERATIONAL_IN_INDIVIDUAL"}
+    bad_codes = {"TEMPLATE_PHRASE", "GENERATIONAL_IN_INDIVIDUAL", "TOO_SHORT_THIN"}
     if any(i.code in bad_codes for i in issues):
         return True
     return False
@@ -1061,12 +1070,14 @@ async def generate_natal_descriptions(
             continue
         p1, p2, atype = triple
         aspect: dict[str, Any] = {"p1": p1, "p2": p2, "type": atype, **entry}
-        # Аспект, который так и не починился (короткий/обрыв/шаблон) — лучше
-        # скрыть, чем показать болванку (10 хороших > 16 с заглушками).
+        # Аспект, который так и не починился после repair (короткий/обрыв/
+        # шаблон/полу-заглушка) — лучше скрыть, чем показать болванку
+        # (10 хороших > 16 с заглушками).
         full = str(entry.get("full") or "").strip()
         issues = _validate_full(full, "aspects", subject=aspect_labels.get(aid, aid))
+        hide_codes = {"TEMPLATE_PHRASE", "TOO_SHORT_THIN"}
         bad = any(i.severity == Severity.CRITICAL for i in issues) or any(
-            i.code == "TEMPLATE_PHRASE" for i in issues
+            i.code in hide_codes for i in issues
         )
         if bad:
             aspect["hide"] = True

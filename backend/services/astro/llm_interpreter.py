@@ -144,26 +144,52 @@ async def generate_natal_reading(
     import anthropic
 
     from services.llm_pool import llm_semaphore
+    from services.quality_validator import Severity, TextValidator, ValidationContext
     from services.rate_limiter import AnthropicLimiter
 
     prompt = _build_prompt(sun_sign, moon_sign, ascendant_sign, planets, aspects, gender)
 
     client = anthropic.AsyncAnthropic(api_key=api_key)
-    # 9000 (было 7000): на 8-разделочном ~1200-1500-словном тексте 7k токенов
-    # упирались в потолок и обрывали последнюю секцию на полуслове («…строите карь»).
-    async with llm_semaphore, AnthropicLimiter(9000):
-        message = await client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=9000,
-            messages=[{"role": "user", "content": prompt}],
-        )
+    validator = TextValidator(use_spellchecker=False)
+    ctx = ValidationContext(section_kind="synthesis", subject="Натальный разбор")
 
-    text = first_text_block(message.content)
-    stop_reason = getattr(message, "stop_reason", None)
-    if stop_reason == "max_tokens":
-        # Модель упёрлась в лимит — текст почти наверняка оборван. Логируем для
-        # мониторинга (caller отдаёт что есть; поднять max_tokens при повторе).
-        log.warning("llm_interpreter.truncated", chars=len(text), stop_reason=stop_reason)
+    async def _call(max_tokens: int) -> tuple[str, str | None]:
+        # 9000 (было 7000): на 8-разделочном ~1200-1500-словном тексте 7k токенов
+        # упирались в потолок и обрывали последнюю секцию на полуслове («…строите карь»).
+        async with llm_semaphore, AnthropicLimiter(max_tokens):
+            message = await client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=max_tokens,
+                messages=[{"role": "user", "content": prompt}],
+            )
+        return first_text_block(message.content), getattr(message, "stop_reason", None)
+
+    text, stop_reason = await _call(9000)
+
+    # Финальный разбор обрезанным/коротким уходить не должен (Layer 3). Если
+    # модель упёрлась в лимит или валидатор увидел обрыв/критическую короткость —
+    # один повтор с увеличенным лимитом. Чаще всего хватает: обрыв был из-за
+    # max_tokens, а не из-за контента.
+    issues = validator.validate(text, ctx)
+    truncated = any(i.code == "TRUNCATED" for i in issues)
+    too_short = any(
+        i.code == "TOO_SHORT_CRITICAL" and i.severity == Severity.CRITICAL for i in issues
+    )
+    if stop_reason == "max_tokens" or truncated or too_short:
+        log.warning(
+            "llm_interpreter.synthesis_defect_retry",
+            chars=len(text),
+            stop_reason=stop_reason,
+            truncated=truncated,
+            too_short=too_short,
+        )
+        retry_text, retry_stop = await _call(12000)
+        retry_issues = validator.validate(retry_text, ctx)
+        retry_bad = any(i.code in ("TRUNCATED", "TOO_SHORT_CRITICAL") for i in retry_issues)
+        # Берём повтор, если он не хуже исходного (иначе оставляем что было).
+        if not retry_bad or retry_stop != "max_tokens":
+            text, stop_reason = retry_text, retry_stop
+
     log.info("llm_interpreter.done", chars=len(text), stop_reason=stop_reason)
     return text
 

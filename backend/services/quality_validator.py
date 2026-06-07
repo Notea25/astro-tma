@@ -31,6 +31,11 @@ class ValidationContext:
     section_kind: str
     subject: str
     gender: str | None = None
+    # Целевой объём секции в словах (из генератора). Если задан, тексты заметно
+    # короче цели (< target * _THIN_RATIO) помечаются WARNING TOO_SHORT_THIN.
+    # None → thin-проверка выключена: валидатор не знает «правильного» объёма
+    # и остаётся самодостаточным (как в standalone-тестах).
+    target_words: int | None = None
 
 
 @dataclass(frozen=True)
@@ -47,6 +52,13 @@ class Issue:
 # хорошие тексты (>100) — нет.
 _MIN_WORDS = 50
 
+# Полу-заглушка: формально не обрезок, но заметно короче ЦЕЛЕВОГО объёма
+# секции. Цель приходит из генератора (ctx.target_words = _MIN_FULL_WORDS),
+# а не зашита здесь — иначе порог рассинхронится с промптом и любой штатный
+# текст уйдёт в бесконечный repair. Берём долю от цели, чтобы ловить только
+# реально проваленные тексты («Венера-60» при цели 90), а не штатный разброс.
+_THIN_RATIO = 0.8
+
 # Латиница длиной >=2, кроме разрешённых аббревиатур (середина неба и т.п.).
 _LATIN_ALLOWLIST = {
     "mc",
@@ -58,18 +70,25 @@ _LATIN_ALLOWLIST = {
     "ai",
     "id",
     "ok",
+    "iq",
+    "eq",
 }
 
 # Завершающие предложение символы — если текст кончается не на них, это обрыв.
 _SENTENCE_END = (".", "!", "?", "…", "»", ")", '"', "”")
 
 # Шаблонные фразы-болванки. Каждый матч — отдельный Issue.
+# NB: «на личном уровне» и «поколенческий аспект» НЕ добавлены намеренно —
+# это легитимные обороты в разборе высших планет (см. позитивный тест
+# test_generational_allowed_in_outer_aspect). Ловим только пустые штампы.
 _TEMPLATE_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"аспект возможности"),
-    re.compile(r"потенциал раскрыва\w* через осознанн"),
-    re.compile(r"чем точнее орб,?\s*тем заметнее"),
-    re.compile(r"положение в \d+-?\s?м? доме уточня\w*"),
+    re.compile(r"потенциал раскрыва\w*"),
+    re.compile(r"чем точнее орб"),
+    re.compile(r"положение в \d*-?\s?м? ?доме уточня\w*"),
     re.compile(r"да[её]т возможность,?\s*котор\w+ важно осознанно использовать"),
+    re.compile(r"важно осознанно использова\w*"),
+    re.compile(r"это да[её]т возможность"),
     re.compile(r"любовь и желание текут гармонично"),
     re.compile(r"раскрывает свой стиль через характерные реакции"),
 )
@@ -91,12 +110,21 @@ _GENDER_NUMBER_PATTERNS: tuple[re.Pattern[str], ...] = (
 _WORD_DUP = re.compile(r"\b([^\W\d_]{3,})\s+\1\b", re.IGNORECASE | re.UNICODE)
 
 _LATIN_TOKEN = re.compile(r"[A-Za-z]{2,}")
+# Любой bold-span (для подсчёта слов: тело важнее, заголовки/выделения опускаем).
 _HEADING = re.compile(r"\*\*.+?\*\*")
+# Только bold, занимающий ВСЮ строку = заголовок секции. Inline-bold внутри
+# абзаца (**Wars** посреди предложения) сюда не попадёт — его латиница должна
+# ловиться как англицизм (finding №3).
+_LINE_HEADING = re.compile(r"^[ \t]*\*\*.+?\*\*[ \t]*$", re.MULTILINE)
 _WORD = re.compile(r"[^\W\d_]+", re.UNICODE)
 
 
 def _strip_headings(text: str) -> str:
     return _HEADING.sub(" ", text)
+
+
+def _strip_line_headings(text: str) -> str:
+    return _LINE_HEADING.sub(" ", text)
 
 
 def _word_count(text: str) -> int:
@@ -130,6 +158,18 @@ class TextValidator:
                     stripped[:80],
                 )
             )
+        elif ctx.target_words:
+            thin_floor = int(ctx.target_words * _THIN_RATIO)
+            if words < thin_floor:
+                issues.append(
+                    Issue(
+                        "TOO_SHORT_THIN",
+                        Severity.WARNING,
+                        f"Текст короче целевого объёма ({words} слов, "
+                        f"цель ~{ctx.target_words}, порог {thin_floor})",
+                        stripped[:80],
+                    )
+                )
 
         # ── Обрыв на полуслове ───────────────────────────────────────
         if stripped[-1] not in _SENTENCE_END:
@@ -171,7 +211,10 @@ class TextValidator:
                     break
 
         # ── Латиница в русском тексте ────────────────────────────────
-        for token in _LATIN_TOKEN.findall(stripped):
+        # Заголовки-строки **...** могут легитимно содержать латиницу (имена
+        # секций), их вырезаем. Inline-bold **Wars** внутри абзаца НЕ заголовок —
+        # его латиница остаётся под проверкой (finding №3).
+        for token in _LATIN_TOKEN.findall(_strip_line_headings(stripped)):
             if token.lower() in _LATIN_ALLOWLIST:
                 continue
             issues.append(

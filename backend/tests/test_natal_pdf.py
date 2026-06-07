@@ -1105,3 +1105,121 @@ def test_hidden_aspect_dropped_from_pdf():
         descriptions=descriptions,
     )
     assert pdf.startswith(b"%PDF-")
+
+
+# ── Layer 1+2: секционные цели → thin-репейр без ложных срабатываний ────
+
+
+def test_section_targets_aligned_with_prompts():
+    """Цели согласованы с верхними ориентирами промптов (houses/aspects ~120/140)."""
+    assert natal_descriptions._MIN_FULL_WORDS == {
+        "planets": 90,
+        "houses": 120,
+        "aspects": 140,
+    }
+
+
+def test_thin_aspect_sent_to_repair():
+    """Аспект ~90 слов при цели 140 (floor 112) → TOO_SHORT_THIN → repair."""
+    text = (
+        "Венера в трине к Марсу соединяет нежность и напор: натив умеет и "
+        "желать, и заботиться, не теряя одно ради другого человека рядом. "
+        "В отношениях он берёт инициативу мягко, без давления, и партнёр "
+        "чувствует одновременно страсть и безопасность одновременно. В работе "
+        "это придаёт обаяние переговорщика — он добивается своего, не наживая "
+        "врагов вокруг себя. Сильная сторона — притягательность и лёгкость "
+        "в сближении с новыми людьми. Зона роста — не путать лёгкость с "
+        "поверхностностью, доводить близость до настоящей глубины чувств."
+    )
+    entry = {"short": "коротко", "full": text}
+    assert natal_descriptions._entry_needs_repair(entry, "aspects") is True
+
+
+def test_compact_planet_not_sent_to_repair():
+    """Планета в районе цели (≥floor 72) НЕ уходит в repair (anti-false-positive)."""
+    body = " ".join(f"факт{i}" for i in range(85))
+    entry = {"short": "коротко", "full": f"Меркурий в Близнецах. {body}."}
+    assert natal_descriptions._entry_needs_repair(entry, "planets") is False
+
+
+# ── Layer 3: финальный synthesis — обрыв → один повтор ─────────────────
+
+
+@pytest.mark.asyncio
+async def test_reading_retries_on_truncation(monkeypatch):
+    """Обрыв на полуслове (stop_reason=max_tokens) → повтор с большим лимитом."""
+    planets, _houses, aspects = _sample_chart()
+    seq = [
+        # 1-й вызов: текст оборван на полуслове + stop_reason max_tokens
+        SimpleNamespace(
+            content=[SimpleNamespace(text="Главное противоречие вашей карты — вы строите карь")],
+            stop_reason="max_tokens",
+        ),
+        # 2-й вызов (retry): полноценный завершённый текст
+        SimpleNamespace(
+            content=[
+                SimpleNamespace(
+                    text=" ".join(f"слово{i}" for i in range(200)) + " финал завершён."
+                )
+            ],
+            stop_reason="end_turn",
+        ),
+    ]
+    seen = []
+
+    class FakeMessages:
+        async def create(self, **kwargs):
+            seen.append(kwargs["max_tokens"])
+            return seq[len(seen) - 1]
+
+    class FakeAnthropic:
+        def __init__(self, api_key):
+            self.messages = FakeMessages()
+
+    monkeypatch.setitem(sys.modules, "anthropic", SimpleNamespace(AsyncAnthropic=FakeAnthropic))
+
+    reading = await llm_interpreter.generate_natal_reading(
+        sun_sign="Scorpio",
+        moon_sign="Aquarius",
+        ascendant_sign="Aries",
+        planets=planets,
+        aspects=aspects,
+        api_key="k",
+    )
+
+    assert len(seen) == 2, "должен быть ровно один повтор"
+    assert seen[1] > seen[0], "повтор с увеличенным лимитом токенов"
+    assert reading.endswith("завершён.")
+
+
+@pytest.mark.asyncio
+async def test_reading_no_retry_when_complete(monkeypatch):
+    """Полноценный завершённый разбор → ровно один вызов, без лишнего повтора."""
+    planets, _houses, aspects = _sample_chart()
+    full = " ".join(f"слово{i}" for i in range(300)) + " финал."
+    seen = []
+
+    class FakeMessages:
+        async def create(self, **kwargs):
+            seen.append(kwargs["max_tokens"])
+            return SimpleNamespace(
+                content=[SimpleNamespace(text=full)], stop_reason="end_turn"
+            )
+
+    class FakeAnthropic:
+        def __init__(self, api_key):
+            self.messages = FakeMessages()
+
+    monkeypatch.setitem(sys.modules, "anthropic", SimpleNamespace(AsyncAnthropic=FakeAnthropic))
+
+    reading = await llm_interpreter.generate_natal_reading(
+        sun_sign="Scorpio",
+        moon_sign="Aquarius",
+        ascendant_sign="Aries",
+        planets=planets,
+        aspects=aspects,
+        api_key="k",
+    )
+
+    assert len(seen) == 1, "завершённый текст не должен вызывать повтор"
+    assert reading == full

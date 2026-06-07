@@ -236,3 +236,229 @@ class TestEdgeCases:
         issues = v.validate(text, ctx)
         truncated = [i for i in issues if i.code == "TRUNCATED"]
         assert not truncated
+
+
+# ────────────────────────────────────────────────────────────────────
+# РЕГРЕССИИ — фиксы расслоения качества и ложных срабатываний латиницы
+# ────────────────────────────────────────────────────────────────────
+
+
+_VENUS_65 = (
+    "Венера в Тельце даёт телесную, осязаемую любовь: для натива важны "
+    "прикосновения, вкус, запах, фактура вещей. В отношениях он ищет "
+    "стабильность и верность, тяжело переносит резкие перемены настроения "
+    "партнёра. Деньги и красота связаны напрямую — натив тратит на то, "
+    "что можно потрогать и чем владеть долго. Риск: собственничество и "
+    "лень в чувствах, когда комфорт важнее развития. Учитесь отпускать "
+    "контроль над близкими и ценить нематериальные знаки внимания тоже."
+)  # 65 слов
+
+
+class TestThinThreshold:
+    """thin-порог секционный (target_words * 0.8) и согласован с генератором."""
+
+    def test_thin_only_with_target(self, v):
+        """Без target_words thin-проверка выключена — валидатор самодостаточен."""
+        ctx = ValidationContext(section_kind="planet_in_sign", subject="Венера")
+        codes = {i.code for i in v.validate(_VENUS_65, ctx)}
+        assert "TOO_SHORT_THIN" not in codes
+        assert "TOO_SHORT_CRITICAL" not in codes
+
+    def test_thin_warned_below_floor(self, v):
+        """65 слов при цели 90 → ниже порога 72 → WARNING, не CRITICAL/TRUNCATED."""
+        ctx = ValidationContext(section_kind="planet_in_sign", subject="Венера", target_words=90)
+        issues = v.validate(_VENUS_65, ctx)
+        codes = {i.code for i in issues}
+        assert "TOO_SHORT_THIN" in codes
+        assert "TOO_SHORT_CRITICAL" not in codes
+        assert "TRUNCATED" not in codes
+        thin = next(i for i in issues if i.code == "TOO_SHORT_THIN")
+        assert thin.severity == Severity.WARNING
+
+    def test_not_thin_above_floor(self, v):
+        """65 слов при цели 75 → выше порога 60 → штатный текст, не thin."""
+        ctx = ValidationContext(section_kind="house", subject="5 дом", target_words=75)
+        codes = {i.code for i in v.validate(_VENUS_65, ctx)}
+        assert "TOO_SHORT_THIN" not in codes
+
+    def test_at_target_not_thin(self, v):
+        """Текст в районе цели не помечается thin (нет лишних repair)."""
+        body = "Натив осваивает сферу через конкретные осязаемые шаги ежедневно. "
+        text = "Солнце в Тельце. " + body * 14 + "Это итог."
+        ctx = ValidationContext(section_kind="planet_in_sign", subject="Солнце", target_words=90)
+        codes = {i.code for i in v.validate(text, ctx)}
+        assert "TOO_SHORT_THIN" not in codes
+        assert "TOO_SHORT_CRITICAL" not in codes
+
+
+class TestQualityFixes:
+    """Латиница в заголовках/аббревиатурах, но не в inline-bold."""
+
+    def test_latin_in_heading_ignored(self, v):
+        """Латиница в заголовке-СТРОКЕ **...** не считается англицизмом."""
+        text = (
+            "**Sun in Taurus**\n"
+            "Солнце в Тельце делает натива человеком, для "
+            "которого мир начинается с осязаемого. Он движется медленно, но "
+            "неуклонно, ценит результат, который можно потрогать и измерить. "
+            "В карьере ищет позицию, дающую ресурсы и вес, убеждает фактами, "
+            "а не словами, и оставляет за собой материальный, прочный след."
+        )
+        ctx = ValidationContext(section_kind="planet_in_sign", subject="Солнце")
+        issues = v.validate(text, ctx)
+        latin = [i for i in issues if i.code == "LATIN_IN_RUSSIAN"]
+        assert not latin, f"Латиница в заголовке-строке не должна ловиться: {latin}"
+
+    def test_latin_in_inline_bold_caught(self, v):
+        """Inline-bold **Wars** посреди абзаца — НЕ заголовок, латиница ловится."""
+        text = (
+            "Использование силы в корыстных целях. Тёмная магия. Магические "
+            "**Wars** и родовые конфликты с близкими людьми. Натив учится "
+            "прощать, принимать свою природу и направлять дары во благо, а не "
+            "во вред окружающим его людям и собственной семье в долгой перспективе."
+        )
+        ctx = ValidationContext(section_kind="planet_in_sign", subject="Плутон")
+        issues = v.validate(text, ctx)
+        latin = [i for i in issues if i.code == "LATIN_IN_RUSSIAN"]
+        assert latin, "Латиница в inline-bold должна ловиться (finding №3)"
+        assert "Wars" in latin[0].snippet
+
+    def test_iq_eq_allowed(self, v):
+        """Аббревиатуры IQ / EQ — разрешённые, не англицизмы."""
+        text = (
+            "Высокий IQ соединяется у натива с развитым EQ: он одинаково силён "
+            "в анализе и в чувствах. Это даёт ему редкую способность понимать "
+            "и логику ситуации, и эмоции людей вокруг, не теряя при этом ни "
+            "холодной головы, ни живого, тёплого человеческого участия в делах."
+        )
+        ctx = ValidationContext(section_kind="planet_in_sign", subject="Меркурий")
+        issues = v.validate(text, ctx)
+        latin = [i for i in issues if i.code == "LATIN_IN_RUSSIAN"]
+        assert not latin, f"IQ/EQ должны быть разрешены: {latin}"
+
+
+# ────────────────────────────────────────────────────────────────────
+# LAYER 1 — секционные пороги под реальные цели генератора (90/120/140)
+# ────────────────────────────────────────────────────────────────────
+
+
+class TestSectionTargets:
+    """Цели planets=90 / houses=120 / aspects=140 → floors 72 / 96 / 112."""
+
+    def test_house_75_words_at_target_120_is_thin(self, v):
+        """Дом ~75 слов при цели 120 (floor 96) → TOO_SHORT_THIN, не CRITICAL."""
+        text = (
+            "Пятый дом в Стрельце отвечает за творчество, детей и романтику. "
+            "Натив влюбляется в идеи и людей, которые расширяют его горизонт, "
+            "тянется к спорту, дальним путешествиям, азартной игре и сцене. "
+            "В детях он ценит свободу и поощряет их живое любопытство, а не "
+            "слепое послушание любой ценой. В романах ему важен драйв и общий "
+            "поиск смысла, скучную предсказуемость он не выносит и быстро остывает. "
+            "Риск — разбрасываться: начинать ярко и эффектно, но бросать дело, "
+            "когда уходит первый кураж и притупляется живой азарт самой игры."
+        )
+        ctx = ValidationContext(section_kind="house", subject="5 дом", target_words=120)
+        codes = {i.code for i in v.validate(text, ctx)}
+        assert "TOO_SHORT_THIN" in codes
+
+    def test_aspect_90_words_at_target_140_is_thin(self, v):
+        """Аспект на ~90 слов при цели 140 (floor 112) → TOO_SHORT_THIN."""
+        text = (
+            "Венера в трине к Марсу соединяет нежность и напор: натив умеет "
+            "и желать, и заботиться, не теряя одно ради другого. В отношениях "
+            "он берёт инициативу мягко, без давления, и партнёр чувствует "
+            "одновременно страсть и безопасность. В работе это даёт обаяние "
+            "переговорщика — он добивается своего, не наживая врагов. Сильная "
+            "сторона: притягательность и лёгкость в сближении. Зона роста — "
+            "не путать лёгкость с поверхностностью, доводить близость до глубины, "
+            "а проекты до конца, не бросая на половине ради нового увлечения."
+        )
+        ctx = ValidationContext(section_kind="aspect", subject="Венера △ Марс", target_words=140)
+        codes = {i.code for i in v.validate(text, ctx)}
+        assert "TOO_SHORT_THIN" in codes
+
+    def test_compact_planet_at_target_not_thin(self, v):
+        """Планета ~85 слов при цели 90 (floor 72) — штатный текст, не thin."""
+        text = (
+            "Меркурий в Близнецах делает ум натива быстрым, любопытным и "
+            "переключаемым: он схватывает суть на лету, легко говорит и пишет, "
+            "обожает обмен фактами и новыми контактами с разными людьми. "
+            "В работе силён там, где нужно быстро переварить много информации "
+            "и связать разрозненное в стройную и понятную другим картину. "
+            "Уязвимость — распыление: десять вкладок в голове сразу, ни одна "
+            "из них не закрыта до конца. Совет — выбирать одну тему в день "
+            "и доводить её до конкретного результата, а не коллекционировать "
+            "начатое и так и недосказанное вслух без ясного финала."
+        )
+        ctx = ValidationContext(section_kind="planet_in_sign", subject="Меркурий", target_words=90)
+        codes = {i.code for i in v.validate(text, ctx)}
+        assert "TOO_SHORT_THIN" not in codes
+        assert "TOO_SHORT_CRITICAL" not in codes
+
+
+# ────────────────────────────────────────────────────────────────────
+# LAYER 2 — усиленные шаблонные паттерны
+# ────────────────────────────────────────────────────────────────────
+
+
+class TestTemplatePatterns:
+    """Новые штампы ловятся, легитимные обороты высших планет — нет."""
+
+    @pytest.mark.parametrize(
+        "phrase",
+        [
+            "важно осознанно использовать этот ресурс",
+            "потенциал раскрывается через работу и быт",
+            "это даёт возможность для роста",
+            "положение в доме уточняет сферу проявления",
+            "чем точнее орб тем заметнее тема",
+        ],
+    )
+    def test_template_phrase_detected(self, v, phrase):
+        text = phrase + ". " + " ".join(["содержательный"] * 60) + "."
+        ctx = ValidationContext(section_kind="aspect", subject="тест")
+        codes = {i.code for i in v.validate(text, ctx)}
+        assert "TEMPLATE_PHRASE" in codes, f"не пойман штамп: {phrase!r}"
+
+    def test_legit_outer_aspect_phrases_not_template(self, v):
+        """«на личном уровне» и «поколенческий аспект» — НЕ штампы."""
+        text = (
+            "Секстиль Урана и Плутона — поколенческий аспект: стремление "
+            "к трансформации через нестандартные решения. На личном уровне — "
+            "способность перестраиваться без разрушения. Эта связь усиливает "
+            "вашу способность к глубоким изменениям, когда вы отказываетесь "
+            "от устаревших паттернов и выбираете осознанный путь обновления."
+        )
+        ctx = ValidationContext(section_kind="aspect", subject="Уран ⚹ Плутон")
+        codes = {i.code for i in v.validate(text, ctx)}
+        assert "TEMPLATE_PHRASE" not in codes
+
+
+# ────────────────────────────────────────────────────────────────────
+# LAYER 3 — финальный synthesis: обрыв и критическая короткость
+# ────────────────────────────────────────────────────────────────────
+
+
+class TestSynthesis:
+    """validate(reading, section_kind='synthesis') ловит обрыв/короткость."""
+
+    def test_synthesis_truncated_detected(self, v):
+        text = (
+            "Главное противоречие вашей карты — между жаждой стабильности и "
+            "тягой к переменам. Вы строите прочное, но внутри саботируете "
+            "собственные правила. Или вы строите карь"
+        )
+        ctx = ValidationContext(section_kind="synthesis", subject="Финал")
+        codes = {i.code for i in v.validate(text, ctx)}
+        assert "TRUNCATED" in codes
+
+    def test_synthesis_complete_clean(self, v):
+        text = (
+            "Главный дар вашей карты — умение превращать идеи в осязаемый "
+            "результат. Главная задача — научиться отпускать контроль там, "
+            "где он мешает близости. В ближайший год обратите внимание на "
+            "баланс между карьерой и домом: именно там сейчас точка роста."
+        )
+        ctx = ValidationContext(section_kind="synthesis", subject="Финал")
+        codes = {i.code for i in v.validate(text, ctx)}
+        assert "TRUNCATED" not in codes
