@@ -7,7 +7,7 @@
 
 import pytest
 
-from services.quality_validator import TextValidator, ValidationContext, Severity
+from services.quality_validator import Severity, TextValidator, ValidationContext
 
 
 @pytest.fixture

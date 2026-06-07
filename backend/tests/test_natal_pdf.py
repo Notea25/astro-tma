@@ -1035,7 +1035,6 @@ def test_outer_planet_fallback_drops_generational_label():
     """Уран/Нептун/Плутон в fallback не должны нести поколенческий ярлык —
     для индивидуального отчёта он одинаков для миллионов и читается как заглушка."""
     from services.quality_validator import (
-        Severity,
         TextValidator,
         ValidationContext,
     )
