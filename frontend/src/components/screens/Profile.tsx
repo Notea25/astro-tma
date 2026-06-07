@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import WebApp from "@twa-dev/sdk";
@@ -15,13 +15,33 @@ const SUPPORT_BOT_USERNAME = (
 ).replace(/^@/, "");
 
 const MONTHS_RU = [
-  "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
-  "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
+  "Январь",
+  "Февраль",
+  "Март",
+  "Апрель",
+  "Май",
+  "Июнь",
+  "Июль",
+  "Август",
+  "Сентябрь",
+  "Октябрь",
+  "Ноябрь",
+  "Декабрь",
 ];
 
 const MONTHS_RU_GENITIVE = [
-  "января", "февраля", "марта", "апреля", "мая", "июня",
-  "июля", "августа", "сентября", "октября", "ноября", "декабря",
+  "января",
+  "февраля",
+  "марта",
+  "апреля",
+  "мая",
+  "июня",
+  "июля",
+  "августа",
+  "сентября",
+  "октября",
+  "ноября",
+  "декабря",
 ];
 
 function formatBirthDateRu(iso: string | null | undefined): string | null {
@@ -39,8 +59,9 @@ function formatBirthDateRu(iso: string | null | undefined): string | null {
  * so the year is freely scrollable on iOS (native <input type="date"> only
  * pages through months in Telegram's WebView).
  *
- * `value` and `onChange` use ISO "YYYY-MM-DD"; selects update only when
- * the user picks something, so partial input leaves the others untouched.
+ * Each part is held in local state so a single pick sticks even before the
+ * other two are filled; the ISO "YYYY-MM-DD" value is emitted upward only
+ * once all three parts are present.
  */
 function BirthDateInput({
   value,
@@ -49,12 +70,23 @@ function BirthDateInput({
   value: string;
   onChange: (next: string) => void;
 }) {
-  const [year, month, day] = useMemo(() => {
-    if (!value) return ["", "", ""];
+  const parts = useMemo(() => {
     const m = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!m) return ["", "", ""];
-    return [m[1], m[2], m[3]];
+    return m
+      ? { year: m[1], month: m[2], day: m[3] }
+      : { year: "", month: "", day: "" };
   }, [value]);
+
+  const [day, setDay] = useState(parts.day);
+  const [month, setMonth] = useState(parts.month);
+  const [year, setYear] = useState(parts.year);
+
+  // Sync local state when the parent value changes (e.g. loaded from server).
+  useEffect(() => {
+    setDay(parts.day);
+    setMonth(parts.month);
+    setYear(parts.year);
+  }, [parts.day, parts.month, parts.year]);
 
   const currentYear = new Date().getFullYear();
   const years = useMemo(() => {
@@ -71,8 +103,12 @@ function BirthDateInput({
   }, [year, month, currentYear]);
 
   const emit = (d: string, m: string, y: string) => {
-    if (!d || !m || !y) return;
-    onChange(`${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`);
+    setDay(d);
+    setMonth(m);
+    setYear(y);
+    if (d && m && y) {
+      onChange(`${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`);
+    }
   };
 
   return (
@@ -98,10 +134,7 @@ function BirthDateInput({
       >
         <option value="">Месяц</option>
         {MONTHS_RU.map((label, idx) => (
-          <option
-            key={label}
-            value={String(idx + 1).padStart(2, "0")}
-          >
+          <option key={label} value={String(idx + 1).padStart(2, "0")}>
             {label}
           </option>
         ))}
@@ -142,11 +175,7 @@ function PurchasesCard() {
     : totalCount === 0
       ? "Нет активных покупок"
       : `${totalCount} ${
-          totalCount === 1
-            ? "покупка"
-            : totalCount < 5
-              ? "покупки"
-              : "покупок"
+          totalCount === 1 ? "покупка" : totalCount < 5 ? "покупки" : "покупок"
         }`;
 
   return (
@@ -179,7 +208,9 @@ function PurchasesCard() {
         <span className="pr-row2__t">Мои покупки</span>
         <span className="pr-row2__s">{previewLabel}</span>
       </span>
-      <span className="pr-row2__chev" aria-hidden="true">›</span>
+      <span className="pr-row2__chev" aria-hidden="true">
+        ›
+      </span>
     </motion.button>
   );
 }
@@ -326,10 +357,7 @@ export function Profile() {
                 className="entitlement-badge entitlement-badge--paid"
                 style={{ marginTop: 8 }}
               >
-                <span
-                  className="entitlement-badge__glyph"
-                  aria-hidden="true"
-                >
+                <span className="entitlement-badge__glyph" aria-hidden="true">
                   ✦
                 </span>
                 Premium активен
@@ -350,7 +378,16 @@ export function Profile() {
               onClick={openEditor}
               aria-label="Редактировать"
             >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 14 14"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z" />
               </svg>
             </button>
@@ -382,7 +419,9 @@ export function Profile() {
                 Все гороскопы, карта, Таро без ограничений
               </span>
             </span>
-            <span className="pr-row2__chev" aria-hidden="true">›</span>
+            <span className="pr-row2__chev" aria-hidden="true">
+              ›
+            </span>
           </motion.button>
         )}
 
@@ -510,8 +549,8 @@ export function Profile() {
                     {formatBirthDateRu(birthDate) ?? birthDate}
                   </div>
                   <p className="form-hint form-hint--locked">
-                    🔒 Дата рождения не меняется — она задаёт всю Матрицу
-                    Судьбы и натальную карту.
+                    🔒 Дата рождения не меняется — она задаёт всю Матрицу Судьбы
+                    и натальную карту.
                   </p>
                 </div>
               ) : (
@@ -673,7 +712,9 @@ export function Profile() {
             <span className="pr-row2__t">Пригласить друзей</span>
             <span className="pr-row2__s">Поделитесь ссылкой</span>
           </span>
-          <span className="pr-row2__chev" aria-hidden="true">›</span>
+          <span className="pr-row2__chev" aria-hidden="true">
+            ›
+          </span>
         </motion.button>
 
         {SUPPORT_BOT_USERNAME && (
@@ -685,9 +726,7 @@ export function Profile() {
             transition={{ delay: 0.14 }}
             onClick={() => {
               impact("light");
-              WebApp.openTelegramLink(
-                `https://t.me/${SUPPORT_BOT_USERNAME}`,
-              );
+              WebApp.openTelegramLink(`https://t.me/${SUPPORT_BOT_USERNAME}`);
             }}
           >
             <span className="pr-row2__ic" aria-hidden="true">
@@ -711,7 +750,9 @@ export function Profile() {
                 Задайте вопрос — ответим в чате бота
               </span>
             </span>
-            <span className="pr-row2__chev" aria-hidden="true">›</span>
+            <span className="pr-row2__chev" aria-hidden="true">
+              ›
+            </span>
           </motion.button>
         )}
       </div>
