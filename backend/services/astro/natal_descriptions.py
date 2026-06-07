@@ -1060,7 +1060,7 @@ async def generate_natal_descriptions(
         if not triple:
             continue
         p1, p2, atype = triple
-        aspect = {"p1": p1, "p2": p2, "type": atype, **entry}
+        aspect: dict[str, Any] = {"p1": p1, "p2": p2, "type": atype, **entry}
         # Аспект, который так и не починился (короткий/обрыв/шаблон) — лучше
         # скрыть, чем показать болванку (10 хороших > 16 с заглушками).
         full = str(entry.get("full") or "").strip()
