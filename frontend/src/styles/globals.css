@@ -1022,7 +1022,9 @@ body::after {
   -webkit-tap-highlight-color: transparent;
   width: 100%;
   margin-top: 8px;
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 .btn-rub:hover:not(:disabled),
 .btn-rub:active:not(:disabled) {
@@ -1789,10 +1791,12 @@ body::after {
 }
 
 /* ── Tarot ──────────────────────────────────────────────────────────────────── */
-.tarot-screen {
+.tarot-screen,
+.mac-screen {
   font-family: var(--tarot-font-body);
 }
-.tarot-screen .screen-title {
+.tarot-screen .screen-title,
+.mac-screen .screen-title {
   font-family: var(--tarot-font-display);
   font-size: clamp(18px, 4.2vw, 24px);
   line-height: 1.12;
@@ -6166,8 +6170,7 @@ body::before {
   display: grid;
   place-items: center;
   container-type: inline-size;
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
 }
 
 .spread-intro-v2__mini-card--ornament::after {
@@ -6487,8 +6490,7 @@ body::before {
   display: grid;
   place-items: center;
   container-type: inline-size;
-  box-shadow:
-    0 6px 18px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
 }
 
 .spread-intro-v2__back-card-art {
@@ -6930,6 +6932,7 @@ body::before {
   border: 0.5px solid var(--glass-border);
   background: var(--glass);
   color: var(--text-soft);
+  font-family: inherit;
   font-size: var(--fs-xs);
   letter-spacing: 0.02em;
   cursor: pointer;
@@ -7891,12 +7894,11 @@ body::before {
   margin: 0 0 16px;
   border-radius: 14px;
   border: 1px solid rgba(232, 139, 139, 0.42);
-  background:
-    linear-gradient(
-      135deg,
-      rgba(232, 139, 139, 0.12),
-      rgba(212, 178, 84, 0.06)
-    );
+  background: linear-gradient(
+    135deg,
+    rgba(232, 139, 139, 0.12),
+    rgba(212, 178, 84, 0.06)
+  );
   color: var(--text);
 }
 .mercury-retro-alert__glyph {
@@ -9302,12 +9304,23 @@ body::before {
   width: 96px;
   height: 96px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(232, 200, 98, 0.55) 0%, transparent 60%);
+  background: radial-gradient(
+    circle,
+    rgba(232, 200, 98, 0.55) 0%,
+    transparent 60%
+  );
   animation: destiny-calc-pulse 1.4s ease-in-out infinite;
 }
 @keyframes destiny-calc-pulse {
-  0%, 100% { transform: scale(0.9); opacity: 0.6; }
-  50%       { transform: scale(1.1); opacity: 1;   }
+  0%,
+  100% {
+    transform: scale(0.9);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
 }
 
 .destiny-reading__error {
@@ -9393,7 +9406,7 @@ body::before {
   /* Reserve space for the bottom-nav + iOS home indicator so the last
      line of the description is never hidden behind them. */
   padding: 12px 20px
-           calc(var(--nav-height, 64px) + var(--safe-bottom, 0px) + 20px);
+    calc(var(--nav-height, 64px) + var(--safe-bottom, 0px) + 20px);
   max-height: 82vh;
   overflow-y: auto;
   box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5);
@@ -9806,7 +9819,9 @@ body::before {
   cursor: pointer;
   font: inherit;
   color: inherit;
-  transition: border-color 150ms ease, background 150ms ease;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease;
 }
 .destiny-purposes__cell:active {
   border-color: rgba(232, 200, 98, 0.55);
@@ -10045,8 +10060,12 @@ body::before {
   color: var(--gold);
   margin-top: 1px;
 }
-.destiny-info__tier--free .destiny-info__tier-mark { color: #8bc89b; }
-.destiny-info__tier--prem .destiny-info__tier-mark { color: var(--gold); }
+.destiny-info__tier--free .destiny-info__tier-mark {
+  color: #8bc89b;
+}
+.destiny-info__tier--prem .destiny-info__tier-mark {
+  color: var(--gold);
+}
 
 .destiny-info__tier-prem-title {
   display: flex;

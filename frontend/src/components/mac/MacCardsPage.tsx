@@ -1,15 +1,15 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import styles from './MacCardsPage.module.css';
-import { MacCardBack } from './MacCardBack';
-import { MAC_DECK, CATEGORY_INFO, CARD_W, CARD_H } from './macData';
-import type { MacCard, MacCategory } from './macData';
-import { useHaptic, useTelegramBackButton } from '@/hooks/useTelegram';
-import { macApi } from '@/services/api';
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
+import styles from "./MacCardsPage.module.css";
+import { TarotCardBack } from "@/components/tarot/TarotCardBack";
+import { MAC_DECK, CATEGORY_INFO, CARD_W, CARD_H } from "./macData";
+import type { MacCard, MacCategory } from "./macData";
+import { useHaptic, useTelegramBackButton } from "@/hooks/useTelegram";
+import { macApi } from "@/services/api";
 
-type Phase = 'idle' | 'shuffle' | 'fan' | 'drawn' | 'revealed';
+type Phase = "idle" | "shuffle" | "fan" | "drawn" | "revealed";
 
-type Filter = MacCategory | 'all';
+type Filter = MacCategory | "all";
 
 type FanCard = { id: number; card: MacCard; gone: boolean };
 
@@ -34,26 +34,57 @@ const STARS = Array.from({ length: 70 }, (_, i) => ({
   op: 0.15 + (i % 4) * 0.08,
 }));
 
-const FILTERS: { id: Filter; name: string; symbol: string; accent: string }[] = [
-  { id: 'all',            name: 'Все',             symbol: '✵', accent: '#c9a84c' },
-  { id: 'inner_world',    name: CATEGORY_INFO.inner_world.name,    symbol: CATEGORY_INFO.inner_world.symbol,    accent: CATEGORY_INFO.inner_world.accent },
-  { id: 'relationships',  name: CATEGORY_INFO.relationships.name,  symbol: CATEGORY_INFO.relationships.symbol,  accent: CATEGORY_INFO.relationships.accent },
-  { id: 'path',           name: CATEGORY_INFO.path.name,           symbol: CATEGORY_INFO.path.symbol,           accent: CATEGORY_INFO.path.accent },
-  { id: 'fears',          name: CATEGORY_INFO.fears.name,          symbol: CATEGORY_INFO.fears.symbol,          accent: CATEGORY_INFO.fears.accent },
-  { id: 'resources',      name: CATEGORY_INFO.resources.name,      symbol: CATEGORY_INFO.resources.symbol,      accent: CATEGORY_INFO.resources.accent },
-  { id: 'transformation', name: CATEGORY_INFO.transformation.name, symbol: CATEGORY_INFO.transformation.symbol, accent: CATEGORY_INFO.transformation.accent },
-];
+const FILTERS: { id: Filter; name: string; symbol: string; accent: string }[] =
+  [
+    { id: "all", name: "Все", symbol: "✵", accent: "#c9a84c" },
+    {
+      id: "inner_world",
+      name: CATEGORY_INFO.inner_world.name,
+      symbol: CATEGORY_INFO.inner_world.symbol,
+      accent: CATEGORY_INFO.inner_world.accent,
+    },
+    {
+      id: "relationships",
+      name: CATEGORY_INFO.relationships.name,
+      symbol: CATEGORY_INFO.relationships.symbol,
+      accent: CATEGORY_INFO.relationships.accent,
+    },
+    {
+      id: "path",
+      name: CATEGORY_INFO.path.name,
+      symbol: CATEGORY_INFO.path.symbol,
+      accent: CATEGORY_INFO.path.accent,
+    },
+    {
+      id: "fears",
+      name: CATEGORY_INFO.fears.name,
+      symbol: CATEGORY_INFO.fears.symbol,
+      accent: CATEGORY_INFO.fears.accent,
+    },
+    {
+      id: "resources",
+      name: CATEGORY_INFO.resources.name,
+      symbol: CATEGORY_INFO.resources.symbol,
+      accent: CATEGORY_INFO.resources.accent,
+    },
+    {
+      id: "transformation",
+      name: CATEGORY_INFO.transformation.name,
+      symbol: CATEGORY_INFO.transformation.symbol,
+      accent: CATEGORY_INFO.transformation.accent,
+    },
+  ];
 
 // ─── fan card size (smaller than main card) ──────────────────────────────────
 
-const FAN_CARD_W = 140;
-const FAN_CARD_H = 216;
+const FAN_CARD_W = 96;
+const FAN_CARD_H = 188;
 
 function formatResetTime(value?: string): string {
-  if (!value) return '00:00';
-  return new Date(value).toLocaleTimeString('ru-RU', {
-    hour: '2-digit',
-    minute: '2-digit',
+  if (!value) return "00:00";
+  return new Date(value).toLocaleTimeString("ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -66,11 +97,13 @@ function CardFront({ card }: { card: MacCard }) {
   return (
     <div
       className={styles.frontWrap}
-      style={{
-        '--accent': info.accent,
-        '--front-from': info.bgFrom,
-        '--front-to': info.bgTo,
-      } as React.CSSProperties}
+      style={
+        {
+          "--accent": info.accent,
+          "--front-from": info.bgFrom,
+          "--front-to": info.bgTo,
+        } as React.CSSProperties
+      }
     >
       <div className={styles.frontBorder} />
       <div className={styles.frontMeta}>
@@ -108,13 +141,15 @@ function CardFront({ card }: { card: MacCard }) {
 
 export function MacCardsPage({ onBack }: { onBack: () => void }) {
   const { impact } = useHaptic();
-  const [filter, setFilter] = useState<Filter>('all');
-  const [phase, setPhase] = useState<Phase>('idle');
+  const [filter, setFilter] = useState<Filter>("all");
+  const [phase, setPhase] = useState<Phase>("idle");
   const [card, setCard] = useState<MacCard | null>(null);
   const [fanCards, setFanCards] = useState<FanCard[]>([]);
   const [flyingCard, setFlyingCard] = useState<FlyingCard | null>(null);
   const [justLanded, setJustLanded] = useState(false);
-  const [viewW, setViewW] = useState(() => typeof window !== 'undefined' ? window.innerWidth : 1200);
+  const [viewW, setViewW] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth : 1200,
+  );
 
   const dropTargetRef = useRef<HTMLDivElement>(null);
   const fanCardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
@@ -122,44 +157,53 @@ export function MacCardsPage({ onBack }: { onBack: () => void }) {
   useTelegramBackButton(onBack, true);
 
   const todayQuery = useQuery({
-    queryKey: ['mac-today'],
+    queryKey: ["mac-today"],
     queryFn: macApi.today,
     staleTime: 1000 * 60,
   });
 
-  const filterInfo = useMemo(() => FILTERS.find(f => f.id === filter)!, [filter]);
+  const filterInfo = useMemo(
+    () => FILTERS.find((f) => f.id === filter)!,
+    [filter],
+  );
   const cardInfo = card ? CATEGORY_INFO[card.category] : null;
   const todayPick = todayQuery.data?.pick ?? null;
   const nextResetAt = todayQuery.data?.next_reset_at;
   const todayLabel = useMemo(() => {
-    const raw = new Intl.DateTimeFormat('ru-RU', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
+    const raw = new Intl.DateTimeFormat("ru-RU", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
     }).format(new Date());
     return raw.charAt(0).toUpperCase() + raw.slice(1);
   }, []);
 
   useEffect(() => {
-    if (!todayPick || phase !== 'idle') return;
+    if (!todayPick || phase !== "idle") return;
     const existing = MAC_DECK.find((c) => c.number === todayPick.card_number);
     if (!existing) return;
     setCard(existing);
     setFilter(existing.category);
-    setPhase('revealed');
+    setPhase("revealed");
   }, [todayPick, phase]);
 
   useEffect(() => {
     const h = () => setViewW(window.innerWidth);
-    window.addEventListener('resize', h);
-    return () => window.removeEventListener('resize', h);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
   }, []);
 
   // ── fan parameters (responsive) ──────────────────────────────────────────
 
-  const fanCount = Math.min(11, Math.max(5, Math.floor(viewW / 150)));
-  const spreadDeg = Math.min(90, Math.max(45, viewW * 0.045 + 10));
+  const fanCount = Math.min(9, Math.max(5, Math.floor(viewW / 150)));
+  const spreadDeg = Math.min(120, Math.max(70, viewW * 0.12 + 30));
   const readerFanCount = viewW < 520 ? 7 : 9;
+  // Horizontal step between fan cards — scaled so the whole fan stays inside the
+  // viewport (outer cards must not get clipped on narrow screens).
+  const readerStepX = Math.min(
+    34,
+    Math.max(20, (viewW * 0.42) / readerFanCount),
+  );
   const readerFanCards = useMemo(
     () => Array.from({ length: readerFanCount }, (_, i) => i),
     [readerFanCount],
@@ -167,62 +211,75 @@ export function MacCardsPage({ onBack }: { onBack: () => void }) {
 
   // ── filter select ────────────────────────────────────────────────────────
 
-  const handleSelectFilter = useCallback((id: Filter) => {
-    if (phase !== 'idle') return;
-    setFilter(id);
-  }, [phase]);
+  const handleSelectFilter = useCallback(
+    (id: Filter) => {
+      if (phase !== "idle") return;
+      setFilter(id);
+    },
+    [phase],
+  );
 
   // ── shuffle → show fan ───────────────────────────────────────────────────
 
   const handleShuffleAndDraw = useCallback(() => {
     if (todayPick) return;
-    if (phase !== 'idle') return;
-    impact('medium');
-    setPhase('shuffle');
+    if (phase !== "idle") return;
+    impact("medium");
+    setPhase("shuffle");
     setTimeout(() => {
-      const pool = filter === 'all' ? MAC_DECK : MAC_DECK.filter(c => c.category === filter);
-      const withoutLast = card ? pool.filter(c => c.number !== card.number) : pool;
+      const pool =
+        filter === "all"
+          ? MAC_DECK
+          : MAC_DECK.filter((c) => c.category === filter);
+      const withoutLast = card
+        ? pool.filter((c) => c.number !== card.number)
+        : pool;
       const shuffled = [...withoutLast].sort(() => Math.random() - 0.5);
       const picks = shuffled.slice(0, Math.min(fanCount, shuffled.length));
       setFanCards(picks.map((c, i) => ({ id: i, card: c, gone: false })));
-      setPhase('fan');
-    }, 2000);
+      setPhase("fan");
+    }, 1200);
   }, [todayPick, phase, filter, fanCount, card, impact]);
 
   // ── fan card click → fly to center ───────────────────────────────────────
 
-  const handleFanCardClick = useCallback((fanId: number, pickedCard: MacCard) => {
-    if (flyingCard !== null) return;
+  const handleFanCardClick = useCallback(
+    (fanId: number, pickedCard: MacCard) => {
+      if (flyingCard !== null) return;
 
-    const cardEl = fanCardRefs.current.get(fanId);
-    const targetEl = dropTargetRef.current;
-    if (!cardEl || !targetEl) return;
-    impact('medium');
+      const cardEl = fanCardRefs.current.get(fanId);
+      const targetEl = dropTargetRef.current;
+      if (!cardEl || !targetEl) return;
+      impact("medium");
 
-    const cardRect = cardEl.getBoundingClientRect();
-    const targetRect = targetEl.getBoundingClientRect();
+      const cardRect = cardEl.getBoundingClientRect();
+      const targetRect = targetEl.getBoundingClientRect();
 
-    // centre of drop area, offset so card centre lands there
-    const targetX = targetRect.left + targetRect.width / 2 - CARD_W / 2;
-    const targetY = targetRect.top + targetRect.height / 2 - CARD_H / 2;
+      // centre of drop area, offset so card centre lands there
+      const targetX = targetRect.left + targetRect.width / 2 - CARD_W / 2;
+      const targetY = targetRect.top + targetRect.height / 2 - CARD_H / 2;
 
-    // remember fan-angle of this card to start the flight from that rotation
-    const activeFan = fanCards.filter(fc => !fc.gone);
-    const N = activeFan.length;
-    const idx = activeFan.findIndex(fc => fc.id === fanId);
-    const t = N === 1 ? 0.5 : idx / (N - 1);
-    const startRot = spreadDeg * (t - 0.5);
+      // remember fan-angle of this card to start the flight from that rotation
+      const activeFan = fanCards.filter((fc) => !fc.gone);
+      const N = activeFan.length;
+      const idx = activeFan.findIndex((fc) => fc.id === fanId);
+      const t = N === 1 ? 0.5 : idx / (N - 1);
+      const startRot = spreadDeg * (t - 0.5);
 
-    setFanCards(prev => prev.map(fc => fc.id === fanId ? { ...fc, gone: true } : fc));
-    setFlyingCard({
-      card: pickedCard,
-      startX: cardRect.left,
-      startY: cardRect.top,
-      dx: targetX - cardRect.left,
-      dy: targetY - cardRect.top,
-      startRot,
-    });
-  }, [flyingCard, fanCards, spreadDeg, impact]);
+      setFanCards((prev) =>
+        prev.map((fc) => (fc.id === fanId ? { ...fc, gone: true } : fc)),
+      );
+      setFlyingCard({
+        card: pickedCard,
+        startX: cardRect.left,
+        startY: cardRect.top,
+        dx: targetX - cardRect.left,
+        dy: targetY - cardRect.top,
+        startRot,
+      });
+    },
+    [flyingCard, fanCards, spreadDeg, impact],
+  );
 
   // ── fly animation ends → card lands ──────────────────────────────────────
 
@@ -230,7 +287,7 @@ export function MacCardsPage({ onBack }: { onBack: () => void }) {
     if (!flyingCard) return;
     const landed = flyingCard.card;
     setCard(landed);
-    setPhase('drawn');
+    setPhase("drawn");
     setFlyingCard(null);
     setFanCards([]);
     setJustLanded(true);
@@ -240,9 +297,9 @@ export function MacCardsPage({ onBack }: { onBack: () => void }) {
   // ── reveal (flip) ────────────────────────────────────────────────────────
 
   const handleReveal = useCallback(() => {
-    if (phase !== 'drawn' || !card) return;
-    impact('success' as any);
-    setPhase('revealed');
+    if (phase !== "drawn" || !card) return;
+    impact("success" as any);
+    setPhase("revealed");
     // Fire-and-forget: log the pick to DB. Silent on failure — purely history tracking.
     macApi
       .pick({
@@ -263,34 +320,47 @@ export function MacCardsPage({ onBack }: { onBack: () => void }) {
   // ── prompt ───────────────────────────────────────────────────────────────
 
   const prompt = (() => {
-    if (todayQuery.isLoading) return 'Проверяем сегодняшнюю карту...';
-    if (phase === 'revealed' && nextResetAt) {
+    if (todayQuery.isLoading) return "Проверяем сегодняшнюю карту...";
+    if (phase === "revealed" && nextResetAt) {
       return `Сегодняшняя карта открыта. Следующее обновление в ${formatResetTime(nextResetAt)}`;
     }
-    if (phase === 'idle') return card
-      ? 'Сегодняшняя карта уже выбрана'
-      : 'Задайте вопрос и нажмите на карту';
-    if (phase === 'shuffle') return 'Карты перемешиваются…';
-    if (phase === 'fan') return flyingCard ? '' : 'Выберите карту, которую чувствуете';
-    if (phase === 'drawn') return 'Нажмите на карту, чтобы открыть';
-    return '';
+    if (phase === "idle")
+      return card
+        ? "Сегодняшняя карта уже выбрана"
+        : "Задайте вопрос и нажмите на карту";
+    if (phase === "shuffle") return "Карты перемешиваются…";
+    if (phase === "fan")
+      return flyingCard ? "" : "Выберите карту, которую чувствуете";
+    if (phase === "drawn") return "Нажмите на карту, чтобы открыть";
+    return "";
   })();
 
-  const showDeck = phase === 'idle' || phase === 'shuffle';
-  const showCard = phase === 'drawn' || phase === 'revealed';
-  const showFan = phase === 'fan';
-  const activeFan = fanCards.filter(fc => !fc.gone);
+  const showDeck = phase === "idle" || phase === "shuffle";
+  const showCard = phase === "drawn" || phase === "revealed";
+  const showFan = phase === "fan";
+  const activeFan = fanCards.filter((fc) => !fc.gone);
   const N = activeFan.length;
 
   return (
     <div className={`screen mac-screen ${styles.page}`}>
       {/* Stars */}
-      {STARS.map(s => (
-        <div key={s.id} className={styles.star} style={{
-          left: `${s.x}%`, top: `${s.y}%`,
-          width: s.size, height: s.size, opacity: s.op,
-          '--dur': `${s.dur}s`, '--delay': `${s.delay}s`, '--base-op': s.op,
-        } as React.CSSProperties} />
+      {STARS.map((s) => (
+        <div
+          key={s.id}
+          className={styles.star}
+          style={
+            {
+              left: `${s.x}%`,
+              top: `${s.y}%`,
+              width: s.size,
+              height: s.size,
+              opacity: s.op,
+              "--dur": `${s.dur}s`,
+              "--delay": `${s.delay}s`,
+              "--base-op": s.op,
+            } as React.CSSProperties
+          }
+        />
       ))}
 
       {/* Header */}
@@ -314,13 +384,13 @@ export function MacCardsPage({ onBack }: { onBack: () => void }) {
 
       <div className={`screen-content ${styles.content}`}>
         {/* Category selector — only while idle and no card shown */}
-        {phase === 'idle' && !card && (
+        {phase === "idle" && !card && (
           <div className={`category-chips ${styles.categoryBar}`}>
-            {FILTERS.map(f => (
+            {FILTERS.map((f) => (
               <button
                 key={f.id}
-                className={`category-chip ${filter === f.id ? 'is-active' : ''}`}
-                style={{ '--tab-accent': f.accent } as React.CSSProperties}
+                className={`category-chip ${filter === f.id ? "is-active" : ""}`}
+                style={{ "--tab-accent": f.accent } as React.CSSProperties}
                 onClick={() => handleSelectFilter(f.id)}
               >
                 <span>{f.symbol}</span>
@@ -343,20 +413,24 @@ export function MacCardsPage({ onBack }: { onBack: () => void }) {
           {/* Stage */}
           <div className={styles.stage}>
             <div
-              className={`${styles.drawnCardArea} ${showCard ? styles.drawnCardAreaActive : ''}`}
+              className={`${styles.drawnCardArea} ${showCard ? styles.drawnCardAreaActive : ""}`}
               ref={dropTargetRef}
             >
               {showCard && card && (
                 <div
                   className={styles.cardPerspective}
-                  onClick={phase === 'drawn' ? handleReveal : undefined}
-                  style={phase === 'revealed' ? { cursor: 'default' } : undefined}
+                  onClick={phase === "drawn" ? handleReveal : undefined}
+                  style={
+                    phase === "revealed" ? { cursor: "default" } : undefined
+                  }
                 >
                   <div
-                    className={`${styles.cardInner} ${phase === 'revealed' ? styles.revealed : ''} ${justLanded ? styles.cardJustLanded : ''}`}
+                    className={`${styles.cardInner} ${phase === "revealed" ? styles.revealed : ""} ${justLanded ? styles.cardJustLanded : ""}`}
                   >
-                    <div className={`${styles.cardBackFace} ${phase === 'drawn' ? styles.cardWaiting : ''}`}>
-                      <MacCardBack width={CARD_W} height={CARD_H} />
+                    <div
+                      className={`${styles.cardBackFace} ${phase === "drawn" ? styles.cardWaiting : ""}`}
+                    >
+                      <TarotCardBack width={CARD_W} height={CARD_H} />
                     </div>
                     <div className={styles.cardFrontFace}>
                       <CardFront card={card} />
@@ -367,31 +441,45 @@ export function MacCardsPage({ onBack }: { onBack: () => void }) {
             </div>
 
             {/* Reading panel — appears after reveal */}
-            {phase === 'revealed' && card && cardInfo && (
+            {phase === "revealed" && card && cardInfo && (
               <>
                 <div
                   className={styles.readingPanel}
-                  style={{ '--accent': cardInfo.accent } as React.CSSProperties}
+                  style={{ "--accent": cardInfo.accent } as React.CSSProperties}
                 >
                   <div className={styles.readingHeader}>
-                    <div className={styles.readingCategory}>{cardInfo.symbol} &nbsp; {cardInfo.name}</div>
+                    <div className={styles.readingCategory}>
+                      {cardInfo.symbol} &nbsp; {cardInfo.name}
+                    </div>
                     <h2 className={styles.readingName}>{card.name}</h2>
-                    <div className={styles.readingNumber}>Карта №{card.number} из {MAC_DECK.length}</div>
+                    <div className={styles.readingNumber}>
+                      Карта №{card.number} из {MAC_DECK.length}
+                    </div>
                   </div>
 
                   <div className={styles.readingDivider} />
 
-                  <p className={styles.readingDescription}>{card.description}</p>
+                  <p className={styles.readingDescription}>
+                    {card.description}
+                  </p>
 
-                  <p className={styles.readingSectionTitle}>✦ &nbsp; Вопросы для размышления &nbsp; ✦</p>
+                  <p className={styles.readingSectionTitle}>
+                    ✦ &nbsp; Вопросы для размышления &nbsp; ✦
+                  </p>
 
                   <ul className={styles.readingQuestions}>
-                    {card.questions.map((q, i) => <li key={i}>{q}</li>)}
+                    {card.questions.map((q, i) => (
+                      <li key={i}>{q}</li>
+                    ))}
                   </ul>
 
-                  <p className={styles.readingSectionTitle}>✦ &nbsp; Аффирмация &nbsp; ✦</p>
+                  <p className={styles.readingSectionTitle}>
+                    ✦ &nbsp; Аффирмация &nbsp; ✦
+                  </p>
 
-                  <p className={styles.readingAffirmation}>«{card.affirmation}»</p>
+                  <p className={styles.readingAffirmation}>
+                    «{card.affirmation}»
+                  </p>
                 </div>
               </>
             )}
@@ -400,26 +488,31 @@ export function MacCardsPage({ onBack }: { onBack: () => void }) {
           {/* Reader scene — shown during idle and shuffle */}
           {showDeck && (
             <div
-              className={`${styles.readerScene} ${phase === 'shuffle' ? styles.readerSceneShuffling : ''}`}
-              role={phase === 'idle' && !todayPick ? 'button' : undefined}
-              tabIndex={phase === 'idle' && !todayPick ? 0 : undefined}
-              aria-label={phase === 'idle' && !todayPick ? 'Вытянуть карту' : undefined}
-              onClick={phase === 'idle' && !todayPick ? handleShuffleAndDraw : undefined}
+              className={`${styles.readerScene} ${phase === "shuffle" ? styles.readerSceneShuffling : ""}`}
+              role={phase === "idle" && !todayPick ? "button" : undefined}
+              tabIndex={phase === "idle" && !todayPick ? 0 : undefined}
+              aria-label={
+                phase === "idle" && !todayPick ? "Вытянуть карту" : undefined
+              }
+              onClick={
+                phase === "idle" && !todayPick
+                  ? handleShuffleAndDraw
+                  : undefined
+              }
               onKeyDown={(event) => {
-                if (phase !== 'idle' || todayPick) return;
-                if (event.key !== 'Enter' && event.key !== ' ') return;
+                if (phase !== "idle" || todayPick) return;
+                if (event.key !== "Enter" && event.key !== " ") return;
                 event.preventDefault();
                 handleShuffleAndDraw();
               }}
             >
               <div className={styles.readerCopy}>
-                <span className={styles.readerDeckTitle}>{filterInfo.symbol} {filterInfo.name}</span>
+                <span className={styles.readerDeckTitle}>
+                  {filterInfo.symbol} {filterInfo.name}
+                </span>
                 <span className={styles.readerOrnament} aria-hidden="true" />
               </div>
-              <div
-                className={styles.readerFan}
-                aria-hidden="true"
-              >
+              <div className={styles.readerFan} aria-hidden="true">
                 {readerFanCards.map((idx) => {
                   const center = (readerFanCards.length - 1) / 2;
                   const offset = idx - center;
@@ -427,25 +520,29 @@ export function MacCardsPage({ onBack }: { onBack: () => void }) {
                   return (
                     <div
                       key={idx}
-                      className={`${styles.readerFanCard} ${isCenter ? styles.readerFanCardCenter : ''}`}
-                      style={{
-                        '--reader-angle': `${offset * 9}deg`,
-                        '--reader-x': `${offset * 34}px`,
-                        '--reader-y': `${Math.abs(offset) * 12 + (isCenter ? -64 : 0)}px`,
-                        '--reader-scale': isCenter ? 1.12 : 0.92,
-                        '--reader-delay': `${idx * 0.045}s`,
-                        zIndex: isCenter ? 20 : 10 - Math.abs(offset),
-                      } as React.CSSProperties}
+                      className={`${styles.readerFanCard} ${isCenter ? styles.readerFanCardCenter : ""}`}
+                      style={
+                        {
+                          "--reader-angle": `${offset * 9}deg`,
+                          "--reader-x": `${offset * readerStepX}px`,
+                          "--reader-y": `${Math.abs(offset) * 12 + (isCenter ? -6 : 0)}px`,
+                          "--reader-scale": isCenter ? 1.12 : 0.92,
+                          "--reader-delay": `${idx * 0.045}s`,
+                          zIndex: isCenter ? 20 : 10 - Math.abs(offset),
+                        } as React.CSSProperties
+                      }
                     >
-                      <MacCardBack width="100%" height="100%" />
+                      <TarotCardBack width="100%" height="100%" />
                     </div>
                   );
                 })}
               </div>
-              {phase === 'idle' && !todayPick && (
-                <span className={styles.readerHint}>нажмите, чтобы вытянуть</span>
+              {phase === "idle" && !todayPick && (
+                <span className={styles.readerHint}>
+                  нажмите, чтобы вытянуть
+                </span>
               )}
-              {phase === 'shuffle' && (
+              {phase === "shuffle" && (
                 <span className={styles.readerHint}>карты раскрывают веер</span>
               )}
             </div>
@@ -457,21 +554,27 @@ export function MacCardsPage({ onBack }: { onBack: () => void }) {
               {activeFan.map((fc, i) => {
                 const t = N === 1 ? 0.5 : i / (N - 1);
                 const angleDeg = spreadDeg * (t - 0.5);
-                const delay = i * 0.055;
+                const delay = i * 0.038;
                 return (
                   <div
                     key={fc.id}
                     className={styles.fanCardWrapper}
-                    style={{
-                      '--angle': `${angleDeg}deg`,
-                      '--appear-delay': `${delay}s`,
-                      zIndex: i + 1,
-                    } as React.CSSProperties}
-                    ref={el => { if (el) fanCardRefs.current.set(fc.id, el); }}
-                    onClick={() => !flyingCard && handleFanCardClick(fc.id, fc.card)}
+                    style={
+                      {
+                        "--angle": `${angleDeg}deg`,
+                        "--appear-delay": `${delay}s`,
+                        zIndex: i + 1,
+                      } as React.CSSProperties
+                    }
+                    ref={(el) => {
+                      if (el) fanCardRefs.current.set(fc.id, el);
+                    }}
+                    onClick={() =>
+                      !flyingCard && handleFanCardClick(fc.id, fc.card)
+                    }
                   >
                     <div className={styles.fanCardInner}>
-                      <MacCardBack width={FAN_CARD_W} height={FAN_CARD_H} />
+                      <TarotCardBack width={FAN_CARD_W} height={FAN_CARD_H} />
                     </div>
                   </div>
                 );
@@ -485,22 +588,23 @@ export function MacCardsPage({ onBack }: { onBack: () => void }) {
       {flyingCard && (
         <div
           className={styles.flyingCard}
-          style={{
-            left: flyingCard.startX,
-            top: flyingCard.startY,
-            width: FAN_CARD_W,
-            height: FAN_CARD_H,
-            '--dx': `${flyingCard.dx + (CARD_W - FAN_CARD_W) / 2}px`,
-            '--dy': `${flyingCard.dy + (CARD_H - FAN_CARD_H) / 2}px`,
-            '--start-rot': `${flyingCard.startRot}deg`,
-            '--scale-up': `${CARD_W / FAN_CARD_W}`,
-          } as React.CSSProperties}
+          style={
+            {
+              left: flyingCard.startX,
+              top: flyingCard.startY,
+              width: FAN_CARD_W,
+              height: FAN_CARD_H,
+              "--dx": `${flyingCard.dx + (CARD_W - FAN_CARD_W) / 2}px`,
+              "--dy": `${flyingCard.dy + (CARD_H - FAN_CARD_H) / 2}px`,
+              "--start-rot": `${flyingCard.startRot}deg`,
+              "--scale-up": `${CARD_W / FAN_CARD_W}`,
+            } as React.CSSProperties
+          }
           onAnimationEnd={handleFlyEnd}
         >
-          <MacCardBack width={FAN_CARD_W} height={FAN_CARD_H} />
+          <TarotCardBack width={FAN_CARD_W} height={FAN_CARD_H} />
         </div>
       )}
-
     </div>
   );
 }

@@ -940,8 +940,22 @@ def _houses_section(houses: list[dict[str, Any]], descriptions: dict[str, Any] |
     return _Section("Дома гороскопа", "12 сфер жизни и их обстановка", items)
 
 
+def _aspect_hidden(
+    aspect: dict[str, Any], aspect_desc: dict[tuple[str, str, str], dict[str, Any]]
+) -> bool:
+    """Аспект помечен на скрытие, если его LLM-описание оказалось заглушкой
+    (флаг ``hide`` ставит пайплайн генерации). Лучше показать меньше аспектов,
+    чем разбавлять отчёт болванками."""
+    p1 = _planet_key(aspect.get("p1"))
+    p2 = _planet_key(aspect.get("p2"))
+    atype = _aspect_key(aspect.get("aspect"))
+    entry = aspect_desc.get((p1, p2, atype))
+    return bool(entry and entry.get("hide"))
+
+
 def _aspect_section(aspects: list[dict[str, Any]], descriptions: dict[str, Any] | None) -> _Section:
     aspect_desc = _aspect_description_map(descriptions)
+    aspects = [a for a in aspects if not _aspect_hidden(a, aspect_desc)]
     groups = [
         (atype, [a for a in aspects if _aspect_key(a.get("aspect")) == atype])
         for atype in ASPECT_ORDER

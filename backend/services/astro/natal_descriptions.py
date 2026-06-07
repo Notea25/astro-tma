@@ -16,8 +16,19 @@ from typing import Any
 from core.logging import get_logger
 from services.astro.sign_cases import sign_ru
 from services.llm_utils import first_text_block
+from services.quality_validator import Severity, TextValidator, ValidationContext
 
 log = get_logger(__name__)
+
+# Section name (planets/houses/aspects) → validator section_kind.
+_SECTION_KIND = {
+    "planets": "planet_in_sign",
+    "houses": "house",
+    "aspects": "aspect",
+}
+
+# Validator reused across entries; spellchecker off (astro terms ⇒ false positives).
+_VALIDATOR = TextValidator(use_spellchecker=False)
 
 _MODEL = "claude-haiku-4-5-20251001"
 
@@ -301,6 +312,7 @@ def _quality_rules(section: str) -> str:
 - Первое и последнее предложение каждого "full" уникальны; запрещены шаблонные финалы «это поможет проживать аспект мягче», «важно найти баланс», «это ваш ресурс», «стоит действовать осознанно».
 - Никаких вступлений-подводок («давайте разберём», «стоит отметить») — сразу суть.
 - Запрещены маркеры копипаста: «Подробнее», «Читать далее», «Источник», «Geocult», рекламные переходы.
+- ВЫСШИЕ ПЛАНЕТЫ (Уран, Нептун, Плутон) трактуй ИНДИВИДУАЛЬНО — через дом и аспекты этой карты, а не через год/поколение рождения. Запрещены фразы «поколение 1996–2003», «цифровое поколение» и любые «поколенческие» ярлыки: они одинаковы для миллионов и не говорят о человеке. Покажи, в какой сфере (дом) и через какие связки (аспекты) эта планета работает лично у него.
 - Если два элемента похожи, объясни конкретную разницу именно в этой карте."""
 
 
@@ -796,11 +808,28 @@ def _full_too_close_to_short(short: str, full: str) -> bool:
     )
 
 
+def _validate_full(full: str, section: str, subject: str = "") -> list:
+    """Прогон валидатора по тексту секции (planets/houses/aspects)."""
+    ctx = ValidationContext(
+        section_kind=_SECTION_KIND.get(section, "planet_in_sign"),
+        subject=subject,
+    )
+    return _VALIDATOR.validate(full, ctx)
+
+
 def _entry_needs_repair(entry: dict[str, str], section: str) -> bool:
     full = str(entry.get("full") or "").strip()
     if not full:
         return True
     if _has_forbidden_copy_marker(full):
+        return True
+    issues = _validate_full(full, section)
+    # CRITICAL (короткий/обрыв) — всегда регенерим. Шаблонные/поколенческие
+    # болванки тоже отправляем на регенерацию, чтобы не было «расслоения качества».
+    if any(i.severity == Severity.CRITICAL for i in issues):
+        return True
+    bad_codes = {"TEMPLATE_PHRASE", "GENERATIONAL_IN_INDIVIDUAL"}
+    if any(i.code in bad_codes for i in issues):
         return True
     return False
 
@@ -1025,18 +1054,31 @@ async def generate_natal_descriptions(
     )
 
     out: dict[str, Any] = {"planets": planet_out, "houses": house_out, "aspects": []}
+    hidden_aspects = 0
     for aid, entry in aspect_out.items():
         triple = aspect_ids_lookup.get(aid)
         if not triple:
             continue
         p1, p2, atype = triple
-        out["aspects"].append({"p1": p1, "p2": p2, "type": atype, **entry})
+        aspect = {"p1": p1, "p2": p2, "type": atype, **entry}
+        # Аспект, который так и не починился (короткий/обрыв/шаблон) — лучше
+        # скрыть, чем показать болванку (10 хороших > 16 с заглушками).
+        full = str(entry.get("full") or "").strip()
+        issues = _validate_full(full, "aspects", subject=aspect_labels.get(aid, aid))
+        bad = any(i.severity == Severity.CRITICAL for i in issues) or any(
+            i.code == "TEMPLATE_PHRASE" for i in issues
+        )
+        if bad:
+            aspect["hide"] = True
+            hidden_aspects += 1
+        out["aspects"].append(aspect)
 
     log.info(
         "natal_descriptions.done",
         planets=len(out["planets"]),
         houses=len(out["houses"]),
         aspects=len(out["aspects"]),
+        hidden_aspects=hidden_aspects,
         batches=len(planet_tasks) + len(house_tasks) + len(aspect_tasks),
     )
     return out

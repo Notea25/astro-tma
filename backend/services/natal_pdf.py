@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import os
+import re
 from datetime import datetime
 from io import BytesIO
 from typing import Any
@@ -424,19 +425,6 @@ def _lines_for_width(
     if max_lines and len(result) == max_lines and len(" ".join(words)) > len(" ".join(result)):
         result[-1] = result[-1].rstrip(" .,:;—-") + "."
     return result
-
-
-def _limit_words(text: str, words: int) -> str:
-    parts = str(text or "").split()
-    if len(parts) <= words:
-        return " ".join(parts)
-    # Try to break at the last sentence boundary within the limit
-    end = words
-    for i in range(words - 1, max(0, words - 40) - 1, -1):
-        if parts[i].endswith((".", "!", "?", "…")):
-            end = i + 1
-            break
-    return " ".join(parts[:end]).rstrip(" .,:;—-") + "."
 
 
 def _draw_card_frame(c: canvas.Canvas, x: float, y: float, width: float, height: float) -> None:
@@ -1076,26 +1064,53 @@ _SIGN_NORM: dict[str, str] = {
 }
 
 
+_GEN_PAREN = re.compile(r"\s*\(поколени[^)]*\)")
+_GEN_SENTENCE = re.compile(
+    r"(?:цифров\w*\s+поколени\w*|послевоенн\w*\s+поколени\w*|поколенческ\w*(?:\s+тема)?)[^.]*\.\s*",
+    re.IGNORECASE,
+)
+
+
+def _strip_generational(text: str) -> str:
+    """Убирает поколенческие ярлыки из curated-текста высших планет: для
+    индивидуального отчёта они одинаковы для миллионов и читаются как заглушка.
+    Качественное описание знака остаётся, год/«поколение» — нет."""
+    text = _GEN_PAREN.sub("", text)
+    text = _GEN_SENTENCE.sub("", text)
+    return re.sub(r"\s{2,}", " ", text).strip()
+
+
 def _planet_fallback(name: str, planet: dict[str, Any]) -> str:
     sign_raw = _key(planet.get("sign_ru") or planet.get("sign") or "")
     sign_en = _SIGN_NORM.get(sign_raw, sign_raw)
     text = (PLANET_IN_SIGN.get(name) or {}).get(sign_en)
     if text:
+        if name in ("uranus", "neptune", "pluto"):
+            text = _strip_generational(text)
         house = planet.get("house") or "?"
         retro = (
             " Ретроградность означает, что эта тема чаще разворачивается внутренне — через рефлексию, пересмотр и внутреннюю работу, а не через внешние события."
             if planet.get("retrograde")
             else ""
         )
-        return f"{text} Положение в {house}-м доме уточняет, в какой сфере это проявляется активнее всего.{retro}"
+        try:
+            topic = HOUSE_TOPICS.get(int(house))
+        except (TypeError, ValueError):
+            topic = None
+        sphere = f" В {house}-м доме это качество направлено на {topic}." if topic else ""
+        return f"{text}{sphere}{retro}"
     # last-resort generic
     ru = PLANET_RU.get(name, name)
     sign_prep = _sign_ru_case(sign_raw, "prep")
     house = planet.get("house") or "?"
+    try:
+        topic = HOUSE_TOPICS.get(int(house))
+    except (TypeError, ValueError):
+        topic = None
+    sphere = f" В {house}-м доме эта тема разворачивается в зоне «{topic}»." if topic else ""
     return (
         f"{ru} в {sign_prep} раскрывает свой стиль через характерные реакции, выборы и "
-        f"повторяющиеся жизненные сценарии. Положение в {house}-м доме связывает эту тему "
-        f"с конкретной сферой жизни."
+        f"повторяющиеся жизненные сценарии.{sphere}"
     )
 
 
@@ -1728,18 +1743,21 @@ def _aspect_fallback(aspect: dict[str, Any]) -> str:
     if text:
         return text
     topic = ASPECT_TOPICS.get(aspect_type, "создают важную внутреннюю связь")
-    kind_hint = {
-        "trine": "Это гармоничный аспект: данная тема — природный ресурс и талант.",
-        "sextile": "Это аспект возможности: потенциал раскрывается через осознанное использование.",
-        "square": "Это напряжённый аспект: зона роста через преодоление внутреннего противоречия.",
-        "opposition": "Это аспект полярности: интеграция двух противоположных импульсов.",
-        "conjunction": "Это слияние двух тем в единый внутренний импульс.",
-        "quincunx": "Это аспект перенастройки: требует регулярного согласования двух несмежных тем.",
-    }.get(aspect_type, "")
-    return (
-        f"{p1_ru} и {p2_ru} {topic}. {kind_hint} "
-        f"Чем точнее орб, тем заметнее эта тема в характере, отношениях и повторяющихся выборах."
+    orb = float(aspect.get("orb") or 0)
+    tightness = (
+        "Орб тесный — связь работает почти постоянно, её видно в повседневных реакциях."
+        if orb <= 3
+        else "Орб широкий — тема включается в заметных, поворотных ситуациях, а не каждый день."
     )
+    kind_hint = {
+        "trine": f"Качества {p1_ru} и {p2_ru} поддерживают друг друга без усилия — это даётся вам легко и часто остаётся незамеченным ресурсом.",
+        "sextile": f"{p1_ru} и {p2_ru} не сцеплены жёстко: связь срабатывает, когда вы сами делаете шаг — предлагаете, пробуете, берётесь.",
+        "square": f"{p1_ru} и {p2_ru} тянут в разные стороны: одно требование мешает другому, и напряжение снимается только действием, а не размышлением.",
+        "opposition": f"{p1_ru} и {p2_ru} стоят на разных полюсах — вас качает между ними, пока вы не научитесь удерживать оба, а не выбирать одно.",
+        "conjunction": f"{p1_ru} и {p2_ru} слиты в один импульс: их трудно разделить, они срабатывают вместе и усиливают друг друга.",
+        "quincunx": f"{p1_ru} и {p2_ru} плохо стыкуются напрямую — нужна регулярная ручная подстройка, иначе одно сбивает другое.",
+    }.get(aspect_type, f"{p1_ru} и {p2_ru} {topic}.")
+    return f"{kind_hint} {tightness}"
 
 
 def _aspect_description_map(
@@ -1757,6 +1775,19 @@ def _aspect_description_map(
             out[(p1, p2, atype)] = entry
             out[(p2, p1, atype)] = entry
     return out
+
+
+def _aspect_hidden(
+    aspect: dict[str, Any],
+    aspect_desc: dict[tuple[str, str, str], dict[str, Any]],
+) -> bool:
+    """Аспект скрыт, если его LLM-описание оказалось заглушкой (флаг ``hide``
+    ставит пайплайн генерации)."""
+    p1 = _planet_key(aspect.get("p1"))
+    p2 = _planet_key(aspect.get("p2"))
+    atype = _aspect_key(aspect.get("aspect"))
+    entry = aspect_desc.get((p1, p2, atype))
+    return bool(entry and entry.get("hide"))
 
 
 def _render_items_section(
@@ -1851,6 +1882,8 @@ def generate_natal_pdf(
     planet_desc = (descriptions or {}).get("planets") or {}
     house_desc = (descriptions or {}).get("houses") or {}
     aspect_desc = _aspect_description_map(descriptions)
+    # Скрываем аспекты-заглушки: лучше меньше аспектов, чем болванки.
+    aspects = [a for a in aspects if not _aspect_hidden(a, aspect_desc)]
 
     def finish_page() -> None:
         nonlocal page
@@ -2499,19 +2532,20 @@ def generate_natal_pdf(
             c.setFillColor(TEXT)
             _set_font(c, False, 10)
             continue
-        paragraph = _limit_words(line, 220)
-        paragraph_lines = _lines_for_width(c, paragraph, w - 116, bold=False, size=11.4)
-        block_h = 17 * len(paragraph_lines) + 20
-        if y - block_h < 64:
-            finish_page()
-            y = title_page("Персональная интерпретация", "Продолжение")
-        c.setFillColor(TEXT)
-        _set_font(c, False, 11.4)
-        text_y = y
-        for wrapped_line in paragraph_lines:
-            c.drawString(58, text_y, wrapped_line)
-            text_y -= 17
-        y -= block_h
+        # Естественный page-flow: длинный абзац перетекает на следующую страницу
+        # целиком, ничего не обрезаем (раньше жёсткий лимит 220 слов рубил хвост
+        # и финальная секция обрывалась на полуслове).
+        y = draw_detail_text(
+            line,
+            x=58,
+            y=y,
+            max_width=w - 116,
+            title="Персональная интерпретация",
+            subtitle="Продолжение",
+            size=11.4,
+            line_h=17.0,
+        )
+        y -= 6
     finish_page()
 
     # Glossary.

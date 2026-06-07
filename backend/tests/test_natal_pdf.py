@@ -588,7 +588,8 @@ def test_natal_description_quality_repairs_copy_markers_only():
         {
             "short": "Это короткое описание почти целиком повторяется.",
             "full": "Это короткое описание почти целиком повторяется. "
-            + " ".join(f"дополнение{i}" for i in range(250)),
+            + " ".join(f"дополнение{i}" for i in range(250))
+            + ".",
         },
         "houses",
     )
@@ -1025,3 +1026,83 @@ async def test_start_pdf_dedups_concurrent_requests(monkeypatch):
     assert first.status == "queued"
     assert second.job_id == first.job_id  # same job returned
     assert enqueue_count["n"] == 1  # enqueued exactly once
+
+
+# ── Generation-quality fixes (validator-driven) ────────────────────────
+
+
+def test_outer_planet_fallback_drops_generational_label():
+    """Уран/Нептун/Плутон в fallback не должны нести поколенческий ярлык —
+    для индивидуального отчёта он одинаков для миллионов и читается как заглушка."""
+    from services.quality_validator import (
+        Severity,
+        TextValidator,
+        ValidationContext,
+    )
+
+    v = TextValidator(use_spellchecker=False)
+    for sign_ru_name, house in [("Водолей", 6), ("Рыбы", 12)]:
+        text = natal_pdf._planet_fallback(
+            "uranus", {"sign_ru": sign_ru_name, "house": house}
+        )
+        assert "поколение" not in text.lower()
+        assert "цифровое поколение" not in text.lower()
+        codes = {i.code for i in v.validate(text, ValidationContext("planet_in_sign", "x"))}
+        assert "GENERATIONAL_IN_INDIVIDUAL" not in codes
+        # дом подаётся конкретной сферой жизни, а не «уточняет в какой сфере»
+        assert f"В {house}-м доме" in text
+
+
+def test_aspect_fallback_not_a_template_stub():
+    """Generic-fallback аспекта больше не содержит фраз-болванок, которые ловит
+    валидатор (аспект возможности / чем точнее орб)."""
+    from services.quality_validator import TextValidator, ValidationContext
+
+    v = TextValidator(use_spellchecker=False)
+    text = natal_pdf._aspect_fallback(
+        {"p1": "jupiter", "p2": "saturn", "aspect": "sextile", "orb": 4.0}
+    )
+    assert "аспект возможности" not in text.lower()
+    assert "чем точнее орб" not in text.lower()
+    codes = {i.code for i in v.validate(text, ValidationContext("aspect", "j-s"))}
+    assert "TEMPLATE_PHRASE" not in codes
+
+
+def test_hidden_aspect_dropped_from_pdf():
+    """Аспект с флагом hide=True не рендерится в PDF (скрываем болванки)."""
+    planets = {
+        "sun": {"sign": "taurus", "sign_ru": "Телец", "house": 10, "degree": 12.0},
+        "moon": {"sign": "aries", "sign_ru": "Овен", "house": 9, "degree": 5.0},
+    }
+    houses = [
+        {"number": i, "sign": "aries", "sign_ru": "Овен", "degree": 0.0}
+        for i in range(1, 13)
+    ]
+    aspects = [
+        {"p1": "sun", "p2": "moon", "aspect": "trine", "orb": 2.0},
+        {"p1": "sun", "p2": "mars", "aspect": "square", "orb": 1.0},
+    ]
+    descriptions = {
+        "planets": {},
+        "houses": {},
+        "aspects": [
+            {"p1": "sun", "p2": "mars", "type": "square", "full": "болванка", "hide": True},
+        ],
+    }
+    aspect_desc = natal_pdf._aspect_description_map(descriptions)
+    assert natal_pdf._aspect_hidden(aspects[1], aspect_desc) is True
+    assert natal_pdf._aspect_hidden(aspects[0], aspect_desc) is False
+    pdf = generate_natal_pdf(
+        user_name="Тест",
+        birth_date="2000-05-01",
+        birth_time="12:00",
+        birth_city="Москва",
+        sun_sign="taurus",
+        moon_sign="aries",
+        asc_sign="aries",
+        planets=planets,
+        houses=houses,
+        aspects=aspects,
+        descriptions=descriptions,
+    )
+    assert pdf.startswith(b"%PDF-")
