@@ -235,6 +235,10 @@ export function Profile() {
   } | null>(null);
   const [savedCity, setSavedCity] = useState<string | null>(null);
   const [gender, setGender] = useState(user?.gender ?? "");
+  // The birth date is locked only once it has been persisted on the server.
+  // A date the user picks in this session stays editable until they save —
+  // otherwise the form looks "frozen" before any Save was pressed.
+  const [dateLocked, setDateLocked] = useState(false);
 
   const { data: natalSummary } = useQuery({
     queryKey: ["natal-summary"],
@@ -250,7 +254,10 @@ export function Profile() {
     // immediately after onboarding) and fall back to natalSummary —
     // natal chart computation can race or fail; user.birth_date is the
     // canonical record of what the reader entered.
-    setBirthDate(user?.birth_date ?? natalSummary?.birth_date ?? "");
+    const persistedDate = user?.birth_date ?? natalSummary?.birth_date ?? "";
+    setBirthDate(persistedDate);
+    // Lock only a date that already exists on the server, not one picked now.
+    setDateLocked(Boolean(persistedDate));
     setBirthTimeKnown(
       user?.birth_time_known ?? natalSummary?.birth_time_known ?? false,
     );
@@ -552,15 +559,16 @@ export function Profile() {
                 </div>
               </div>
 
-              {birthDate ? (
+              {dateLocked ? (
                 <div className="form-group">
                   <label className="form-label">Дата рождения</label>
                   <div className="form-readonly-value">
                     {formatBirthDateRu(birthDate) ?? birthDate}
                   </div>
                   <p className="form-hint form-hint--locked">
-                    🔒 Дата рождения не меняется — она задаёт всю Матрицу Судьбы
-                    и натальную карту.
+                    🔒 Дата рождения уже сохранена и не меняется — она задаёт
+                    всю Матрицу Судьбы и натальную карту. Город и время изменить
+                    можно.
                   </p>
                 </div>
               ) : (
@@ -568,7 +576,8 @@ export function Profile() {
                   <label className="form-label">Дата рождения</label>
                   <BirthDateInput value={birthDate} onChange={setBirthDate} />
                   <p className="form-hint form-hint--locked">
-                    ⚠️ Сохраняется один раз — после этого изменить будет нельзя.
+                    ⚠️ Дата зафиксируется только после кнопки «Сохранить» —
+                    потом изменить будет нельзя.
                   </p>
                 </div>
               )}
