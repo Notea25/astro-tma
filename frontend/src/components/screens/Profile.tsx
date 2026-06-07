@@ -276,6 +276,12 @@ export function Profile() {
       queryClient.invalidateQueries({ queryKey: ["natal-summary"] });
       queryClient.invalidateQueries({ queryKey: ["natal-full"] });
     },
+    onError: (err: any) => {
+      notification("error");
+      const detail =
+        err?.message ?? "Не удалось сохранить данные. Попробуйте ещё раз.";
+      WebApp.showAlert(String(detail));
+    },
   });
 
   const genderMutation = useMutation({
@@ -299,10 +305,14 @@ export function Profile() {
       await genderMutation.mutateAsync(gender);
     }
     if (birthDate && birthCity) {
+      // birthDate may arrive as a full ISO datetime for existing users
+      // (user.birth_date is "YYYY-MM-DDTHH:MM:SS") — keep only the date
+      // part so we don't build a double-T string the backend rejects.
+      const dateOnly = birthDate.slice(0, 10);
       const datetime =
         birthTimeKnown && birthTime
-          ? `${birthDate}T${birthTime}:00`
-          : `${birthDate}T12:00:00`;
+          ? `${dateOnly}T${birthTime}:00`
+          : `${dateOnly}T12:00:00`;
       birthMutation.mutate({
         birth_date: datetime,
         birth_time_known: birthTimeKnown,
