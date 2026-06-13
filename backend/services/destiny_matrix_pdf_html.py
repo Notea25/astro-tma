@@ -97,11 +97,17 @@ def _section_header(title: str, subtitle: str, aside: str = "") -> str:
 
 def _css() -> str:
     return f"""
-@page {{ size: A4; margin: 0; }}
+/* Margins live on @page so every printed sheet — including the
+   continuation page when a section overflows — gets them automatically.
+   The section box (.page) holds NO padding so its bottom edge sits at
+   the bottom of the content area; the footer below uses absolute
+   positioning relative to .page to render in every section's final
+   printed page. */
+@page {{ size: A4; margin: 22mm 18mm 17mm; }}
 * {{ box-sizing: border-box; overflow-wrap: anywhere; }}
 html, body {{ margin: 0; padding: 0; background: {BG}; color: {TEXT}; }}
 body {{ font-family: "DejaVu Sans", Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
-.page {{ position: relative; display: block; width: 210mm; height: 297mm; overflow: hidden; padding: 22mm 18mm 17mm; background: {BG}; break-after: page; page-break-after: always; break-inside: avoid; }}
+.page {{ position: relative; display: block; width: 100%; min-height: 258mm; background: {BG}; break-after: page; page-break-after: always; }}
 h1, h2, h3, .serif {{ font-family: "DejaVu Serif", Georgia, serif; font-weight: 400; }}
 
 /* Cover */
@@ -124,7 +130,11 @@ h2 {{ margin: 0; color: {GOLD}; font-size: 24px; letter-spacing: 4px; }}
 .rule {{ height: 1px; width: 170mm; background: rgba(214,184,90,.2); margin: 6mm 0 5mm; }}
 .section-head p {{ margin: 0; color: {TEXT_DIM}; font: italic 12px "DejaVu Serif", Georgia, serif; }}
 .section-aside {{ color: #807894; font-size: 12px; margin-top: 5mm; }}
-footer {{ position: absolute; bottom: 7mm; left: 0; right: 0; text-align: center; color: #6d6680; font-size: 10px; letter-spacing: 3px; }}
+/* Footer protrudes 10mm into the @page bottom-margin (17mm) so it
+   visually lands ~7mm from the paper edge — same as the old fixed-height
+   layout. Chromium's PDF engine renders absolutely positioned elements
+   that overflow their containing block into the page-margin area. */
+footer {{ position: absolute; bottom: -10mm; left: 0; right: 0; text-align: center; color: #6d6680; font-size: 10px; letter-spacing: 3px; }}
 footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 
 /* TOC */
