@@ -79,10 +79,21 @@ def _contents_page(section_pages: dict[str, int], extra_pages: dict[str, str]) -
 
 
 def _section_body(content: str) -> str:
-    """LLM content sanitiser: strip markdown bold/headers so plain text
-    flows nicely with CSS `white-space: pre-line`."""
+    """LLM content sanitiser: strip markdown bold/headers + run the V3
+    text-polish pipeline so old cached rows benefit retroactively.
+
+    Polish covers preamble words («Ответ:», «Вот разбор:»), code fences,
+    stray single asterisks, and canonical arcana-name enforcement. New
+    rows are polished at generation time (services/destiny_matrix/
+    v3_interpreter.py::_generate_one) — this call is the safety net
+    for rows already in the DB.
+    """
     if not content:
         return "<p class='section-empty'>Раздел не сгенерирован.</p>"
+    # Lazy import to avoid pulling LLM deps when only the PDF helper is
+    # used (e.g. tests).
+    from services.destiny_matrix.text_fix import polish_section_text
+    content, _ = polish_section_text(content)
     cleaned = (
         content
         .replace("**", "")
