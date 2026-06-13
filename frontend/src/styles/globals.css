@@ -10604,11 +10604,14 @@ body::before {
 }
 .payment-sheet {
   position: fixed;
-  bottom: 0;
+  /* Sit above the bottom-nav with a 12px breather so the error/hint
+     copy at the sheet's bottom edge doesn't visually collide with the
+     nav icons underneath. */
+  bottom: calc(var(--nav-height) + var(--safe-bottom) + 12px);
   left: 0;
   right: 0;
   z-index: 201;
-  padding: 8px 18px calc(18px + var(--safe-bottom));
+  padding: 8px 18px 18px;
   border-radius: 22px 22px 0 0;
   background: #0c0a18;
   border-top: 0.5px solid var(--gold-border);
