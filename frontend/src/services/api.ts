@@ -954,14 +954,15 @@ export const paymentsApi = {
       { product_id },
     ),
   // YuKassa (card / SBP) — backend creates a hosted payment and returns
-  // the confirmation URL we should open via WebApp.openLink.
-  createYukassaInvoice: (product_id: string) =>
+  // the confirmation URL we should open via WebApp.openLink. `email`
+  // is the buyer's address for the fiscal receipt (54-ФЗ).
+  createYukassaInvoice: (product_id: string, email: string) =>
     request<{
       confirmation_url: string;
       payment_id: string;
       product_id: string;
       rub_amount: number;
-    }>("POST", "/payments/yukassa/create", { product_id }),
+    }>("POST", "/payments/yukassa/create", { product_id, email }),
 };
 
 // ── Destiny Matrix ──────────────────────────────────────────────────────────

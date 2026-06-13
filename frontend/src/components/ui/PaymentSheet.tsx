@@ -1,19 +1,27 @@
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useHaptic } from "@/hooks/useTelegram";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
  * Bottom payment-method sheet — shown when the user taps a Premium plan or
  * a one-off product. Lets them pick Telegram Stars or a Russian bank card.
  *
+ * When the user picks "Bank card" the sheet expands an inline form with an
+ * email input — the fiscal receipt mandated by 54-ФЗ is sent there. We
+ * never submit a card payment without a valid email.
+ *
  * The component is presentation-only — buying logic lives in usePayment
- * (Stars) and a future YuKassa hook (card). Pass two callbacks; `onPayCard`
- * can no-op via an alert until YuKassa is wired in production.
+ * (Stars) and payWithCard() callers (YuKassa).
  */
 export function PaymentSheet({
   isOpen,
   item,
   starsPrice,
   rubPrice,
+  defaultEmail,
+  defaultExpandCard = false,
   onClose,
   onPayStars,
   onPayCard,
@@ -22,11 +30,42 @@ export function PaymentSheet({
   item: string;
   starsPrice: number;
   rubPrice: number | null;
+  /** Pre-fills the receipt-email field (e.g. last email the user gave us). */
+  defaultEmail?: string;
+  /** When the sheet opens, expand the card-payment subform straight away
+   *  (used by gates whose dedicated RUB button opens the sheet — the
+   *  user already picked card, no point asking them to tap again). */
+  defaultExpandCard?: boolean;
   onClose: () => void;
   onPayStars: () => void;
-  onPayCard: () => void;
+  onPayCard: (email: string) => void;
 }) {
   const { impact } = useHaptic();
+  const [cardExpanded, setCardExpanded] = useState(defaultExpandCard);
+  const [email, setEmail] = useState(defaultEmail ?? "");
+  const [touched, setTouched] = useState(false);
+
+  // Reset local state when the sheet closes — next time it opens fresh.
+  useEffect(() => {
+    if (!isOpen) {
+      setCardExpanded(defaultExpandCard);
+      setEmail(defaultEmail ?? "");
+      setTouched(false);
+    }
+  }, [isOpen, defaultEmail, defaultExpandCard]);
+
+  const emailValid = EMAIL_RE.test(email.trim());
+
+  const handleCardTap = () => {
+    impact("light");
+    if (!cardExpanded) {
+      setCardExpanded(true);
+      return;
+    }
+    setTouched(true);
+    if (!emailValid) return;
+    onPayCard(email.trim());
+  };
 
   return (
     <AnimatePresence>
@@ -82,42 +121,85 @@ export function PaymentSheet({
             </button>
 
             {rubPrice != null && (
-              <button
-                type="button"
-                className="payment-sheet__option"
-                onClick={() => {
-                  impact("light");
-                  onPayCard();
-                }}
-              >
-                <span className="payment-sheet__option-ic" aria-hidden="true">
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <rect x="2" y="5" width="20" height="14" rx="2" />
-                    <path d="M2 10h20" />
-                    <path d="M6 15h4" />
-                  </svg>
-                </span>
-                <span className="payment-sheet__option-main">
-                  <span className="payment-sheet__option-name">
-                    Банковской картой
+              <>
+                <button
+                  type="button"
+                  className="payment-sheet__option"
+                  onClick={handleCardTap}
+                  aria-expanded={cardExpanded}
+                >
+                  <span className="payment-sheet__option-ic" aria-hidden="true">
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <rect x="2" y="5" width="20" height="14" rx="2" />
+                      <path d="M2 10h20" />
+                      <path d="M6 15h4" />
+                    </svg>
                   </span>
-                  <span className="payment-sheet__option-desc">
-                    ЮKassa · Visa / MC / МИР / СБП
+                  <span className="payment-sheet__option-main">
+                    <span className="payment-sheet__option-name">
+                      {cardExpanded ? "Оплатить картой" : "Банковской картой"}
+                    </span>
+                    <span className="payment-sheet__option-desc">
+                      ЮKassa · Visa / MC / МИР / СБП
+                    </span>
                   </span>
-                </span>
-                <span className="payment-sheet__option-price">
-                  {rubPrice} ₽
-                </span>
-              </button>
+                  <span className="payment-sheet__option-price">
+                    {rubPrice} ₽
+                  </span>
+                </button>
+
+                <AnimatePresence initial={false}>
+                  {cardExpanded && (
+                    <motion.div
+                      className="payment-sheet__email"
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <label
+                        className="payment-sheet__email-label"
+                        htmlFor="payment-sheet-email"
+                      >
+                        Email для чека
+                      </label>
+                      <input
+                        id="payment-sheet-email"
+                        className={`payment-sheet__email-input${
+                          touched && !emailValid
+                            ? " payment-sheet__email-input--error"
+                            : ""
+                        }`}
+                        type="email"
+                        inputMode="email"
+                        autoComplete="email"
+                        placeholder="you@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        onBlur={() => setTouched(true)}
+                        autoFocus
+                      />
+                      <p className="payment-sheet__email-hint">
+                        Фискальный чек по 54-ФЗ придёт на этот адрес
+                      </p>
+                      {touched && !emailValid && (
+                        <p className="payment-sheet__email-error">
+                          Введите корректный email
+                        </p>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </>
             )}
 
             <button

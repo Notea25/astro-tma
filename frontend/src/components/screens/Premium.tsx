@@ -10,13 +10,14 @@ import { useHaptic } from "@/hooks/useTelegram";
 import { usePayment } from "@/hooks/usePayment";
 
 /** Create a YuKassa hosted-payment session and open the URL outside the
- *  Mini App. Telegram WebView strugles with 3DS popups, so we always
- *  redirect to the system browser via openLink. On any failure we fall
- *  back to a humane error alert. */
-async function payWithCard(productId: string): Promise<void> {
+ *  Mini App. Telegram WebView struggles with 3DS popups, so we always
+ *  redirect to the system browser via openLink. The buyer's email is
+ *  required so YuKassa can issue the 54-ФЗ fiscal receipt. */
+async function payWithCard(productId: string, email: string): Promise<void> {
   try {
     const { confirmation_url } = await paymentsApi.createYukassaInvoice(
       productId,
+      email,
     );
     WebApp.openLink(confirmation_url);
   } catch (e: unknown) {
@@ -89,11 +90,11 @@ export function Premium() {
     setSheet(null);
     await purchase(id);
   };
-  const handlePayCard = async () => {
+  const handlePayCard = async (email: string) => {
     if (!sheet) return;
     const id = sheet.productId;
     setSheet(null);
-    await payWithCard(id);
+    await payWithCard(id, email);
   };
 
   return (

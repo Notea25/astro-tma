@@ -8,19 +8,23 @@
  * When omitted, the gate locks based purely on entitlement to productId.
  */
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import WebApp from "@twa-dev/sdk";
 import { usePayment } from "@/hooks/usePayment";
 import { useEntitlement } from "@/hooks/useEntitlement";
 import { useProductPrice, useProductPriceRub } from "@/hooks/useProductPrice";
 import { paymentsApi } from "@/services/api";
+import { PaymentSheet } from "@/components/ui/PaymentSheet";
 
 /** Create a YuKassa hosted-payment session and open the URL outside the
- *  Mini App — Telegram WebView struggles with 3DS popups. */
-async function payWithCard(productId: string): Promise<void> {
+ *  Mini App — Telegram WebView struggles with 3DS popups. Email is the
+ *  buyer's receipt address (54-ФЗ). */
+async function payWithCard(productId: string, email: string): Promise<void> {
   try {
     const { confirmation_url } = await paymentsApi.createYukassaInvoice(
       productId,
+      email,
     );
     WebApp.openLink(confirmation_url);
   } catch (e: unknown) {
@@ -77,6 +81,9 @@ export function PremiumGate({
   const livePrice = useProductPrice(productId);
   const displayStars = livePrice ?? stars;
   const priceRub = useProductPriceRub(productId);
+  // Card-payment sheet — opened by the dedicated RUB button so the user
+  // can supply their receipt email before we hit YuKassa.
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   // Caller forced free access OR user is entitled → show the real content.
   if (locked === false || entitled) {
@@ -133,13 +140,31 @@ export function PremiumGate({
         <button
           type="button"
           className="btn-rub premium-gate__cta-rub"
-          onClick={() => payWithCard(productId)}
+          onClick={() => setSheetOpen(true)}
           disabled={loading}
           aria-label={`Оплатить ${priceRub} рублей`}
         >
           Оплатить {priceRub} ₽
         </button>
       )}
+
+      <PaymentSheet
+        isOpen={sheetOpen}
+        item={productName}
+        starsPrice={displayStars}
+        rubPrice={priceRub ?? null}
+        defaultExpandCard
+        onClose={() => setSheetOpen(false)}
+        onPayStars={() => {
+          setSheetOpen(false);
+          void purchase(productId);
+        }}
+        onPayCard={(email) => {
+          setSheetOpen(false);
+          void payWithCard(productId, email);
+        }}
+      />
+
 
       {activating && (
         <motion.div

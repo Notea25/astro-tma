@@ -5,11 +5,13 @@ import { ApiError, destinyApi, destinyV3Api, paymentsApi } from "@/services/api"
 import WebApp from "@twa-dev/sdk";
 import { usePayment } from "@/hooks/usePayment";
 import { useProductPrice, useProductPriceRub } from "@/hooks/useProductPrice";
+import { PaymentSheet } from "@/components/ui/PaymentSheet";
 
-async function payWithCard(productId: string): Promise<void> {
+async function payWithCard(productId: string, email: string): Promise<void> {
   try {
     const { confirmation_url } = await paymentsApi.createYukassaInvoice(
       productId,
+      email,
     );
     WebApp.openLink(confirmation_url);
   } catch (e: unknown) {
@@ -157,6 +159,9 @@ export function DestinyMatrixReading() {
   const [showCalcAnim, setShowCalcAnim] = useState(true);
   const [isPdfDownloading, setIsPdfDownloading] = useState(false);
   const [pdfDownloadError, setPdfDownloadError] = useState<string | null>(null);
+  // Card-payment sheet — opened from either upsell. We keep it at the
+  // screen root so both upsell sites share one component instance.
+  const [paymentSheetOpen, setPaymentSheetOpen] = useState(false);
 
   const goBack = () => {
     if (activeTap) {
@@ -354,7 +359,7 @@ export function DestinyMatrixReading() {
                     <button
                       type="button"
                       className="btn-rub destiny-reading__upsell-rub"
-                      onClick={() => payWithCard("destiny_matrix_full")}
+                      onClick={() => setPaymentSheetOpen(true)}
                       disabled={paying}
                     >
                       Оплатить {priceRub} ₽
@@ -474,7 +479,7 @@ export function DestinyMatrixReading() {
                       <button
                         type="button"
                         className="btn-rub destiny-sheet__rub"
-                        onClick={() => payWithCard("destiny_matrix_full")}
+                        onClick={() => setPaymentSheetOpen(true)}
                         disabled={paying}
                       >
                         Оплатить {priceRub} ₽
@@ -490,6 +495,23 @@ export function DestinyMatrixReading() {
           </>
         )}
       </AnimatePresence>
+
+      <PaymentSheet
+        isOpen={paymentSheetOpen}
+        item="Матрица Судьбы — полный разбор"
+        starsPrice={price}
+        rubPrice={priceRub ?? null}
+        defaultExpandCard
+        onClose={() => setPaymentSheetOpen(false)}
+        onPayStars={() => {
+          setPaymentSheetOpen(false);
+          void handlePurchase();
+        }}
+        onPayCard={(email) => {
+          setPaymentSheetOpen(false);
+          void payWithCard("destiny_matrix_full", email);
+        }}
+      />
     </div>
   );
 }

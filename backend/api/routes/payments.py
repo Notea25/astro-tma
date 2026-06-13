@@ -1,6 +1,8 @@
 """Payment endpoints — Telegram Stars + YuKassa (Russian card-payment) flow."""
 
 
+import re
+
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.exc import IntegrityError
@@ -29,8 +31,15 @@ router = APIRouter(prefix="/payments", tags=["payments"])
 log = get_logger(__name__)
 
 
+_EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+
+
 class YukassaCreateRequest(BaseModel):
     product_id: str
+    # Buyer's email — 54-ФЗ fiscal-receipt recipient. Optional on the
+    # wire (older clients may not send it); when absent we fall back to
+    # YUKASSA_RECEIPT_DEFAULT_EMAIL.
+    email: str | None = None
 
 
 class YukassaCreateResponse(BaseModel):
@@ -166,6 +175,15 @@ async def create_yukassa_payment(
             "Ruble price not configured for this product",
         )
 
+    # Buyer email — for the 54-ФЗ fiscal receipt. Validate format here
+    # so YuKassa doesn't bounce the request with a generic error.
+    customer_email = (body.email or "").strip() or None
+    if customer_email is not None and not _EMAIL_RE.match(customer_email):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Введите корректный email для чека.",
+        )
+
     try:
         payment = await yk.create_payment(
             amount_rub=rub_amount,
@@ -174,6 +192,7 @@ async def create_yukassa_payment(
                 "user_id": str(tg_user["id"]),
                 "product_id": body.product_id,
             },
+            customer_email=customer_email,
         )
     except Exception as e:  # noqa: BLE001
         log.error("yukassa.create_exception", error=str(e))
