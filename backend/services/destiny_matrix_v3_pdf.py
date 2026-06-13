@@ -426,10 +426,16 @@ def build_destiny_matrix_v3_pdf_html(
     chakras_page_num = purposes_page_num + 1
     final_page_num = chakras_page_num + 1
 
+    # NOTE: extras keys must NOT collide with any SECTIONS key. Previously
+    # 'purposes' was used here AND in SECTIONS, so the merge below silently
+    # overwrote section_pages['purposes'] (narrative section, page ~15)
+    # with the TOC of the 8-purposes table (page ~28). Result: TOC link
+    # to the narrative '8 предназначений' section pointed at the wrong
+    # page. Prefix extras keys with '_extra_' to keep namespaces disjoint.
     extras = {
-        "karmic": ("Кармическая программа · канон", karmic_page_num),
-        "purposes": ("8 предназначений · таблица", purposes_page_num),
-        "chakras": ("Чакры · таблица", chakras_page_num),
+        "_extra_karmic": ("Кармическая программа · канон", karmic_page_num),
+        "_extra_purposes_table": ("8 предназначений · таблица", purposes_page_num),
+        "_extra_chakras": ("Чакры · таблица", chakras_page_num),
     }
     contents_section_pages = dict(section_pages)
     for key, (label, p) in extras.items():
