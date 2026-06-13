@@ -45,6 +45,16 @@ class Settings(BaseSettings):
     # User-facing return URL after the YuKassa hosted-payment page.
     # Deep-links back into the Telegram Mini App.
     YUKASSA_RETURN_URL: str = "https://t.me/astrologiyatut_bot/app"
+    # Fiscal-receipt defaults (54-ФЗ compliance). YuKassa rejects
+    # live-mode payments without a receipt object that names a customer
+    # (email or phone) and at least one line-item. Until we collect the
+    # buyer's email in the PaymentSheet UI we send fiscal receipts to
+    # the shop owner's address — fully legal, the customer can still
+    # request a copy via support.
+    YUKASSA_RECEIPT_DEFAULT_EMAIL: str = ""
+    # VAT code per the YuKassa receipt schema. 1 = no VAT (simplest;
+    # correct for most individual entrepreneurs and УСН-merchants).
+    YUKASSA_RECEIPT_VAT_CODE: int = 1
 
     # Push scheduling
     PUSH_DAILY_HOUR: int = 9
