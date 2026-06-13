@@ -219,7 +219,15 @@ async def load_v3_context(
 # ── Prompt helpers ──────────────────────────────────────────────────────────
 
 
-_BASE_SYSTEM = """Ты — практикующий мастер Матрицы Судьбы, опираешься на \
+def _arcana_canon_block() -> str:
+    """Inject the 22 canonical arcana names so the model can't fall back
+    on the Rider-Waite tarot tradition (Дьявол / Луна / Повешенный / …)."""
+    from services.destiny_matrix.calculator import ARCANA_NAMES
+    rows = [f"  {n:2d} {ARCANA_NAMES[n]}" for n in range(1, 23)]
+    return "\n".join(rows)
+
+
+_BASE_SYSTEM = f"""Ты — практикующий мастер Матрицы Судьбы, опираешься на \
 методологию Натальи Ладини. Пишешь тёплый, конкретный, поддерживающий \
 разбор для читателя на «ты».
 
@@ -235,10 +243,20 @@ _BASE_SYSTEM = """Ты — практикующий мастер Матрицы 
 - Без эзотерических штампов («высшее служение», «вселенский поток»).
 - Без медицинских, юридических, инвестиционных советов.
 - Без предсказаний дат и событий.
-- Цитируй арканы по номеру и названию: «аркан 5 (Иерофант)».
+
+ИМЕНА АРКАНОВ (КАНОН ЛАДИНИ — ИСПОЛЬЗОВАТЬ ТОЛЬКО ЭТИ):
+{_arcana_canon_block()}
+
+Цитируй арканы по номеру и названию из таблицы выше: «аркан 5 (Учитель)».
+ЗАПРЕЩЕНЫ классические таро-имена: Дьявол, Луна, Повешенный, Шут, Дурак,
+Иерофант, Жрец, Колесо Фортуны, Смерть, Умеренность, Башня, Отшельник,
+Верховная Жрица, Колесница, Суд, Маги́цы и т.п. При нумерации N всегда
+берёшь {{N}} → имя из таблицы выше.
 
 ФОРМАТ:
 - Возвращай ТОЛЬКО готовый текст секции на русском.
+- НЕ начинай ответ со слов «Ответ», «Вот», «Разбор», «Конечно», «Хорошо».
+  Сразу с первого осмысленного абзаца.
 - Не добавляй markdown-заголовок секции — заголовок уже есть в UI.
 - Допустим список (нумерованный или •) и абзацы.
 - Не оборачивай ответ в кавычки или код-блок."""
@@ -873,11 +891,28 @@ async def _generate_one(
     client: Any, spec: SectionSpec, ctx: V3Context,
 ) -> tuple[str, str, int]:
     """Returns (section_key, content, elapsed_ms). Raises on LLM error
-    so the caller can decide whether to retry or fall back per-section."""
+    so the caller can decide whether to retry or fall back per-section.
+
+    Runs the V3 polish pipeline (canonical arcana names, leading-service-
+    word strip, code fence + stray-asterisk cleanup) BEFORE caching, so
+    we never store dirty content. See ``text_fix.polish_section_text``.
+    """
+    from services.destiny_matrix.text_fix import polish_section_text
+
     t0 = time.monotonic()
     user_prompt, target = spec.prompt(ctx)
     content = await _call_llm(client, _BASE_SYSTEM, user_prompt, target)
+    content, stats = polish_section_text(content)
     elapsed = int((time.monotonic() - t0) * 1000)
+    if any(stats.values()):
+        log.info(
+            "v3.section.polished",
+            section_key=spec.key,
+            arcana_fixes=stats.get("arcana_name_mismatch", 0),
+            preamble_strip=stats.get("leading_service_word", 0),
+            code_fence=stats.get("code_fence", 0),
+            stray_asterisk=stats.get("stray_asterisk", 0),
+        )
     return spec.key, content, elapsed
 
 
