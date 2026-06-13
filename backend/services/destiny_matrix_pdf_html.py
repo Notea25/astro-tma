@@ -229,131 +229,262 @@ def _ray_corner_dot(corner_xy: tuple[float, float], center_xy: tuple[float, floa
 
 
 def _octagram_svg(positions: dict[str, Any]) -> str:
-    """Project the React DestinyOctagram into static SVG.
+    """Port of ``frontend/src/components/destiny/DestinyOctagram.tsx`` to
+    static SVG so the PDF and the React TMA view render the same picture.
 
-    Geometry mirrors ``frontend/src/components/destiny/DestinyOctagram.tsx``:
-    viewBox 600x600, centre (300, 300), R = 220 for personality diamond
-    corners, R = 220 / sqrt(2) for ancestral square corners.
+    Geometry constants mirror the React file verbatim:
+      viewBox -40 -40 (600+80) (600+80), centre (300, 300).
+      Diamond corners: TOP (300,70), RIGHT (530,300), BOTTOM (300,530),
+      LEFT (70,300). Square corners: TL (140,140) … BL (140,460).
+      8 main nodes are offset OUTWARD from the corners by NODE_OFF=26
+      (cardinal) / 26/√2 (diagonal). Inner ring R=155.
     """
     pers = positions.get("personality", {})
     sq = positions.get("ancestral_square", {})
     specials = positions.get("specials", {}) or {}
-    money_diag = positions.get("money_diagonal") or []
+    money_diag = positions.get("money_diagonal") or [0, 0, 0]
+    channels = positions.get("channels", {}) or {}
 
-    cx = cy = 300.0
-    r_diamond = 220.0
-    r_square = r_diamond * 0.78
-
-    # Diamond corners (personality)
-    top = (cx, cy - r_diamond)
-    right = (cx + r_diamond, cy)
-    bottom = (cx, cy + r_diamond)
-    left = (cx - r_diamond, cy)
-    # Square corners (ancestral)
-    tl = (cx - r_square, cy - r_square)
-    tr = (cx + r_square, cy - r_square)
-    br = (cx + r_square, cy + r_square)
-    bl = (cx - r_square, cy + r_square)
-
-    parts: list[str] = [
-        '<svg class="octa-svg" viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg">',
-        # Diamond + square outlines
-        f'<polygon points="{top[0]},{top[1]} {right[0]},{right[1]} {bottom[0]},{bottom[1]} {left[0]},{left[1]}" '
-        f'fill="none" stroke="{COLOR_DIAMOND}" stroke-width="1.6" opacity=".85"/>',
-        f'<polygon points="{tl[0]},{tl[1]} {tr[0]},{tr[1]} {br[0]},{br[1]} {bl[0]},{bl[1]}" '
-        f'fill="none" stroke="{COLOR_SQUARE}" stroke-width="1.6" opacity=".85"/>',
-        # Diagonal rays (corner → centre, terminating at R_INNER = 155)
-    ]
-    r_inner = 155.0
-    for corner in (top, right, bottom, left, tl, tr, br, bl):
-        dx, dy = corner[0] - cx, corner[1] - cy
-        dist = math.hypot(dx, dy)
-        if not dist:
-            continue
-        ix = cx + dx / dist * r_inner
-        iy = cy + dy / dist * r_inner
-        parts.append(
-            f'<line x1="{corner[0]:.1f}" y1="{corner[1]:.1f}" x2="{ix:.1f}" y2="{iy:.1f}" '
-            f'stroke="{GOLD_DIM}" stroke-width=".8" opacity=".55"/>'
+    def ch3(key: str) -> tuple[int | None, int | None, int | None]:
+        arr = channels.get(key) or []
+        return (
+            arr[0] if len(arr) > 0 else None,
+            arr[1] if len(arr) > 1 else None,
+            arr[2] if len(arr) > 2 else None,
         )
 
-    # Family-line arrows (faint, just to hint at TL↔BR and TR↔BL diagonals)
-    parts.append(
-        f'<line x1="{tl[0]}" y1="{tl[1]}" x2="{br[0]}" y2="{br[1]}" '
-        f'stroke="{COLOR_FAMILY_M}" stroke-width="1" opacity=".35"/>'
+    t1_, t2_, t3_ = ch3("talents")          # top ray
+    d1_, d2_, d3_ = ch3("parental")         # left ray
+    r1_, r2_, _ = ch3("material_karma")     # right ray
+    b1_, b2_, _ = ch3("karmic_tail")        # bottom ray
+    aft1_, aft2_, _ = ch3("ancestral_father_talents")  # TL ray
+    amt1_, amt2_, _ = ch3("ancestral_mother_talents")  # TR ray
+    afk1_, afk2_, _ = ch3("ancestral_father_karma")    # BR ray
+    amk1_, amk2_, _ = ch3("ancestral_mother_karma")    # BL ray
+
+    CX = CY = 300.0
+    # Diamond vertices (TOP/RIGHT/BOTTOM/LEFT) — corners of the rotated square
+    TOP = (300.0, 70.0)
+    RIGHT = (530.0, 300.0)
+    BOTTOM = (300.0, 530.0)
+    LEFT = (70.0, 300.0)
+    # Straight (ancestral) square vertices
+    TL = (140.0, 140.0)
+    TR = (460.0, 140.0)
+    BR = (460.0, 460.0)
+    BL = (140.0, 460.0)
+
+    # 8 main nodes are positioned OUTSIDE the octagram so their inner edge
+    # just kisses the corner. Cardinal offset 26, diagonal 26/√2.
+    NODE_OFF = 26.0
+    NODE_OFF_D = NODE_OFF / math.sqrt(2)
+    N_TOP = (TOP[0], TOP[1] - NODE_OFF)
+    N_RIGHT = (RIGHT[0] + NODE_OFF, RIGHT[1])
+    N_BOTTOM = (BOTTOM[0], BOTTOM[1] + NODE_OFF)
+    N_LEFT = (LEFT[0] - NODE_OFF, LEFT[1])
+    N_TL = (TL[0] - NODE_OFF_D, TL[1] - NODE_OFF_D)
+    N_TR = (TR[0] + NODE_OFF_D, TR[1] - NODE_OFF_D)
+    N_BR = (BR[0] + NODE_OFF_D, BR[1] + NODE_OFF_D)
+    N_BL = (BL[0] - NODE_OFF_D, BL[1] + NODE_OFF_D)
+
+    R_INNER = 155.0
+
+    def along(v: tuple[float, float], t: float) -> tuple[float, float]:
+        return (v[0] + t * (CX - v[0]), v[1] + t * (CY - v[1]))
+
+    # Channel-dot tiers — 1st near corner (t=0.09), 3rd near centre (t=0.62)
+    RAY_T_1 = 0.09
+    RAY_T_3 = 0.62
+    TOP_1 = along(TOP, RAY_T_1); TOP_3 = along(TOP, RAY_T_3)
+    LEFT_1 = along(LEFT, RAY_T_1); LEFT_3 = along(LEFT, RAY_T_3)
+    RIGHT_1 = along(RIGHT, RAY_T_1)
+    BOT_1 = along(BOTTOM, RAY_T_1)
+    TL_1 = along(TL, RAY_T_1)
+    TR_1 = along(TR, RAY_T_1)
+    BR_1 = along(BR, RAY_T_1)
+    BL_1 = along(BL, RAY_T_1)
+    # 2nd tier — on the perimeter of the octagram (intersection of ray and
+    # the opposite shape's side), hard-coded per spec.
+    TOP_2 = (300.0, 140.0); BOT_2 = (300.0, 460.0)
+    LEFT_2 = (140.0, 300.0); RIGHT_2 = (460.0, 300.0)
+    TL_2 = (185.0, 185.0); TR_2 = (415.0, 185.0)
+    BR_2 = (415.0, 415.0); BL_2 = (185.0, 415.0)
+
+    # Inner-circle specials per spec §6.1
+    COMFORT_A = along((530.0, 300.0), 0.85)  # ближе к центру
+    COMFORT_B = along((530.0, 300.0), 0.72)  # ближе к money
+    CROSS_POS = (380.0, 380.0)
+    MONEY_DIAG_OUTER = (429.0, 349.0)
+    LOVE_DIAG_OUTER = (349.0, 429.0)
+    HEART_POS = (345.0, 400.0)
+    DOLLAR_POS = (392.0, 345.0)
+
+    # Palette (mirrors the React file's COLOR_*)
+    LINE = "rgba(200, 195, 180, 0.6)"
+    LINE_ACC = "rgba(232, 200, 98, 0.75)"
+    INNER_RING = "rgba(232, 200, 98, 0.35)"
+    DOT_GOLD = "rgba(232, 200, 98, 0.95)"
+    DOT_RED = "#e07b6a"
+    DOT_PINK = "#d27b9c"
+    DOT_ORANGE = "#e8a553"
+    CENTER_GOLD = "#e8c862"
+    BASE_GOLD = "#e8c862"
+    KARMA_RED = "#e07b6a"
+    FATHER = "rgba(120, 145, 220, 0.75)"
+    MOTHER = "rgba(220, 110, 130, 0.75)"
+    NODE_FILL = "#0e0b20"  # matches React (slightly different from BG)
+
+    R_DOT_1, R_DOT_2, R_DOT_3 = 20.0, 17.0, 14.0
+
+    def _inner_edge(toward: tuple[float, float]) -> tuple[float, float]:
+        dx, dy = toward[0] - CX, toward[1] - CY
+        length = math.hypot(dx, dy) or 1.0
+        return (CX + (dx / length) * R_INNER, CY + (dy / length) * R_INNER)
+
+    p: list[str] = [
+        '<svg class="octa-svg" viewBox="-40 -40 680 680" xmlns="http://www.w3.org/2000/svg">',
+        # ── 8 inner spokes: centre → inner-ring edge in each direction ──
+    ]
+    for corner in (LEFT, RIGHT, TOP, BOTTOM, TL, TR, BR, BL):
+        ex, ey = _inner_edge(corner)
+        p.append(
+            f'<line x1="{CX}" y1="{CY}" x2="{ex:.1f}" y2="{ey:.1f}" '
+            f'stroke="{LINE}" stroke-width="1"/>'
+        )
+
+    # ── Diamond + straight square outlines ──
+    p.append(
+        f'<path d="M {LEFT[0]} {LEFT[1]} L {TOP[0]} {TOP[1]} '
+        f'L {RIGHT[0]} {RIGHT[1]} L {BOTTOM[0]} {BOTTOM[1]} Z" '
+        f'fill="none" stroke="{LINE_ACC}" stroke-width="1.3"/>'
     )
-    parts.append(
-        f'<line x1="{tr[0]}" y1="{tr[1]}" x2="{bl[0]}" y2="{bl[1]}" '
-        f'stroke="{COLOR_FAMILY_F}" stroke-width="1" opacity=".35"/>'
+    p.append(
+        f'<path d="M {TL[0]} {TL[1]} L {TR[0]} {TR[1]} '
+        f'L {BR[0]} {BR[1]} L {BL[0]} {BL[1]} Z" '
+        f'fill="none" stroke="{LINE_ACC}" stroke-width="1.3"/>'
     )
 
-    # Money diagonal (dashed): centre → BR area
-    if money_diag:
-        parts.append(
-            f'<line x1="{cx}" y1="{cy}" x2="{br[0]:.1f}" y2="{br[1]:.1f}" '
-            f'stroke="{COLOR_DOLLAR}" stroke-width="1" stroke-dasharray="4 4" opacity=".55"/>'
-        )
+    # ── Inner soul circle ──
+    p.append(
+        f'<circle cx="{CX}" cy="{CY}" r="{R_INNER}" '
+        f'fill="none" stroke="{INNER_RING}" stroke-width="1.1"/>'
+    )
 
-    # Big corner nodes
-    R_DOT = 26.0
-    nodes = [
-        (top, pers.get("month"), "Месяц"),
-        (right, pers.get("year"), "Год"),
-        (bottom, pers.get("bottom"), "Низ"),
-        (left, pers.get("day"), "День"),
-        (tl, sq.get("top_left"), "Род ↖"),
-        (tr, sq.get("top_right"), "Род ↗"),
-        (br, sq.get("bottom_right"), "Род ↘"),
-        (bl, sq.get("bottom_left"), "Род ↙"),
-    ]
-    for (x, y), num, _label in nodes:
-        if num is None:
-            continue
-        parts.append(
-            f'<circle cx="{x}" cy="{y}" r="{R_DOT}" fill="{BG}" '
-            f'stroke="{GOLD}" stroke-width="1.4"/>'
-        )
-        parts.append(
-            f'<text x="{x}" y="{y}" text-anchor="middle" dy="0.35em" '
-            f'fill="{GOLD}" font-size="22" font-family="DejaVu Serif, Georgia, serif">{int(num)}</text>'
-        )
+    # ── Father (blue) / Mother (red) lineage arrows inside the ring ──
+    p.append(
+        '<defs>'
+        f'<marker id="dm-arr-f" viewBox="0 0 10 10" refX="9" refY="5" '
+        f'markerWidth="6" markerHeight="6" orient="auto-start-reverse">'
+        f'<path d="M 0 0 L 10 5 L 0 10 z" fill="{FATHER}"/></marker>'
+        f'<marker id="dm-arr-m" viewBox="0 0 10 10" refX="9" refY="5" '
+        f'markerWidth="6" markerHeight="6" orient="auto-start-reverse">'
+        f'<path d="M 0 0 L 10 5 L 0 10 z" fill="{MOTHER}"/></marker>'
+        '</defs>'
+    )
+    p.append(
+        f'<line x1="{CX - 75}" y1="{CY - 75}" x2="{CX + 75}" y2="{CY + 75}" '
+        f'stroke="{FATHER}" stroke-width="1.6" opacity="0.85" '
+        f'marker-start="url(#dm-arr-f)" marker-end="url(#dm-arr-f)"/>'
+    )
+    p.append(
+        f'<line x1="{CX - 75}" y1="{CY + 75}" x2="{CX + 75}" y2="{CY - 75}" '
+        f'stroke="{MOTHER}" stroke-width="1.6" opacity="0.85" '
+        f'marker-start="url(#dm-arr-m)" marker-end="url(#dm-arr-m)"/>'
+    )
 
-    # Centre
-    center_val = pers.get("center")
-    if center_val is not None:
-        parts.append(
-            f'<circle cx="{cx}" cy="{cy}" r="{R_DOT + 4}" fill="{BG}" '
-            f'stroke="{GOLD}" stroke-width="1.6"/>'
-        )
-        parts.append(
-            f'<text x="{cx}" y="{cy}" text-anchor="middle" dy="0.35em" '
-            f'fill="{GOLD}" font-size="24" font-family="DejaVu Serif, Georgia, serif">{int(center_val)}</text>'
-        )
+    # ── Dashed money/love diagonal RIGHT_2 → BOT_2 through cross_p ──
+    p.append(
+        f'<path d="M {RIGHT_2[0]} {RIGHT_2[1]} L {BOT_2[0]} {BOT_2[1]}" '
+        f'fill="none" stroke="{DOT_ORANGE}" stroke-width="1.2" '
+        f'stroke-dasharray="4 3" opacity="0.7"/>'
+    )
 
-    # Mid-of-ray dots (specials.talent / character / money / love)
-    R_MID = 16.0
-    mid_t = 0.42  # along corner → centre, from corner
-    mid_dots = [
-        (top, specials.get("talent")),
-        (left, specials.get("character")),
-        (right, specials.get("money")),
-        (bottom, specials.get("love")),
-    ]
-    for corner, num in mid_dots:
-        if num is None:
-            continue
-        x, y = _ray_corner_dot(corner, (cx, cy), mid_t)
-        parts.append(
-            f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{R_MID}" fill="{BG}" '
-            f'stroke="{GOLD_DIM}" stroke-width="1"/>'
+    # ── Heart icon (red) at (345, 400) ──
+    p.append(
+        f'<g transform="translate({HEART_POS[0]} {HEART_POS[1]}) scale(0.5)">'
+        '<path d="M 0 6 C -10 -4 -22 -4 -22 6 C -22 18 0 32 0 32 '
+        'C 0 32 22 18 22 6 C 22 -4 10 -4 0 6 Z" fill="#e84545"/></g>'
+    )
+    # ── $ icon (green) at (392, 345) ──
+    p.append(
+        f'<text x="{DOLLAR_POS[0]}" y="{DOLLAR_POS[1]}" text-anchor="middle" '
+        f'dy="0.35em" fill="#5cb85c" font-weight="700" '
+        f'font-size="22" font-family="DejaVu Serif, Georgia, serif">$</text>'
+    )
+
+    # ── Channel dots (small numbered circles on each ray) ──
+    def _dot(pos: tuple[float, float], num: int | None, r: float, color: str) -> None:
+        if num is None or num == 0:
+            return
+        x, y = pos
+        p.append(
+            f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r}" fill="{color}" '
+            f'stroke="none"/>'
         )
-        parts.append(
+        p.append(
             f'<text x="{x:.1f}" y="{y:.1f}" text-anchor="middle" dy="0.35em" '
-            f'fill="{GOLD}" font-size="14" font-family="DejaVu Serif, Georgia, serif">{int(num)}</text>'
+            f'fill="{NODE_FILL}" font-size="{int(r * 0.85)}" '
+            f'font-weight="600" font-family="DejaVu Serif, Georgia, serif">{int(num)}</text>'
         )
 
-    parts.append("</svg>")
-    return "".join(parts)
+    # Cardinal rays
+    _dot(TOP_1, t1_, R_DOT_1, DOT_GOLD)
+    _dot(TOP_2, t2_, R_DOT_2, DOT_GOLD)
+    _dot(TOP_3, t3_, R_DOT_3, DOT_GOLD)
+    _dot(LEFT_1, d1_, R_DOT_1, DOT_GOLD)
+    _dot(LEFT_2, d2_, R_DOT_2, DOT_GOLD)
+    _dot(LEFT_3, d3_, R_DOT_3, DOT_GOLD)
+    _dot(RIGHT_1, r1_, R_DOT_1, DOT_GOLD)
+    _dot(RIGHT_2, r2_, R_DOT_2, DOT_GOLD)
+    _dot(BOT_1, b1_, R_DOT_1, DOT_RED)
+    _dot(BOT_2, b2_, R_DOT_2, DOT_RED)
+    # Diagonal rays
+    _dot(TL_1, aft1_, R_DOT_1, DOT_GOLD)
+    _dot(TL_2, aft2_, R_DOT_2, DOT_GOLD)
+    _dot(TR_1, amt1_, R_DOT_1, DOT_GOLD)
+    _dot(TR_2, amt2_, R_DOT_2, DOT_GOLD)
+    _dot(BR_1, afk1_, R_DOT_1, DOT_RED)
+    _dot(BR_2, afk2_, R_DOT_2, DOT_RED)
+    _dot(BL_1, amk1_, R_DOT_1, DOT_RED)
+    _dot(BL_2, amk2_, R_DOT_2, DOT_RED)
+
+    # Comfort / cross / money_diag / love_diag specials inside the ring
+    comfort_arr = specials.get("comfort") or []
+    if comfort_arr:
+        _dot(COMFORT_A, comfort_arr[0] if len(comfort_arr) > 0 else None, R_DOT_3, DOT_PINK)
+        _dot(COMFORT_B, comfort_arr[1] if len(comfort_arr) > 1 else None, R_DOT_3, DOT_PINK)
+    _dot(CROSS_POS, specials.get("cross"), R_DOT_3, DOT_GOLD)
+    _dot(MONEY_DIAG_OUTER, money_diag[0] if money_diag else None, R_DOT_3, DOT_ORANGE)
+    _dot(LOVE_DIAG_OUTER, specials.get("love_diag_1"), R_DOT_3, DOT_PINK)
+
+    # ── 9 main numbered nodes (drawn LAST so they sit on top) ──
+    def _main(pos: tuple[float, float], num: int | None, r: float, stroke: str) -> None:
+        if num is None:
+            return
+        x, y = pos
+        p.append(
+            f'<circle cx="{x}" cy="{y}" r="{r}" fill="{NODE_FILL}" '
+            f'stroke="{stroke}" stroke-width="1.8"/>'
+        )
+        p.append(
+            f'<text x="{x}" y="{y}" text-anchor="middle" dy="0.35em" '
+            f'fill="{stroke}" font-size="22" font-weight="500" '
+            f'font-family="DejaVu Serif, Georgia, serif">{int(num)}</text>'
+        )
+
+    _main(N_LEFT, pers.get("day"), 26.0, BASE_GOLD)
+    _main(N_TOP, pers.get("month"), 26.0, BASE_GOLD)
+    _main(N_RIGHT, pers.get("year"), 26.0, BASE_GOLD)
+    _main(N_BOTTOM, pers.get("bottom"), 26.0, KARMA_RED)
+    _main(N_TL, sq.get("top_left"), 26.0, BASE_GOLD)
+    _main(N_TR, sq.get("top_right"), 26.0, BASE_GOLD)
+    _main(N_BR, sq.get("bottom_right"), 26.0, BASE_GOLD)
+    _main(N_BL, sq.get("bottom_left"), 26.0, BASE_GOLD)
+    # Centre node (slightly smaller — main-md)
+    _main((CX, CY), pers.get("center"), 22.0, CENTER_GOLD)
+
+    p.append("</svg>")
+    return "".join(p)
 
 
 # ── Pages ──────────────────────────────────────────────────────────────────
