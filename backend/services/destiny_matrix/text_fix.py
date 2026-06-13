@@ -107,13 +107,23 @@ def strip_service_preamble(text: str) -> tuple[str, int]:
     m = _SERVICE_PREFIX_RE.match(rest)
     if not m:
         return text, 0
-    # Make sure what follows starts with a capital letter — otherwise we
-    # probably ate into a real word ("ответственность" → "ственность").
     tail = rest[m.end():].lstrip()
     if not tail:
         return text, 0
-    if not (tail[0].isupper() or tail[0] in "«\""):
-        return text, 0
+    # Two-tier guard:
+    # 1. The \b in the regex already prevents matching inside a real word
+    #    ("Ответственность" survives because "ответ\b" needs a non-word char
+    #    after "т", but "с" is word-char → no boundary → no match).
+    # 2. When the matched preamble ends with a STRONG separator
+    #    (":" / "—" / "."), we trust it — the model clearly meant
+    #    a preamble. When the only separator is whitespace/comma, the
+    #    continuation MUST start with a capital letter (sentence boundary)
+    #    or we leave it alone (could be "Понимаю как ты себя…").
+    matched = m.group(0)
+    strong_sep = any(s in matched for s in (":", "—", "."))
+    if not strong_sep:
+        if not (tail[0].isupper() or tail[0] in "«\""):
+            return text, 0
     return lead + tail, 1
 
 
