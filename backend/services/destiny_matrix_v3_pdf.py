@@ -234,6 +234,18 @@ def _final_page(page_num: int) -> str:
 
 
 _V3_CSS = """
+/* V3 section heads are vertical: eyebrow → title → rule.
+   The base .section-head is flex+space-between which squeezed h2 into
+   a narrow column and forced wraps like «День / ги» across the
+   horizontal rule. Reset that layout for V3 specifically. */
+.section-head.v3-head {
+  display: block;
+  margin-bottom: 6mm;
+}
+.v3-head .rule {
+  width: 100%;
+  margin: 3mm 0 0;
+}
 .v3-eyebrow {
   text-transform: uppercase;
   font-size: 8pt;
@@ -244,6 +256,12 @@ _V3_CSS = """
 .v3-head h2 {
   font-size: 22pt;
   margin: 0 0 3mm;
+  /* The global rule sets overflow-wrap: anywhere so long Latin URLs
+     don't overflow body columns. On Cyrillic headings that produces
+     mid-word breaks («День»/«ги») — opt back out for V3 titles. */
+  overflow-wrap: normal;
+  word-break: keep-all;
+  hyphens: manual;
 }
 .section-suffix {
   font-size: 12pt;
