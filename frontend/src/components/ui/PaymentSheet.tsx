@@ -42,6 +42,7 @@ export function PaymentSheet({
 }) {
   const { impact } = useHaptic();
   const [cardExpanded, setCardExpanded] = useState(defaultExpandCard);
+  const [starsExpanded, setStarsExpanded] = useState(false);
   const [email, setEmail] = useState(defaultEmail ?? "");
   const [touched, setTouched] = useState(false);
 
@@ -49,6 +50,7 @@ export function PaymentSheet({
   useEffect(() => {
     if (!isOpen) {
       setCardExpanded(defaultExpandCard);
+      setStarsExpanded(false);
       setEmail(defaultEmail ?? "");
       setTouched(false);
     }
@@ -56,9 +58,23 @@ export function PaymentSheet({
 
   const emailValid = EMAIL_RE.test(email.trim());
 
+  const handleStarsTap = () => {
+    impact("medium");
+    // Mutex with the card sub-form so only one "selected" block is visible.
+    setCardExpanded(false);
+    setStarsExpanded((v) => !v);
+  };
+
+  const handleStarsConfirm = () => {
+    impact("medium");
+    setStarsExpanded(false);
+    onPayStars();
+  };
+
   const handleCardTap = () => {
     impact("light");
     if (!cardExpanded) {
+      setStarsExpanded(false);
       setCardExpanded(true);
       return;
     }
@@ -93,11 +109,11 @@ export function PaymentSheet({
 
             <button
               type="button"
-              className="payment-sheet__option payment-sheet__option--primary"
-              onClick={() => {
-                impact("medium");
-                onPayStars();
-              }}
+              className={`payment-sheet__option payment-sheet__option--primary${
+                starsExpanded ? " payment-sheet__option--active" : ""
+              }`}
+              onClick={handleStarsTap}
+              aria-expanded={starsExpanded}
             >
               <span className="payment-sheet__option-ic" aria-hidden="true">
                 <svg
@@ -119,6 +135,31 @@ export function PaymentSheet({
                 ⭐ {starsPrice}
               </span>
             </button>
+
+            <AnimatePresence initial={false}>
+              {starsExpanded && (
+                <motion.div
+                  className="payment-sheet__confirm"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <p className="payment-sheet__confirm-hint">
+                    Откроется окно Telegram. После подтверждения{" "}
+                    <strong>{starsPrice} ⭐</strong> спишутся с баланса Telegram
+                    Stars — отменить нельзя.
+                  </p>
+                  <button
+                    type="button"
+                    className="payment-sheet__confirm-cta"
+                    onClick={handleStarsConfirm}
+                  >
+                    Подтвердить и оплатить · ⭐ {starsPrice}
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {rubPrice != null && (
               <>
