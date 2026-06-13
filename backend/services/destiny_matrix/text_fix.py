@@ -31,37 +31,77 @@ __all__ = (
 )
 
 
-_ARCANA_RE = re.compile(
-    r"(аркан\s+)(\d{1,2})(\s*\()([^)]+)(\))",
-    re.IGNORECASE,
+_NUM_NAME_RE = re.compile(r"\b(\d{1,2})\s*\(([^)]+)\)")
+
+# Rider-Waite → (canonical number, Ladini canonical name). Includes the
+# alt-spelling variants the model emits (Жрец, Дурак, Маги́цы…).
+_RIDER_WAITE_TO_CANON: dict[str, tuple[int, str]] = {
+    "Дьявол":          (15, "Проявление"),
+    "Луна":            (18, "Магия"),
+    "Повешенный":      (12, "Новое видение"),
+    "Шут":             (22, "Уровневая свобода"),
+    "Дурак":           (22, "Уровневая свобода"),
+    "Иерофант":        (5,  "Учитель"),
+    "Жрец":            (5,  "Учитель"),
+    "Колесо Фортуны":  (10, "Фортуна"),
+    "Смерть":          (13, "Трансформация"),
+    "Умеренность":     (14, "Искусство"),
+    "Башня":           (16, "Духовное преображение"),
+    "Отшельник":       (9,  "Мудрец"),
+    "Верховная Жрица": (2,  "Единство"),
+    "Колесница":       (7,  "Воин"),
+    "Суд":             (20, "Ясно знание"),
+}
+
+# Build a single \b…\b alternation. Order by length DESC so the regex tries
+# "Колесо Фортуны" before "Колесо" would-be-shorter siblings.
+_RW_STANDALONE_RE = re.compile(
+    r"\b(" + "|".join(
+        re.escape(k) for k in sorted(_RIDER_WAITE_TO_CANON, key=len, reverse=True)
+    ) + r")\b"
 )
 
 
 def fix_arcana_names(text: str) -> tuple[str, int]:
-    """Replace every «аркан N (X)» where X ≠ canonical name.
+    """Two-pass canonical-name enforcement.
 
-    Returns (fixed_text, num_replacements). The replacement is silent —
-    the canonical name simply overrides whatever the model wrote, since
-    the number is unambiguous.
+    Pass 1 (number-anchored): match any «N (X)» pattern regardless of
+    the preceding word. «аркан 15 (Дьявол)», «аркане 15 (Дьявол)»,
+    «арканом 17 (Звезда)», «22 (Шут)» — all caught. Number is source of
+    truth; if X ≠ canon[N] we replace X with canon[N].
+
+    Pass 2 (standalone): for naked Rider-Waite tokens in prose («Шут не
+    терпит застоя», «Луна — это работа с внутренним миром»), whole-word
+    replace with the Ladini canonical name. Both passes run silently;
+    returns total replacement count for telemetry.
     """
     fixes = 0
 
-    def repl(m: re.Match[str]) -> str:
+    def repl_num(m: re.Match[str]) -> str:
         nonlocal fixes
         try:
-            num = int(m.group(2))
+            num = int(m.group(1))
         except ValueError:
             return m.group(0)
         canon = ARCANA_NAMES.get(num)
         if not canon:
             return m.group(0)
-        if m.group(4).strip() == canon:
+        if m.group(2).strip() == canon:
             return m.group(0)
         fixes += 1
-        return f"{m.group(1)}{num}{m.group(3)}{canon}{m.group(5)}"
+        return f"{m.group(1)} ({canon})"
 
-    fixed = _ARCANA_RE.sub(repl, text)
-    return fixed, fixes
+    text = _NUM_NAME_RE.sub(repl_num, text)
+
+    def repl_standalone(m: re.Match[str]) -> str:
+        nonlocal fixes
+        rw = m.group(1)
+        _, canon = _RIDER_WAITE_TO_CANON[rw]
+        fixes += 1
+        return canon
+
+    text = _RW_STANDALONE_RE.sub(repl_standalone, text)
+    return text, fixes
 
 
 # Service phrases the model sometimes prepends. Checked case-insensitive,
@@ -130,6 +170,18 @@ def strip_service_preamble(text: str) -> tuple[str, int]:
 _CODE_FENCE_RE = re.compile(r"^\s*```[a-zA-Z]*\s*\n?|\n?```\s*$", re.MULTILINE)
 _STRAY_STAR_RE = re.compile(r"(?<!\*)\*(?!\*)")
 
+
+def _strip_leading_hashes(line: str) -> str:
+    """Drop «#», «##», «### » markers from the start of one line so a
+    «# Ответ» preamble exposes its bare word."""
+    ln = line.lstrip()
+    while ln.startswith("#"):
+        ln = ln.lstrip("# ").strip()
+    # Preserve original leading whitespace? PDF flows text via white-
+    # space: pre-line; we drop leading whitespace because markdown #
+    # always sat at column 0 in our outputs.
+    return ln
+
 # Known typos the model emits on domain words. Whole-word, case-insensitive.
 # Keep tight — we only ship fixes we've actually seen in production output.
 _KNOWN_TYPOS: dict[str, str] = {
@@ -178,6 +230,15 @@ def polish_section_text(text: str) -> tuple[str, dict[str, int]]:
     }
     if not text:
         return text, stats
+
+    # 0) Strip markdown wrappers BEFORE the preamble guard so it can see
+    #    the bare word:
+    #      «**Ответ**: …» → «Ответ: …» (then preamble strip catches it)
+    #      «# Ответ\n\n…» → «Ответ\n\n…» (same)
+    #    Without this pre-strip the preamble regex misses because the
+    #    line starts with «*» or «#» (non-word char, `\s*` doesn't span).
+    text = text.replace("**", "").replace("__", "")
+    text = "\n".join(_strip_leading_hashes(ln) for ln in text.split("\n"))
 
     # 1) drop code fences (```markdown ... ```)
     fence_hits = len(_CODE_FENCE_RE.findall(text))
