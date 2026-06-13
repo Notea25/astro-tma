@@ -271,9 +271,18 @@ class TarotReadingAdmin(ModelView, model=TarotReading):
     page_size = 50
 
 
+def _attr_name(attribute) -> str:
+    """SQLAdmin passes the column NAME (str) here, but the type changed
+    between minor releases — older builds passed an InstrumentedAttribute.
+    Normalise so the formatters work either way."""
+    if isinstance(attribute, str):
+        return attribute
+    return getattr(attribute, "key", str(attribute))
+
+
 def _format_payment_provider(model, attribute) -> str:
     """`stars` → '⭐ Stars', `yukassa` → '💳 ЮKassa'. Falls back to raw value."""
-    raw = getattr(model, attribute.key, None) or "stars"
+    raw = getattr(model, _attr_name(attribute), None) or "stars"
     if raw == "yukassa":
         return "💳 ЮKassa"
     if raw == "stars":
@@ -283,7 +292,7 @@ def _format_payment_provider(model, attribute) -> str:
 
 def _format_rub_kopecks(model, attribute) -> str:
     """Kopecks → '₽ 290.00' for the admin grid. NULL → em-dash."""
-    val = getattr(model, attribute.key, None)
+    val = getattr(model, _attr_name(attribute), None)
     if val is None:
         return "—"
     return f"{val / 100:.2f} ₽"
@@ -292,7 +301,7 @@ def _format_rub_kopecks(model, attribute) -> str:
 def _format_stars(model, attribute) -> str:
     """Render '⭐ 149' for Stars rows; em-dash on YuKassa rows where the
     column carries the placeholder 0."""
-    val = getattr(model, attribute.key, None)
+    val = getattr(model, _attr_name(attribute), None)
     provider = getattr(model, "payment_provider", "stars")
     if not val or provider != "stars":
         return "—"
@@ -302,7 +311,7 @@ def _format_stars(model, attribute) -> str:
 def _format_yukassa_id(model, attribute) -> str:
     """Show just the last 12 chars — full UUID is long but the suffix
     is enough to find the payment in the YuKassa cabinet."""
-    val = getattr(model, attribute.key, None)
+    val = getattr(model, _attr_name(attribute), None)
     if not val:
         return "—"
     return f"…{val[-12:]}"
