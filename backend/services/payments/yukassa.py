@@ -178,3 +178,120 @@ async def get_payment(payment_id: str) -> dict[str, Any]:
         resp.raise_for_status()
 
     return resp.json()
+
+
+def _build_refund_receipt(
+    *,
+    amount_rub: int,
+    description: str,
+    customer_email: str,
+) -> dict[str, Any]:
+    """Same shape as the payment receipt but with `payment_mode: full_refund`.
+    YuKassa enforces a return receipt for every refund under 54-ФЗ."""
+    return {
+        "customer": {"email": customer_email},
+        "items": [
+            {
+                "description": description[:128],
+                "quantity": "1.00",
+                "amount": {
+                    "value": f"{amount_rub}.00",
+                    "currency": "RUB",
+                },
+                "vat_code": settings.YUKASSA_RECEIPT_VAT_CODE,
+                "payment_mode": "full_refund",
+                "payment_subject": "service",
+            }
+        ],
+    }
+
+
+async def create_refund(
+    *,
+    payment_id: str,
+    amount_rub: int,
+    description: str,
+    customer_email: str | None = None,
+) -> dict[str, Any]:
+    """Issue a refund for an existing YuKassa payment.
+
+    Pass the same `description` as the original payment — receipt
+    consistency matters for the tax registrar. `customer_email`
+    defaults to ``YUKASSA_RECEIPT_DEFAULT_EMAIL`` because not every
+    refund (e.g. one initiated by support) has the buyer's address
+    at hand.
+    """
+    if not is_configured():
+        raise RuntimeError("YuKassa not configured")
+
+    email = (customer_email or settings.YUKASSA_RECEIPT_DEFAULT_EMAIL).strip()
+    if not email:
+        raise RuntimeError(
+            "Cannot issue refund: no email available for the refund receipt "
+            "(set YUKASSA_RECEIPT_DEFAULT_EMAIL or pass customer_email).",
+        )
+
+    payload = {
+        "payment_id": payment_id,
+        "amount": {
+            "value": f"{amount_rub}.00",
+            "currency": "RUB",
+        },
+        "description": description[:128],
+        "receipt": _build_refund_receipt(
+            amount_rub=amount_rub,
+            description=description,
+            customer_email=email,
+        ),
+    }
+
+    headers = {
+        "Authorization": _auth_header(),
+        "Idempotence-Key": str(uuid.uuid4()),
+        "Content-Type": "application/json",
+    }
+
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        resp = await client.post(
+            f"{_API_BASE}/refunds", json=payload, headers=headers,
+        )
+
+    if resp.status_code >= 400:
+        log.error(
+            "yukassa.refund_failed",
+            payment_id=payment_id,
+            status=resp.status_code,
+            body=resp.text[:500],
+        )
+        resp.raise_for_status()
+
+    data = resp.json()
+    log.info(
+        "yukassa.refund_created",
+        payment_id=payment_id,
+        refund_id=data.get("id"),
+        amount=amount_rub,
+    )
+    return data
+
+
+async def get_refund(refund_id: str) -> dict[str, Any]:
+    """Re-fetch a refund by ID — used by the webhook handler to confirm
+    `refund.succeeded` before flipping our internal status."""
+    if not is_configured():
+        raise RuntimeError("YuKassa not configured")
+
+    headers = {"Authorization": _auth_header()}
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.get(f"{_API_BASE}/refunds/{refund_id}", headers=headers)
+
+    if resp.status_code >= 400:
+        log.error(
+            "yukassa.refund_fetch_failed",
+            refund_id=refund_id,
+            status=resp.status_code,
+            body=resp.text[:500],
+        )
+        resp.raise_for_status()
+
+    return resp.json()

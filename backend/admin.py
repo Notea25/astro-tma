@@ -22,6 +22,7 @@ from db.models import (
     MacReading,
     NatalChart,
     Purchase,
+    PurchaseStatus,
     Subscription,
     SubscriptionPlan,
     SubscriptionStatus,
@@ -30,6 +31,8 @@ from db.models import (
     TarotReading,
     User,
 )
+from services.payments import refunds as refund_svc, yukassa as yk
+from services.payments.stars import PRODUCTS
 
 log = get_logger(__name__)
 
@@ -346,6 +349,79 @@ class SubscriptionAdmin(ModelView, model=Subscription):
     can_edit = True
     can_delete = True
 
+    @action(
+        name="refund_yukassa_sub",
+        label="↩️ Вернуть подписку через YuKassa",
+        confirmation_message=(
+            "Точно вернуть оплату подписки выбранным пользователям? "
+            "Подписка отменится сразу, доступ закроется, деньги вернутся "
+            "на карту за 1–5 дней. Stars/триал-подписки будут пропущены."
+        ),
+        add_in_detail=True,
+        add_in_list=True,
+    )
+    async def refund_yukassa_sub(self, request: Request) -> RedirectResponse:
+        pks = _parse_pks(request)
+        if not pks:
+            return _redirect_back(request)
+
+        now = datetime.now(UTC)
+        async with AsyncSessionLocal() as session:
+            for pk in pks:
+                row = await session.get(Subscription, pk)
+                if row is None:
+                    log.warning("admin.refund_sub.not_found", subscription_id=pk)
+                    continue
+                if row.payment_provider != "yukassa" or not row.yukassa_payment_id:
+                    log.info(
+                        "admin.refund_sub.skipped_non_yukassa",
+                        subscription_id=pk, provider=row.payment_provider,
+                    )
+                    continue
+                if row.status == SubscriptionStatus.CANCELLED:
+                    log.info("admin.refund_sub.skipped_already_cancelled", subscription_id=pk)
+                    continue
+                if not row.rub_amount_kopecks:
+                    log.warning(
+                        "admin.refund_sub.no_amount",
+                        subscription_id=pk,
+                        payment_id=row.yukassa_payment_id,
+                    )
+                    continue
+
+                # Reuse the product description from PRODUCTS via the plan.
+                # Subscription rows don't store product_id, so map by plan.
+                description_for_plan = {
+                    SubscriptionPlan.PREMIUM_MONTH: "Premium — 30 дней",
+                    SubscriptionPlan.PREMIUM_YEAR: "Premium — 365 дней",
+                }.get(row.plan, f"Подписка {row.plan.value}")
+                amount_rub = row.rub_amount_kopecks // 100
+                try:
+                    await yk.create_refund(
+                        payment_id=row.yukassa_payment_id,
+                        amount_rub=amount_rub,
+                        description=description_for_plan,
+                    )
+                except Exception as e:  # noqa: BLE001
+                    log.error(
+                        "admin.refund_sub.yukassa_failed",
+                        subscription_id=pk,
+                        payment_id=row.yukassa_payment_id,
+                        error=str(e),
+                    )
+                    continue
+                row.status = SubscriptionStatus.CANCELLED
+                if row.expires_at and row.expires_at > now:
+                    row.expires_at = now
+                log.info(
+                    "admin.refund_sub.applied",
+                    subscription_id=pk,
+                    payment_id=row.yukassa_payment_id,
+                    amount_rub=amount_rub,
+                )
+            await session.commit()
+        return _redirect_back(request)
+
 
 class MacCardAdmin(ModelView, model=MacCard):
     name = "МАК-карта"
@@ -405,6 +481,72 @@ class PurchaseAdmin(ModelView, model=Purchase):
     can_edit = True
     can_delete = False
     page_size = 50
+
+    @action(
+        name="refund_yukassa",
+        label="↩️ Вернуть через YuKassa",
+        confirmation_message=(
+            "Точно вернуть деньги выбранным покупателям? Доступ будет "
+            "отозван, деньги вернутся на карту в течение 1–5 дней. "
+            "Stars-покупки и уже возвращённые строки будут пропущены."
+        ),
+        add_in_detail=True,
+        add_in_list=True,
+    )
+    async def refund_yukassa(self, request: Request) -> RedirectResponse:
+        pks = _parse_pks(request)
+        if not pks:
+            return _redirect_back(request)
+
+        async with AsyncSessionLocal() as session:
+            for pk in pks:
+                row = await session.get(Purchase, pk)
+                if row is None:
+                    log.warning("admin.refund.not_found", purchase_id=pk)
+                    continue
+                if row.payment_provider != "yukassa" or not row.yukassa_payment_id:
+                    log.info(
+                        "admin.refund.skipped_non_yukassa",
+                        purchase_id=pk, provider=row.payment_provider,
+                    )
+                    continue
+                if row.status == PurchaseStatus.REFUNDED:
+                    log.info("admin.refund.skipped_already_refunded", purchase_id=pk)
+                    continue
+                if not row.rub_amount_kopecks:
+                    log.warning(
+                        "admin.refund.no_amount",
+                        purchase_id=pk, payment_id=row.yukassa_payment_id,
+                    )
+                    continue
+
+                product = PRODUCTS.get(row.product_id, {})
+                description = product.get("name") or row.product_id
+                amount_rub = row.rub_amount_kopecks // 100
+                try:
+                    await yk.create_refund(
+                        payment_id=row.yukassa_payment_id,
+                        amount_rub=amount_rub,
+                        description=description,
+                    )
+                except Exception as e:  # noqa: BLE001
+                    log.error(
+                        "admin.refund.yukassa_failed",
+                        purchase_id=pk,
+                        payment_id=row.yukassa_payment_id,
+                        error=str(e),
+                    )
+                    continue
+                # Flip our row immediately — don't wait for the webhook.
+                row.status = PurchaseStatus.REFUNDED
+                log.info(
+                    "admin.refund.applied",
+                    purchase_id=pk,
+                    payment_id=row.yukassa_payment_id,
+                    amount_rub=amount_rub,
+                )
+            await session.commit()
+        return _redirect_back(request)
 
 
 # ── Factory ───────────────────────────────────────────────────────────────────

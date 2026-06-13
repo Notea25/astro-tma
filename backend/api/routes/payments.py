@@ -17,7 +17,7 @@ from api.schemas.payments import (
 from core.logging import get_logger
 from core.settings import settings
 from db.database import get_db
-from services.payments import yukassa as yk
+from services.payments import refunds, yukassa as yk
 from services.payments.pricing import get_product_price, get_product_price_rub
 from services.payments.stars import (
     PRODUCTS,
@@ -239,12 +239,60 @@ async def yukassa_webhook(request: Request, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid JSON") from None
 
     event = body_json.get("event", "")
-    payment_obj = body_json.get("object") or {}
-    payment_id = payment_obj.get("id")
-    if not payment_id:
+    obj = body_json.get("object") or {}
+    obj_id = obj.get("id")
+    if not obj_id:
         log.warning("yukassa.webhook.no_id", body_keys=list(body_json.keys()))
         return {"ok": True}
 
+    # ── refund.succeeded ─────────────────────────────────────────────
+    # The object here is a REFUND, not a payment. Re-fetch to confirm
+    # and pull out the parent payment_id (which is what our Purchase /
+    # Subscription rows match against via yukassa_payment_id).
+    if event.startswith("refund."):
+        try:
+            fresh_refund = await yk.get_refund(obj_id)
+        except Exception as e:  # noqa: BLE001
+            log.error(
+                "yukassa.webhook.refund_fetch_failed",
+                refund_id=obj_id, error=str(e),
+            )
+            raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Lookup failed") from e
+
+        refund_status = fresh_refund.get("status")
+        parent_payment_id = fresh_refund.get("payment_id")
+        log.info(
+            "yukassa.webhook.refund_received",
+            webhook_event=event,
+            refund_id=obj_id,
+            payment_id=parent_payment_id,
+            refund_status=refund_status,
+        )
+
+        if refund_status != "succeeded" or not parent_payment_id:
+            return {"ok": True}
+
+        try:
+            p_updated, s_updated = await refunds.apply_yukassa_refund_to_db(
+                db, yukassa_payment_id=parent_payment_id,
+            )
+            log.info(
+                "yukassa.webhook.refund_applied",
+                payment_id=parent_payment_id,
+                purchases_updated=p_updated,
+                subs_updated=s_updated,
+            )
+        except Exception as e:  # noqa: BLE001
+            await db.rollback()
+            log.error(
+                "yukassa.webhook.refund_apply_failed",
+                payment_id=parent_payment_id, error=str(e),
+            )
+            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Refund apply failed") from e
+        return {"ok": True}
+
+    # ── payment.* ───────────────────────────────────────────────────
+    payment_id = obj_id
     # Re-fetch from YuKassa — authoritative source of truth.
     try:
         fresh = await yk.get_payment(payment_id)
