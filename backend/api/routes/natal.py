@@ -67,7 +67,7 @@ class WheelSvgPayload(BaseModel):
 
 # Bumped when description style rules change — old rows render as stale on
 # first read so they regenerate with current length, variety and gender rules.
-NATAL_DESCRIPTIONS_VERSION = 12
+NATAL_DESCRIPTIONS_VERSION = 13
 # Bumped to 8: the reading prompt now produces an 8-section geocult-style
 # breakdown. Older 7-section readings fall below this and auto-regenerate.
 MIN_EXPANDED_READING_HEADINGS = 8
@@ -275,6 +275,7 @@ async def _get_or_generate_pdf_reading(
             aspects=aspects,
             api_key=settings.ANTHROPIC_API_KEY,
             gender=current_gender,
+            nodes=(getattr(chart, "chart_data", None) or {}).get("nodes"),
         )
     except Exception as e:
         log.error("natal.pdf_reading_failed", user_id=user.id, error=str(e))
@@ -713,6 +714,7 @@ async def get_natal_full(
                 aspects=aspects[:10],
                 api_key=settings.ANTHROPIC_API_KEY,
                 gender=current_gender,
+                nodes=chart.chart_data.get("nodes"),
             )
         except Exception as e:
             log.error("natal.llm_refresh_failed", user_id=user.id, error=str(e))
@@ -741,6 +743,7 @@ async def get_natal_full(
                 aspects=chart.chart_data.get("aspects", [])[:10],
                 api_key=settings.ANTHROPIC_API_KEY,
                 gender=current_gender,
+                nodes=chart.chart_data.get("nodes"),
             )
         except Exception as e:
             log.error("natal.llm_failed", user_id=user.id, error=str(e))

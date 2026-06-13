@@ -30,6 +30,7 @@ def _build_prompt(
     planets: dict,
     aspects: list,
     gender: str | None = None,
+    nodes: dict | None = None,
 ) -> str:
     planet_lines: list[str] = []
     for key, ru_name in _PLANET_RU.items():
@@ -64,6 +65,10 @@ def _build_prompt(
             "(например: «вы сделали», «вы сильный/сильная», «настоящий/настоящая»).\n"
         )
 
+    # Узлы приходят отдельным каналом (chart_data["nodes"]), НЕ в planets — иначе
+    # их посчитали бы планетой в стихиях/hero. Fallback на planets оставлен для
+    # обратной совместимости со старыми кешами, где узлы могли лежать в planets.
+    node_source = nodes if nodes else planets
     nodes_line = ""
     for key, label in (
         ("true_north_lunar_node", "Раху (Северный узел)"),
@@ -71,11 +76,30 @@ def _build_prompt(
         ("true_south_lunar_node", "Кету (Южный узел)"),
         ("mean_south_lunar_node", "Кету (Южный узел)"),
     ):
-        p = planets.get(key)
+        p = node_source.get(key)
         if p and label not in nodes_line:
             nodes_line += (
                 f"\n{label}: {p.get('sign_ru') or p.get('sign', '?')}, {p.get('house', '?')}-й дом"
             )
+
+    # Инструкция блока «Лунные узлы» зависит от наличия данных: для свежих карт
+    # узлы есть → требуем разбор; для старых кешей без узлов → разрешаем краткую
+    # отметку, чтобы модель не выдумывала положения.
+    if nodes_line:
+        nodes_directive = (
+            "Раху (Северный узел) — задача этой жизни, направление развития. "
+            "Кету (Южный узел) — прошлый опыт, от чего уходить. Положения узлов "
+            "даны во входных данных выше («Раху …», «Кету …») — опиши их по знаку "
+            "и дому конкретно, как вектор роста и точку опоры из прошлого. 1 абзац. "
+            "Это платный отчёт: НЕ пиши, что узлы «не рассчитаны» — данные есть."
+        )
+    else:
+        nodes_directive = (
+            "Раху (Северный узел) — задача этой жизни, направление развития. "
+            "Кету (Южный узел) — прошлый опыт, от чего уходить. Если положения "
+            "узлов отсутствуют во входных данных — одной фразой отметь, что узлы "
+            "в этом разборе не рассчитаны, и переходи дальше. Не выдумывай знак/дом."
+        )
 
     return f"""Ты — опытный астролог, пишущий интерпретации натальной карты в стиле российского астрологического портала geocult.ru. Твоя задача — написать развёрнутое описание натальной карты на основе входных данных.
 {gender_directive}
@@ -109,7 +133,7 @@ def _build_prompt(
 Опиши занятые планетами дома. Названия: 1 «Точка Я», 2 «Точка возможностей», 3 «Точка коммуникации», 4 «Точка происхождения», 5 «Точка влечений», 6 «Точка силы», 7 «Точка Ты», 8 «Точка границ», 9 «Точка духа», 10 «Точка цели», 11 «Точка социальности», 12 «Точка одиночества». 2–3 предложения на ключевой дом с планетами, без воды.
 
 **Лунные узлы**
-Раху (Северный узел) — задача этой жизни, направление развития. Кету (Южный узел) — прошлый опыт, от чего уходить. В знаке и доме. 1 абзац. Если данных по узлам нет — одной фразой отметь, что узлы в этом разборе не рассчитаны, и переходи дальше.
+{nodes_directive}
 
 **Аспекты планет**
 Разбери 3–4 главных аспекта. Гармоничные (трин, секстиль) — таланты, лёгкий поток. Напряжённые (квадрат, оппозиция) — вызовы, уроки. Соединение — усиление планет. Конкретно, с примером жизненной ситуации. 1–2 абзаца.
@@ -132,6 +156,7 @@ async def generate_natal_reading(
     aspects: list,
     api_key: str,
     gender: str | None = None,
+    nodes: dict | None = None,
 ) -> str:
     """
     Call Claude to generate a natal chart reading in Russian.
@@ -147,7 +172,9 @@ async def generate_natal_reading(
     from services.quality_validator import Severity, TextValidator, ValidationContext
     from services.rate_limiter import AnthropicLimiter
 
-    prompt = _build_prompt(sun_sign, moon_sign, ascendant_sign, planets, aspects, gender)
+    prompt = _build_prompt(
+        sun_sign, moon_sign, ascendant_sign, planets, aspects, gender, nodes=nodes
+    )
 
     client = anthropic.AsyncAnthropic(api_key=api_key)
     validator = TextValidator(use_spellchecker=False)

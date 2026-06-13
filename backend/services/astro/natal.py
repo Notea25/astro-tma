@@ -22,19 +22,19 @@ class PlanetPosition:
     name: str
     sign: str
     sign_ru: str
-    degree: float          # absolute degree 0–360
-    sign_degree: float     # degree within sign 0–30
-    house: int             # 1–12
+    degree: float  # absolute degree 0–360
+    sign_degree: float  # degree within sign 0–30
+    house: int  # 1–12
     retrograde: bool
-    speed: float           # degrees/day
+    speed: float  # degrees/day
 
 
 @dataclass(frozen=True)
 class AspectData:
-    p1: str         # planet 1 name
-    p2: str         # planet 2 name
-    aspect: str     # "conjunction", "trine", "square", "opposition", "sextile"
-    orb: float      # degrees of orb
+    p1: str  # planet 1 name
+    p2: str  # planet 2 name
+    aspect: str  # "conjunction", "trine", "square", "opposition", "sextile"
+    orb: float  # degrees of orb
     applying: bool  # applying vs separating
 
 
@@ -52,25 +52,46 @@ class NatalChartData:
     pluto: PlanetPosition
     ascendant_sign: str | None
     mc_sign: str | None
-    houses: list[dict[str, Any]]   # [{number: 1, sign: "aries", degree: 15.5}, ...]
+    houses: list[dict[str, Any]]  # [{number: 1, sign: "aries", degree: 15.5}, ...]
     aspects: list[AspectData]
-    raw: dict[str, Any]            # full kerykeion dump for future use
+    raw: dict[str, Any]  # full kerykeion dump for future use
+    # Лунные узлы (Раху/Кету). Держим отдельно от классических планет, чтобы не
+    # попасть в расчёт аспектов и не отрисоваться как планета в круге. Ключи:
+    # "true_north_lunar_node" / "true_south_lunar_node" → planet-dict (или None).
+    nodes: dict[str, dict[str, Any]] | None = None
 
 
 # Kerykeion v5 returns abbreviated sign names ("Ari", "Tau", …)
 # Normalize to full name for consistency
 _SIGN_ABBR_TO_FULL: dict[str, str] = {
-    "Ari": "Aries", "Tau": "Taurus", "Gem": "Gemini", "Can": "Cancer",
-    "Leo": "Leo",   "Vir": "Virgo",  "Lib": "Libra",  "Sco": "Scorpio",
-    "Sag": "Sagittarius", "Cap": "Capricorn", "Aqu": "Aquarius", "Pis": "Pisces",
+    "Ari": "Aries",
+    "Tau": "Taurus",
+    "Gem": "Gemini",
+    "Can": "Cancer",
+    "Leo": "Leo",
+    "Vir": "Virgo",
+    "Lib": "Libra",
+    "Sco": "Scorpio",
+    "Sag": "Sagittarius",
+    "Cap": "Capricorn",
+    "Aqu": "Aquarius",
+    "Pis": "Pisces",
 }
 
 # Russian sign names mapping (full names)
 _SIGN_RU: dict[str, str] = {
-    "Aries": "Овен", "Taurus": "Телец", "Gemini": "Близнецы",
-    "Cancer": "Рак", "Leo": "Лев", "Virgo": "Дева",
-    "Libra": "Весы", "Scorpio": "Скорпион", "Sagittarius": "Стрелец",
-    "Capricorn": "Козерог", "Aquarius": "Водолей", "Pisces": "Рыбы",
+    "Aries": "Овен",
+    "Taurus": "Телец",
+    "Gemini": "Близнецы",
+    "Cancer": "Рак",
+    "Leo": "Лев",
+    "Virgo": "Дева",
+    "Libra": "Весы",
+    "Scorpio": "Скорпион",
+    "Sagittarius": "Стрелец",
+    "Capricorn": "Козерог",
+    "Aquarius": "Водолей",
+    "Pisces": "Рыбы",
 }
 
 
@@ -80,9 +101,18 @@ def _normalize_sign(raw: str | None) -> str:
         return "Unknown"
     return _SIGN_ABBR_TO_FULL.get(raw, raw)
 
+
 _PLANET_ATTRS = [
-    "sun", "moon", "mercury", "venus", "mars",
-    "jupiter", "saturn", "uranus", "neptune", "pluto",
+    "sun",
+    "moon",
+    "mercury",
+    "venus",
+    "mars",
+    "jupiter",
+    "saturn",
+    "uranus",
+    "neptune",
+    "pluto",
 ]
 
 _PLANET_DISPLAY_NAMES: dict[str, str] = {
@@ -110,10 +140,18 @@ _MAJOR_ASPECT_ORB = 8.0
 
 # Kerykeion v5 returns house as string; map to int 1–12
 _HOUSE_STR_TO_INT: dict[str, int] = {
-    "First_House": 1, "Second_House": 2, "Third_House": 3,
-    "Fourth_House": 4, "Fifth_House": 5, "Sixth_House": 6,
-    "Seventh_House": 7, "Eighth_House": 8, "Ninth_House": 9,
-    "Tenth_House": 10, "Eleventh_House": 11, "Twelfth_House": 12,
+    "First_House": 1,
+    "Second_House": 2,
+    "Third_House": 3,
+    "Fourth_House": 4,
+    "Fifth_House": 5,
+    "Sixth_House": 6,
+    "Seventh_House": 7,
+    "Eighth_House": 8,
+    "Ninth_House": 9,
+    "Tenth_House": 10,
+    "Eleventh_House": 11,
+    "Twelfth_House": 12,
 }
 
 
@@ -150,23 +188,53 @@ def _calculate_major_planet_aspects(
 
     for left_index, left_key in enumerate(_PLANET_ATTRS):
         left = planets[left_key]
-        for right_key in _PLANET_ATTRS[left_index + 1:]:
+        for right_key in _PLANET_ATTRS[left_index + 1 :]:
             right = planets[right_key]
             distance = _angular_distance(left.degree, right.degree)
 
             for aspect_name, target_angle in _MAJOR_ASPECTS:
                 orb = abs(distance - target_angle)
                 if orb <= _MAJOR_ASPECT_ORB:
-                    aspects.append(AspectData(
-                        p1=_PLANET_DISPLAY_NAMES[left_key],
-                        p2=_PLANET_DISPLAY_NAMES[right_key],
-                        aspect=aspect_name,
-                        orb=round(orb, 2),
-                        applying=False,
-                    ))
+                    aspects.append(
+                        AspectData(
+                            p1=_PLANET_DISPLAY_NAMES[left_key],
+                            p2=_PLANET_DISPLAY_NAMES[right_key],
+                            aspect=aspect_name,
+                            orb=round(orb, 2),
+                            applying=False,
+                        )
+                    )
                     break
 
     return aspects
+
+
+_LUNAR_NODE_ATTRS = ("true_north_lunar_node", "true_south_lunar_node")
+
+
+def _extract_lunar_nodes(subject) -> dict[str, dict[str, Any]]:
+    """Извлекает лунные узлы (Раху/Кету) из Kerykeion-субъекта.
+
+    Возвращает dict {attr → planet-dict}. Узлы держим ОТДЕЛЬНО от _PLANET_ATTRS:
+    они не должны попасть в расчёт аспектов или в круг как планеты. Если узел не
+    рассчитан (None) — ключ пропускается."""
+    nodes: dict[str, dict[str, Any]] = {}
+    for attr in _LUNAR_NODE_ATTRS:
+        p = getattr(subject, attr, None)
+        if p is None or getattr(p, "sign", None) is None:
+            continue
+        sign = _normalize_sign(p.sign)
+        nodes[attr] = {
+            "name": attr,
+            "sign": sign,
+            "sign_ru": _SIGN_RU.get(sign, sign),
+            "degree": round(getattr(p, "abs_pos", 0.0) or 0.0, 4),
+            "sign_degree": round(getattr(p, "position", 0.0) or 0.0, 4),
+            "house": _parse_house(p),
+            "retrograde": bool(getattr(p, "retrograde", False)),
+            "speed": round(getattr(p, "speed", 0.0) or 0.0, 4),
+        }
+    return nodes
 
 
 def calculate_natal(
@@ -229,14 +297,21 @@ def calculate_natal(
             h = getattr(subject, house_name.lower(), None)
             if h:
                 s = _normalize_sign(h.sign)
-                houses.append({
-                    "number": i + 1,
-                    "sign": s,
-                    "sign_ru": _SIGN_RU.get(s, s),
-                    "degree": round(h.abs_pos or 0.0, 4),
-                })
+                houses.append(
+                    {
+                        "number": i + 1,
+                        "sign": s,
+                        "sign_ru": _SIGN_RU.get(s, s),
+                        "degree": round(h.abs_pos or 0.0, 4),
+                    }
+                )
 
     aspects = _calculate_major_planet_aspects(planets)
+
+    # Лунные узлы — отдельный канал (chart.nodes), НЕ в planets: не участвуют ни
+    # в аспектах, ни в круге, ни в подсчёте стихий. Читаются только блоком
+    # «Лунные узлы» в reading.
+    nodes = _extract_lunar_nodes(subject)
 
     # Ascendant / MC — attribute names differ between kerykeion versions
     asc = getattr(subject, "ascendant", None) or getattr(subject, "first_house", None)
@@ -249,6 +324,7 @@ def calculate_natal(
         houses=houses,
         aspects=aspects,
         raw=subject.model_dump(),
+        nodes=nodes or None,
     )
 
     log.info(
@@ -263,21 +339,32 @@ def calculate_natal(
 
 def chart_to_json(chart: NatalChartData) -> dict[str, Any]:
     """Serialise NatalChartData for DB storage (JSON column)."""
+
     def planet_dict(p: PlanetPosition) -> dict[str, Any]:
         return {
-            "sign": p.sign, "sign_ru": p.sign_ru,
-            "degree": p.degree, "sign_degree": p.sign_degree,
-            "house": p.house, "retrograde": p.retrograde, "speed": p.speed,
+            "sign": p.sign,
+            "sign_ru": p.sign_ru,
+            "degree": p.degree,
+            "sign_degree": p.sign_degree,
+            "house": p.house,
+            "retrograde": p.retrograde,
+            "speed": p.speed,
         }
 
+    planets_out = {attr: planet_dict(getattr(chart, attr)) for attr in _PLANET_ATTRS}
+
     return {
-        "planets": {attr: planet_dict(getattr(chart, attr)) for attr in _PLANET_ATTRS},
+        "planets": planets_out,
+        # Лунные узлы — ОТДЕЛЬНЫЙ канал, НЕ в planets. Иначе все потребители,
+        # обходящие planets.values() (стихии в PDF, natal_hero, dominants),
+        # ошибочно считали бы Раху/Кету планетами и ломали проценты стихий.
+        # Узлы читает только блок «Лунные узлы» в generate_natal_reading.
+        "nodes": chart.nodes or {},
         "ascendant_sign": chart.ascendant_sign,
         "mc_sign": chart.mc_sign,
         "houses": chart.houses,
         "aspects": [
-            {"p1": a.p1, "p2": a.p2, "aspect": a.aspect,
-             "orb": a.orb, "applying": a.applying}
+            {"p1": a.p1, "p2": a.p2, "aspect": a.aspect, "orb": a.orb, "applying": a.applying}
             for a in chart.aspects
         ],
     }

@@ -462,3 +462,90 @@ class TestSynthesis:
         ctx = ValidationContext(section_kind="synthesis", subject="Финал")
         codes = {i.code for i in v.validate(text, ctx)}
         assert "TRUNCATED" not in codes
+
+
+class TestNatalAnRegressions:
+    """Регрессии из ревью карты AN (natal_AN.pdf)."""
+
+    def test_case_after_prep_nominative(self, v):
+        """P1-1: «направлено на карьера» — именительный после «на»."""
+        text = (
+            "Венера в Тельце раскрывает мягкую чувственность и тягу к красоте. "
+            "В 10-м доме это качество направлено на карьера, статус, "
+            "предназначение и видимое место в мире, и это формирует ваш стиль "
+            "взаимодействия с окружающими людьми каждый день без исключения."
+        )
+        ctx = ValidationContext(section_kind="planet_in_sign", subject="Венера")
+        codes = {i.code for i in v.validate(text, ctx)}
+        assert "CASE_AFTER_PREP" in codes
+
+    def test_case_after_prep_clean_form(self, v):
+        """Переписанная связка «работает в сфере: …» не триггерит правило."""
+        text = (
+            "Венера в Тельце раскрывает мягкую чувственность и тягу к красоте. "
+            "В 10-м доме это качество работает в сфере: карьера, статус, "
+            "предназначение и видимое место в мире, и это формирует ваш стиль "
+            "взаимодействия с окружающими людьми каждый день без исключения."
+        )
+        ctx = ValidationContext(section_kind="planet_in_sign", subject="Венера")
+        codes = {i.code for i in v.validate(text, ctx)}
+        assert "CASE_AFTER_PREP" not in codes
+
+    def test_case_after_prep_allows_normal_phrase(self, v):
+        """Нормальное «на режим сна» не должно уходить в repair."""
+        text = (
+            "Уран в шестом доме направляет внимание на режим сна и здоровье "
+            "без перегибов: вам важно замечать, когда тело просит нового ритма, "
+            "и перестраивать расписание до того, как накопится раздражение."
+        )
+        ctx = ValidationContext(section_kind="planet_in_sign", subject="Уран")
+        codes = {i.code for i in v.validate(text, ctx)}
+        assert "CASE_AFTER_PREP" not in codes
+
+    def test_false_asc_attribution_in_aspect(self, v):
+        """P2-2: «Солнце на Асценденте Льва» в тексте аспекта."""
+        text = (
+            "Солнце в квадрате к Луне создаёт внутреннее напряжение между волей "
+            "и чувствами. Солнце в Тельце на Асценденте Льва усиливает желание "
+            "быть замеченным, и это требует постоянной внутренней работы над "
+            "балансом между амбицией и эмоциональной потребностью в покое."
+        )
+        ctx = ValidationContext(section_kind="aspect", subject="Солнце квадрат Луна")
+        codes = {i.code for i in v.validate(text, ctx)}
+        assert "FALSE_ASC_ATTRIBUTION" in codes
+
+    def test_false_asc_attribution_only_in_aspect(self, v):
+        """Та же фраза в разборе планеты — не аспект — не триггерит правило."""
+        text = (
+            "Солнце в Тельце на Асценденте Льва усиливает желание быть "
+            "замеченным и придаёт характеру тёплую, царственную ноту, которая "
+            "проявляется в манере держаться и в стремлении вести за собой "
+            "людей в любых жизненных обстоятельствах без лишней суеты."
+        )
+        ctx = ValidationContext(section_kind="planet_in_sign", subject="Солнце")
+        codes = {i.code for i in v.validate(text, ctx)}
+        assert "FALSE_ASC_ATTRIBUTION" not in codes
+
+    def test_broken_gender_phrase_detected(self, v):
+        """P2-5: «результат уже видна цель» — м.р. сущ. + ж.р. краткая форма."""
+        text = (
+            "Марс в Деве делает вас педантичным в действии: вы доводите дело до "
+            "конца, когда результат уже видна цель, и не бросаете начатое на "
+            "полпути, даже если это требует кропотливой и долгой работы над "
+            "каждой мелкой деталью без права на ошибку."
+        )
+        ctx = ValidationContext(section_kind="planet_in_sign", subject="Марс")
+        codes = {i.code for i in v.validate(text, ctx)}
+        assert "GENDER_NUMBER_MISMATCH" in codes
+
+    def test_correct_gender_phrase_clean(self, v):
+        """Корректная фраза «когда цель уже видна» (цель — ж.р.) не триггерит."""
+        text = (
+            "Марс в Деве делает вас педантичным в действии: вы доводите дело до "
+            "конца, когда цель уже видна и понятна, и не бросаете начатое на "
+            "полпути, даже если это требует кропотливой и долгой работы над "
+            "каждой мелкой деталью без права на ошибку."
+        )
+        ctx = ValidationContext(section_kind="planet_in_sign", subject="Марс")
+        codes = {i.code for i in v.validate(text, ctx)}
+        assert "GENDER_NUMBER_MISMATCH" not in codes

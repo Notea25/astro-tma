@@ -112,6 +112,14 @@ ELEMENT_COLORS = {
     "air": AIR,
     "water": WATER,
 }
+# Символы стихий (геометрические треугольники, стабильны в шрифте PDF). Раньше
+# для любой доминирующей стихии хардкодился огненный △.
+ELEMENT_SYMBOLS = {
+    "fire": "△",
+    "earth": "▽",
+    "air": "▵",
+    "water": "▿",
+}
 HOUSE_TOPICS = {
     1: "личность, тело, первое впечатление и способ начинать новое",
     2: "ценности, деньги, ресурсы и чувство устойчивости",
@@ -1097,7 +1105,7 @@ def _planet_fallback(name: str, planet: dict[str, Any]) -> str:
             topic = HOUSE_TOPICS.get(int(house))
         except (TypeError, ValueError):
             topic = None
-        sphere = f" В {house}-м доме это качество направлено на {topic}." if topic else ""
+        sphere = f" В {house}-м доме это качество работает в сфере: {topic}." if topic else ""
         return f"{text}{sphere}{retro}"
     # last-resort generic
     ru = PLANET_RU.get(name, name)
@@ -2231,7 +2239,7 @@ def generate_natal_pdf(
     c.line(58, 148, 58, 260)
     c.setFillColor(ELEMENT_COLORS.get(dominant, GOLD))
     _set_font(c, True, 20)
-    c.drawString(82, 213, "△")
+    c.drawString(82, 213, ELEMENT_SYMBOLS.get(dominant, "△"))
     c.setFillColor(GOLD)
     _set_font(c, True, 15)
     c.drawString(132, 224, f"Доминирует {dom_label.lower()}")

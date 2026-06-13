@@ -362,13 +362,16 @@ def _build_houses_prompt(
     chart_context: str = "",
 ) -> str:
     rows: list[str] = []
+    house_nums: list[str] = []
     for h in houses:
         num = h.get("number")
         if not num:
             continue
         rows.append(_house_row(h))
+        house_nums.append(str(int(num)))
 
     count = len(rows)
+    keys_hint = ", ".join(f'"{n}"' for n in house_nums)
     return f"""Ты — опытный астролог, пишешь персональные интерпретации натальной карты на русском языке.
 
 {_gender_directive(gender)}Куспиды домов ({count} штук):
@@ -386,7 +389,7 @@ def _build_houses_prompt(
 
 Пиши тепло, конкретно, от второго лица («вы»). Не копируй чужие тексты. Избегай общих фраз без жизненного проявления. У каждого дома должны отличаться ритм, примеры и последнее предложение: не закрывай тексты одинаковым советом, выводом или фразой про «осознанность». Финал каждого дома должен звучать как отдельный персональный ориентир именно для этой сферы жизни. Используй правильные склонения: «знак на куспиде — Овен», но «дом в Овне». Без markdown, без заголовков, без списков. Только обычные предложения.
 
-Вызови инструмент submit_house_descriptions РОВНО ОДИН РАЗ. В одном вызове укажи КАЖДЫЙ из {count} домов как отдельный ключ верхнего уровня в виде строки с номером ("1", "2", …, "{count}"); значение каждого ключа — это объект с двумя полями short и full. Не пропускай ни один дом."""
+Вызови инструмент submit_house_descriptions РОВНО ОДИН РАЗ. В одном вызове укажи КАЖДЫЙ из {count} домов как отдельный ключ верхнего уровня в виде строки с номером дома. Используй ИМЕННО эти номера, не перенумеровывай: {keys_hint}. Значение каждого ключа — это объект с двумя полями short и full. Не пропускай ни один дом."""
 
 
 def _build_aspects_prompt(
@@ -837,7 +840,14 @@ def _entry_needs_repair(entry: dict[str, str], section: str) -> bool:
     # болванки тоже отправляем на регенерацию, чтобы не было «расслоения качества».
     if any(i.severity == Severity.CRITICAL for i in issues):
         return True
-    bad_codes = {"TEMPLATE_PHRASE", "GENERATIONAL_IN_INDIVIDUAL", "TOO_SHORT_THIN"}
+    bad_codes = {
+        "TEMPLATE_PHRASE",
+        "GENERATIONAL_IN_INDIVIDUAL",
+        "TOO_SHORT_THIN",
+        "CASE_AFTER_PREP",
+        "FALSE_ASC_ATTRIBUTION",
+        "GENDER_NUMBER_MISMATCH",
+    }
     if any(i.code in bad_codes for i in issues):
         return True
     return False
@@ -882,6 +892,21 @@ async def _repair_entries(
 # 4-item tool payload stays small while cutting request count sharply.
 _BATCH_SIZE = 4
 _BATCH_MAX_TOKENS = 1800
+
+# Детерминированный порог «полный текст vs можно скрыть» для аспектов. Аспект с
+# узким орбом ИЛИ с участием персональной планеты — важный, его НЕ скрываем даже
+# если LLM-текст слабоват (лучше показать репейром, чем потерять важный аспект).
+# Широкий орб между «дальними» планетами — допустимо скрыть, если текст-заглушка.
+_FULL_ASPECT_ORB = 3.0
+_PERSONAL_PLANETS = frozenset({"sun", "moon", "mercury", "venus", "mars"})
+
+
+def _aspect_wants_full(p1: str, p2: str, orb: float) -> bool:
+    """Единое правило важности аспекта на весь документ: тесный орб или
+    участие персональной планеты → аспект важный (не скрываем по качеству)."""
+    if orb <= _FULL_ASPECT_ORB:
+        return True
+    return p1 in _PERSONAL_PLANETS or p2 in _PERSONAL_PLANETS
 
 
 async def generate_natal_descriptions(
@@ -955,6 +980,7 @@ async def generate_natal_descriptions(
     # ── Aspects ─────────────────────────────────────────────────────────
     aspect_items: list[dict[str, Any]] = []
     aspect_ids_lookup: dict[str, tuple[str, str, str]] = {}
+    aspect_orb_lookup: dict[str, float] = {}
     for a in aspects:
         p1 = (a.get("p1") or "").lower()
         p2 = (a.get("p2") or "").lower()
@@ -964,15 +990,20 @@ async def generate_natal_descriptions(
         ):
             continue
         aid = f"{p1}_{p2}_{atype}"
+        try:
+            orb = float(a.get("orb") or 0)
+        except (TypeError, ValueError):
+            orb = 0.0
         aspect_items.append(
             {
                 "p1": p1,
                 "p2": p2,
                 "aspect": atype,
-                "orb": a.get("orb", 0),
+                "orb": orb,
             }
         )
         aspect_ids_lookup[aid] = (p1, p2, atype)
+        aspect_orb_lookup[aid] = orb
     aspect_chunks = _chunked(aspect_items, _BATCH_SIZE)
     aspect_tasks = []
     for chunk in aspect_chunks:
@@ -1015,6 +1046,8 @@ async def generate_natal_descriptions(
     for chunk_dict in house_results:
         for key, entry in chunk_dict.items():
             if entry.get("short") or entry.get("full"):
+                if key in house_out:
+                    log.warning("natal_descriptions.house_key_collision", key=key)
                 house_out[key] = entry
 
     for chunk_dict in aspect_results:
@@ -1064,24 +1097,41 @@ async def generate_natal_descriptions(
 
     out: dict[str, Any] = {"planets": planet_out, "houses": house_out, "aspects": []}
     hidden_aspects = 0
+    seen_full: set[str] = set()  # дедуп дословных дублей аспектов
     for aid, entry in aspect_out.items():
         triple = aspect_ids_lookup.get(aid)
         if not triple:
             continue
         p1, p2, atype = triple
         aspect: dict[str, Any] = {"p1": p1, "p2": p2, "type": atype, **entry}
-        # Аспект, который так и не починился после repair (короткий/обрыв/
-        # шаблон/полу-заглушка) — лучше скрыть, чем показать болванку
-        # (10 хороших > 16 с заглушками).
         full = str(entry.get("full") or "").strip()
         issues = _validate_full(full, "aspects", subject=aspect_labels.get(aid, aid))
-        hide_codes = {"TEMPLATE_PHRASE", "TOO_SHORT_THIN"}
+        hide_codes = {
+            "TEMPLATE_PHRASE",
+            "TOO_SHORT_THIN",
+            "CASE_AFTER_PREP",
+            "FALSE_ASC_ATTRIBUTION",
+            "GENDER_NUMBER_MISMATCH",
+        }
         bad = any(i.severity == Severity.CRITICAL for i in issues) or any(
             i.code in hide_codes for i in issues
         )
-        if bad:
+        # Детерминированный порог: важный аспект (тесный орб / персональная планета)
+        # НЕ скрываем по качеству — он несёт смысл карты; рендер подставит заглушку.
+        # Скрываем только неважный аспект-болванку (широкий орб между дальними).
+        orb = aspect_orb_lookup.get(aid, 0.0)
+        important = _aspect_wants_full(p1, p2, orb)
+        if bad and not important:
             aspect["hide"] = True
             hidden_aspects += 1
+        # Дедуп: дословный дубль full-текста между аспектами → скрыть второй.
+        norm = " ".join(full.split()).lower()
+        if norm and norm in seen_full and not aspect.get("hide"):
+            log.warning("natal_descriptions.aspect_dup_full", aid=aid)
+            aspect["hide"] = True
+            hidden_aspects += 1
+        if norm:
+            seen_full.add(norm)
         out["aspects"].append(aspect)
 
     log.info(

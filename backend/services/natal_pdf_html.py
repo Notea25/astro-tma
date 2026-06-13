@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import html
 import math
+import re
 import time
 from datetime import datetime
 from typing import Any
@@ -58,11 +59,20 @@ ELEMENT_COLORS = {
     "air": "#398ada",
     "water": "#5846b6",
 }
+# Символы стихий (геометрические треугольники — стабильно рендерятся в любом
+# шрифте PDF). Огонь △, земля ▽, воздух △ с чертой, вода ▽ с чертой. Раньше для
+# всех стихий хардкодился огненный △ — земля/воздух/вода выглядели как огонь.
+ELEMENT_SYMBOLS = {
+    "fire": "△",
+    "earth": "▽",
+    "air": "▵",
+    "water": "▿",
+}
 ASPECT_COLORS = {
     "conjunction": GOLD,
     "trine": "#1fa37c",
     "sextile": "#96d957",
-    "square": "#f0673c",
+    "square": "#398ada",  # синий — чтобы НЕ путать с оппозицией (красный)
     "opposition": "#ff585f",
     "quincunx": "#8b65da",
 }
@@ -187,6 +197,32 @@ def _lines(text: str, max_words: int) -> str:
     return " ".join(words[:max_words]).rstrip(" .,;:") + "."
 
 
+def _first_sentences(text: str, max_chars: int = 170) -> str:
+    """Усечение по границе предложения (для коротких карточек «Ключевые точки»).
+
+    Накапливает целые предложения, пока влезают в лимит символов; всегда
+    возвращает хотя бы одно предложение. Если первое предложение длиннее лимита —
+    режет по последнему пробелу и добавляет «…» (без обрыва слова)."""
+    clean = " ".join(str(text or "").replace("\n", " ").split())
+    if not clean:
+        return ""
+    sentences = re.findall(r"[^.!?…]+[.!?…]+|[^.!?…]+$", clean)
+    out = ""
+    for sentence in sentences:
+        candidate = (out + " " + sentence).strip() if out else sentence.strip()
+        if out and len(candidate) > max_chars:
+            break
+        out = candidate
+        if len(out) >= max_chars:
+            break
+    if not out:
+        out = sentences[0].strip()
+    if len(out) > max_chars:
+        cut = out[:max_chars].rsplit(" ", 1)[0].rstrip(" .,;:—-")
+        out = (cut + "…") if cut else out[:max_chars]
+    return out
+
+
 def _word_count(text: str) -> int:
     return len(str(text or "").split())
 
@@ -224,6 +260,20 @@ def _description(entry: Any, fallback: str, *, words: int) -> str:
     if not source:
         source = fallback
     return _lines(source, words)
+
+
+def _card_blurb(entry: Any, fallback: str, *, max_chars: int = 170) -> str:
+    """Короткий текст для карточек «Ключевые точки»: целые предложения, без
+    обрыва на полуслове. Источник — «full» (или fallback), как у _description:
+    «short» — это in-app popup, в PDF не идёт. Затем усечение по границе
+    предложения через _first_sentences (вместо пословного _lines, который резал
+    «…задачей — не.»)."""
+    source = ""
+    if isinstance(entry, dict):
+        source = str(entry.get("full") or "").strip()
+    if not source:
+        source = str(fallback or "").strip()
+    return _first_sentences(source, max_chars)
 
 
 def _full_description(entry: Any, fallback: str) -> str:
@@ -659,10 +709,9 @@ def _key_points_page(
             "СОЛНЦЕ",
             sun_sign,
             "«Как я сияю»",
-            _description(
+            _card_blurb(
                 planet_desc.get("sun"),
                 _planet_fallback("sun", planets.get("sun", {"sign": sun_sign})),
-                words=14,
             ),
         ),
         (
@@ -671,10 +720,9 @@ def _key_points_page(
             "ЛУНА",
             moon_sign,
             "«Что я чувствую»",
-            _description(
+            _card_blurb(
                 planet_desc.get("moon"),
                 _planet_fallback("moon", planets.get("moon", {"sign": moon_sign})),
-                words=14,
             ),
         ),
         (
@@ -699,7 +747,7 @@ def _key_points_page(
     )
     body += (
         f'<article class="card dominant-card" style="--element-color:{ELEMENT_COLORS[dominant]}">'
-        f'<div class="dominant-symbol">△</div><div><h3>Доминирует {dominant_label.lower()}</h3>'
+        f'<div class="dominant-symbol">{ELEMENT_SYMBOLS.get(dominant, "△")}</div><div><h3>Доминирует {dominant_label.lower()}</h3>'
         f'<div class="card-meta">{dominant_pct}% карты</div><p>{_e(ELEMENT_COPY[dominant][0])}</p></div></article>'
     )
     return _page(3, body)
@@ -984,6 +1032,7 @@ def _aspect_section(aspects: list[dict[str, Any]], descriptions: dict[str, Any] 
         )
 
     items: list[_SectionItem] = []
+    seen_texts: set[str] = set()  # дедуп дословных дублей аспектов в платном отчёте
     for atype, group_items in groups:
         color = ASPECT_COLORS.get(atype, GOLD)
         group_open = (
@@ -995,6 +1044,14 @@ def _aspect_section(aspects: list[dict[str, Any]], descriptions: dict[str, Any] 
             p1 = _planet_key(aspect.get("p1"))
             p2 = _planet_key(aspect.get("p2"))
             desc = _full_description(aspect_desc.get((p1, p2, atype)), _aspect_fallback(aspect))
+            # Дедуп: если текст дословно совпал с уже отрисованным — заменяем на
+            # параметризованную заглушку (всегда уникальна по паре планет).
+            norm = " ".join(desc.split()).lower()
+            if norm in seen_texts:
+                log.warning("natal_pdf_html.aspect_text_duplicate", p1=p1, p2=p2, aspect=atype)
+                desc = _aspect_fallback(aspect)
+                norm = " ".join(desc.split()).lower()
+            seen_texts.add(norm)
             for chunk_index, text_chunk in enumerate(_split_words(desc, 260) or [desc]):
                 continuation_label = " · продолжение" if chunk_index else ""
                 row = (
