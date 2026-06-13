@@ -260,9 +260,9 @@ async def yukassa_webhook(request: Request, db: AsyncSession = Depends(get_db)):
 
     log.info(
         "yukassa.webhook.received",
-        event=event,
+        webhook_event=event,
         payment_id=payment_id,
-        status=status_str,
+        payment_status=status_str,
         user_id=user_id_raw,
         product_id=product_id,
     )
