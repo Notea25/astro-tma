@@ -186,8 +186,13 @@ def _build_refund_receipt(
     description: str,
     customer_email: str,
 ) -> dict[str, Any]:
-    """Same shape as the payment receipt but with `payment_mode: full_refund`.
-    YuKassa enforces a return receipt for every refund under 54-ФЗ."""
+    """Refund-side receipt — YuKassa enforces it under 54-ФЗ.
+
+    NOTE: `payment_mode` must match the ORIGINAL payment's value
+    (`full_prepayment` for us — we charge upfront). The /v3/refunds
+    endpoint itself signals "this is a refund"; the receipt mirrors
+    the payment receipt because it's the line-item being reversed.
+    """
     return {
         "customer": {"email": customer_email},
         "items": [
@@ -199,7 +204,7 @@ def _build_refund_receipt(
                     "currency": "RUB",
                 },
                 "vat_code": settings.YUKASSA_RECEIPT_VAT_CODE,
-                "payment_mode": "full_refund",
+                "payment_mode": "full_prepayment",
                 "payment_subject": "service",
             }
         ],
