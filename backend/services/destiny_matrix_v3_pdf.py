@@ -79,10 +79,21 @@ def _contents_page(section_pages: dict[str, int], extra_pages: dict[str, str]) -
 
 
 def _section_body(content: str) -> str:
-    """LLM content sanitiser: strip markdown bold/headers so plain text
-    flows nicely with CSS `white-space: pre-line`."""
+    """LLM content sanitiser: strip markdown bold/headers + run the V3
+    text-polish pipeline so old cached rows benefit retroactively.
+
+    Polish covers preamble words («Ответ:», «Вот разбор:»), code fences,
+    stray single asterisks, and canonical arcana-name enforcement. New
+    rows are polished at generation time (services/destiny_matrix/
+    v3_interpreter.py::_generate_one) — this call is the safety net
+    for rows already in the DB.
+    """
     if not content:
         return "<p class='section-empty'>Раздел не сгенерирован.</p>"
+    # Lazy import to avoid pulling LLM deps when only the PDF helper is
+    # used (e.g. tests).
+    from services.destiny_matrix.text_fix import polish_section_text
+    content, _ = polish_section_text(content)
     cleaned = (
         content
         .replace("**", "")
@@ -100,15 +111,36 @@ def _section_body(content: str) -> str:
 
 
 def _section_page(
-    page_num: int, section_key: str, content: str, *, suffix: str = "",
+    page_num: int,
+    section_key: str,
+    content: str,
+    *,
+    suffix: str = "",
+    group: str = "main",
+    group_idx: int = 0,
+    group_total: int = 15,
 ) -> str:
+    """Render one V3 section.
+
+    The eyebrow line is derived from the group/index/total triple, NOT
+    from page_num arithmetic — historically `page_num - 3` collided
+    with `… из 15` once the section list grew past 15 entries.
+
+    ``group``:
+      * ``"main"``    → «Раздел NN из {group_total}» (15 narrative sections)
+      * ``"purpose"`` → «Предназначение N из 8»
+    """
     title = SECTION_TITLES.get(section_key, section_key)
     suffix_html = (
         f"<span class='section-suffix'>{_e(suffix)}</span>" if suffix else ""
     )
+    if group == "purpose":
+        eyebrow = f"Предназначение {group_idx:01d} из {group_total}"
+    else:
+        eyebrow = f"Раздел {group_idx:02d} из {group_total}"
     body = f"""
     <div class="section-head v3-head">
-      <div class="v3-eyebrow">Раздел {page_num - 3:02d} из 15</div>
+      <div class="v3-eyebrow">{_e(eyebrow)}</div>
       <h2>{_e(title)}{suffix_html}</h2>
       <div class="rule"></div>
     </div>
@@ -364,13 +396,28 @@ def build_destiny_matrix_v3_pdf_html(
     pages.append(_cover_page(user_name, birth_date))
     section_pages: dict[str, int] = {}
 
+    # Pre-compute per-group totals so the eyebrow counter renders the
+    # correct denominator ("из 15" / "из 8") instead of the old hard-coded
+    # "из 15" that overflowed once the purpose sections were appended.
+    group_totals: dict[str, int] = {}
+    for spec in SECTIONS:
+        group_totals[spec.group] = group_totals.get(spec.group, 0) + 1
+
     next_num = 4
     section_html: list[str] = []
+    group_counters: dict[str, int] = {}
     for spec in SECTIONS:
         section_pages[spec.key] = next_num
         suffix = section_titles_suffix.get(spec.key, "")
+        group_counters[spec.group] = group_counters.get(spec.group, 0) + 1
         section_html.append(_section_page(
-            next_num, spec.key, sections_text.get(spec.key, ""), suffix=suffix,
+            next_num,
+            spec.key,
+            sections_text.get(spec.key, ""),
+            suffix=suffix,
+            group=spec.group,
+            group_idx=group_counters[spec.group],
+            group_total=group_totals[spec.group],
         ))
         next_num += 1
 
@@ -379,10 +426,16 @@ def build_destiny_matrix_v3_pdf_html(
     chakras_page_num = purposes_page_num + 1
     final_page_num = chakras_page_num + 1
 
+    # NOTE: extras keys must NOT collide with any SECTIONS key. Previously
+    # 'purposes' was used here AND in SECTIONS, so the merge below silently
+    # overwrote section_pages['purposes'] (narrative section, page ~15)
+    # with the TOC of the 8-purposes table (page ~28). Result: TOC link
+    # to the narrative '8 предназначений' section pointed at the wrong
+    # page. Prefix extras keys with '_extra_' to keep namespaces disjoint.
     extras = {
-        "karmic": ("Кармическая программа · канон", karmic_page_num),
-        "purposes": ("8 предназначений · таблица", purposes_page_num),
-        "chakras": ("Чакры · таблица", chakras_page_num),
+        "_extra_karmic": ("Кармическая программа · канон", karmic_page_num),
+        "_extra_purposes_table": ("8 предназначений · таблица", purposes_page_num),
+        "_extra_chakras": ("Чакры · таблица", chakras_page_num),
     }
     contents_section_pages = dict(section_pages)
     for key, (label, p) in extras.items():

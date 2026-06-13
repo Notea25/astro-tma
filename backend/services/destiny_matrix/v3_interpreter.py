@@ -219,7 +219,15 @@ async def load_v3_context(
 # ── Prompt helpers ──────────────────────────────────────────────────────────
 
 
-_BASE_SYSTEM = """Ты — практикующий мастер Матрицы Судьбы, опираешься на \
+def _arcana_canon_block() -> str:
+    """Inject the 22 canonical arcana names so the model can't fall back
+    on the Rider-Waite tarot tradition (Дьявол / Луна / Повешенный / …)."""
+    from services.destiny_matrix.calculator import ARCANA_NAMES
+    rows = [f"  {n:2d} {ARCANA_NAMES[n]}" for n in range(1, 23)]
+    return "\n".join(rows)
+
+
+_BASE_SYSTEM = f"""Ты — практикующий мастер Матрицы Судьбы, опираешься на \
 методологию Натальи Ладини. Пишешь тёплый, конкретный, поддерживающий \
 разбор для читателя на «ты».
 
@@ -235,10 +243,20 @@ _BASE_SYSTEM = """Ты — практикующий мастер Матрицы 
 - Без эзотерических штампов («высшее служение», «вселенский поток»).
 - Без медицинских, юридических, инвестиционных советов.
 - Без предсказаний дат и событий.
-- Цитируй арканы по номеру и названию: «аркан 5 (Иерофант)».
+
+ИМЕНА АРКАНОВ (КАНОН ЛАДИНИ — ИСПОЛЬЗОВАТЬ ТОЛЬКО ЭТИ):
+{_arcana_canon_block()}
+
+Цитируй арканы по номеру и названию из таблицы выше: «аркан 5 (Учитель)».
+ЗАПРЕЩЕНЫ классические таро-имена: Дьявол, Луна, Повешенный, Шут, Дурак,
+Иерофант, Жрец, Колесо Фортуны, Смерть, Умеренность, Башня, Отшельник,
+Верховная Жрица, Колесница, Суд, Маги́цы и т.п. При нумерации N всегда
+берёшь {{N}} → имя из таблицы выше.
 
 ФОРМАТ:
 - Возвращай ТОЛЬКО готовый текст секции на русском.
+- НЕ начинай ответ со слов «Ответ», «Вот», «Разбор», «Конечно», «Хорошо».
+  Сразу с первого осмысленного абзаца.
 - Не добавляй markdown-заголовок секции — заголовок уже есть в UI.
 - Допустим список (нумерованный или •) и абзацы.
 - Не оборачивай ответ в кавычки или код-блок."""
@@ -384,30 +402,29 @@ def _prompt_higher_self(ctx: V3Context) -> tuple[str, int]:
 
 
 def _prompt_soul_tasks(ctx: V3Context) -> tuple[str, int]:
-    """Задачи души — purposes p1, p2, p3 (личные)."""
+    """Задачи души — короткий transition-блок над 3 личными
+    предназначениями. Сами арканы и развёрнутые тексты разбираются в
+    отдельных разделах 'Предназначение · Небесное / Земное / Целостное'
+    (16, 17, 18). Здесь — только рамка и навигация.
+    """
     p1 = ctx.purposes["celestial_personal"]
     p2 = ctx.purposes["earthly_personal"]
     p3 = ctx.purposes["wholeness_personal"]
-    nums = [p1.key[2], p2.key[2], p3.key[2]]
-    refs = "\n\n".join(
-        _arc_brief(ctx.arcana[n], sections=("essence", "mission"))
-        for n in dict.fromkeys(nums)
-    )
     return (
         _header(ctx, "soul_tasks")
-        + "Задачи души — три личных предназначения: Небесное (духовная жизнь), "
-        "Земное (материя), Целостное (синтез). Это то, что душа взяла на эту "
-        "конкретную инкарнацию.\n\n"
-        f"• Небесное личное: {p1.key[0]} + {p1.key[1]} = {p1.key[2]} "
-        f"({_name(p1.key[2])}) — духовные задачи\n"
-        f"• Земное личное: {p2.key[0]} + {p2.key[1]} = {p2.key[2]} "
-        f"({_name(p2.key[2])}) — материальные задачи\n"
-        f"• Целостное личное: {p3.key[0]} + {p3.key[1]} = {p3.key[2]} "
-        f"({_name(p3.key[2])}) — целостная личная реализация\n\n"
-        f"Справка:\n\n{refs}\n\n"
-        "Напиши 300-380 слов: по одному абзацу на каждое из трёх "
-        "предназначений + короткий синтезирующий финал."
-    ), 350
+        + "Это короткая навигация: дальше у читателя будут ТРИ отдельных "
+        "раздела по каждому личному предназначению. Их арканы:\n\n"
+        f"• Небесное личное — аркан {p1.key[2]} ({_name(p1.key[2])})\n"
+        f"• Земное личное   — аркан {p2.key[2]} ({_name(p2.key[2])})\n"
+        f"• Целостное личное — аркан {p3.key[2]} ({_name(p3.key[2])})\n\n"
+        "Задача этой секции — БЕЗ пересказа арканов:\n"
+        "1) Объясни одной короткой мыслью, что такое «задачи души» и чем "
+        "личные предназначения отличаются от родовых.\n"
+        "2) Дай читателю смысловую рамку, через которую он будет читать "
+        "три отдельных разбора ниже — что искать, на что обращать внимание.\n"
+        "3) Не цитируй арканы по содержанию — глубокий разбор будет дальше.\n\n"
+        "Объём: 110-150 слов, 1-2 абзаца. БЕЗ списков. Тёплый, ориентирующий тон."
+    ), 130
 
 
 def _prompt_karmic_tail(ctx: V3Context) -> tuple[str, int]:
@@ -511,26 +528,28 @@ def _prompt_money(ctx: V3Context) -> tuple[str, int]:
 
 
 def _prompt_realization(ctx: V3Context) -> tuple[str, int]:
-    """Социальная реализация — purpose wholeness_lineage (p6)."""
+    """Социальная реализация — короткая навигационная связка над
+    развёрнутым разделом «Предназначение · Социальная реализация»
+    (purpose_wholeness_lineage). Здесь — только рамка, без пересказа
+    арканов.
+    """
     p = ctx.purposes["wholeness_lineage"]
     a1, a2, total = p.key
-    refs = "\n\n".join(
-        _arc_brief(ctx.arcana[n], sections=("essence", "mission", "activities"))
-        for n in dict.fromkeys([a1, a2, total])
-    )
     return (
         _header(ctx, "realization")
-        + "Социальная реализация — на стыке родов отца и матери. Это то, через "
-        "что ты можешь быть полезен миру в зрелом возрасте (~40-60 лет): "
-        "профессии, проекты, общественные роли.\n\n"
-        f"Формула: аркан {a1} ({_name(a1)}, род отца) + аркан {a2} "
-        f"({_name(a2)}, род матери) = аркан {total} ({_name(total)}) — "
-        f"социальная реализация\n\n"
-        f"Справка:\n\n{refs}\n\n"
-        "Напиши 300-380 слов: 1) что приходит от рода отца, 2) что от рода "
-        "матери, 3) как они синтезируются в аркане итога, 4) какие сферы и "
-        "форматы работы заходят естественно."
-    ), 350
+        + "Это короткая навигация к развёрнутому разделу о социальной "
+        f"реализации (аркан {total} — {_name(total)}, формула "
+        f"{a1}+{a2}={total}). Развёрнутый разбор будет ниже.\n\n"
+        "Задача этой секции — БЕЗ пересказа арканов:\n"
+        "1) Объясни одной мыслью, что такое социальная реализация в "
+        "методике Ладини и почему она проявляется именно в зрелом "
+        "возрасте (~40-60 лет).\n"
+        "2) Дай рамку: социальная реализация — это синтез родовых линий, "
+        "а не личного таланта.\n"
+        "3) НЕ называй конкретные сферы, профессии или формы работы "
+        "— это всё разворачивается в отдельном разделе ниже.\n\n"
+        "Объём: 110-150 слов, 1-2 абзаца. БЕЗ списков. Подготавливающий тон."
+    ), 130
 
 
 def _prompt_harmonization(ctx: V3Context) -> tuple[str, int]:
@@ -786,6 +805,10 @@ class SectionSpec:
     key: str
     title: str
     prompt: Callable[[V3Context], tuple[str, int]]   # → (user_prompt, target_words)
+    # Conceptual group for ordered counters in the PDF eyebrow.
+    # "main"    — 15 narrative sections, render as «Раздел NN из 15»
+    # "purpose" —  8 предназначений, render as «Предназначение N из 8»
+    group: str = "main"
 
 
 SECTIONS: list[SectionSpec] = [
@@ -806,12 +829,15 @@ SECTIONS: list[SectionSpec] = [
     SectionSpec("year_energy",   SECTION_TITLES["year_energy"],   _prompt_year_energy),
     # 8 per-purpose deep-dives — driven by the same `purposes` dict on
     # V3Context, registered as separate sections so each gets its own
-    # Sonnet call and its own cached row.
+    # Sonnet call and its own cached row. Marked group="purpose" so the
+    # PDF eyebrow renders «Предназначение N из 8» instead of continuing
+    # the «Раздел NN из 15» series.
     *[
         SectionSpec(
             f"purpose_{k}",
             SECTION_TITLES[f"purpose_{k}"],
             _make_purpose_prompt(k),
+            group="purpose",
         )
         for k in (
             "celestial_personal",
@@ -866,11 +892,28 @@ async def _generate_one(
     client: Any, spec: SectionSpec, ctx: V3Context,
 ) -> tuple[str, str, int]:
     """Returns (section_key, content, elapsed_ms). Raises on LLM error
-    so the caller can decide whether to retry or fall back per-section."""
+    so the caller can decide whether to retry or fall back per-section.
+
+    Runs the V3 polish pipeline (canonical arcana names, leading-service-
+    word strip, code fence + stray-asterisk cleanup) BEFORE caching, so
+    we never store dirty content. See ``text_fix.polish_section_text``.
+    """
+    from services.destiny_matrix.text_fix import polish_section_text
+
     t0 = time.monotonic()
     user_prompt, target = spec.prompt(ctx)
     content = await _call_llm(client, _BASE_SYSTEM, user_prompt, target)
+    content, stats = polish_section_text(content)
     elapsed = int((time.monotonic() - t0) * 1000)
+    if any(stats.values()):
+        log.info(
+            "v3.section.polished",
+            section_key=spec.key,
+            arcana_fixes=stats.get("arcana_name_mismatch", 0),
+            preamble_strip=stats.get("leading_service_word", 0),
+            code_fence=stats.get("code_fence", 0),
+            stray_asterisk=stats.get("stray_asterisk", 0),
+        )
     return spec.key, content, elapsed
 
 
