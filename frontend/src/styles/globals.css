@@ -10662,6 +10662,28 @@ body::before {
   );
   border-color: var(--gold-border);
 }
+/* Card option in "selected" mode — set when the user has expanded the
+   email subform. Same gold tint family as the primary so it's clearly
+   the current step, but with a 1.5px border so it reads as the actively
+   chosen method, not the default-recommended one. */
+.payment-sheet__option--active {
+  background: linear-gradient(
+    160deg,
+    rgba(212, 178, 84, 0.18),
+    rgba(212, 178, 84, 0.04)
+  );
+  border-width: 1.5px;
+  border-color: var(--gold-light);
+  box-shadow: 0 0 0 3px rgba(212, 178, 84, 0.12);
+}
+.payment-sheet__option {
+  transition:
+    border-color 0.18s ease,
+    border-width 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.12s ease;
+}
 .payment-sheet__option:active {
   transform: scale(0.99);
 }

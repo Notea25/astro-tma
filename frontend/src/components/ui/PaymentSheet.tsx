@@ -124,7 +124,9 @@ export function PaymentSheet({
               <>
                 <button
                   type="button"
-                  className="payment-sheet__option"
+                  className={`payment-sheet__option${
+                    cardExpanded ? " payment-sheet__option--active" : ""
+                  }`}
                   onClick={handleCardTap}
                   aria-expanded={cardExpanded}
                 >
