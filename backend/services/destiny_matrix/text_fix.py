@@ -26,6 +26,7 @@ from services.destiny_matrix.calculator import ARCANA_NAMES
 __all__ = (
     "fix_arcana_names",
     "strip_service_preamble",
+    "fix_known_typos",
     "polish_section_text",
 )
 
@@ -119,6 +120,38 @@ def strip_service_preamble(text: str) -> tuple[str, int]:
 _CODE_FENCE_RE = re.compile(r"^\s*```[a-zA-Z]*\s*\n?|\n?```\s*$", re.MULTILINE)
 _STRAY_STAR_RE = re.compile(r"(?<!\*)\*(?!\*)")
 
+# Known typos the model emits on domain words. Whole-word, case-insensitive.
+# Keep tight — we only ship fixes we've actually seen in production output.
+_KNOWN_TYPOS: dict[str, str] = {
+    # «аркаом» (missed 'н') seen on a generated «Энергия года» section.
+    "аркаом": "арканом",
+    "арканмом": "арканом",
+    "аркаа": "аркана",
+    "арканн": "арканом",
+}
+_TYPO_RE = re.compile(
+    r"\b(" + "|".join(re.escape(w) for w in _KNOWN_TYPOS) + r")\b",
+    re.IGNORECASE,
+)
+
+
+def fix_known_typos(text: str) -> tuple[str, int]:
+    """Apply the tiny domain typo dictionary. Whole-word only, preserves
+    sentence-initial capitalisation."""
+    fixes = 0
+
+    def repl(m: re.Match[str]) -> str:
+        nonlocal fixes
+        original = m.group(0)
+        canon = _KNOWN_TYPOS[original.lower()]
+        fixes += 1
+        # Preserve capitalisation of the first letter.
+        if original[0].isupper():
+            return canon[0].upper() + canon[1:]
+        return canon
+
+    return _TYPO_RE.sub(repl, text), fixes
+
 
 def polish_section_text(text: str) -> tuple[str, dict[str, int]]:
     """Run the full V3 text-polish pipeline on one section.
@@ -164,6 +197,10 @@ def polish_section_text(text: str) -> tuple[str, dict[str, int]]:
     if stars:
         text = _STRAY_STAR_RE.sub("", text)
         stats["stray_asterisk"] = stars
+
+    # 5) tiny domain-typo dictionary (e.g. «аркаом» → «арканом»).
+    text, n = fix_known_typos(text)
+    stats["known_typo"] = n
 
     return text, stats
 
