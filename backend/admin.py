@@ -271,11 +271,67 @@ class TarotReadingAdmin(ModelView, model=TarotReading):
     page_size = 50
 
 
+def _format_payment_provider(model, attribute) -> str:
+    """`stars` → '⭐ Stars', `yukassa` → '💳 ЮKassa'. Falls back to raw value."""
+    raw = getattr(model, attribute.key, None) or "stars"
+    if raw == "yukassa":
+        return "💳 ЮKassa"
+    if raw == "stars":
+        return "⭐ Stars"
+    return raw
+
+
+def _format_rub_kopecks(model, attribute) -> str:
+    """Kopecks → '₽ 290.00' for the admin grid. NULL → em-dash."""
+    val = getattr(model, attribute.key, None)
+    if val is None:
+        return "—"
+    return f"{val / 100:.2f} ₽"
+
+
+def _format_stars(model, attribute) -> str:
+    """Render '⭐ 149' for Stars rows; em-dash on YuKassa rows where the
+    column carries the placeholder 0."""
+    val = getattr(model, attribute.key, None)
+    provider = getattr(model, "payment_provider", "stars")
+    if not val or provider != "stars":
+        return "—"
+    return f"⭐ {val}"
+
+
+def _format_yukassa_id(model, attribute) -> str:
+    """Show just the last 12 chars — full UUID is long but the suffix
+    is enough to find the payment in the YuKassa cabinet."""
+    val = getattr(model, attribute.key, None)
+    if not val:
+        return "—"
+    return f"…{val[-12:]}"
+
+
 class SubscriptionAdmin(ModelView, model=Subscription):
     name = "Подписка"
     name_plural = "Подписки"
     icon = "fa-solid fa-crown"
-    column_list = [Subscription.id, Subscription.user_id, Subscription.plan, Subscription.status, Subscription.expires_at]
+    column_list = [
+        Subscription.id,
+        Subscription.user_id,
+        Subscription.plan,
+        Subscription.status,
+        Subscription.payment_provider,
+        Subscription.stars_paid,
+        Subscription.rub_amount_kopecks,
+        Subscription.expires_at,
+    ]
+    column_labels = {
+        Subscription.payment_provider: "Метод",
+        Subscription.stars_paid: "⭐ Stars",
+        Subscription.rub_amount_kopecks: "₽ сумма",
+        Subscription.expires_at: "Истекает",
+    }
+    column_formatters = {
+        Subscription.payment_provider: _format_payment_provider,
+        Subscription.rub_amount_kopecks: _format_rub_kopecks,
+    }
     column_sortable_list = [Subscription.created_at, Subscription.expires_at]
     can_create = True
     can_edit = True
@@ -311,11 +367,35 @@ class PurchaseAdmin(ModelView, model=Purchase):
     name = "Покупка"
     name_plural = "Покупки"
     icon = "fa-solid fa-receipt"
-    column_list = [Purchase.id, Purchase.user_id, Purchase.product_id, Purchase.status, Purchase.stars_amount, Purchase.created_at]
-    column_sortable_list = [Purchase.created_at]
+    column_list = [
+        Purchase.id,
+        Purchase.user_id,
+        Purchase.product_id,
+        Purchase.status,
+        Purchase.payment_provider,
+        Purchase.stars_amount,
+        Purchase.rub_amount_kopecks,
+        Purchase.yukassa_payment_id,
+        Purchase.created_at,
+    ]
+    column_labels = {
+        Purchase.payment_provider: "Метод",
+        Purchase.stars_amount: "⭐ Stars",
+        Purchase.rub_amount_kopecks: "₽ сумма",
+        Purchase.yukassa_payment_id: "YuKassa ID",
+        Purchase.created_at: "Создана",
+    }
+    column_formatters = {
+        Purchase.payment_provider: _format_payment_provider,
+        Purchase.stars_amount: _format_stars,
+        Purchase.rub_amount_kopecks: _format_rub_kopecks,
+        Purchase.yukassa_payment_id: _format_yukassa_id,
+    }
+    column_sortable_list = [Purchase.created_at, Purchase.payment_provider]
     can_create = False
     can_edit = True
     can_delete = False
+    page_size = 50
 
 
 # ── Factory ───────────────────────────────────────────────────────────────────
