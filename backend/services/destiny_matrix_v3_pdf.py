@@ -100,15 +100,36 @@ def _section_body(content: str) -> str:
 
 
 def _section_page(
-    page_num: int, section_key: str, content: str, *, suffix: str = "",
+    page_num: int,
+    section_key: str,
+    content: str,
+    *,
+    suffix: str = "",
+    group: str = "main",
+    group_idx: int = 0,
+    group_total: int = 15,
 ) -> str:
+    """Render one V3 section.
+
+    The eyebrow line is derived from the group/index/total triple, NOT
+    from page_num arithmetic — historically `page_num - 3` collided
+    with `… из 15` once the section list grew past 15 entries.
+
+    ``group``:
+      * ``"main"``    → «Раздел NN из {group_total}» (15 narrative sections)
+      * ``"purpose"`` → «Предназначение N из 8»
+    """
     title = SECTION_TITLES.get(section_key, section_key)
     suffix_html = (
         f"<span class='section-suffix'>{_e(suffix)}</span>" if suffix else ""
     )
+    if group == "purpose":
+        eyebrow = f"Предназначение {group_idx:01d} из {group_total}"
+    else:
+        eyebrow = f"Раздел {group_idx:02d} из {group_total}"
     body = f"""
     <div class="section-head v3-head">
-      <div class="v3-eyebrow">Раздел {page_num - 3:02d} из 15</div>
+      <div class="v3-eyebrow">{_e(eyebrow)}</div>
       <h2>{_e(title)}{suffix_html}</h2>
       <div class="rule"></div>
     </div>
@@ -364,13 +385,28 @@ def build_destiny_matrix_v3_pdf_html(
     pages.append(_cover_page(user_name, birth_date))
     section_pages: dict[str, int] = {}
 
+    # Pre-compute per-group totals so the eyebrow counter renders the
+    # correct denominator ("из 15" / "из 8") instead of the old hard-coded
+    # "из 15" that overflowed once the purpose sections were appended.
+    group_totals: dict[str, int] = {}
+    for spec in SECTIONS:
+        group_totals[spec.group] = group_totals.get(spec.group, 0) + 1
+
     next_num = 4
     section_html: list[str] = []
+    group_counters: dict[str, int] = {}
     for spec in SECTIONS:
         section_pages[spec.key] = next_num
         suffix = section_titles_suffix.get(spec.key, "")
+        group_counters[spec.group] = group_counters.get(spec.group, 0) + 1
         section_html.append(_section_page(
-            next_num, spec.key, sections_text.get(spec.key, ""), suffix=suffix,
+            next_num,
+            spec.key,
+            sections_text.get(spec.key, ""),
+            suffix=suffix,
+            group=spec.group,
+            group_idx=group_counters[spec.group],
+            group_total=group_totals[spec.group],
         ))
         next_num += 1
 

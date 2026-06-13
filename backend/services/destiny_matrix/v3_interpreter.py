@@ -786,6 +786,10 @@ class SectionSpec:
     key: str
     title: str
     prompt: Callable[[V3Context], tuple[str, int]]   # → (user_prompt, target_words)
+    # Conceptual group for ordered counters in the PDF eyebrow.
+    # "main"    — 15 narrative sections, render as «Раздел NN из 15»
+    # "purpose" —  8 предназначений, render as «Предназначение N из 8»
+    group: str = "main"
 
 
 SECTIONS: list[SectionSpec] = [
@@ -806,12 +810,15 @@ SECTIONS: list[SectionSpec] = [
     SectionSpec("year_energy",   SECTION_TITLES["year_energy"],   _prompt_year_energy),
     # 8 per-purpose deep-dives — driven by the same `purposes` dict on
     # V3Context, registered as separate sections so each gets its own
-    # Sonnet call and its own cached row.
+    # Sonnet call and its own cached row. Marked group="purpose" so the
+    # PDF eyebrow renders «Предназначение N из 8» instead of continuing
+    # the «Раздел NN из 15» series.
     *[
         SectionSpec(
             f"purpose_{k}",
             SECTION_TITLES[f"purpose_{k}"],
             _make_purpose_prompt(k),
+            group="purpose",
         )
         for k in (
             "celestial_personal",
