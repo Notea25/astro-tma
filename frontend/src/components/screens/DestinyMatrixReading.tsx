@@ -1,19 +1,28 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ApiError, destinyApi, destinyV3Api } from "@/services/api";
+import { ApiError, destinyApi, destinyV3Api, paymentsApi } from "@/services/api";
 import WebApp from "@twa-dev/sdk";
 import { usePayment } from "@/hooks/usePayment";
 import { useProductPrice, useProductPriceRub } from "@/hooks/useProductPrice";
 
-function notifyRubSoon(): void {
-  const message =
-    "Оплата рублями скоро будет доступна. Пока используйте звёзды Telegram.";
-  if (WebApp.showAlert) {
-    WebApp.showAlert(message);
-  } else {
-    // eslint-disable-next-line no-alert
-    alert(message);
+async function payWithCard(productId: string): Promise<void> {
+  try {
+    const { confirmation_url } = await paymentsApi.createYukassaInvoice(
+      productId,
+    );
+    WebApp.openLink(confirmation_url);
+  } catch (e: unknown) {
+    const message =
+      e instanceof Error && e.message
+        ? e.message
+        : "Не удалось открыть оплату картой. Попробуйте звёзды или повторите позже.";
+    if (WebApp.showAlert) {
+      WebApp.showAlert(message);
+    } else {
+      // eslint-disable-next-line no-alert
+      alert(message);
+    }
   }
 }
 import { useAppStore } from "@/stores/app";
@@ -345,7 +354,7 @@ export function DestinyMatrixReading() {
                     <button
                       type="button"
                       className="btn-rub destiny-reading__upsell-rub"
-                      onClick={notifyRubSoon}
+                      onClick={() => payWithCard("destiny_matrix_full")}
                       disabled={paying}
                     >
                       Оплатить {priceRub} ₽
@@ -465,7 +474,7 @@ export function DestinyMatrixReading() {
                       <button
                         type="button"
                         className="btn-rub destiny-sheet__rub"
-                        onClick={notifyRubSoon}
+                        onClick={() => payWithCard("destiny_matrix_full")}
                         disabled={paying}
                       >
                         Оплатить {priceRub} ₽

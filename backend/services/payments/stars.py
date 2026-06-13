@@ -180,6 +180,7 @@ async def grant_product_access(
             status=SubscriptionStatus.ACTIVE,
             stars_paid=product["stars"],
             tg_payment_charge_id=tg_payment_charge_id,
+            payment_provider="stars",
             starts_at=now,
             expires_at=now + timedelta(days=product["duration_days"]),
         )
@@ -191,6 +192,7 @@ async def grant_product_access(
             status=PurchaseStatus.COMPLETED,
             stars_amount=product["stars"],
             tg_payment_charge_id=tg_payment_charge_id,
+            payment_provider="stars",
             payload=payload,
         )
         db.add(purchase)
@@ -201,4 +203,63 @@ async def grant_product_access(
         user_id=user_id,
         product=product_id,
         charge_id=tg_payment_charge_id,
+    )
+
+
+async def grant_yukassa_access(
+    db: AsyncSession,
+    user_id: int,
+    product_id: str,
+    *,
+    yukassa_payment_id: str,
+    rub_amount_kopecks: int,
+    payload: str = "",
+) -> None:
+    """YuKassa twin of `grant_product_access`. Same Purchase/Subscription
+    rows, distinguished by `payment_provider = 'yukassa'` and
+    `yukassa_payment_id`. Idempotent via the unique constraint on
+    `yukassa_payment_id`.
+    """
+    if product_id not in PRODUCTS:
+        log.warning("yukassa.unknown_product", product=product_id, user_id=user_id)
+        return
+
+    product = PRODUCTS[product_id]
+    now = datetime.now(UTC)
+
+    if product["type"] == "subscription":
+        sub = Subscription(
+            user_id=user_id,
+            plan=product["plan"],
+            status=SubscriptionStatus.ACTIVE,
+            stars_paid=0,
+            tg_payment_charge_id=None,
+            payment_provider="yukassa",
+            yukassa_payment_id=yukassa_payment_id,
+            rub_amount_kopecks=rub_amount_kopecks,
+            starts_at=now,
+            expires_at=now + timedelta(days=product["duration_days"]),
+        )
+        db.add(sub)
+    else:
+        purchase = Purchase(
+            user_id=user_id,
+            product_id=product_id,
+            status=PurchaseStatus.COMPLETED,
+            stars_amount=0,
+            tg_payment_charge_id=None,
+            payment_provider="yukassa",
+            yukassa_payment_id=yukassa_payment_id,
+            rub_amount_kopecks=rub_amount_kopecks,
+            payload=payload,
+        )
+        db.add(purchase)
+
+    await db.flush()
+    log.info(
+        "yukassa.access_granted",
+        user_id=user_id,
+        product=product_id,
+        payment_id=yukassa_payment_id,
+        rub_kopecks=rub_amount_kopecks,
     )

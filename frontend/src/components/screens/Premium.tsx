@@ -9,16 +9,27 @@ import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
 import { usePayment } from "@/hooks/usePayment";
 
-/** Placeholder until YuKassa is wired. Every ruble click pops the same
- *  alert so screenshots look live but no real payment happens. */
-function notifyRubSoon(): void {
-  const message =
-    "Оплата рублями скоро будет доступна. Пока используйте звёзды Telegram.";
-  if (WebApp.showAlert) {
-    WebApp.showAlert(message);
-  } else {
-    // eslint-disable-next-line no-alert
-    alert(message);
+/** Create a YuKassa hosted-payment session and open the URL outside the
+ *  Mini App. Telegram WebView strugles with 3DS popups, so we always
+ *  redirect to the system browser via openLink. On any failure we fall
+ *  back to a humane error alert. */
+async function payWithCard(productId: string): Promise<void> {
+  try {
+    const { confirmation_url } = await paymentsApi.createYukassaInvoice(
+      productId,
+    );
+    WebApp.openLink(confirmation_url);
+  } catch (e: unknown) {
+    const message =
+      e instanceof Error && e.message
+        ? e.message
+        : "Не удалось открыть оплату картой. Попробуйте звёзды или повторите позже.";
+    if (WebApp.showAlert) {
+      WebApp.showAlert(message);
+    } else {
+      // eslint-disable-next-line no-alert
+      alert(message);
+    }
   }
 }
 
@@ -78,9 +89,11 @@ export function Premium() {
     setSheet(null);
     await purchase(id);
   };
-  const handlePayCard = () => {
+  const handlePayCard = async () => {
+    if (!sheet) return;
+    const id = sheet.productId;
     setSheet(null);
-    notifyRubSoon();
+    await payWithCard(id);
   };
 
   return (

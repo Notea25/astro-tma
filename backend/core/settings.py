@@ -37,6 +37,15 @@ class Settings(BaseSettings):
     SUPPORT_GROUP_CHAT_ID: int = 0
     SUPPORT_WEBHOOK_SECRET: str = ""
 
+    # YuKassa — Russian card-payment gateway. Empty SHOP_ID disables the
+    # card-payment flow; the PaymentSheet button on the frontend will
+    # fall back to a "Скоро" alert (see paymentsApi.createYukassaInvoice).
+    YUKASSA_SHOP_ID: str = ""
+    YUKASSA_SECRET_KEY: str = ""
+    # User-facing return URL after the YuKassa hosted-payment page.
+    # Deep-links back into the Telegram Mini App.
+    YUKASSA_RETURN_URL: str = "https://t.me/astrologiyatut_bot/app"
+
     # Push scheduling
     PUSH_DAILY_HOUR: int = 9
 

@@ -13,17 +13,27 @@ import WebApp from "@twa-dev/sdk";
 import { usePayment } from "@/hooks/usePayment";
 import { useEntitlement } from "@/hooks/useEntitlement";
 import { useProductPrice, useProductPriceRub } from "@/hooks/useProductPrice";
+import { paymentsApi } from "@/services/api";
 
-/** Click-handler for the «Pay in rubles» button. YuKassa flow is not
- *  wired yet — until it is, every press just informs the user. */
-function notifyRubSoon(): void {
-  const message =
-    "Оплата рублями скоро будет доступна. Пока используйте звёзды Telegram.";
-  if (WebApp.showAlert) {
-    WebApp.showAlert(message);
-  } else {
-    // eslint-disable-next-line no-alert
-    alert(message);
+/** Create a YuKassa hosted-payment session and open the URL outside the
+ *  Mini App — Telegram WebView struggles with 3DS popups. */
+async function payWithCard(productId: string): Promise<void> {
+  try {
+    const { confirmation_url } = await paymentsApi.createYukassaInvoice(
+      productId,
+    );
+    WebApp.openLink(confirmation_url);
+  } catch (e: unknown) {
+    const message =
+      e instanceof Error && e.message
+        ? e.message
+        : "Не удалось открыть оплату картой. Попробуйте звёзды или повторите позже.";
+    if (WebApp.showAlert) {
+      WebApp.showAlert(message);
+    } else {
+      // eslint-disable-next-line no-alert
+      alert(message);
+    }
   }
 }
 
@@ -123,7 +133,7 @@ export function PremiumGate({
         <button
           type="button"
           className="btn-rub premium-gate__cta-rub"
-          onClick={notifyRubSoon}
+          onClick={() => payWithCard(productId)}
           disabled={loading}
           aria-label={`Оплатить ${priceRub} рублей`}
         >

@@ -228,7 +228,15 @@ class Subscription(TimestampMixin, Base):
     status: Mapped[SubscriptionStatus] = mapped_column(
         Enum(SubscriptionStatus, values_callable=lambda e: [x.value for x in e]), default=SubscriptionStatus.ACTIVE)
     stars_paid: Mapped[int] = mapped_column(Integer)
-    tg_payment_charge_id: Mapped[str] = mapped_column(String(256), unique=True)
+    # Original Stars charge id. NULL for subscriptions bought via YuKassa
+    # (where `yukassa_payment_id` carries the idempotency key instead).
+    tg_payment_charge_id: Mapped[str | None] = mapped_column(String(256), unique=True, nullable=True)
+    # `"stars"` (default — historical rows) or `"yukassa"`.
+    payment_provider: Mapped[str] = mapped_column(String(16), default="stars", server_default="stars")
+    # UUID from YuKassa's payment object. Unique → idempotent webhook retries.
+    yukassa_payment_id: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
+    # Net amount paid in kopecks (rubles × 100). Only set for YuKassa rows.
+    rub_amount_kopecks: Mapped[int | None] = mapped_column(Integer, nullable=True)
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     # Launch monetization v1.1: distinguish a granted trial from a paid sub
@@ -238,7 +246,7 @@ class Subscription(TimestampMixin, Base):
 
 
 class Purchase(TimestampMixin, Base):
-    """One-time purchase. Every Stars transaction = one row."""
+    """One-time purchase. Every Stars or YuKassa transaction = one row."""
     __tablename__ = "purchases"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"))
@@ -246,7 +254,12 @@ class Purchase(TimestampMixin, Base):
     status: Mapped[PurchaseStatus] = mapped_column(
         Enum(PurchaseStatus, values_callable=lambda e: [x.value for x in e]), default=PurchaseStatus.PENDING)
     stars_amount: Mapped[int] = mapped_column(Integer)
+    # Original Stars charge id. NULL for rows bought via YuKassa.
     tg_payment_charge_id: Mapped[str | None] = mapped_column(String(256), unique=True)
+    # `"stars"` (default — historical rows) or `"yukassa"`.
+    payment_provider: Mapped[str] = mapped_column(String(16), default="stars", server_default="stars")
+    yukassa_payment_id: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
+    rub_amount_kopecks: Mapped[int | None] = mapped_column(Integer, nullable=True)
     payload: Mapped[str] = mapped_column(String(512))
     user: Mapped["User"] = relationship(back_populates="purchases")
 
