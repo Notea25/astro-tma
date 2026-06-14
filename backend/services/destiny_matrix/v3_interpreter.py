@@ -289,8 +289,16 @@ def _gender_directive(gender: str) -> str:
 
 def _arc_brief(arc: ArcanaDoc, *, sections: tuple[str, ...] = ("essence", "shadow")) -> str:
     """Compact arcana reference block, ~150-300 words depending on which
-    sections of the canonical text we include."""
-    parts = [f"АРКАН {arc.num} — {arc.name}"]
+    sections of the canonical text we include.
+
+    Uses ARCANA_NAMES_RU as the source of truth for the arcana name in
+    the reference header — arc.name historically came from arcana_base
+    in Rider-Waite spelling («Луна (Энергия Луны, тайное)», «Шут», …),
+    which the LLM then echoed as if it were canonical. Pulling from
+    ARCANA_NAMES_RU guarantees Ladini canon there.
+    """
+    canonical_name = ARCANA_NAMES_RU.get(arc.num, arc.name)
+    parts = [f"АРКАН {arc.num} — {canonical_name}"]
     if "essence" in sections:
         parts.append(f"Суть: {arc.essence}")
     if "mission" in sections:
