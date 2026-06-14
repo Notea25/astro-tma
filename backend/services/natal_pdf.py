@@ -2022,7 +2022,7 @@ def generate_natal_pdf(
     c = canvas.Canvas(buf, pagesize=A4)
     w, h = A4
 
-    planets_start, houses_start, aspects_start, reading_start, total_hint = _estimate_page_counts(
+    planets_start, houses_start, aspects_start, reading_start, _total_hint = _estimate_page_counts(
         planets, houses, aspects, reading
     )
 
@@ -2055,7 +2055,10 @@ def generate_natal_pdf(
 
     def finish_page() -> None:
         nonlocal page
-        _page_footer(c, w, page, total_hint)
+        # ReportLab pages are laid out dynamically, so _estimate_page_counts()
+        # is useful for TOC start hints but not reliable enough for a footer
+        # total. Printing only the current page avoids false "4 / 31" totals.
+        _page_footer(c, w, page)
         c.showPage()
         page += 1
 

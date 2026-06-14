@@ -642,6 +642,36 @@ def test_reportlab_retro_badge_draws_pill():
     )
 
 
+def test_reportlab_footer_does_not_print_estimated_total(monkeypatch):
+    planets, houses, aspects = _sample_chart()
+    totals = []
+    real_footer = natal_pdf._page_footer
+
+    def spy_footer(c, w, page, total=None):
+        totals.append(total)
+        real_footer(c, w, page, total)
+
+    monkeypatch.setattr(natal_pdf, "_page_footer", spy_footer)
+
+    pdf = generate_natal_pdf(
+        user_name="AN",
+        birth_date="1997-04-30",
+        birth_time="12:55",
+        birth_city="Минск",
+        sun_sign="Taurus",
+        moon_sign="Aquarius",
+        asc_sign="Leo",
+        planets=planets,
+        houses=houses,
+        aspects=aspects,
+        reading="**Лунные узлы**\nРаху в Деве. Кету в Рыбах.",
+    )
+
+    assert pdf.startswith(b"%PDF-")
+    assert totals
+    assert all(total is None for total in totals)
+
+
 def test_aspect_fallback_dedup_at_render(monkeypatch):
     """P1-3: даже если два аспекта дали одинаковый fallback, рендер не печатает
     его дважды дословно — второй дубль помечается/убирается."""
