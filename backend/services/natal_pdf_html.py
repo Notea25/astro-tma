@@ -197,6 +197,39 @@ def _lines(text: str, max_words: int) -> str:
     return " ".join(words[:max_words]).rstrip(" .,;:") + "."
 
 
+_DANGLING_TAIL_WORDS = {
+    "а",
+    "в",
+    "во",
+    "для",
+    "за",
+    "и",
+    "или",
+    "к",
+    "ко",
+    "на",
+    "над",
+    "о",
+    "об",
+    "от",
+    "по",
+    "под",
+    "при",
+    "про",
+    "с",
+    "со",
+    "у",
+    "через",
+}
+
+
+def _trim_dangling_tail(text: str) -> str:
+    words = str(text or "").strip().split()
+    while words and words[-1].strip("«»\"'.,;:—-").lower() in _DANGLING_TAIL_WORDS:
+        words.pop()
+    return " ".join(words).rstrip(" .,;:—-")
+
+
 def _first_sentences(text: str, max_chars: int = 170) -> str:
     """Усечение по границе предложения (для коротких карточек «Ключевые точки»).
 
@@ -209,17 +242,31 @@ def _first_sentences(text: str, max_chars: int = 170) -> str:
     sentences = re.findall(r"[^.!?…]+[.!?…]+|[^.!?…]+$", clean)
     out = ""
     for sentence in sentences:
+        sentence = sentence.strip()
+        if not sentence:
+            continue
         candidate = (out + " " + sentence).strip() if out else sentence.strip()
         if out and len(candidate) > max_chars:
+            break
+        if not out and len(candidate) > max_chars:
             break
         out = candidate
         if len(out) >= max_chars:
             break
     if not out:
-        out = sentences[0].strip()
+        first = sentences[0].strip()
+        window = first[:max_chars]
+        cut_at = max(window.rfind(mark) for mark in (",", ";", ":", " — ", " - "))
+        if cut_at >= max_chars * 0.55:
+            out = window[:cut_at]
+        else:
+            out = window.rsplit(" ", 1)[0] if " " in window else window
+        out = _trim_dangling_tail(out)
+        return (out + "…") if out else first[:max_chars].rstrip() + "…"
     if len(out) > max_chars:
         cut = out[:max_chars].rsplit(" ", 1)[0].rstrip(" .,;:—-")
-        out = (cut + "…") if cut else out[:max_chars]
+        cut = _trim_dangling_tail(cut)
+        out = (cut + "…") if cut else out[:max_chars].rstrip() + "…"
     return out
 
 

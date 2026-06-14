@@ -305,7 +305,49 @@ def test_natal_reading_prompt_requests_expanded_interpretation():
     assert "**Основа личности**" in prompt
     assert "**Управитель гороскопа**" in prompt
     assert "**Заключительный синтез**" in prompt
+    assert "**Лунные узлы**" not in prompt
+    assert "не рассчитаны" not in prompt
     assert "натив" in prompt
+
+
+def test_natal_reading_prompt_includes_nodes_only_when_positions_exist():
+    planets, _houses, aspects = _sample_chart()
+    prompt = llm_interpreter._build_prompt(
+        "Scorpio",
+        "Aquarius",
+        "Aries",
+        planets,
+        aspects,
+        nodes={
+            "true_north_lunar_node": {"sign_ru": "Дева", "house": 2},
+            "true_south_lunar_node": {"sign_ru": "Рыбы", "house": 8},
+        },
+    )
+
+    assert "**Лунные узлы**" in prompt
+    assert "Раху (Северный узел): Дева, 2-й дом" in prompt
+    assert "Кету (Южный узел): Рыбы, 8-й дом" in prompt
+    assert "НЕ пиши, что узлы" in prompt
+
+
+def test_natal_reading_strips_lunar_nodes_fallback_block_without_positions():
+    reading = "\n".join(
+        [
+            "**Основа личности**",
+            "Текст основы.",
+            "**Лунные узлы**",
+            "Расчёт лунных узлов в предоставленных данных отсутствует.",
+            "**Аспекты планет**",
+            "Текст аспектов.",
+        ]
+    )
+
+    cleaned = llm_interpreter._strip_lunar_nodes_block(reading)
+
+    assert "**Лунные узлы**" not in cleaned
+    assert "отсутствует" not in cleaned
+    assert "**Основа личности**" in cleaned
+    assert "**Аспекты планет**" in cleaned
 
 
 @pytest.mark.asyncio
@@ -440,6 +482,22 @@ def test_html_pdf_uses_full_description_before_short():
 
     assert "ПОЛНЫЙ_ТЕКСТ" in document
     assert "КОРОТКИЙ_ТЕКСТ" not in document
+
+
+def test_key_point_blurbs_do_not_end_with_dangling_preposition():
+    text = (
+        "Вы умеете заранее рассчитать ходы, взвесить за и против, заметить скрытый "
+        "мотив собеседника, удержать паузу, остановиться в нужный момент и не "
+        "поддаться чужому давлению. Второе предложение."
+    )
+
+    html_blurb = natal_pdf_html._first_sentences(text, max_chars=82)
+    reportlab_blurb = natal_pdf._compact_description({"full": text}, "", words=16)
+
+    assert html_blurb.endswith("…")
+    assert reportlab_blurb.endswith("…")
+    assert not html_blurb.endswith((" в…", " в."))
+    assert not reportlab_blurb.endswith((" в…", " в."))
 
 
 def test_pdf_detail_descriptions_do_not_use_short_as_full_source():
@@ -1133,6 +1191,15 @@ def test_thin_aspect_sent_to_repair():
     )
     entry = {"short": "коротко", "full": text}
     assert natal_descriptions._entry_needs_repair(entry, "aspects") is True
+
+
+def test_important_bad_aspect_gets_full_quality_fallback():
+    text = natal_descriptions._aspect_quality_fallback("venus", "saturn", "opposition", 1.6)
+
+    assert "Венера — оппозиция — Сатурн" in text
+    assert "Орб 1.6°" in text
+    assert len(text.split()) >= 100
+    assert "не рассчитан" not in text
 
 
 def test_compact_planet_not_sent_to_repair():
