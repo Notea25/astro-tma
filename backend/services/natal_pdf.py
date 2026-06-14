@@ -446,6 +446,70 @@ def _draw_card_frame(c: canvas.Canvas, x: float, y: float, width: float, height:
     c.line(x + 14, y - 34, x + width - 14, y - 34)
 
 
+_DANGLING_TAIL_WORDS = {
+    "а",
+    "в",
+    "во",
+    "для",
+    "за",
+    "и",
+    "или",
+    "к",
+    "ко",
+    "на",
+    "над",
+    "о",
+    "об",
+    "от",
+    "по",
+    "под",
+    "при",
+    "про",
+    "с",
+    "со",
+    "у",
+    "через",
+}
+
+
+def _trim_dangling_tail(text: str) -> str:
+    words = str(text or "").strip().split()
+    while words and words[-1].strip("«»\"'.,;:—-").lower() in _DANGLING_TAIL_WORDS:
+        words.pop()
+    return " ".join(words).rstrip(" .,;:—-")
+
+
+def _first_sentences(text: str, max_chars: int = 170) -> str:
+    clean = " ".join(str(text or "").replace("\n", " ").split())
+    if not clean:
+        return ""
+    sentences = re.findall(r"[^.!?…]+[.!?…]+|[^.!?…]+$", clean)
+    out = ""
+    for sentence in sentences:
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+        candidate = (out + " " + sentence).strip() if out else sentence
+        if out and len(candidate) > max_chars:
+            break
+        if not out and len(candidate) > max_chars:
+            break
+        out = candidate
+        if len(out) >= max_chars:
+            break
+    if out:
+        return out
+    first = sentences[0].strip()
+    window = first[:max_chars]
+    cut_at = max(window.rfind(mark) for mark in (",", ";", ":", " — ", " - "))
+    if cut_at >= max_chars * 0.55:
+        out = window[:cut_at]
+    else:
+        out = window.rsplit(" ", 1)[0] if " " in window else window
+    out = _trim_dangling_tail(out)
+    return (out + "…") if out else first[:max_chars].rstrip() + "…"
+
+
 def _compact_description(entry: Any, fallback: str, *, words: int = 42) -> str:
     if isinstance(entry, dict):
         source = str(entry.get("full") or "").strip()
@@ -455,10 +519,7 @@ def _compact_description(entry: Any, fallback: str, *, words: int = 42) -> str:
     if source and fallback and len(source.split()) < max(18, words // 2):
         source = f"{source} {fallback}"
     source = source or fallback
-    parts = source.split()
-    if len(parts) <= words:
-        return source
-    return " ".join(parts[:words]).rstrip(" .,;:") + "."
+    return _first_sentences(source, max_chars=max(120, words * 5))
 
 
 def _roman(num: int) -> str:
