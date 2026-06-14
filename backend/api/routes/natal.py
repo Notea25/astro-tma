@@ -67,11 +67,13 @@ class WheelSvgPayload(BaseModel):
 
 # Bumped when description style rules change — old rows render as stale on
 # first read so they regenerate with current length, variety and gender rules.
-NATAL_DESCRIPTIONS_VERSION = 13
-# Bumped to 8: the reading prompt now produces an 8-section geocult-style
-# breakdown. Older 7-section readings fall below this and auto-regenerate.
-MIN_EXPANDED_READING_HEADINGS = 8
-MIN_EXPANDED_READING_WORDS = 1100
+NATAL_DESCRIPTIONS_VERSION = 14
+# Bumped when the full PDF reading contract changes. v2 makes lunar nodes
+# binary: render a concrete nodes section only when positions exist; otherwise
+# omit the section instead of showing a paid-report apology/fallback.
+NATAL_READING_VERSION = 2
+MIN_EXPANDED_READING_HEADINGS = 7
+MIN_EXPANDED_READING_WORDS = 1050
 
 
 def _empty_descriptions() -> dict[str, Any]:
@@ -206,7 +208,11 @@ def _reading_is_fresh(cached: Any, current_gender: str | None) -> str | None:
     reading = cached.get("reading")
     if not isinstance(reading, str) or not reading.strip():
         return None
+    if cached.get("reading_version") != NATAL_READING_VERSION:
+        return None
     if cached.get("reading_gender") != current_gender:
+        return None
+    if not _is_expanded_reading(reading):
         return None
     return reading
 
@@ -285,7 +291,12 @@ async def _get_or_generate_pdf_reading(
         cached_payload = cached if isinstance(cached, dict) else {}
         await cache_set(
             cache_key,
-            {**cached_payload, "reading": reading, "reading_gender": current_gender},
+            {
+                **cached_payload,
+                "reading": reading,
+                "reading_gender": current_gender,
+                "reading_version": NATAL_READING_VERSION,
+            },
             settings.CACHE_TTL_NATAL,
         )
 
@@ -699,8 +710,8 @@ async def get_natal_full(
     if isinstance(cached, dict):
         cached_gender = cached.get("reading_gender")
         gender_matches = cached_gender == current_gender
-        if gender_matches and (
-            _is_expanded_reading(cached.get("reading")) or not settings.ANTHROPIC_API_KEY
+        if _reading_is_fresh(cached, current_gender) or (
+            gender_matches and not settings.ANTHROPIC_API_KEY
         ):
             return cached
         if not settings.ANTHROPIC_API_KEY:
@@ -723,6 +734,7 @@ async def get_natal_full(
             **cached,
             "reading": refreshed_reading,
             "reading_gender": current_gender,
+            "reading_version": NATAL_READING_VERSION,
         }
         await cache_set(cache_key, refreshed, settings.CACHE_TTL_NATAL)
         return refreshed
@@ -755,6 +767,7 @@ async def get_natal_full(
         "planets": planets,
         "houses": chart.chart_data.get("houses", []),
         "aspects": chart.chart_data.get("aspects", [])[:10],
+        "reading_version": NATAL_READING_VERSION,
         "reading_gender": current_gender,
         "interpretations": interpretations,
         "reading": llm_reading,

@@ -350,6 +350,49 @@ def test_natal_reading_strips_lunar_nodes_fallback_block_without_positions():
     assert "**Аспекты планет**" in cleaned
 
 
+def test_cached_pdf_reading_requires_current_version_and_expanded_text():
+    from api.routes import natal
+
+    old_cached = {
+        "reading": "\n".join(
+            [
+                "**Основа личности**",
+                "слово " * 200,
+                "**Лунные узлы**",
+                "Расчёт лунных узлов в предоставленных данных отсутствует.",
+                "**Аспекты планет**",
+                "слово " * 200,
+            ]
+        ),
+        "reading_gender": None,
+    }
+    fresh_cached = {
+        "reading": "\n".join(
+            [
+                "**Основа личности**",
+                "слово " * 160,
+                "**Управитель гороскопа**",
+                "слово " * 160,
+                "**Личные планеты**",
+                "слово " * 160,
+                "**Высшие планеты**",
+                "слово " * 160,
+                "**Дома гороскопа**",
+                "слово " * 160,
+                "**Аспекты планет**",
+                "слово " * 160,
+                "**Заключительный синтез**",
+                "слово " * 160,
+            ]
+        ),
+        "reading_gender": None,
+        "reading_version": natal.NATAL_READING_VERSION,
+    }
+
+    assert natal._reading_is_fresh(old_cached, None) is None
+    assert natal._reading_is_fresh(fresh_cached, None) == fresh_cached["reading"]
+
+
 @pytest.mark.asyncio
 async def test_generate_natal_reading_uses_expanded_token_budget(monkeypatch):
     planets, _houses, aspects = _sample_chart()
@@ -776,6 +819,7 @@ async def test_get_natal_full_refreshes_short_cached_reading(monkeypatch):
     assert calls["reading_kwargs"]["aspects"] == chart.chart_data["aspects"]
     assert calls["cache_set"][0] == "natal:1001"
     assert calls["cache_set"][1]["reading"] == refreshed_text
+    assert calls["cache_set"][1]["reading_version"] == natal.NATAL_READING_VERSION
 
 
 @pytest.mark.asyncio
@@ -991,6 +1035,7 @@ async def test_pdf_reading_is_generated_when_full_chart_cache_is_cold(monkeypatc
 
     assert reading == "Полное итоговое чтение карты."
     assert calls["reading_kwargs"]["aspects"] == aspects
+    assert calls["cache_set"][1]["reading_version"] == natal.NATAL_READING_VERSION
 
 
 class _FakeRedis:
