@@ -40,13 +40,18 @@ from services.destiny_matrix_pdf_html import (
 def _cover_page(user_name: str, birth_date: str) -> str:
     bd = _e(_format_birth_date(birth_date))
     nm = _e(user_name or "Без имени")
+    # Derive the section count from the live SECTIONS registry — historically
+    # the cover-tag hard-coded «15 разделов»; that became wrong when 3
+    # sections were merged into the 8 purpose deep dives (now 12).
+    main_count = sum(1 for s in SECTIONS if s.group == "main")
+    purpose_count = sum(1 for s in SECTIONS if s.group == "purpose")
     body = f"""
     <div class="cover">
       <div class="cover-eyebrow">МАТРИЦА СУДЬБЫ · V3</div>
       <h1 class="cover-title">Полный личный разбор</h1>
       <div class="cover-name">{nm}</div>
       <div class="cover-bd">Дата рождения: {bd}</div>
-      <p class="cover-tag">15 разделов · 8 предназначений · кармическая программа · энергия года</p>
+      <p class="cover-tag">{main_count} разделов · {purpose_count} предназначений · кармическая программа · энергия года</p>
     </div>
     """
     return _page(1, body, class_name="cover-page")
