@@ -143,6 +143,21 @@ ASPECT_TOPICS = {
     "quincunx": "требуют тонкой перенастройки привычек и взгляда на ситуацию",
 }
 
+# Короткая «функция» каждой планеты — чтобы заглушка аспекта отличалась по паре
+# планет, а не была байт-в-байт одинаковой для всех аспектов одного типа (P1-3).
+_PLANET_THEME = {
+    "sun": "воля и стремление быть собой",
+    "moon": "чувства и потребность в безопасности",
+    "mercury": "ум, речь и обмен информацией",
+    "venus": "любовь, ценности и тяга к гармонии",
+    "mars": "напор, желание и способность действовать",
+    "jupiter": "рост, вера и расширение возможностей",
+    "saturn": "дисциплина, границы и ответственность",
+    "uranus": "свобода, перемены и нестандартность",
+    "neptune": "мечты, чувствительность и размывание границ",
+    "pluto": "глубина, власть и трансформация",
+}
+
 ELEMENT_COPY = {
     "fire": (
         "Действие, инициатива, страсть. Энергия просыпается, когда есть цель, риск и право проявиться.",
@@ -1826,7 +1841,29 @@ def _aspect_fallback(aspect: dict[str, Any]) -> str:
         "conjunction": f"{p1_ru} и {p2_ru} слиты в один импульс: их трудно разделить, они срабатывают вместе и усиливают друг друга.",
         "quincunx": f"{p1_ru} и {p2_ru} плохо стыкуются напрямую — нужна регулярная ручная подстройка, иначе одно сбивает другое.",
     }.get(aspect_type, f"{p1_ru} и {p2_ru} {topic}.")
-    return f"{kind_hint} {tightness}"
+    # Персонализация по паре: добавляем «функции» обеих планет, чтобы два разных
+    # аспекта одного типа не давали байт-в-байт одинаковую заглушку (P1-3).
+    t1 = _PLANET_THEME.get(p1_key)
+    t2 = _PLANET_THEME.get(p2_key)
+    pair_note = f" Здесь встречаются {t1} и {t2}." if t1 and t2 else ""
+    return f"{kind_hint}{pair_note} {tightness}"
+
+
+def _dedup_aspect_texts(texts: list[str]) -> list[str | None]:
+    """Вычистить дословные дубли из списка готовых текстов аспектов (P1-3):
+    второй и далее байт-в-байт повтор → None (рендер его пропустит). Сравнение
+    по нормализованному виду (схлопнутые пробелы, нижний регистр)."""
+    seen: set[str] = set()
+    out: list[str | None] = []
+    for text in texts:
+        norm = " ".join(str(text or "").split()).lower()
+        if norm and norm in seen:
+            out.append(None)
+            continue
+        if norm:
+            seen.add(norm)
+        out.append(text)
+    return out
 
 
 def _aspect_description_map(
@@ -1953,6 +1990,26 @@ def generate_natal_pdf(
     aspect_desc = _aspect_description_map(descriptions)
     # Скрываем аспекты-заглушки: лучше меньше аспектов, чем болванки.
     aspects = [a for a in aspects if not _aspect_hidden(a, aspect_desc)]
+    # Разрешаем текст каждого аспекта заранее и вычищаем дословные дубли (P1-3):
+    # одинаковая заглушка не печатается дважды. Результат кладём на сам аспект.
+    _resolved = _dedup_aspect_texts(
+        [
+            _description(
+                aspect_desc.get(
+                    (
+                        _planet_key(a.get("p1")),
+                        _planet_key(a.get("p2")),
+                        _aspect_key(a.get("aspect")),
+                    )
+                ),
+                _aspect_fallback(a),
+            )
+            for a in aspects
+        ]
+    )
+    aspects = [a for a, text in zip(aspects, _resolved) if text is not None]
+    for a, text in zip(aspects, [t for t in _resolved if t is not None]):
+        a["_resolved_desc"] = text
 
     def finish_page() -> None:
         nonlocal page
@@ -2534,7 +2591,7 @@ def generate_natal_pdf(
             c.setFillColor(TEXT_DIM)
             _set_font(c, False, 11)
             c.drawRightString(w - 58, y + 15, f"орб {orb:.1f}°")
-            desc = _description(
+            desc = aspect.get("_resolved_desc") or _description(
                 aspect_desc.get((p1_key, p2_key, aspect_type)), _aspect_fallback(aspect)
             )
             y = draw_detail_text(

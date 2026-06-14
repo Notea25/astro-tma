@@ -16,7 +16,12 @@ from typing import Any
 from core.logging import get_logger
 from services.astro.sign_cases import sign_ru
 from services.llm_utils import first_text_block
-from services.quality_validator import Severity, TextValidator, ValidationContext
+from services.quality_validator import (
+    Severity,
+    TextValidator,
+    ValidationContext,
+    sanitize_ru_text,
+)
 
 log = get_logger(__name__)
 
@@ -317,6 +322,9 @@ def _quality_rules(section: str) -> str:
 - Никаких вступлений-подводок («давайте разберём», «стоит отметить») — сразу суть.
 - Запрещены маркеры копипаста: «Подробнее», «Читать далее», «Источник», «Geocult», рекламные переходы.
 - ВЫСШИЕ ПЛАНЕТЫ (Уран, Нептун, Плутон) трактуй ИНДИВИДУАЛЬНО — через дом и аспекты этой карты, а не через год/поколение рождения. Запрещены фразы «поколение 1996–2003», «цифровое поколение» и любые «поколенческие» ярлыки: они одинаковы для миллионов и не говорят о человеке. Покажи, в какой сфере (дом) и через какие связки (аспекты) эта планета работает лично у него.
+- ЯЗЫК: только русский, 100% кириллица. Запрещены любые иероглифы, латинские буквы внутри русских слов и любой иной алфавит. Имена планет/знаков пиши кириллицей целиком («Козерог», не «Козеrog»). Исключение — общепринятые аббревиатуры осей (MC, IC, Asc).
+- ЛИЦО: обращение строго на «вы» во множественном числе — «вы можете», «вы чувствуете», «вы стремитесь». Запрещены формы «вы можешь», «вы можем», «ты».
+- ПАДЕЖИ: следи за управлением. После «направлено на», «нацелено на», «ориентировано на» ставь винительный падеж и склоняй слова («направлено на карьеру и статус», не «направлено на карьера, статус»). Не вставляй списки ключевых слов в именительном падеже после предлога — перестрой фразу («работает в сфере карьеры», «отвечает за деньги и ресурсы»).
 - Если два элемента похожи, объясни конкретную разницу именно в этой карте."""
 
 
@@ -681,8 +689,8 @@ async def _one_entry(
             )
             if isinstance(result, dict):
                 return {
-                    "short": str(result.get("short", "")),
-                    "full": str(result.get("full", "")),
+                    "short": sanitize_ru_text(str(result.get("short", ""))),
+                    "full": sanitize_ru_text(str(result.get("full", ""))),
                 }
             return {"short": "", "full": ""}
         except Exception as e:  # noqa: BLE001
@@ -733,8 +741,8 @@ async def _call_tool_chunk(
             for k, v in result.items():
                 if isinstance(v, dict):
                     out[str(k)] = {
-                        "short": str(v.get("short", "")),
-                        "full": str(v.get("full", "")),
+                        "short": sanitize_ru_text(str(v.get("short", ""))),
+                        "full": sanitize_ru_text(str(v.get("full", ""))),
                     }
             return out
         except Exception as e:  # noqa: BLE001
@@ -847,6 +855,8 @@ def _entry_needs_repair(entry: dict[str, str], section: str) -> bool:
         "CASE_AFTER_PREP",
         "FALSE_ASC_ATTRIBUTION",
         "GENDER_NUMBER_MISMATCH",
+        "PERSON_MISMATCH",
+        "LATIN_IN_RUSSIAN",
     }
     if any(i.code in bad_codes for i in issues):
         return True
@@ -1161,6 +1171,8 @@ async def generate_natal_descriptions(
             "CASE_AFTER_PREP",
             "FALSE_ASC_ATTRIBUTION",
             "GENDER_NUMBER_MISMATCH",
+            "PERSON_MISMATCH",
+            "LATIN_IN_RUSSIAN",
         }
         bad = any(i.severity == Severity.CRITICAL for i in issues) or any(
             i.code in hide_codes for i in issues

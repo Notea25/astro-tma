@@ -309,12 +309,14 @@ def _description(entry: Any, fallback: str, *, words: int) -> str:
     return _lines(source, words)
 
 
-def _card_blurb(entry: Any, fallback: str, *, max_chars: int = 170) -> str:
+def _card_blurb(entry: Any, fallback: str, *, max_chars: int = 230) -> str:
     """Короткий текст для карточек «Ключевые точки»: целые предложения, без
     обрыва на полуслове. Источник — «full» (или fallback), как у _description:
     «short» — это in-app popup, в PDF не идёт. Затем усечение по границе
     предложения через _first_sentences (вместо пословного _lines, который резал
-    «…задачей — не.»)."""
+    «…задачей — не.»). Лимит 230 (а не 170): карточка key-card высокая
+    (min-height 86mm), типичное первое предложение ~150-190 символов влезает
+    целиком, и первый экран PDF не обрывает мысль (P0-2, карта Andrey)."""
     source = ""
     if isinstance(entry, dict):
         source = str(entry.get("full") or "").strip()
