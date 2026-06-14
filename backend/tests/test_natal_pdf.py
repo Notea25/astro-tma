@@ -543,6 +543,22 @@ def test_key_point_blurbs_do_not_end_with_dangling_preposition():
     assert not reportlab_blurb.endswith((" в…", " в."))
 
 
+def test_key_point_blurbs_do_not_end_with_dangling_negation():
+    text = (
+        "Солнце в Тельце в 10-м доме делает карьеру вашей основной жизненной "
+        "задачей — не потому, что вы честолюбивы, а потому что вам важно видеть "
+        "плотный результат своих усилий. Второе предложение."
+    )
+
+    html_blurb = natal_pdf_html._first_sentences(text, max_chars=70)
+    reportlab_blurb = natal_pdf._first_sentences(text, max_chars=70)
+
+    assert html_blurb.endswith("…")
+    assert reportlab_blurb.endswith("…")
+    assert "— не" not in html_blurb
+    assert "— не" not in reportlab_blurb
+
+
 def test_aspect_fallback_not_verbatim_dup_for_same_type():
     """P1-3: два разных квадрата без записи в PAIR_TEXTS не должны давать
     байт-в-байт одинаковый текст (Юпитер□Нептун vs Сатурн□Уран в карте Andrey)."""
@@ -565,10 +581,65 @@ def test_aspect_fallback_avoids_repeated_orb_frame():
     assert "При орбе 7.3°" in text
 
 
+def test_planet_fallback_avoids_case_error_after_na():
+    venus = natal_pdf._planet_fallback("venus", {"sign_ru": "Рак", "house": 10})
+    uranus = natal_pdf._planet_fallback("uranus", {"sign_ru": "Водолей", "house": 6})
+
+    joined = f"{venus} {uranus}"
+
+    assert "направлено на карьера" not in joined
+    assert "направлено на режим" not in joined
+    assert "работает в сфере: карьера, статус" in joined
+    assert "работает в сфере: режим, здоровье" in joined
+
+
 def test_reportlab_aspect_colors_match_html_semantics():
     assert natal_pdf._aspect_color("square") != natal_pdf._aspect_color("opposition")
     assert natal_pdf._aspect_dash("square") == ()
     assert natal_pdf._aspect_dash("opposition") == (2, 3)
+
+
+def test_element_symbols_match_between_renderers():
+    expected = {
+        "fire": "△",
+        "earth": "▽",
+        "air": "▵",
+        "water": "▿",
+    }
+
+    assert natal_pdf.ELEMENT_SYMBOLS == expected
+    assert natal_pdf_html.ELEMENT_SYMBOLS == expected
+
+
+def test_reportlab_retro_badge_draws_pill():
+    class FakeCanvas:
+        def __init__(self):
+            self.calls = []
+
+        def __getattr__(self, name):
+            if name not in {
+                "setStrokeColor",
+                "setFillColor",
+                "roundRect",
+                "setFont",
+                "drawCentredString",
+            }:
+                raise AttributeError(name)
+
+            def record(*args, **kwargs):
+                self.calls.append((name, args, kwargs))
+
+            return record
+
+    fake = FakeCanvas()
+
+    natal_pdf._draw_retro_badge(fake, 58, 120)
+
+    assert any(call[0] == "roundRect" for call in fake.calls)
+    assert any(
+        call[0] == "drawCentredString" and "℞ РЕТРО" in call[1]
+        for call in fake.calls
+    )
 
 
 def test_aspect_fallback_dedup_at_render(monkeypatch):
@@ -827,6 +898,48 @@ async def test_get_or_generate_descriptions_regenerates_stale_cached_text(monkey
     assert descriptions["planets"]["sun"]["full"] == "Новый полный справочный текст."
     assert descriptions["_version"] == natal.NATAL_DESCRIPTIONS_VERSION
     assert chart.chart_data["descriptions"] == descriptions
+    assert db.committed is True
+
+
+@pytest.mark.asyncio
+async def test_get_or_generate_descriptions_rejects_shifted_house_keys(monkeypatch):
+    from api.routes import natal
+
+    broken_houses = {str(i): {"full": f"Дом {i}"} for i in range(0, 12)}
+    chart = SimpleNamespace(
+        chart_data={
+            "planets": {"sun": {"sign": "Capricorn", "house": 10}},
+            "houses": [],
+            "aspects": [],
+            "descriptions": {
+                "_version": natal.NATAL_DESCRIPTIONS_VERSION,
+                "_gender_used": None,
+                "planets": {"sun": {"full": "Старое Солнце."}},
+                "houses": broken_houses,
+                "aspects": [],
+            },
+        }
+    )
+    user = SimpleNamespace(id=1001, natal_chart=chart, gender=None)
+    db = SimpleNamespace(committed=False)
+
+    async def fake_commit():
+        db.committed = True
+
+    async def fake_generate_natal_descriptions(**_kwargs):
+        return {
+            "planets": {"sun": {"full": "Новый корректный текст."}},
+            "houses": {},
+            "aspects": [],
+        }
+
+    db.commit = fake_commit
+    monkeypatch.setattr(natal.settings, "ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.setattr(natal, "generate_natal_descriptions", fake_generate_natal_descriptions)
+
+    descriptions = await natal._get_or_generate_descriptions(db, user)
+
+    assert descriptions["planets"]["sun"]["full"] == "Новый корректный текст."
     assert db.committed is True
 
 
