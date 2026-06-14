@@ -63,12 +63,13 @@ MODEL_V3 = "claude-sonnet-4-5-20250929"
 SECTION_TITLES: dict[str, str] = {
     "visitka":       "Визитка",
     "drk":           "Дерево Рода и Кармы",
-    "higher_self":   "Высшее «Я»",
-    "soul_tasks":    "Задачи души",
+    # higher_self / soul_tasks / realization deliberately removed — their
+    # content was 1:1 with purpose_personal_divine / purpose_*_personal /
+    # purpose_wholeness_lineage respectively. Canonical home is now the
+    # 8 dedicated purpose_* pages + the purposes overview.
     "karmic_tail":   "Кармический хвост",
     "relationships": "Отношения",
     "money":         "Деньги",
-    "realization":   "Социальная реализация",
     "harmonization": "Гармонизация",
     "talents":       "Таланты",
     "anahata":       "Анахата (сердечный центр)",
@@ -378,55 +379,6 @@ def _prompt_drk(ctx: V3Context) -> tuple[str, int]:
     ), 350
 
 
-def _prompt_higher_self(ctx: V3Context) -> tuple[str, int]:
-    """Высшее Я — purpose_personal_divine = p7."""
-    p = ctx.purposes["personal_divine"]
-    a1, a2, total = p.key
-    refs = "\n\n".join(
-        _arc_brief(ctx.arcana[n], sections=("essence", "mission", "healing"))
-        for n in dict.fromkeys([a1, a2, total])
-    )
-    return (
-        _header(ctx, "higher_self")
-        + "Высшее «Я» — личное Божественное предназначение. Это не работа и "
-        "не социальная роль, а внутренний голос — куда душа тянет, когда "
-        "никто не видит. Формула: предназначение Целостное личное + "
-        "предназначение Целостное родовое = твой личный путь к Божественному.\n\n"
-        f"Формула: аркан {a1} ({_name(a1)}) + аркан {a2} ({_name(a2)}) = "
-        f"аркан {total} ({_name(total)}) — Высшее «Я»\n\n"
-        f"Справка:\n\n{refs}\n\n"
-        "Напиши 250-300 слов о том, через что читатель приходит к "
-        f"состоянию аркана {total}. Сначала роль аркана {a1}, потом аркана {a2}, "
-        f"потом синтез — как они складываются в аркан {total} и что это даёт в жизни."
-    ), 280
-
-
-def _prompt_soul_tasks(ctx: V3Context) -> tuple[str, int]:
-    """Задачи души — короткий transition-блок над 3 личными
-    предназначениями. Сами арканы и развёрнутые тексты разбираются в
-    отдельных разделах 'Предназначение · Небесное / Земное / Целостное'
-    (16, 17, 18). Здесь — только рамка и навигация.
-    """
-    p1 = ctx.purposes["celestial_personal"]
-    p2 = ctx.purposes["earthly_personal"]
-    p3 = ctx.purposes["wholeness_personal"]
-    return (
-        _header(ctx, "soul_tasks")
-        + "Это короткая навигация: дальше у читателя будут ТРИ отдельных "
-        "раздела по каждому личному предназначению. Их арканы:\n\n"
-        f"• Небесное личное — аркан {p1.key[2]} ({_name(p1.key[2])})\n"
-        f"• Земное личное   — аркан {p2.key[2]} ({_name(p2.key[2])})\n"
-        f"• Целостное личное — аркан {p3.key[2]} ({_name(p3.key[2])})\n\n"
-        "Задача этой секции — БЕЗ пересказа арканов:\n"
-        "1) Объясни одной короткой мыслью, что такое «задачи души» и чем "
-        "личные предназначения отличаются от родовых.\n"
-        "2) Дай читателю смысловую рамку, через которую он будет читать "
-        "три отдельных разбора ниже — что искать, на что обращать внимание.\n"
-        "3) Не цитируй арканы по содержанию — глубокий разбор будет дальше.\n\n"
-        "Объём: 110-150 слов, 1-2 абзаца. БЕЗ списков. Тёплый, ориентирующий тон."
-    ), 130
-
-
 def _prompt_karmic_tail(ctx: V3Context) -> tuple[str, int]:
     """Кармический хвост — bottom + bottom_1 + bottom_2 + canonical program."""
     pos = ctx.positions
@@ -525,31 +477,6 @@ def _prompt_money(ctx: V3Context) -> tuple[str, int]:
         "4) типичные блоки и как их размыкать. Конкретно, без «откройся "
         "изобилию»."
     ), 350
-
-
-def _prompt_realization(ctx: V3Context) -> tuple[str, int]:
-    """Социальная реализация — короткая навигационная связка над
-    развёрнутым разделом «Предназначение · Социальная реализация»
-    (purpose_wholeness_lineage). Здесь — только рамка, без пересказа
-    арканов.
-    """
-    p = ctx.purposes["wholeness_lineage"]
-    a1, a2, total = p.key
-    return (
-        _header(ctx, "realization")
-        + "Это короткая навигация к развёрнутому разделу о социальной "
-        f"реализации (аркан {total} — {_name(total)}, формула "
-        f"{a1}+{a2}={total}). Развёрнутый разбор будет ниже.\n\n"
-        "Задача этой секции — БЕЗ пересказа арканов:\n"
-        "1) Объясни одной мыслью, что такое социальная реализация в "
-        "методике Ладини и почему она проявляется именно в зрелом "
-        "возрасте (~40-60 лет).\n"
-        "2) Дай рамку: социальная реализация — это синтез родовых линий, "
-        "а не личного таланта.\n"
-        "3) НЕ называй конкретные сферы, профессии или формы работы "
-        "— это всё разворачивается в отдельном разделе ниже.\n\n"
-        "Объём: 110-150 слов, 1-2 абзаца. БЕЗ списков. Подготавливающий тон."
-    ), 130
 
 
 def _prompt_harmonization(ctx: V3Context) -> tuple[str, int]:
@@ -814,12 +741,12 @@ class SectionSpec:
 SECTIONS: list[SectionSpec] = [
     SectionSpec("visitka",       SECTION_TITLES["visitka"],       _prompt_visitka),
     SectionSpec("drk",           SECTION_TITLES["drk"],           _prompt_drk),
-    SectionSpec("higher_self",   SECTION_TITLES["higher_self"],   _prompt_higher_self),
-    SectionSpec("soul_tasks",    SECTION_TITLES["soul_tasks"],    _prompt_soul_tasks),
+    # higher_self / soul_tasks / realization removed — their content
+    # was 1:1 with the dedicated purpose_* deep dives that follow.
+    # The 12 narrative sections now form group="main"; purpose_* the 8 deep dives.
     SectionSpec("karmic_tail",   SECTION_TITLES["karmic_tail"],   _prompt_karmic_tail),
     SectionSpec("relationships", SECTION_TITLES["relationships"], _prompt_relationships),
     SectionSpec("money",         SECTION_TITLES["money"],         _prompt_money),
-    SectionSpec("realization",   SECTION_TITLES["realization"],   _prompt_realization),
     SectionSpec("harmonization", SECTION_TITLES["harmonization"], _prompt_harmonization),
     SectionSpec("talents",       SECTION_TITLES["talents"],       _prompt_talents),
     SectionSpec("anahata",       SECTION_TITLES["anahata"],       _prompt_anahata),
