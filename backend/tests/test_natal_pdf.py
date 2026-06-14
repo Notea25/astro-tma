@@ -543,6 +543,67 @@ def test_key_point_blurbs_do_not_end_with_dangling_preposition():
     assert not reportlab_blurb.endswith((" в…", " в."))
 
 
+def test_aspect_fallback_not_verbatim_dup_for_same_type():
+    """P1-3: два разных квадрата без записи в PAIR_TEXTS не должны давать
+    байт-в-байт одинаковый текст (Юпитер□Нептун vs Сатурн□Уран в карте Andrey)."""
+    a1 = {"p1": "jupiter", "p2": "neptune", "aspect": "square", "orb": 7.3}
+    a2 = {"p1": "saturn", "p2": "uranus", "aspect": "square", "orb": 5.5}
+    t1 = natal_pdf._aspect_fallback(a1)
+    t2 = natal_pdf._aspect_fallback(a2)
+    assert t1 != t2
+    # Обе планеты названы в своём тексте — fallback персонализирован по паре.
+    assert "Юпитер" in t1 and "Нептун" in t1
+    assert "Сатурн" in t2 and "Уран" in t2
+
+
+def test_aspect_fallback_dedup_at_render(monkeypatch):
+    """P1-3: даже если два аспекта дали одинаковый fallback, рендер не печатает
+    его дважды дословно — второй дубль помечается/убирается."""
+    seen = natal_pdf._dedup_aspect_texts(
+        [
+            "Одинаковый текст-заглушка про напряжение и действие.",
+            "Одинаковый текст-заглушка про напряжение и действие.",
+            "Другой текст.",
+        ]
+    )
+    # Второй дословный дубль вычищен (None), первый и уникальный — остались.
+    assert seen[0] is not None
+    assert seen[1] is None
+    assert seen[2] is not None
+
+
+def test_key_card_keeps_whole_first_sentence():
+    """P0-2: первый экран не режет первое предложение на полуслове.
+
+    Реальный кейс карты Andrey: «…энергии вашего ядра прямо.» обрывалось,
+    хотя полное предложение «…прямо в публичную сферу.» влезает в карточку.
+    """
+    full = (
+        "Солнце в Козероге в десятом доме делает вас человеком цели и репутации, "
+        "который годами и упорно направляет всю энергию своего ядра прямо в "
+        "публичную сферу и видимый результат. Вы строите имя десятилетиями."
+    )
+    blurb = natal_pdf_html._card_blurb({"full": full}, "fallback")
+    # Первое предложение целиком сохранено — обрыва на «прямо» нет, «…» тоже.
+    assert "прямо в публичную сферу и видимый результат." in blurb
+    assert not blurb.endswith("…")
+
+
+def test_key_card_long_sentence_truncates_cleanly():
+    """Очень длинное первое предложение всё же режется, но с «…», не битым хвостом."""
+    full = (
+        "Луна в Раке делает вас человеком, который остро и совершенно постоянно "
+        "реагирует буквально на малейшее изменение общего настроения вокруг себя, "
+        "впитывает любые чужие эмоции как губка без всякого фильтра, и оттого "
+        "нуждается в по-настоящему надёжном тыле гораздо больше многих других "
+        "окружающих его людей. Это и дар, и тяжёлая нагрузка."
+    )
+    blurb = natal_pdf_html._card_blurb({"full": full}, "fallback")
+    assert blurb.endswith("…")
+    # Не обрывается на висячем предлоге.
+    assert not blurb.rstrip("…").endswith((" в", " на", " и", " с", " к"))
+
+
 def test_pdf_detail_descriptions_do_not_use_short_as_full_source():
     planets, houses, aspects = _sample_chart()
     document = natal_pdf_html.build_natal_pdf_html(
@@ -1144,9 +1205,7 @@ def test_outer_planet_fallback_drops_generational_label():
 
     v = TextValidator(use_spellchecker=False)
     for sign_ru_name, house in [("Водолей", 6), ("Рыбы", 12)]:
-        text = natal_pdf._planet_fallback(
-            "uranus", {"sign_ru": sign_ru_name, "house": house}
-        )
+        text = natal_pdf._planet_fallback("uranus", {"sign_ru": sign_ru_name, "house": house})
         assert "поколение" not in text.lower()
         assert "цифровое поколение" not in text.lower()
         codes = {i.code for i in v.validate(text, ValidationContext("planet_in_sign", "x"))}
@@ -1177,8 +1236,7 @@ def test_hidden_aspect_dropped_from_pdf():
         "moon": {"sign": "aries", "sign_ru": "Овен", "house": 9, "degree": 5.0},
     }
     houses = [
-        {"number": i, "sign": "aries", "sign_ru": "Овен", "degree": 0.0}
-        for i in range(1, 13)
+        {"number": i, "sign": "aries", "sign_ru": "Овен", "degree": 0.0} for i in range(1, 13)
     ]
     aspects = [
         {"p1": "sun", "p2": "moon", "aspect": "trine", "orb": 2.0},
@@ -1270,9 +1328,7 @@ async def test_reading_retries_on_truncation(monkeypatch):
         # 2-й вызов (retry): полноценный завершённый текст
         SimpleNamespace(
             content=[
-                SimpleNamespace(
-                    text=" ".join(f"слово{i}" for i in range(200)) + " финал завершён."
-                )
+                SimpleNamespace(text=" ".join(f"слово{i}" for i in range(200)) + " финал завершён.")
             ],
             stop_reason="end_turn",
         ),
@@ -1314,9 +1370,7 @@ async def test_reading_no_retry_when_complete(monkeypatch):
     class FakeMessages:
         async def create(self, **kwargs):
             seen.append(kwargs["max_tokens"])
-            return SimpleNamespace(
-                content=[SimpleNamespace(text=full)], stop_reason="end_turn"
-            )
+            return SimpleNamespace(content=[SimpleNamespace(text=full)], stop_reason="end_turn")
 
     class FakeAnthropic:
         def __init__(self, api_key):

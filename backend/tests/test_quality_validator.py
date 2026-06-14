@@ -7,7 +7,12 @@
 
 import pytest
 
-from services.quality_validator import Severity, TextValidator, ValidationContext
+from services.quality_validator import (
+    Severity,
+    TextValidator,
+    ValidationContext,
+    sanitize_ru_text,
+)
 
 
 @pytest.fixture
@@ -549,3 +554,106 @@ class TestNatalAnRegressions:
         ctx = ValidationContext(section_kind="planet_in_sign", subject="Марс")
         codes = {i.code for i in v.validate(text, ctx)}
         assert "GENDER_NUMBER_MISMATCH" not in codes
+
+
+class TestNatalAndreyRegressions:
+    """Регрессии из ревью карты Andrey (Москва) — артефакты генерации haiku."""
+
+    def test_latin_inside_cyrillic_word_critical(self, v):
+        """NEW-1: «Козеrog» — латиница вперемешку внутри кириллического слова."""
+        text = (
+            "Солнце в знаке Козеrog придаёт характеру выдержку и тягу к опоре: "
+            "вы строите жизнь медленно, но прочно, и со временем накапливаете "
+            "вес и авторитет в выбранном деле, не растрачивая себя на лишнее, "
+            "а двигаясь к цели последовательно и без суеты день за днём."
+        )
+        ctx = ValidationContext(section_kind="planet_in_sign", subject="Солнце")
+        issues = v.validate(text, ctx)
+        codes = {i.code for i in issues}
+        assert "MIXED_SCRIPT_WORD" in codes
+        assert any(i.severity == Severity.CRITICAL for i in issues)
+
+    def test_cjk_chars_critical(self, v):
+        """NEW-1: китайские иероглифы 责任 внутри русского слова."""
+        text = (
+            "Сатурн в Тельце учит вас держать форму под давлением 责任ности: "
+            "вы не сбрасываете обязательства, а несёте их до конца, и со временем "
+            "это превращается в надёжную репутацию, на которую опираются другие "
+            "люди в самые сложные и неопределённые моменты их собственной жизни."
+        )
+        ctx = ValidationContext(section_kind="planet_in_sign", subject="Сатурн")
+        issues = v.validate(text, ctx)
+        codes = {i.code for i in issues}
+        assert "FOREIGN_SCRIPT" in codes
+        assert any(i.severity == Severity.CRITICAL for i in issues)
+
+    def test_person_mismatch_vy_mozhesh(self, v):
+        """NEW-2: «вы можешь» — 2 л. ед.ч. глагол при местоимении «вы»."""
+        text = (
+            "Солнце в десятом доме делает вас заметным в деле: вы можешь вести "
+            "за собой, и со временем это становится вашим естественным способом "
+            "влиять на события, не повышая голоса, а через спокойную уверенность "
+            "и ясное понимание того, куда именно вы ведёте окружающих вас людей."
+        )
+        ctx = ValidationContext(section_kind="planet_in_sign", subject="Солнце")
+        codes = {i.code for i in v.validate(text, ctx)}
+        assert "PERSON_MISMATCH" in codes
+
+    def test_person_mismatch_vy_mozhem(self, v):
+        """NEW-2: «Вы можем быть ревнивы» — 1 л. мн.ч. глагол при «вы»."""
+        text = (
+            "Плутон в восьмом доме делает чувства глубокими и собственническими: "
+            "Вы можем быть ревнивы, и это сигнал не подавлять страсть, а учиться "
+            "доверять, потому что именно через близость и честность вы получаете "
+            "ту самую опору, которую так долго ищете в отношениях с людьми."
+        )
+        ctx = ValidationContext(section_kind="planet_in_sign", subject="Плутон")
+        codes = {i.code for i in v.validate(text, ctx)}
+        assert "PERSON_MISMATCH" in codes
+
+    def test_person_correct_vy_mozhete_clean(self, v):
+        """Корректное «вы можете» не триггерит правило."""
+        text = (
+            "Солнце в десятом доме делает вас заметным в деле: вы можете вести "
+            "за собой, и со временем это становится вашим естественным способом "
+            "влиять на события, не повышая голоса, а через спокойную уверенность "
+            "и ясное понимание того, куда именно вы ведёте окружающих вас людей."
+        )
+        ctx = ValidationContext(section_kind="planet_in_sign", subject="Солнце")
+        codes = {i.code for i in v.validate(text, ctx)}
+        assert "PERSON_MISMATCH" not in codes
+
+    def test_sanitize_drops_cjk(self):
+        """Санитайз убирает иероглифы из «责任ности» → «ности» (мусор уходит)."""
+        out = sanitize_ru_text("под давлением 责任ности")
+        assert "责" not in out and "任" not in out
+
+    def test_sanitize_fixes_vy_mozhesh(self):
+        """Санитайз чинит «вы можешь» → «вы можете»."""
+        assert "вы можете" in sanitize_ru_text("вы можешь вести за собой").lower()
+
+    def test_sanitize_fixes_vy_mozhem(self):
+        """Санитайз чинит «Вы можем» → «Вы можете», сохраняя регистр."""
+        assert sanitize_ru_text("Вы можем быть ревнивы").startswith("Вы можете")
+
+    def test_sanitize_keeps_clean_text(self):
+        """Чистый текст санитайз не трогает."""
+        src = "Солнце в Козероге придаёт характеру выдержку и тягу к опоре."
+        assert sanitize_ru_text(src) == src
+
+    def test_sanitize_keeps_allowed_latin(self):
+        """Латинская аббревиатура MC сохраняется."""
+        assert "MC" in sanitize_ru_text("вершина карты (MC) усиливает амбиции")
+
+    def test_clean_cyrillic_text_no_script_issues(self, v):
+        """Чистый русский текст с разрешённой латинской аббревиатурой (MC) — ok."""
+        text = (
+            "Солнце в Козероге у самой вершины карты (MC) придаёт характеру "
+            "выдержку и тягу к опоре: вы строите жизнь медленно, но прочно, и со "
+            "временем накапливаете вес и авторитет в выбранном деле, не "
+            "растрачивая себя на лишнее, а двигаясь к цели шаг за шагом каждый день."
+        )
+        ctx = ValidationContext(section_kind="planet_in_sign", subject="Солнце")
+        codes = {i.code for i in v.validate(text, ctx)}
+        assert "MIXED_SCRIPT_WORD" not in codes
+        assert "FOREIGN_SCRIPT" not in codes
