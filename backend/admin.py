@@ -31,7 +31,7 @@ from db.models import (
     TarotReading,
     User,
 )
-from services.payments import refunds as refund_svc, yukassa as yk
+from services.payments import yukassa as yk
 from services.payments.stars import PRODUCTS
 
 log = get_logger(__name__)

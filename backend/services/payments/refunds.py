@@ -46,32 +46,40 @@ async def apply_yukassa_refund_to_db(
     subs_updated = 0
 
     p_rows = (
-        await db.execute(
-            select(Purchase).where(
-                Purchase.yukassa_payment_id == yukassa_payment_id,
+        (
+            await db.execute(
+                select(Purchase).where(
+                    Purchase.yukassa_payment_id == yukassa_payment_id,
+                )
             )
         )
-    ).scalars().all()
-    for row in p_rows:
-        if row.status == PurchaseStatus.REFUNDED:
+        .scalars()
+        .all()
+    )
+    for p_row in p_rows:
+        if p_row.status == PurchaseStatus.REFUNDED:
             continue
-        row.status = PurchaseStatus.REFUNDED
+        p_row.status = PurchaseStatus.REFUNDED
         purchases_updated += 1
 
     s_rows = (
-        await db.execute(
-            select(Subscription).where(
-                Subscription.yukassa_payment_id == yukassa_payment_id,
+        (
+            await db.execute(
+                select(Subscription).where(
+                    Subscription.yukassa_payment_id == yukassa_payment_id,
+                )
             )
         )
-    ).scalars().all()
-    for row in s_rows:
-        if row.status == SubscriptionStatus.CANCELLED:
+        .scalars()
+        .all()
+    )
+    for s_row in s_rows:
+        if s_row.status == SubscriptionStatus.CANCELLED:
             continue
-        row.status = SubscriptionStatus.CANCELLED
+        s_row.status = SubscriptionStatus.CANCELLED
         # Cut the access NOW — don't wait for the natural expiry.
-        if row.expires_at and row.expires_at > now:
-            row.expires_at = now
+        if s_row.expires_at and s_row.expires_at > now:
+            s_row.expires_at = now
         subs_updated += 1
 
     if purchases_updated or subs_updated:

@@ -3,8 +3,8 @@
 
 import re
 
-from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,7 +17,8 @@ from api.schemas.payments import (
 from core.logging import get_logger
 from core.settings import settings
 from db.database import get_db
-from services.payments import refunds, yukassa as yk
+from services.payments import refunds
+from services.payments import yukassa as yk
 from services.payments.pricing import get_product_price, get_product_price_rub
 from services.payments.stars import (
     PRODUCTS,
