@@ -86,6 +86,25 @@ def _has_any(descriptions: dict[str, Any]) -> bool:
     )
 
 
+def _descriptions_shape_valid(descriptions: Any) -> bool:
+    if not isinstance(descriptions, dict):
+        return False
+    planets = descriptions.get("planets")
+    houses = descriptions.get("houses")
+    aspects = descriptions.get("aspects")
+    if planets is not None and not isinstance(planets, dict):
+        return False
+    if houses is not None and not isinstance(houses, dict):
+        return False
+    if aspects is not None and not isinstance(aspects, list):
+        return False
+    if isinstance(houses, dict) and houses:
+        expected = {str(i) for i in range(1, 13)}
+        if set(houses.keys()) != expected:
+            return False
+    return True
+
+
 def _pdf_description_aspects(aspects: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Personal LLM copy is generated for the strongest aspects only.
 
@@ -132,6 +151,7 @@ async def _get_or_generate_descriptions(
         isinstance(stored, dict)
         and stored.get("_version") == NATAL_DESCRIPTIONS_VERSION
         and stored.get("_gender_used") == current_gender
+        and _descriptions_shape_valid(stored)
         and _has_any(stored)
     ):
         return stored
@@ -328,6 +348,7 @@ def _get_stored_descriptions(user) -> dict[str, Any]:
         isinstance(stored, dict)
         and stored.get("_version") == NATAL_DESCRIPTIONS_VERSION
         and stored.get("_gender_used") == _user_gender(user)
+        and _descriptions_shape_valid(stored)
         and _has_any(stored)
     ):
         return stored

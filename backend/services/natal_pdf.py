@@ -112,6 +112,22 @@ ELEMENT_COLORS = {
     "air": AIR,
     "water": WATER,
 }
+ASPECT_COLORS = {
+    "conjunction": GOLD,
+    "trine": HexColor("#1fa37c"),
+    "sextile": HexColor("#96d957"),
+    "square": HexColor("#398ada"),
+    "opposition": HexColor("#ff585f"),
+    "quincunx": HexColor("#8b65da"),
+}
+ASPECT_DASHES: dict[str, tuple[int, ...]] = {
+    "conjunction": (),
+    "trine": (),
+    "square": (),
+    "sextile": (2, 2),
+    "opposition": (2, 3),
+    "quincunx": (3, 2),
+}
 # Символы стихий (геометрические треугольники, стабильны в шрифте PDF). Раньше
 # для любой доминирующей стихии хардкодился огненный △.
 ELEMENT_SYMBOLS = {
@@ -473,6 +489,7 @@ _DANGLING_TAIL_WORDS = {
     "ко",
     "на",
     "над",
+    "не",
     "о",
     "об",
     "от",
@@ -577,6 +594,14 @@ def _aspect_kind(aspect_type: str) -> str:
     return "neutral"
 
 
+def _aspect_color(aspect_type: str):
+    return ASPECT_COLORS.get(_aspect_key(aspect_type), GOLD_DIM)
+
+
+def _aspect_dash(aspect_type: str) -> tuple[int, ...]:
+    return ASPECT_DASHES.get(_aspect_key(aspect_type), ())
+
+
 def _element_percentages(planets: dict[str, dict[str, Any]]) -> dict[str, int]:
     counts = _element_counts(planets)
     total = max(sum(counts.values()), 1)
@@ -626,6 +651,18 @@ def _draw_title(
         y = _wrap_paragraph(c, subtitle, 40, y, 82, 15, 58, w, h)
         y -= 10
     return y
+
+
+def _draw_retro_badge(c: canvas.Canvas, x: float, y: float) -> None:
+    text = "℞ РЕТРО"
+    width = 58
+    height = 16
+    c.setStrokeColor(GOLD_DIM)
+    c.setFillColor(BG_PANEL)
+    c.roundRect(x, y - height + 3, width, height, 8, stroke=1, fill=1)
+    c.setFillColor(GOLD)
+    _set_font(c, True, 8.5)
+    c.drawCentredString(x + width / 2, y - 8, text)
 
 
 def _description(entry: Any, fallback: str) -> str:
@@ -1828,11 +1865,16 @@ def _aspect_fallback(aspect: dict[str, Any]) -> str:
         return text
     topic = ASPECT_TOPICS.get(aspect_type, "создают важную внутреннюю связь")
     orb = float(aspect.get("orb") or 0)
-    tightness = (
-        "Орб тесный — связь работает почти постоянно, её видно в повседневных реакциях."
-        if orb <= 3
-        else "Орб широкий — тема включается в заметных, поворотных ситуациях, а не каждый день."
-    )
+    if orb <= 3:
+        tightness = (
+            f"При орбе {orb:.1f}° эта связка быстро выходит наружу: её слышно в интонациях, "
+            "видно в выборе темпа и в том, как вы отвечаете на давление."
+        )
+    else:
+        tightness = (
+            f"При орбе {orb:.1f}° аспект включается волнами: сильнее всего он заметен, "
+            "когда обстоятельства одновременно задевают обе планетные темы."
+        )
     kind_hint = {
         "trine": f"Качества {p1_ru} и {p2_ru} поддерживают друг друга без усилия — это даётся вам легко и часто остаётся незамеченным ресурсом.",
         "sextile": f"{p1_ru} и {p2_ru} не сцеплены жёстко: связь срабатывает, когда вы сами делаете шаг — предлагаете, пробуете, берётесь.",
@@ -1980,7 +2022,7 @@ def generate_natal_pdf(
     c = canvas.Canvas(buf, pagesize=A4)
     w, h = A4
 
-    planets_start, houses_start, aspects_start, reading_start, total_hint = _estimate_page_counts(
+    planets_start, houses_start, aspects_start, reading_start, _total_hint = _estimate_page_counts(
         planets, houses, aspects, reading
     )
 
@@ -2013,7 +2055,10 @@ def generate_natal_pdf(
 
     def finish_page() -> None:
         nonlocal page
-        _page_footer(c, w, page, total_hint)
+        # ReportLab pages are laid out dynamically, so _estimate_page_counts()
+        # is useful for TOC start hints but not reliable enough for a footer
+        # total. Printing only the current page avoids false "4 / 31" totals.
+        _page_footer(c, w, page)
         c.showPage()
         page += 1
 
@@ -2191,21 +2236,9 @@ def generate_natal_pdf(
             aspect_type = _aspect_key(aspect.get("aspect"))
             if p1_key not in planet_points or p2_key not in planet_points:
                 continue
-            if aspect_type == "trine":
-                c.setStrokeColor(WATER)
-                c.setDash()
-            elif aspect_type == "square":
-                c.setStrokeColor(FIRE)
-                c.setDash()
-            elif aspect_type == "opposition":
-                c.setStrokeColor(AIR)
-                c.setDash(2, 3)
-            elif aspect_type == "sextile":
-                c.setStrokeColor(EARTH)
-                c.setDash(2, 2)
-            else:
-                c.setStrokeColor(GOLD_DIM)
-                c.setDash()
+            c.setStrokeColor(_aspect_color(aspect_type))
+            dash = _aspect_dash(aspect_type)
+            c.setDash(*dash) if dash else c.setDash()
             c.line(*planet_points[p1_key], *planet_points[p2_key])
             c.setDash()
             c.setFillColor(GOLD)
@@ -2394,18 +2427,18 @@ def generate_natal_pdf(
         c.drawPath(path, stroke=0, fill=1)
     c.restoreState()
     draw_wheel(w / 2, wheel_y + wheel_size / 2, 176)
-    c.setFillColor(TEXT_DIM)
     _set_font(c, False, 11)
     legend_y = 104
     legends = (
-        ("☌", "Соединение · слияние"),
-        ("△", "Трин · поток"),
-        ("⚹", "Секстиль · возможность"),
-        ("□", "Квадрат · вызов"),
-        ("☍", "Оппозиция · противостояние"),
-        ("⚻", "Квинконс · пересборка"),
+        ("conjunction", "☌", "Соединение · слияние"),
+        ("trine", "△", "Трин · поток"),
+        ("sextile", "⚹", "Секстиль · возможность"),
+        ("square", "□", "Квадрат · вызов"),
+        ("opposition", "☍", "Оппозиция · противостояние"),
+        ("quincunx", "⚻", "Квинконс · пересборка"),
     )
-    for i, (glyph, label) in enumerate(legends):
+    for i, (atype, glyph, label) in enumerate(legends):
+        c.setFillColor(_aspect_color(atype))
         c.drawString(80 + (i % 2) * 240, legend_y - (i // 2) * 20, f"{glyph} {label}")
     finish_page()
 
@@ -2451,7 +2484,6 @@ def generate_natal_pdf(
         planet = planets[name]
         sign = _key(planet.get("sign"))
         sign_degree = planet.get("sign_degree", planet.get("degree", 0))
-        retro = " ℞ РЕТРО" if planet.get("retrograde") else ""
         y = title_page(
             f"Планеты в знаках {chunk_index} / {len(planet_items)}",
             "Где находится каждая планета и что это значит",
@@ -2459,10 +2491,8 @@ def generate_natal_pdf(
         c.setFillColor(GOLD)
         _set_font(c, True, 15)
         c.drawString(58, y, f"{PLANET_SYMBOLS[name]} {PLANET_RU[name]} в {_sign_ru(sign)}")
-        if retro:
-            c.setFillColor(GOLD_DIM)
-            _set_font(c, True, 10)
-            c.drawString(58, y - 15, retro.strip())
+        if planet.get("retrograde"):
+            _draw_retro_badge(c, 58, y - 3)
         c.setFillColor(TEXT_DIM)
         _set_font(c, False, 10.5)
         c.drawRightString(
