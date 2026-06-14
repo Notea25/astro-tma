@@ -556,6 +556,21 @@ def test_aspect_fallback_not_verbatim_dup_for_same_type():
     assert "Сатурн" in t2 and "Уран" in t2
 
 
+def test_aspect_fallback_avoids_repeated_orb_frame():
+    text = natal_pdf._aspect_fallback(
+        {"p1": "jupiter", "p2": "neptune", "aspect": "square", "orb": 7.3}
+    )
+
+    assert "Орб широкий" not in text
+    assert "При орбе 7.3°" in text
+
+
+def test_reportlab_aspect_colors_match_html_semantics():
+    assert natal_pdf._aspect_color("square") != natal_pdf._aspect_color("opposition")
+    assert natal_pdf._aspect_dash("square") == ()
+    assert natal_pdf._aspect_dash("opposition") == (2, 3)
+
+
 def test_aspect_fallback_dedup_at_render(monkeypatch):
     """P1-3: даже если два аспекта дали одинаковый fallback, рендер не печатает
     его дважды дословно — второй дубль помечается/убирается."""
@@ -813,6 +828,28 @@ async def test_get_or_generate_descriptions_regenerates_stale_cached_text(monkey
     assert descriptions["_version"] == natal.NATAL_DESCRIPTIONS_VERSION
     assert chart.chart_data["descriptions"] == descriptions
     assert db.committed is True
+
+
+def test_stored_descriptions_rejects_shifted_house_keys():
+    from api.routes import natal
+
+    broken_houses = {str(i): {"full": f"Дом {i}"} for i in range(0, 12)}
+    user = SimpleNamespace(
+        gender=None,
+        natal_chart=SimpleNamespace(
+            chart_data={
+                "descriptions": {
+                    "_version": natal.NATAL_DESCRIPTIONS_VERSION,
+                    "_gender_used": None,
+                    "planets": {"sun": {"full": "Солнце."}},
+                    "houses": broken_houses,
+                    "aspects": [],
+                }
+            }
+        ),
+    )
+
+    assert natal._get_stored_descriptions(user) == natal._empty_descriptions()
 
 
 @pytest.mark.asyncio
