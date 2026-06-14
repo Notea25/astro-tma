@@ -63,12 +63,13 @@ MODEL_V3 = "claude-sonnet-4-5-20250929"
 SECTION_TITLES: dict[str, str] = {
     "visitka":       "Визитка",
     "drk":           "Дерево Рода и Кармы",
-    "higher_self":   "Высшее «Я»",
-    "soul_tasks":    "Задачи души",
+    # higher_self / soul_tasks / realization deliberately removed — their
+    # content was 1:1 with purpose_personal_divine / purpose_*_personal /
+    # purpose_wholeness_lineage respectively. Canonical home is now the
+    # 8 dedicated purpose_* pages + the purposes overview.
     "karmic_tail":   "Кармический хвост",
     "relationships": "Отношения",
     "money":         "Деньги",
-    "realization":   "Социальная реализация",
     "harmonization": "Гармонизация",
     "talents":       "Таланты",
     "anahata":       "Анахата (сердечный центр)",
@@ -354,16 +355,23 @@ def _prompt_visitka(ctx: V3Context) -> tuple[str, int]:
 
 
 def _prompt_drk(ctx: V3Context) -> tuple[str, int]:
-    """Дерево Рода и Кармы — родовой квадрат + линии отца/матери."""
+    """Дерево Рода и Кармы — родовой квадрат + линии отца/матери.
+    Предназначения Рода Отца/Матери раскрываются на страницах Предн.4/5 —
+    здесь формулы-суммы НЕ выводим."""
     sq = ctx.positions["ancestral_square"]
     ln = ctx.positions["lines"]
     nums = [sq["top_left"], sq["top_right"], sq["bottom_right"], sq["bottom_left"]]
     refs = "\n\n".join(_arc_brief(ctx.arcana[n]) for n in dict.fromkeys(nums))
     return (
         _header(ctx, "drk")
-        + "Дерево Рода — что приходит от родителей, какие программы и подарки "
-        "ты получил по линии отца и линии матери. Не путать с «8 предназначениями» — "
-        "там общая картина, здесь только родовой квадрат.\n\n"
+        + "Дерево Рода — что приходит от родителей: программы, подарки и тени по "
+        "линии отца и линии матери, и что встреча двух линий значит для тебя "
+        "сейчас.\n\n"
+        "ГРАНИЦА РАЗДЕЛА: НЕ выводи и не пересчитывай формулы-суммы "
+        "предназначений Рода Отца и Рода Матери — для них есть отдельные "
+        "страницы. Здесь — ТОЛЬКО родовой квадрат и линии: какие качества и "
+        "кармические темы пришли, как проявляются, что важно прожить. Без "
+        "сложений вида «X + Y = Z».\n\n"
         f"Родовой квадрат:\n"
         f"• Верх слева (отец, духовное): аркан {sq['top_left']} ({_name(sq['top_left'])})\n"
         f"• Верх справа (мать, духовное): аркан {sq['top_right']} ({_name(sq['top_right'])})\n"
@@ -372,59 +380,10 @@ def _prompt_drk(ctx: V3Context) -> tuple[str, int]:
         f"Линия Отца: аркан {ln['father']} ({_name(ln['father'])})\n"
         f"Линия Матери: аркан {ln['mother']} ({_name(ln['mother'])})\n\n"
         f"Справка по арканам:\n\n{refs}\n\n"
-        "Напиши 300-380 слов. Сначала о линии Отца (что унаследовано, как "
-        "проявляется, что прорабатывать), потом о линии Матери. Закончи 2-3 "
-        "фразами о том, что отношения между этими линиями значат для тебя сейчас."
+        "Напиши 300-380 слов. Сначала линия Отца (что унаследовано, как "
+        "проявляется, что прорабатывать), потом линия Матери. Закончи 2-3 "
+        "фразами о том, что отношения между линиями значат для тебя сейчас."
     ), 350
-
-
-def _prompt_higher_self(ctx: V3Context) -> tuple[str, int]:
-    """Высшее Я — purpose_personal_divine = p7."""
-    p = ctx.purposes["personal_divine"]
-    a1, a2, total = p.key
-    refs = "\n\n".join(
-        _arc_brief(ctx.arcana[n], sections=("essence", "mission", "healing"))
-        for n in dict.fromkeys([a1, a2, total])
-    )
-    return (
-        _header(ctx, "higher_self")
-        + "Высшее «Я» — личное Божественное предназначение. Это не работа и "
-        "не социальная роль, а внутренний голос — куда душа тянет, когда "
-        "никто не видит. Формула: предназначение Целостное личное + "
-        "предназначение Целостное родовое = твой личный путь к Божественному.\n\n"
-        f"Формула: аркан {a1} ({_name(a1)}) + аркан {a2} ({_name(a2)}) = "
-        f"аркан {total} ({_name(total)}) — Высшее «Я»\n\n"
-        f"Справка:\n\n{refs}\n\n"
-        "Напиши 250-300 слов о том, через что читатель приходит к "
-        f"состоянию аркана {total}. Сначала роль аркана {a1}, потом аркана {a2}, "
-        f"потом синтез — как они складываются в аркан {total} и что это даёт в жизни."
-    ), 280
-
-
-def _prompt_soul_tasks(ctx: V3Context) -> tuple[str, int]:
-    """Задачи души — короткий transition-блок над 3 личными
-    предназначениями. Сами арканы и развёрнутые тексты разбираются в
-    отдельных разделах 'Предназначение · Небесное / Земное / Целостное'
-    (16, 17, 18). Здесь — только рамка и навигация.
-    """
-    p1 = ctx.purposes["celestial_personal"]
-    p2 = ctx.purposes["earthly_personal"]
-    p3 = ctx.purposes["wholeness_personal"]
-    return (
-        _header(ctx, "soul_tasks")
-        + "Это короткая навигация: дальше у читателя будут ТРИ отдельных "
-        "раздела по каждому личному предназначению. Их арканы:\n\n"
-        f"• Небесное личное — аркан {p1.key[2]} ({_name(p1.key[2])})\n"
-        f"• Земное личное   — аркан {p2.key[2]} ({_name(p2.key[2])})\n"
-        f"• Целостное личное — аркан {p3.key[2]} ({_name(p3.key[2])})\n\n"
-        "Задача этой секции — БЕЗ пересказа арканов:\n"
-        "1) Объясни одной короткой мыслью, что такое «задачи души» и чем "
-        "личные предназначения отличаются от родовых.\n"
-        "2) Дай читателю смысловую рамку, через которую он будет читать "
-        "три отдельных разбора ниже — что искать, на что обращать внимание.\n"
-        "3) Не цитируй арканы по содержанию — глубокий разбор будет дальше.\n\n"
-        "Объём: 110-150 слов, 1-2 абзаца. БЕЗ списков. Тёплый, ориентирующий тон."
-    ), 130
 
 
 def _prompt_karmic_tail(ctx: V3Context) -> tuple[str, int]:
@@ -525,31 +484,6 @@ def _prompt_money(ctx: V3Context) -> tuple[str, int]:
         "4) типичные блоки и как их размыкать. Конкретно, без «откройся "
         "изобилию»."
     ), 350
-
-
-def _prompt_realization(ctx: V3Context) -> tuple[str, int]:
-    """Социальная реализация — короткая навигационная связка над
-    развёрнутым разделом «Предназначение · Социальная реализация»
-    (purpose_wholeness_lineage). Здесь — только рамка, без пересказа
-    арканов.
-    """
-    p = ctx.purposes["wholeness_lineage"]
-    a1, a2, total = p.key
-    return (
-        _header(ctx, "realization")
-        + "Это короткая навигация к развёрнутому разделу о социальной "
-        f"реализации (аркан {total} — {_name(total)}, формула "
-        f"{a1}+{a2}={total}). Развёрнутый разбор будет ниже.\n\n"
-        "Задача этой секции — БЕЗ пересказа арканов:\n"
-        "1) Объясни одной мыслью, что такое социальная реализация в "
-        "методике Ладини и почему она проявляется именно в зрелом "
-        "возрасте (~40-60 лет).\n"
-        "2) Дай рамку: социальная реализация — это синтез родовых линий, "
-        "а не личного таланта.\n"
-        "3) НЕ называй конкретные сферы, профессии или формы работы "
-        "— это всё разворачивается в отдельном разделе ниже.\n\n"
-        "Объём: 110-150 слов, 1-2 абзаца. БЕЗ списков. Подготавливающий тон."
-    ), 130
 
 
 def _prompt_harmonization(ctx: V3Context) -> tuple[str, int]:
@@ -671,42 +605,33 @@ def _make_purpose_prompt(purpose_key: str):
 
 
 def _prompt_purposes(ctx: V3Context) -> tuple[str, int]:
-    """8 предназначений — полная картина."""
+    """8 предназначений — ТОЛЬКО синтез-спираль (интро к блоку).
+    Пораздельный разбор каждого из 8 живёт на страницах Предн.1–8 и в
+    сводной таблице — здесь его НЕ повторяем."""
     p = ctx.purposes
-    lines = []
-    nums: list[int] = []
-    for k, label in [
-        ("celestial_personal",   "Небесное личное"),
-        ("earthly_personal",     "Земное личное"),
-        ("wholeness_personal",   "Целостное личное"),
-        ("father_lineage",       "По роду Отца"),
-        ("mother_lineage",       "По роду Матери"),
-        ("wholeness_lineage",    "Примирение родов (соц. реализация)"),
-        ("personal_divine",      "Личное Божественное"),
-        ("divine_mission",       "Божественная миссия"),
-    ]:
-        triple = p[k].key
-        lines.append(
-            f"• {label}: {triple[0]} + {triple[1]} = {triple[2]} "
-            f"({_name(triple[2])})"
-        )
-        nums.append(triple[2])
-    refs = "\n\n".join(
-        _arc_brief(ctx.arcana[n], sections=("essence", "mission"))
-        for n in dict.fromkeys(nums)
-    )
+    cp = p["wholeness_personal"].key[2]   # целостное личное
+    wl = p["wholeness_lineage"].key[2]    # соц. реализация
+    pd = p["personal_divine"].key[2]      # высшее я
+    dm = p["divine_mission"].key[2]       # миссия
     return (
         _header(ctx, "purposes")
         + "Восемь предназначений — карта смысловых задач от рождения до миссии. "
-        "В отдельных разделах ты уже видел Высшее Я и Соц. реализацию — здесь "
-        "вся восьмёрка целиком, чтобы увидеть как они складываются.\n\n"
-        + "\n".join(lines)
-        + f"\n\nСправка:\n\n{refs}\n\n"
-        "Напиши 450-550 слов: сначала логика построения (как личные + родовые "
-        "сходятся в Высшем Я, как Я + соц.реализация сходятся в миссии), "
-        "потом 8 коротких абзацев — по 2-3 фразы на каждое предназначение. "
-        "Без воды, конкретно."
-    ), 500
+        "Это вводный разворот к блоку: каждое из восьми подробно раскрыто на "
+        "отдельных страницах далее, а числовая композиция — в сводной таблице. "
+        "Поэтому ЗДЕСЬ задача другая — показать ЛОГИКУ всей восьмёрки как единой "
+        "усиливающей спирали, НЕ пересказывая каждое предназначение отдельно.\n\n"
+        "Опорные вершины спирали:\n"
+        f"• Целостное личное: аркан {cp} ({_name(cp)}) — куда сходятся три личные задачи\n"
+        f"• Социальная реализация: аркан {wl} ({_name(wl)}) — куда сходятся два рода\n"
+        f"• Высшее «Я»: аркан {pd} ({_name(pd)}) — личное + родовое\n"
+        f"• Божественная миссия: аркан {dm} ({_name(dm)}) — итог для людей\n\n"
+        "Напиши 200-240 слов одним связным текстом: как три личных "
+        "предназначения собираются в Целостное личное, как два рода — в "
+        "Социальную реализацию, как эти две вершины складываются в Высшее «Я» и "
+        "как всё вместе разворачивается в Божественную миссию. Без списков, без "
+        "пересказа каждого предназначения, без вывода всех восьми формул. Только "
+        "смысловая связь — зачем эта спираль и куда она ведёт."
+    ), 220
 
 
 def _prompt_power_code(ctx: V3Context) -> tuple[str, int]:
@@ -790,6 +715,10 @@ def _prompt_year_energy(ctx: V3Context) -> tuple[str, int]:
         f"• Текущий год — аркан {ye.current} ({_name(ye.current)})\n"
         f"• Следующий год — аркан {ye.upcoming} ({_name(ye.upcoming)})\n\n"
         f"Справка:\n\n{refs}\n\n"
+        "ЯЗЫК: НЕ называй год классическим таро-именем аркана и его "
+        "склонениями («Год Луны», «энергия Шута», «Год Дьявола», «Башня»). "
+        "Если хочешь дать году имя — называй каноном: «Год Магии», «Год "
+        "Уровневой свободы». А лучше — говори просто «текущий год», «этот год»\n\n"
         "Напиши 320-400 слов: 1) тема текущего года и через что её прожить; "
         "2) на чём можно споткнуться; 3) короткий переход — что приносит "
         "следующий год и к чему готовиться. Без точных дат и предсказаний "
@@ -814,12 +743,12 @@ class SectionSpec:
 SECTIONS: list[SectionSpec] = [
     SectionSpec("visitka",       SECTION_TITLES["visitka"],       _prompt_visitka),
     SectionSpec("drk",           SECTION_TITLES["drk"],           _prompt_drk),
-    SectionSpec("higher_self",   SECTION_TITLES["higher_self"],   _prompt_higher_self),
-    SectionSpec("soul_tasks",    SECTION_TITLES["soul_tasks"],    _prompt_soul_tasks),
+    # higher_self / soul_tasks / realization removed — their content
+    # was 1:1 with the dedicated purpose_* deep dives that follow.
+    # The 12 narrative sections now form group="main"; purpose_* the 8 deep dives.
     SectionSpec("karmic_tail",   SECTION_TITLES["karmic_tail"],   _prompt_karmic_tail),
     SectionSpec("relationships", SECTION_TITLES["relationships"], _prompt_relationships),
     SectionSpec("money",         SECTION_TITLES["money"],         _prompt_money),
-    SectionSpec("realization",   SECTION_TITLES["realization"],   _prompt_realization),
     SectionSpec("harmonization", SECTION_TITLES["harmonization"], _prompt_harmonization),
     SectionSpec("talents",       SECTION_TITLES["talents"],       _prompt_talents),
     SectionSpec("anahata",       SECTION_TITLES["anahata"],       _prompt_anahata),
