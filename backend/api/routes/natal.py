@@ -229,7 +229,12 @@ def _user_gender(user) -> str | None:
 def _reading_is_fresh(cached: Any, current_gender: str | None) -> str | None:
     """Return the cached reading text only if it matches the reader's
     current gender. The cache payload is a dict with `reading` plus a
-    `reading_gender` marker recorded at write time; mismatch ⇒ stale."""
+    `reading_gender` marker recorded at write time; mismatch ⇒ stale.
+
+    Also runs `polish_natal_text` on the way out so retroactively-known
+    typos («козеджий», «стерельцовский»…) are cleaned from any reading
+    written before the polishing hooks landed.
+    """
     if not isinstance(cached, dict):
         return None
     reading = cached.get("reading")
@@ -241,6 +246,8 @@ def _reading_is_fresh(cached: Any, current_gender: str | None) -> str | None:
         return None
     if not _is_expanded_reading(reading):
         return None
+    from services.astro.text_polish import polish_natal_text
+    reading, _ = polish_natal_text(reading)
     return reading
 
 
@@ -255,6 +262,8 @@ def _mini_is_fresh(cached: Any, current_gender: str | None) -> str | None:
         return None
     if cached.get("mini_reading_gender") != current_gender:
         return None
+    from services.astro.text_polish import polish_natal_text
+    mini, _ = polish_natal_text(mini)
     return mini
 
 

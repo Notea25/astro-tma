@@ -245,7 +245,12 @@ async def generate_natal_reading(
     if not _has_lunar_nodes(nodes, planets):
         text = _strip_lunar_nodes_block(text)
 
-    log.info("llm_interpreter.done", chars=len(text), stop_reason=stop_reason)
+    from services.astro.text_polish import polish_natal_text
+    text, typo_fixes = polish_natal_text(text)
+    log.info(
+        "llm_interpreter.done",
+        chars=len(text), stop_reason=stop_reason, typo_fixes=typo_fixes,
+    )
     return text
 
 
@@ -319,5 +324,9 @@ async def generate_natal_mini_reading(
         )
 
     text = first_text_block(message.content)
-    log.info("llm_interpreter.mini_done", chars=len(text))
+    from services.astro.text_polish import polish_natal_text
+    text, typo_fixes = polish_natal_text(text)
+    log.info(
+        "llm_interpreter.mini_done", chars=len(text), typo_fixes=typo_fixes,
+    )
     return text
