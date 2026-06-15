@@ -315,7 +315,11 @@ async def get_arcana(
 
     contexts: dict[str, str] = {}
     for ctx in CONTEXTS:
-        contexts[ctx] = by_ctx.get(ctx, GENERIC_DESC_RU)
+        # Empty string in DB ≠ valid copy — fall back to GENERIC_DESC_RU
+        # so the bottom-sheet never shows a blank body. The empty rows
+        # are tracked content debt; see memory project_destiny_matrix_pdf_v2.
+        raw = (by_ctx.get(ctx) or "").strip()
+        contexts[ctx] = raw if raw else GENERIC_DESC_RU
 
     return ArcanaResponse(
         arcana_num=num,
