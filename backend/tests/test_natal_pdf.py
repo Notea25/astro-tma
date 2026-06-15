@@ -578,7 +578,25 @@ def test_aspect_fallback_avoids_repeated_orb_frame():
     )
 
     assert "Орб широкий" not in text
-    assert "При орбе 7.3°" in text
+    assert "орбе 7.3°" in text
+
+
+def test_aspect_fallback_orb_tail_not_identical_across_aspects():
+    """P1-3: «включается волнами» не должно повторяться дословно во многих
+    аспектах — хвост про орб варьируется по типу аспекта (карта Andrey 2002:
+    4 широких аспекта с персональной планетой давали идентичный хвост)."""
+    aspects = [
+        {"p1": "venus", "p2": "neptune", "aspect": "conjunction", "orb": 3.6},
+        {"p1": "mercury", "p2": "pluto", "aspect": "sextile", "orb": 3.8},
+        {"p1": "mars", "p2": "saturn", "aspect": "sextile", "orb": 5.4},
+        {"p1": "mars", "p2": "neptune", "aspect": "square", "orb": 5.4},
+    ]
+    tails = [natal_pdf._aspect_fallback(a).split(". ")[-1] for a in aspects]
+    # Ни одна универсальная фраза-штамп не повторяется во всех четырёх.
+    assert "включается волнами" not in " ".join(tails) or len({t for t in tails}) == len(tails)
+    # Полные тексты уникальны (дословных дублей нет).
+    full = [natal_pdf._aspect_fallback(a) for a in aspects]
+    assert len(set(full)) == len(full)
 
 
 def test_planet_fallback_avoids_case_error_after_na():
@@ -636,10 +654,7 @@ def test_reportlab_retro_badge_draws_pill():
     natal_pdf._draw_retro_badge(fake, 58, 120)
 
     assert any(call[0] == "roundRect" for call in fake.calls)
-    assert any(
-        call[0] == "drawCentredString" and "℞ РЕТРО" in call[1]
-        for call in fake.calls
-    )
+    assert any(call[0] == "drawCentredString" and "℞ РЕТРО" in call[1] for call in fake.calls)
 
 
 def test_reportlab_footer_does_not_print_estimated_total(monkeypatch):

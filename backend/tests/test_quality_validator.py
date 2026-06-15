@@ -611,6 +611,42 @@ class TestNatalAndreyRegressions:
         codes = {i.code for i in v.validate(text, ctx)}
         assert "PERSON_MISMATCH" in codes
 
+    def test_sign_in_planet_reversed(self, v):
+        """«Овен в Марсе» — перепутан порядок (должно быть «Марс в Овне»)."""
+        text = (
+            "Овен в Марсе придаёт характеру напор и желание действовать первым: "
+            "вы не ждёте разрешения, а берётесь за дело сразу, и это видно в том, "
+            "как вы начинаете разговор, проект или спор, не оглядываясь на чужое "
+            "мнение и не тратя время на долгие предварительные согласования."
+        )
+        ctx = ValidationContext(section_kind="planet_in_sign", subject="Марс")
+        codes = {i.code for i in v.validate(text, ctx)}
+        assert "SIGN_PLANET_REVERSED" in codes
+
+    def test_planet_in_sign_correct_order(self, v):
+        """Корректное «Марс в Овне» не триггерит правило."""
+        text = (
+            "Марс в Овне придаёт характеру напор и желание действовать первым: "
+            "вы не ждёте разрешения, а берётесь за дело сразу, и это видно в том, "
+            "как вы начинаете разговор, проект или спор, не оглядываясь на чужое "
+            "мнение и не тратя время на долгие предварительные согласования."
+        )
+        ctx = ValidationContext(section_kind="planet_in_sign", subject="Марс")
+        codes = {i.code for i in v.validate(text, ctx)}
+        assert "SIGN_PLANET_REVERSED" not in codes
+
+    def test_typo_cenuete(self, v):
+        """Опечатка «ценуете» вместо «цените»."""
+        text = (
+            "Венера в Тельце делает вас человеком, который ценуете телесные "
+            "удовольствия и красоту: вы выбираете качество, а не количество, и "
+            "цените стабильность в близких отношениях больше, чем яркие, но "
+            "короткие вспышки страсти, которые быстро гаснут и оставляют пустоту."
+        )
+        ctx = ValidationContext(section_kind="planet_in_sign", subject="Венера")
+        codes = {i.code for i in v.validate(text, ctx)}
+        assert "TYPO" in codes
+
     def test_person_correct_vy_mozhete_clean(self, v):
         """Корректное «вы можете» не триггерит правило."""
         text = (

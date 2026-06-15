@@ -158,6 +158,21 @@ _PERSON_MISMATCH = re.compile(
     re.IGNORECASE | re.UNICODE,
 )
 
+# Перепутанный порядок «{знак} в {планета}» вместо «{планета} в {знаке}»:
+# «Овен в Марсе», «Телец в Венере». Знаки — в именительном, планеты — в
+# предложном (окончание -е/-и). Список планет в предложном падеже узкий.
+_SIGN_NOM = "Овен|Телец|Близнецы|Рак|Лев|Дева|Весы|Скорпион|Стрелец|Козерог|Водолей|Рыбы"
+_SIGN_PLANET_REVERSED = re.compile(
+    rf"\b(?:{_SIGN_NOM})\s+в\s+"
+    r"(?:Марсе|Солнце|Луне|Меркурии|Венере|Юпитере|Сатурне|Уране|Нептуне|Плутоне)\b",
+    re.UNICODE,
+)
+
+# Частые опечатки LLM (морфология русского). Ключ — паттерн, значение — для лога.
+_TYPO_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"\bцену[ею]те\b", re.IGNORECASE | re.UNICODE),  # ценуете → цените
+)
+
 _LATIN_TOKEN = re.compile(r"[A-Za-z]{2,}")
 # Любой bold-span (для подсчёта слов: тело важнее, заголовки/выделения опускаем).
 _HEADING = re.compile(r"\*\*.+?\*\*")
@@ -227,6 +242,8 @@ def sanitize_ru_text(text: str) -> str:
     out = _FOREIGN_SCRIPT.sub("", text)
     # Лицо глагола: «вы можешь/можем» → «вы можете».
     out = _PERSON_FIX.sub(_person_repl, out)
+    # Частая опечатка: «ценуете/ценуюте» → «цените».
+    out = re.sub(r"\bцену([ею])те\b", "цените", out, flags=re.IGNORECASE | re.UNICODE)
     return out
 
 
@@ -403,6 +420,32 @@ class TextValidator:
                         stripped[m.start() : m.start() + 60],
                     )
                 )
+
+        # ── Перепутанный порядок «знак в планете» ────────────────────
+        m = _SIGN_PLANET_REVERSED.search(stripped)
+        if m:
+            issues.append(
+                Issue(
+                    "SIGN_PLANET_REVERSED",
+                    Severity.WARNING,
+                    "Перепутан порядок: «{знак} в {планете}» вместо «{планета} в {знаке}»",
+                    stripped[m.start() : m.start() + 40],
+                )
+            )
+
+        # ── Опечатки ─────────────────────────────────────────────────
+        for pat in _TYPO_PATTERNS:
+            m = pat.search(lower)
+            if m:
+                issues.append(
+                    Issue(
+                        "TYPO",
+                        Severity.WARNING,
+                        "Вероятная опечатка",
+                        stripped[m.start() : m.start() + 30],
+                    )
+                )
+                break
 
         # ── Дубли слов ───────────────────────────────────────────────
         dup = _WORD_DUP.search(stripped)

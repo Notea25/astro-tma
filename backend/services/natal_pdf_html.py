@@ -662,10 +662,10 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .aspect-group h3 {{ color: var(--aspect-color); font-size: 15px; letter-spacing: 1.2px; text-transform: uppercase; margin: 0 0 2.5mm; }}
 .aspect-group h3 em {{ color: {TEXT_DIM}; text-transform: none; font-size: 11.5px; letter-spacing: 0; margin-left: 3mm; }}
 .aspect-row {{ padding: 3mm 4mm; background: {PANEL}; border: 1px solid {BORDER}; border-radius: 7px; break-inside: avoid; }}
-.aspect-title {{ display: grid; grid-template-columns: 1fr auto; align-items: start; gap: 5mm; color: {TEXT}; font-size: 13.5px; line-height: 1.2; }}
-.aspect-title span:first-child {{ min-width: 0; }}
-.orb {{ color: {TEXT_DIM}; white-space: nowrap; font-size: 11.5px; }}
-.aspect-row p {{ margin: 2.5mm 0 0; color: {TEXT_DIM}; line-height: 1.32; font-size: 12.2px; }}
+.aspect-title {{ display: flex; flex-wrap: nowrap; align-items: baseline; justify-content: space-between; gap: 4mm; color: {TEXT}; font-size: 13.5px; line-height: 1.25; }}
+.aspect-title .aspect-name {{ flex: 1 1 auto; min-width: 0; }}
+.orb {{ flex: 0 0 auto; color: {TEXT_DIM}; white-space: nowrap; font-size: 11.5px; }}
+.aspect-row p {{ display: block; margin: 2.5mm 0 0; color: {TEXT_DIM}; line-height: 1.32; font-size: 12.2px; }}
 .aspect-row.detail-card p {{ color: {TEXT}; font-size: 9.8px; line-height: 1.3; }}
 .reading {{ padding-right: 4mm; }}
 .reading-quote {{ text-align: center; color: {TEXT_DIM}; font: italic 13px "DejaVu Serif", Georgia, serif; margin: 8mm 0 9mm; }}
@@ -1105,7 +1105,7 @@ def _aspect_section(aspects: list[dict[str, Any]], descriptions: dict[str, Any] 
             for chunk_index, text_chunk in enumerate(_split_words(desc, 260) or [desc]):
                 continuation_label = " · продолжение" if chunk_index else ""
                 row = (
-                    f'<div class="aspect-row detail-card"><div class="aspect-title"><span>{PLANET_SYMBOLS.get(p1, "")} {_e(PLANET_RU.get(p1, p1))} '
+                    f'<div class="aspect-row detail-card"><div class="aspect-title"><span class="aspect-name">{PLANET_SYMBOLS.get(p1, "")} {_e(PLANET_RU.get(p1, p1))} '
                     f"{ASPECT_SYMBOLS.get(atype, '')} {PLANET_SYMBOLS.get(p2, '')} {_e(PLANET_RU.get(p2, p2))}{continuation_label}</span>"
                     f'<span class="orb">орб {float(aspect.get("orb") or 0):.1f}°</span></div><p>{_e(text_chunk)}</p></div>'
                 )
