@@ -48,21 +48,43 @@ def _ru_weekday(d: date) -> str:
 
 
 def _build_horoscope_prompt(sign: str, target_date: date, period: str = "today") -> str:
+    from datetime import timedelta
+
     sign_ru = _SIGN_RU.get(sign, sign)
     ruler = _SIGN_RULERS.get(sign, "")
     element = _SIGN_ELEMENTS.get(sign, "")
 
-    weekday = _ru_weekday(target_date)
+    # Effective date for THIS prompt — for "tomorrow" it's literally
+    # target_date + 1, not today. Otherwise the model anchored both
+    # «today» and «tomorrow» horoscopes to today's weekday («В
+    # понедельник вас ждёт период…» on a Monday-tomorrow tab).
+    effective_date = target_date + timedelta(days=1) if period == "tomorrow" else target_date
+    weekday = _ru_weekday(effective_date)
     period_desc = {
-        "today": f"на сегодня ({weekday})",
+        "today":    f"на сегодня ({weekday})",
         "tomorrow": f"на завтра ({weekday})",
-        "week": "на эту неделю",
-        "month": "на этот месяц",
+        "week":     "на эту неделю",
+        "month":    "на этот месяц",
     }.get(period, "на сегодня")
+
+    # Single-day horoscopes (today/tomorrow) get a weekday hint — Haiku is
+    # unreliable computing the weekday from a date string, so we feed it.
+    # Week/Month horoscopes intentionally OMIT the hint — they cover many
+    # days, and forcing one weekday name into a multi-day forecast made
+    # the model write Monday-only prose for the whole week/month.
+    if period in ("today", "tomorrow"):
+        weekday_hint = (
+            f" Если упоминаешь день недели, используй именно: {weekday}."
+        )
+    else:
+        weekday_hint = (
+            " Не привязывайся к одному конкретному дню недели — текст "
+            "должен описывать весь период целиком."
+        )
 
     return f"""Ты пишешь короткие гороскопы для популярного приложения. Читатели — обычные люди, не астрологи.
 
-Гороскоп {period_desc} для знака {sign_ru} (стихия — {element}, управитель — {ruler}). Если упоминаешь день недели, используй именно: {weekday}.
+Гороскоп {period_desc} для знака {sign_ru} (стихия — {element}, управитель — {ruler}).{weekday_hint}
 
 ЧТО НУЖНО НАПИСАТЬ (4-6 предложений):
 - Главный тон периода — что приходит, на что обратить внимание.
