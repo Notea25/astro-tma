@@ -98,9 +98,16 @@ def _descriptions_shape_valid(descriptions: Any) -> bool:
         return False
     if aspects is not None and not isinstance(aspects, list):
         return False
+    # Houses MUST be a subset of "1".."12", but can be partial — the LLM
+    # only writes descriptions for houses that actually contain planets.
+    # The previous check required EXACTLY the 12 keys, which is impossible
+    # for any chart with an empty house (e.g. 4/8/12 unoccupied) and
+    # caused a permanent «still being generated» loop: worker emits the
+    # correct partial dict, validator rejects, system regenerates the
+    # same partial, validator rejects again, ad infinitum.
     if isinstance(houses, dict) and houses:
-        expected = {str(i) for i in range(1, 13)}
-        if set(houses.keys()) != expected:
+        valid = {str(i) for i in range(1, 13)}
+        if not set(houses.keys()).issubset(valid):
             return False
     return True
 
