@@ -26,6 +26,8 @@ from db.models import (
     Subscription,
     SubscriptionPlan,
     SubscriptionStatus,
+    SupportTicket,
+    SupportTicketStatus,
     TarotCard,
     TarotPositionMeaning,
     TarotReading,
@@ -549,6 +551,85 @@ class PurchaseAdmin(ModelView, model=Purchase):
         return _redirect_back(request)
 
 
+def _format_ticket_status(model, attribute) -> str:
+    raw = getattr(model, _attr_name(attribute), None)
+    if raw is None:
+        return "—"
+    raw = raw.value if hasattr(raw, "value") else raw
+    if raw == "open":
+        return "🟠 Открыт"
+    if raw == "answered":
+        return "✅ Отвечен"
+    return raw
+
+
+def _format_ticket_user(model, attribute) -> str:
+    """«Иван (@ivan) · 414053177» — single-column human display."""
+    fn = (getattr(model, "tg_first_name", None) or "").strip()
+    ln = (getattr(model, "tg_last_name", None) or "").strip()
+    uname = getattr(model, "tg_username", None)
+    uid = getattr(model, "user_id", None)
+    name = " ".join(p for p in (fn, ln) if p) or "—"
+    handle = f"@{uname}" if uname else f"id={uid}"
+    return f"{name} · {handle}"
+
+
+def _format_ticket_text(model, attribute) -> str:
+    """Truncate long messages in the list view so the row stays scannable."""
+    val = getattr(model, _attr_name(attribute), None) or ""
+    if len(val) <= 120:
+        return val
+    return val[:117] + "…"
+
+
+class SupportTicketAdmin(ModelView, model=SupportTicket):
+    name = "Тикет"
+    name_plural = "Поддержка"
+    icon = "fa-solid fa-life-ring"
+    column_list = [
+        SupportTicket.id,
+        SupportTicket.status,
+        SupportTicket.user_id,
+        SupportTicket.user_message,
+        SupportTicket.admin_reply,
+        SupportTicket.created_at,
+        SupportTicket.answered_at,
+    ]
+    column_labels = {
+        SupportTicket.status: "Статус",
+        SupportTicket.user_id: "От кого",
+        SupportTicket.user_message: "Вопрос",
+        SupportTicket.admin_reply: "Ответ",
+        SupportTicket.created_at: "Создан",
+        SupportTicket.answered_at: "Отвечен",
+    }
+    column_formatters = {
+        SupportTicket.status: _format_ticket_status,
+        SupportTicket.user_id: _format_ticket_user,
+        SupportTicket.user_message: _format_ticket_text,
+        SupportTicket.admin_reply: _format_ticket_text,
+    }
+    column_searchable_list = [
+        SupportTicket.user_message,
+        SupportTicket.admin_reply,
+        SupportTicket.tg_username,
+        SupportTicket.tg_first_name,
+    ]
+    column_sortable_list = [
+        SupportTicket.id,
+        SupportTicket.status,
+        SupportTicket.created_at,
+        SupportTicket.answered_at,
+    ]
+    column_default_sort = [(SupportTicket.created_at, True)]
+    # SQLAdmin's built-in CSV/JSON export — no extra code needed.
+    can_export = True
+    can_create = False
+    can_edit = False
+    can_delete = True
+    page_size = 50
+
+
 # ── Factory ───────────────────────────────────────────────────────────────────
 def create_admin(app) -> Admin:
     authentication_backend = AdminAuth(secret_key=settings.APP_SECRET_KEY)
@@ -563,7 +644,7 @@ def create_admin(app) -> Admin:
         UserAdmin, NatalChartAdmin, InterpretationAdmin,
         DailyHoroscopeAdmin, TarotCardAdmin, TarotPositionMeaningAdmin,
         TarotReadingAdmin, MacCardAdmin, MacReadingAdmin,
-        SubscriptionAdmin, PurchaseAdmin,
+        SubscriptionAdmin, PurchaseAdmin, SupportTicketAdmin,
     ]:
         admin.add_view(view)
     return admin

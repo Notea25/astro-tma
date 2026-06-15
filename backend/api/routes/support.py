@@ -15,14 +15,19 @@ Disabled (404) when SUPPORT_BOT_TOKEN is not configured.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.cache import cache_get, cache_set
 from core.logging import get_logger
 from core.settings import settings
+from db.database import get_db
+from db.models import SupportTicket, SupportTicketStatus
 
 log = get_logger(__name__)
 router = APIRouter(prefix="/support", tags=["support"])
@@ -50,7 +55,10 @@ async def _tg(method: str, payload: dict[str, Any]) -> dict[str, Any]:
 
 
 @router.post("/webhook")
-async def support_webhook(request: Request) -> dict[str, bool]:
+async def support_webhook(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, bool]:
     if not settings.SUPPORT_BOT_TOKEN:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Support bot not configured")
 
@@ -113,6 +121,32 @@ async def support_webhook(request: Request) -> dict[str, bool]:
             return {"ok": True}
 
         log.info("support.reply.sent", user_id=target_user_id)
+
+        # Persist the answer to the matching ticket so it survives Redis
+        # eviction. Match by forwarded_msg_id (= the reply target).
+        try:
+            admin = msg.get("from") or {}
+            ticket = (
+                await db.execute(
+                    select(SupportTicket).where(
+                        SupportTicket.forwarded_msg_id == reply["message_id"],
+                    )
+                )
+            ).scalar_one_or_none()
+            if ticket and ticket.status != SupportTicketStatus.ANSWERED:
+                ticket.status = SupportTicketStatus.ANSWERED
+                ticket.admin_reply = text or msg.get("caption") or ""
+                ticket.admin_user_id = admin.get("id")
+                ticket.admin_username = admin.get("username")
+                ticket.answered_at = datetime.now(UTC)
+                await db.commit()
+                log.info(
+                    "support.ticket.answered",
+                    ticket_id=ticket.id, user_id=target_user_id,
+                )
+        except Exception as e:  # noqa: BLE001
+            await db.rollback()
+            log.error("support.ticket.answer_persist_failed", error=str(e))
 
         # Mark the question as answered by flipping the header's 📩 → ✅.
         # Basic groups don't support setMessageReaction (REACTION_INVALID),
@@ -223,6 +257,29 @@ async def support_webhook(request: Request) -> dict[str, bool]:
         },
         _FWD_TTL,
     )
+
+    # Persist the ticket so questions outlive Redis TTL and admins can
+    # search/triage in /admin. Best-effort — a DB hiccup must not break
+    # the user-facing flow (Redis mapping above is still authoritative
+    # for the immediate reply roundtrip).
+    try:
+        ticket = SupportTicket(
+            user_id=user_id,
+            tg_username=user.get("username"),
+            tg_first_name=user.get("first_name"),
+            tg_last_name=user.get("last_name"),
+            user_message=text,
+            user_message_id=msg.get("message_id"),
+            forwarded_msg_id=forwarded_msg_id,
+            header_msg_id=header_msg_id,
+            status=SupportTicketStatus.OPEN,
+        )
+        db.add(ticket)
+        await db.commit()
+        log.info("support.ticket.created", ticket_id=ticket.id, user_id=user_id)
+    except Exception as e:  # noqa: BLE001
+        await db.rollback()
+        log.error("support.ticket.persist_failed", user_id=user_id, error=str(e))
 
     # Acknowledge to the user so they know the message was received.
     await _tg(

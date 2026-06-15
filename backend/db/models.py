@@ -48,6 +48,9 @@ class PurchaseStatus(str, enum.Enum):
     PENDING = "pending"; COMPLETED = "completed"
     REFUNDED = "refunded"; FAILED = "failed"
 
+class SupportTicketStatus(str, enum.Enum):
+    OPEN = "open"; ANSWERED = "answered"
+
 class MacCategory(str, enum.Enum):
     EMOTIONS = "emotions"
     RELATIONSHIPS = "relationships"
@@ -618,4 +621,48 @@ class YearEnergyInterpretation(Base):
     model: Mapped[str] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(),
+    )
+
+
+# ── Support tickets ──────────────────────────────────────────────────────────
+
+
+class SupportTicket(TimestampMixin, Base):
+    """One row per user DM to @astrosupport24_bot. First user message +
+    first admin reply — MVP v1, see services/support flow.
+
+    user_id is INTENTIONALLY not a FK to users.id: people can DM the
+    support bot without ever using the main bot, and we want the ticket
+    preserved even if the main user row is deleted later.
+    """
+    __tablename__ = "support_tickets"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Telegram user id of the question author.
+    user_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    # Snapshot of the author's TG identity at ticket time — survives
+    # username changes, useful when triaging.
+    tg_username: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    tg_first_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    tg_last_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # Original DM text (or caption for media). Empty for sticker-only or
+    # voice messages — those still create a ticket so nothing's lost.
+    user_message: Mapped[str] = mapped_column(Text, default="")
+    # IDs to chain reply edits later if needed.
+    user_message_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    forwarded_msg_id: Mapped[int | None] = mapped_column(
+        BigInteger, nullable=True, index=True,
+    )
+    header_msg_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    # open until an admin replies in the group; flips to answered on reply.
+    status: Mapped[SupportTicketStatus] = mapped_column(
+        Enum(SupportTicketStatus, values_callable=lambda e: [x.value for x in e]),
+        default=SupportTicketStatus.OPEN,
+        index=True,
+    )
+    # First admin reply only — MVP v1.
+    admin_reply: Mapped[str | None] = mapped_column(Text, nullable=True)
+    admin_user_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    admin_username: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    answered_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True,
     )
