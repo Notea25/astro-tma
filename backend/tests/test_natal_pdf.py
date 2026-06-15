@@ -735,6 +735,59 @@ def test_key_card_long_sentence_truncates_cleanly():
     assert not blurb.rstrip("…").endswith((" в", " на", " и", " с", " к"))
 
 
+def test_aspect_without_description_not_rendered_no_template():
+    """Аспект без персонального текста не рендерится (вместо шаблона), а аспект
+    с текстом — рендерится. Так шаблонный _aspect_fallback не попадает в PDF."""
+    planets, houses, _ = _sample_chart()
+    aspects = [
+        {"p1": "sun", "p2": "moon", "aspect": "square", "orb": 2.0},
+        {"p1": "mars", "p2": "saturn", "aspect": "sextile", "orb": 5.4},
+    ]
+    document = natal_pdf_html.build_natal_pdf_html(
+        user_name="Андрей",
+        birth_date="2002-01-23",
+        birth_time="12:00",
+        birth_city="Москва",
+        sun_sign="Aquarius",
+        moon_sign="Taurus",
+        asc_sign="Libra",
+        planets=planets,
+        houses=houses,
+        aspects=aspects,
+        descriptions={
+            "planets": {},
+            "houses": {},
+            # описан только sun-moon; mars-saturn без текста
+            "aspects": [
+                {
+                    "p1": "sun",
+                    "p2": "moon",
+                    "type": "square",
+                    "full": " ".join(f"оwrite{i}" for i in range(60))
+                    + " Уникальный разбор этого квадрата.",
+                }
+            ],
+        },
+        reading="",
+    )
+    assert "Уникальный разбор этого квадрата" in document
+    # Шаблонные маркеры _aspect_fallback не должны просочиться.
+    assert "Здесь встречаются" not in document
+    assert "слиты в один импульс" not in document
+    assert "не сцеплены жёстко" not in document
+
+
+def test_aspect_title_css_keeps_orb_top_aligned():
+    """Layout: орб привязан к верхней строке заголовка (flex-start), заголовок
+    не переносится — иначе орб «уезжал» вниз при переносе на 2 строки."""
+    css = natal_pdf_html._css()
+    assert "align-items: flex-start" in css
+    # .aspect-name не переносится (white-space: nowrap присутствует в блоке).
+    assert ".aspect-title .aspect-name" in css
+    name_rule = css.split(".aspect-title .aspect-name")[1].split("}")[0]
+    assert "white-space: nowrap" in name_rule
+
+
 def test_pdf_detail_descriptions_do_not_use_short_as_full_source():
     planets, houses, aspects = _sample_chart()
     document = natal_pdf_html.build_natal_pdf_html(
@@ -907,6 +960,56 @@ async def test_natal_description_repair_replaces_bad_entries(monkeypatch):
 
     assert repaired["sun"]["full"].startswith("новый0")
     assert "Совершенно другой финал" in repaired["sun"]["full"]
+
+
+@pytest.mark.asyncio
+async def test_repair_runs_second_cycle_when_first_still_bad(monkeypatch):
+    """Цикл repair: если 1-я регенерация вернула плохой текст, делается 2-я."""
+    calls = {"n": 0}
+
+    async def fake_one_entry(*_args, **_kwargs):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            # 1-й repair — всё ещё слишком короткий (плохой).
+            return {"short": "Коротко.", "full": "Очень короткий плохой текст."}
+        # 2-й repair — годный длинный текст.
+        return {
+            "short": "Новый короткий текст про Солнце в знаке.",
+            "full": " ".join(f"слово{i}" for i in range(340)) + " Уникальный финал.",
+        }
+
+    monkeypatch.setattr(natal_descriptions, "_one_entry", fake_one_entry)
+    repaired = await natal_descriptions._repair_entries(
+        client=object(),
+        entries={"sun": {"short": "Коротко.", "full": ""}},
+        labels={"sun": "Солнце в Козероге"},
+        section="planets",
+        chart_context="Контекст всей натальной карты",
+    )
+
+    # Должно было быть минимум 2 вызова (1-й плохой → 2-й годный).
+    assert calls["n"] >= 2
+    assert "Уникальный финал" in repaired["sun"]["full"]
+
+
+@pytest.mark.asyncio
+async def test_repair_keeps_good_text_does_not_downgrade(monkeypatch):
+    """Цикл repair не заменяет уже годный текст на худший."""
+    good_full = " ".join(f"хорошо{i}" for i in range(340)) + " Качественный финал."
+
+    async def fake_one_entry(*_args, **_kwargs):
+        return {"short": "Хуже.", "full": "Деградировавший короткий ответ."}
+
+    monkeypatch.setattr(natal_descriptions, "_one_entry", fake_one_entry)
+    repaired = await natal_descriptions._repair_entries(
+        client=object(),
+        entries={"sun": {"short": "Норм.", "full": good_full}},
+        labels={"sun": "Солнце в Козероге"},
+        section="planets",
+        chart_context="Контекст",
+    )
+    # Годный текст не трогали — repair даже не запускался для него.
+    assert repaired["sun"]["full"] == good_full
 
 
 @pytest.mark.asyncio

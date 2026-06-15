@@ -662,8 +662,8 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .aspect-group h3 {{ color: var(--aspect-color); font-size: 15px; letter-spacing: 1.2px; text-transform: uppercase; margin: 0 0 2.5mm; }}
 .aspect-group h3 em {{ color: {TEXT_DIM}; text-transform: none; font-size: 11.5px; letter-spacing: 0; margin-left: 3mm; }}
 .aspect-row {{ padding: 3mm 4mm; background: {PANEL}; border: 1px solid {BORDER}; border-radius: 7px; break-inside: avoid; }}
-.aspect-title {{ display: flex; flex-wrap: nowrap; align-items: baseline; justify-content: space-between; gap: 4mm; color: {TEXT}; font-size: 13.5px; line-height: 1.25; }}
-.aspect-title .aspect-name {{ flex: 1 1 auto; min-width: 0; }}
+.aspect-title {{ display: flex; flex-wrap: nowrap; align-items: flex-start; justify-content: space-between; gap: 4mm; color: {TEXT}; font-size: 13.5px; line-height: 1.25; }}
+.aspect-title .aspect-name {{ flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
 .orb {{ flex: 0 0 auto; color: {TEXT_DIM}; white-space: nowrap; font-size: 11.5px; }}
 .aspect-row p {{ display: block; margin: 2.5mm 0 0; color: {TEXT_DIM}; line-height: 1.32; font-size: 12.2px; }}
 .aspect-row.detail-card p {{ color: {TEXT}; font-size: 9.8px; line-height: 1.3; }}
@@ -1051,9 +1051,28 @@ def _aspect_hidden(
     return bool(entry and entry.get("hide"))
 
 
+def _aspect_described(
+    aspect: dict[str, Any],
+    aspect_desc: dict[tuple[str, str, str], dict[str, Any]],
+) -> bool:
+    """Есть ли для аспекта персональный текст (непустой full). Если нет —
+    аспект не рендерим вообще, чтобы не подставлять шаблонный _aspect_fallback
+    (шаблоны в платном PDF не показываем)."""
+    p1 = _planet_key(aspect.get("p1"))
+    p2 = _planet_key(aspect.get("p2"))
+    atype = _aspect_key(aspect.get("aspect"))
+    entry = aspect_desc.get((p1, p2, atype))
+    return bool(entry and str(entry.get("full") or "").strip())
+
+
 def _aspect_section(aspects: list[dict[str, Any]], descriptions: dict[str, Any] | None) -> _Section:
     aspect_desc = _aspect_description_map(descriptions)
-    aspects = [a for a in aspects if not _aspect_hidden(a, aspect_desc)]
+    # Показываем только аспекты с готовым персональным текстом и не скрытые.
+    aspects = [
+        a
+        for a in aspects
+        if not _aspect_hidden(a, aspect_desc) and _aspect_described(a, aspect_desc)
+    ]
     groups = [
         (atype, [a for a in aspects if _aspect_key(a.get("aspect")) == atype])
         for atype in ASPECT_ORDER

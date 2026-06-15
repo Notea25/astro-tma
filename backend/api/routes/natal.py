@@ -367,7 +367,10 @@ async def _build_natal_pdf_bytes(
     chart = user.natal_chart
     planets = chart.chart_data.get("planets", {})
     houses = chart.chart_data.get("houses", [])
-    aspects_raw = chart.chart_data.get("aspects", [])
+    # Рендерим ТОЛЬКО те аспекты, для которых генерится персональный текст
+    # (top-N сильнейших). Иначе слабые аспекты без LLM-описания падали в
+    # шаблонный _aspect_fallback — а шаблоны в платном PDF мы не показываем.
+    aspects_raw = _pdf_description_aspects(chart.chart_data.get("aspects", []))
     aspects = [
         {
             "p1": a.get("p1", ""),

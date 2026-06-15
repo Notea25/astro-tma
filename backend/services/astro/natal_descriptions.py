@@ -658,6 +658,11 @@ def _repair_prompt(
 _RATE_LIMIT_MAX_ATTEMPTS = 5
 _RATE_LIMIT_BASE_DELAY = 15.0
 
+# Сколько проходов регенерации делать для плохих текстов (планеты/дома/аспекты).
+# 2 = основной generate + до 2 repair-итераций. Шаблонные fallback так почти
+# никогда не доходят до финального PDF, но цикл ограничен — без риска таймаута.
+_MAX_REPAIR_CYCLES = 2
+
 
 def _is_rate_limit_error(msg: str) -> bool:
     low = msg.lower()
@@ -876,27 +881,46 @@ async def _repair_entries(
     section: str,
     chart_context: str,
 ) -> dict[str, dict[str, str]]:
-    repair_keys = _quality_repair_keys(entries, section)
-    if not repair_keys:
-        return entries
-    tasks = {
-        key: _one_entry(
-            client,
-            _repair_prompt(
-                section=section,
-                label=labels.get(key, key),
-                current=entries.get(key, {}),
-                chart_context=chart_context,
-            ),
-            max_tokens=2000,
-        )
-        for key in repair_keys
-    }
-    repaired = await asyncio.gather(*tasks.values(), return_exceptions=False)
+    """Регенерируем плохие тексты до годного — цикл из _MAX_REPAIR_CYCLES
+    проходов. Раньше был один проход: если repair снова вернул шаблонный/
+    короткий текст, он оставался в PDF. Теперь повторяем, пока текст не пройдёт
+    валидацию (или не кончатся попытки) — шаблонные fallback так почти никогда
+    не доходят до финального PDF. Новый текст принимаем только если он лучше
+    (стал годным) или старый был пуст — чтобы не заменить нормальный на худший."""
     out = dict(entries)
-    for key, entry in zip(tasks.keys(), repaired):
-        if entry.get("short") or entry.get("full"):
-            out[key] = entry
+    for cycle in range(_MAX_REPAIR_CYCLES):
+        repair_keys = _quality_repair_keys(out, section)
+        if not repair_keys:
+            break
+        log.info(
+            "natal_descriptions.repair_cycle",
+            section=section,
+            cycle=cycle + 1,
+            remaining=len(repair_keys),
+        )
+        tasks = {
+            key: _one_entry(
+                client,
+                _repair_prompt(
+                    section=section,
+                    label=labels.get(key, key),
+                    current=out.get(key, {}),
+                    chart_context=chart_context,
+                ),
+                max_tokens=2000,
+            )
+            for key in repair_keys
+        }
+        repaired = await asyncio.gather(*tasks.values(), return_exceptions=False)
+        for key, entry in zip(tasks.keys(), repaired):
+            if not (entry.get("short") or entry.get("full")):
+                continue
+            old_bad = _entry_needs_repair(out.get(key, {}), section)
+            new_bad = _entry_needs_repair(entry, section)
+            # Принимаем, если новый годный, либо если старый был пуст/плохой и
+            # новый не хуже (не пустой) — деградацию годного текста не допускаем.
+            if not new_bad or old_bad:
+                out[key] = entry
     return out
 
 
@@ -1202,15 +1226,21 @@ async def generate_natal_descriptions(
         # Скрываем только неважный аспект-болванку (широкий орб между дальними).
         orb = aspect_orb_lookup.get(aid, 0.0)
         important = _aspect_wants_full(p1, p2, orb)
-        if bad and not important:
-            aspect["hide"] = True
-            hidden_aspects += 1
-        elif bad and important:
-            aspect["full"] = _aspect_quality_fallback(p1, p2, atype, orb)
-            aspect["short"] = str(aspect.get("short") or "").strip() or (
-                f"{_PLANET_RU.get(p1, p1)} и {_PLANET_RU.get(p2, p2)} образуют важный аспект с орбом {orb:.1f}°."
-            )
-            full = str(aspect.get("full") or "").strip()
+        # После цикла repair шаблон не используем: плохой аспект скрываем.
+        # Шаблон _aspect_quality_fallback остаётся ТОЛЬКО как авария для важного
+        # аспекта, чей текст вообще пуст (LLM лёг/таймаут) — иначе важная связка
+        # с персональной планетой молча пропала бы из платного отчёта.
+        if bad:
+            text_empty = not full
+            if important and text_empty:
+                aspect["full"] = _aspect_quality_fallback(p1, p2, atype, orb)
+                aspect["short"] = str(aspect.get("short") or "").strip() or (
+                    f"{_PLANET_RU.get(p1, p1)} и {_PLANET_RU.get(p2, p2)} образуют важный аспект с орбом {orb:.1f}°."
+                )
+                full = str(aspect.get("full") or "").strip()
+            else:
+                aspect["hide"] = True
+                hidden_aspects += 1
         # Дедуп: дословный дубль full-текста между аспектами → скрыть второй.
         norm = " ".join(full.split()).lower()
         if norm and norm in seen_full and not aspect.get("hide"):

@@ -2048,8 +2048,16 @@ def generate_natal_pdf(
     planet_desc = (descriptions or {}).get("planets") or {}
     house_desc = (descriptions or {}).get("houses") or {}
     aspect_desc = _aspect_description_map(descriptions)
-    # Скрываем аспекты-заглушки: лучше меньше аспектов, чем болванки.
-    aspects = [a for a in aspects if not _aspect_hidden(a, aspect_desc)]
+
+    # Показываем только аспекты с готовым персональным текстом и не скрытые —
+    # без описания аспект не рендерим (шаблоны в платном PDF не показываем).
+    def _has_desc(a: dict[str, Any]) -> bool:
+        entry = aspect_desc.get(
+            (_planet_key(a.get("p1")), _planet_key(a.get("p2")), _aspect_key(a.get("aspect")))
+        )
+        return bool(entry and str(entry.get("full") or "").strip())
+
+    aspects = [a for a in aspects if not _aspect_hidden(a, aspect_desc) and _has_desc(a)]
     # Разрешаем текст каждого аспекта заранее и вычищаем дословные дубли (P1-3):
     # одинаковая заглушка не печатается дважды. Результат кладём на сам аспект.
     _resolved = _dedup_aspect_texts(
