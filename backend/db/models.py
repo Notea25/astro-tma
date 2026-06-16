@@ -292,9 +292,9 @@ class SynastryInterpretation(TimestampMixin, Base):
     __tablename__ = "synastry_interpretations"
     __table_args__ = (UniqueConstraint("p1", "p2", "aspect"),)
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    p1: Mapped[str] = mapped_column(String(20), nullable=False)
-    p2: Mapped[str] = mapped_column(String(20), nullable=False)
-    aspect: Mapped[str] = mapped_column(String(20), nullable=False)
+    p1: Mapped[str] = mapped_column(String(40), nullable=False)
+    p2: Mapped[str] = mapped_column(String(40), nullable=False)
+    aspect: Mapped[str] = mapped_column(String(40), nullable=False)
     text_ru: Mapped[str] = mapped_column(Text, nullable=False)
 
 
@@ -316,9 +316,9 @@ class TransitInterpretation(TimestampMixin, Base):
     __tablename__ = "transit_interpretations"
     __table_args__ = (UniqueConstraint("transit_planet", "natal_planet", "aspect"),)
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    transit_planet: Mapped[str] = mapped_column(String(20), nullable=False)
-    natal_planet: Mapped[str] = mapped_column(String(20), nullable=False)
-    aspect: Mapped[str] = mapped_column(String(20), nullable=False)
+    transit_planet: Mapped[str] = mapped_column(String(40), nullable=False)
+    natal_planet: Mapped[str] = mapped_column(String(40), nullable=False)
+    aspect: Mapped[str] = mapped_column(String(40), nullable=False)
     text_ru: Mapped[str] = mapped_column(Text, nullable=False)
     advice_do: Mapped[str | None] = mapped_column(Text, nullable=True)
     advice_avoid: Mapped[str | None] = mapped_column(Text, nullable=True)
