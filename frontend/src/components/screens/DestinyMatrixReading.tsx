@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { ApiError, destinyApi, destinyV3Api, paymentsApi } from "@/services/api";
@@ -156,10 +156,6 @@ export function DestinyMatrixReading() {
   // Universal tap target — works for octagram nodes AND for cells in the
   // Purposes/Channels tables below.
   const [activeTap, setActiveTap] = useState<ActiveTap | null>(null);
-  // Calc animation is intro-only — it plays on the FIRST landing and is
-  // suppressed on every subsequent re-mount (e.g. user tapped another tab
-  // and came back). React Query keeps `reading` alive across unmounts.
-  const [showCalcAnim, setShowCalcAnim] = useState(false);
   const [isPdfDownloading, setIsPdfDownloading] = useState(false);
   const [pdfDownloadError, setPdfDownloadError] = useState<string | null>(null);
   // Card-payment sheet — opened from either upsell. We keep it at the
@@ -198,7 +194,6 @@ export function DestinyMatrixReading() {
     isError: calcIsError,
     error: calcError,
     refetch: refetchCalc,
-    isFetching: calcIsFetching,
   } = useQuery({
     queryKey: ["destiny-matrix", "calculate"],
     queryFn: destinyApi.calculate,
@@ -208,19 +203,6 @@ export function DestinyMatrixReading() {
     refetchOnMount: false,
     retry: 1,
   });
-
-  // Play the intro «Расшифровываем арканы…» animation exactly once per
-  // session — on the first successful load. Re-mounting the screen (tab
-  // switch and back) hits cache → no replay.
-  const introPlayed = useRef(false);
-  useEffect(() => {
-    if (!reading || introPlayed.current) return;
-    introPlayed.current = true;
-    impact("medium");
-    setShowCalcAnim(true);
-    const t = window.setTimeout(() => setShowCalcAnim(false), 600);
-    return () => window.clearTimeout(t);
-  }, [reading, impact]);
 
   const { data: arcanaData, isFetching: arcanaFetching } = useQuery({
     queryKey: ["destiny-matrix", "arcana", activeTap?.num],
@@ -294,10 +276,14 @@ export function DestinyMatrixReading() {
       </div>
 
       <div className="screen-content destiny-reading__content">
-        {(showCalcAnim || (calcIsPending && calcIsFetching)) && (
+        {/* Show the loader ONLY while the calculate request is in flight
+            for the first time. After that React Query holds the result
+            in cache; switching tabs and coming back hits the cache
+            instantly with no loader at all. */}
+        {calcIsPending && !reading && (
           <div className="destiny-reading__calc">
             <div className="destiny-reading__calc-glow" />
-            <p>{calcIsPending ? "Считаем вашу матрицу…" : "Расшифровываем арканы…"}</p>
+            <p>Считаем вашу матрицу…</p>
           </div>
         )}
 
@@ -317,7 +303,7 @@ export function DestinyMatrixReading() {
           </div>
         )}
 
-        {reading && !showCalcAnim && (
+        {reading && (
           <>
             <motion.div
               initial={{ opacity: 0, y: -8 }}
