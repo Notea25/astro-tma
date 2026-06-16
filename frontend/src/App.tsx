@@ -101,6 +101,16 @@ const DestinyMatrixReading = lazy(() =>
     default: m.DestinyMatrixReading,
   })),
 );
+const MyReports = lazy(() =>
+  import("@/components/screens/MyReports").then((m) => ({
+    default: m.MyReports,
+  })),
+);
+const NatalFullReading = lazy(() =>
+  import("@/components/screens/NatalFullReading").then((m) => ({
+    default: m.NatalFullReading,
+  })),
+);
 
 function SplashScreen() {
   return (
@@ -280,6 +290,8 @@ export default function App() {
             {screen === "purchases" && <Purchases />}
             {screen === "destiny_matrix_info" && <DestinyMatrixInfo />}
             {screen === "destiny_matrix_reading" && <DestinyMatrixReading />}
+            {screen === "my_reports" && <MyReports />}
+            {screen === "natal_full_reading" && <NatalFullReading />}
           </motion.div>
         </Suspense>
 

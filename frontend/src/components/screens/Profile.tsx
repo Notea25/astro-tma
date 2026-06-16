@@ -156,6 +156,45 @@ function BirthDateInput({
   );
 }
 
+function MyReportsCard() {
+  const { setScreen } = useAppStore();
+  const { impact } = useHaptic();
+  return (
+    <motion.button
+      type="button"
+      className="pr-row2"
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.09 }}
+      onClick={() => {
+        impact("light");
+        setScreen("my_reports");
+      }}
+    >
+      <span className="pr-row2__ic" aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M5 4h11l3 3v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" />
+          <path d="M8 9h7M8 13h7M8 17h4" />
+        </svg>
+      </span>
+      <span className="pr-row2__main">
+        <span className="pr-row2__t">Мои разборы</span>
+        <span className="pr-row2__s">
+          Натальная · Матрица · Синастрия
+        </span>
+      </span>
+      <span className="pr-row2__chev" aria-hidden="true">›</span>
+    </motion.button>
+  );
+}
+
 function PurchasesCard() {
   const { setScreen } = useAppStore();
   const { impact } = useHaptic();
@@ -699,6 +738,7 @@ export function Profile() {
           </div>
         </motion.div>
 
+        <MyReportsCard />
         <PurchasesCard />
 
         <motion.button

@@ -29,7 +29,9 @@ export type Screen =
   | "referral"
   | "purchases"
   | "destiny_matrix_info"
-  | "destiny_matrix_reading";
+  | "destiny_matrix_reading"
+  | "my_reports"
+  | "natal_full_reading";
 
 interface AppState {
   screen: Screen;

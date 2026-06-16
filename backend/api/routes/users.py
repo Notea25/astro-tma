@@ -178,6 +178,95 @@ async def get_my_purchases(
     }
 
 
+@router.get("/me/reports")
+async def get_my_reports(
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """One-stop status of every per-user generated report. Powers the
+    «Мои разборы» hub in Profile + the «Мой разбор» quick buttons inside
+    each product. No LLM calls — pure DB reads, cheap enough to refresh
+    on every Profile tap.
+    """
+    from core.cache import cache_get
+
+    user_id = tg_user["id"]
+    user = await user_repo.get_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+
+    is_prem = await user_repo.is_premium(db, user_id)
+    has_natal_full = await user_repo.has_purchased(db, user_id, "natal_full")
+    has_destiny = await user_repo.has_purchased(db, user_id, "destiny_matrix_full")
+
+    # ── Natal ───────────────────────────────────────────────
+    natal_block: dict[str, Any] = {
+        "has_chart": bool(user.natal_chart),
+        "has_access": bool(is_prem or has_natal_full),
+        "has_content": False,
+        "sun_sign": None,
+        "moon_sign": None,
+    }
+    if user.natal_chart:
+        natal_block["sun_sign"] = user.natal_chart.sun_sign
+        natal_block["moon_sign"] = user.natal_chart.moon_sign
+        # Cached reading in Redis OR persisted descriptions on the chart row
+        # both count as «something to show».
+        cached = await cache_get(key_natal(user_id))
+        cached_reading = (
+            isinstance(cached, dict) and bool((cached.get("reading") or "").strip())
+        )
+        chart_data = user.natal_chart.chart_data or {}
+        desc = chart_data.get("descriptions") or {}
+        has_desc = isinstance(desc, dict) and (
+            bool(desc.get("planets")) or bool(desc.get("houses")) or bool(desc.get("aspects"))
+        )
+        natal_block["has_content"] = cached_reading or has_desc
+
+    # ── Destiny Matrix V3 ───────────────────────────────────
+    from db.models import DestinyInterpretationV3, SynastryRequest, SynastryRequestStatus
+
+    v3_count = (await db.execute(
+        select(DestinyInterpretationV3.id)
+        .where(DestinyInterpretationV3.user_id == user_id)
+        .limit(1)
+    )).first()
+    matrix_block: dict[str, Any] = {
+        "has_chart": bool(user.natal_chart),
+        "has_access": bool(is_prem or has_destiny),
+        "has_content": v3_count is not None,
+    }
+
+    # ── Synastry ────────────────────────────────────────────
+    syn_rows = await db.execute(
+        select(SynastryRequest)
+        .where(
+            (SynastryRequest.initiator_user_id == user_id)
+            | (SynastryRequest.partner_user_id == user_id)
+        )
+        .where(SynastryRequest.status == SynastryRequestStatus.COMPLETED)
+        .order_by(SynastryRequest.created_at.desc())
+    )
+    syn_list = syn_rows.scalars().all()
+    synastry_block: dict[str, Any] = {
+        "completed_count": len(syn_list),
+    }
+    if syn_list:
+        first = syn_list[0]
+        result = first.result_json or {}
+        synastry_block["latest_partner_name"] = result.get("partner_name") or None
+        synastry_block["latest_total"] = result.get("total") or None
+        synastry_block["latest_created_at"] = (
+            first.created_at.isoformat() if first.created_at else None
+        )
+
+    return {
+        "natal": natal_block,
+        "matrix": matrix_block,
+        "synastry": synastry_block,
+    }
+
+
 @router.patch("/me/push", response_model=UserProfile)
 async def set_push_enabled(
     body: SetPushRequest,

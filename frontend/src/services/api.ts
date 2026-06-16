@@ -533,6 +533,30 @@ export const usersApi = {
       "GET",
       "/users/me/purchases",
     ),
+  // Status of every per-user generated report (natal / matrix / synastry).
+  // Used by the «Мои разборы» hub in Profile and the «Мой разбор» button
+  // inside each product. Pure DB read — cheap to refresh on every tap.
+  getMyReports: () =>
+    request<{
+      natal: {
+        has_chart: boolean;
+        has_access: boolean;
+        has_content: boolean;
+        sun_sign: string | null;
+        moon_sign: string | null;
+      };
+      matrix: {
+        has_chart: boolean;
+        has_access: boolean;
+        has_content: boolean;
+      };
+      synastry: {
+        completed_count: number;
+        latest_partner_name?: string | null;
+        latest_total?: number | null;
+        latest_created_at?: string | null;
+      };
+    }>("GET", "/users/me/reports"),
 };
 
 // ── Horoscope ──────────────────────────────────────────────────────────────────

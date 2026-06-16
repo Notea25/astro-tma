@@ -10392,6 +10392,97 @@ body::before {
   border: 0.5px solid var(--gold-border);
   color: var(--gold-light);
 }
+/* «Мои разборы» — central reports hub. Reuses .pr-row2 row layout
+   from the Profile screen so the visual rhythm matches. */
+.myreports {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 6px 18px 32px;
+}
+.myreports__row {
+  width: 100%;
+  text-align: left;
+}
+.myreports__row--disabled {
+  opacity: 0.6;
+}
+.myreports__ic {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 17px;
+}
+.myreports__loading {
+  padding: 24px;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+/* «Мой разбор» — natal full-reading sub-screen */
+.natal-fr {
+  padding: 4px 18px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.natal-fr__loading,
+.natal-fr__empty {
+  padding: 32px 8px;
+  color: var(--text-dim);
+  text-align: center;
+  line-height: 1.55;
+}
+.natal-fr__article {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.natal-fr__h {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--gold-light);
+  margin: 14px 0 2px;
+  letter-spacing: 0.01em;
+}
+.natal-fr__p {
+  font-size: 15px;
+  line-height: 1.62;
+  color: var(--text);
+  margin: 0;
+}
+.natal-fr__cta-row {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.natal-fr__pdf-btn {
+  width: 100%;
+}
+.natal-fr__pdf-error {
+  color: rgba(232, 139, 139, 0.9);
+  font-size: 13px;
+  text-align: center;
+  margin: 0;
+}
+
+/* Read-in-app link under the PDF button on the Natal screen.
+   Plain text-like link to keep the PDF button the primary action. */
+.natal-read-inapp {
+  background: none;
+  border: none;
+  color: var(--gold-light);
+  font-family: inherit;
+  font-size: 14px;
+  padding: 6px 0 0;
+  cursor: pointer;
+  text-align: center;
+  width: 100%;
+}
+.natal-read-inapp:hover {
+  filter: brightness(1.1);
+}
+
 .pr-row2__ic svg {
   width: 19px;
   height: 19px;

@@ -1774,6 +1774,15 @@ function NatalPdfCard({
         {showSpinner ? <IconSpinner /> : <IconDownload />}
         <span>{label}</span>
       </motion.button>
+      {entitled && hasChart && !busy && (
+        <button
+          type="button"
+          className={styles.pdfReadInapp ?? "natal-read-inapp"}
+          onClick={() => useAppStore.getState().setScreen("natal_full_reading")}
+        >
+          Открыть мой разбор в приложении ›
+        </button>
+      )}
       {generating && (
         <p className={styles.pdfHint} aria-live="polite">
           Собираем вашу карту со звёзд — это занимает 1–2 минуты. Можно
