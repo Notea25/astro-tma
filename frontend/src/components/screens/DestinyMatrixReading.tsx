@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { ApiError, destinyApi, destinyV3Api, paymentsApi } from "@/services/api";
 import WebApp from "@twa-dev/sdk";
 import { usePayment } from "@/hooks/usePayment";
@@ -156,7 +156,10 @@ export function DestinyMatrixReading() {
   // Universal tap target — works for octagram nodes AND for cells in the
   // Purposes/Channels tables below.
   const [activeTap, setActiveTap] = useState<ActiveTap | null>(null);
-  const [showCalcAnim, setShowCalcAnim] = useState(true);
+  // Calc animation is intro-only — it plays on the FIRST landing and is
+  // suppressed on every subsequent re-mount (e.g. user tapped another tab
+  // and came back). React Query keeps `reading` alive across unmounts.
+  const [showCalcAnim, setShowCalcAnim] = useState(false);
   const [isPdfDownloading, setIsPdfDownloading] = useState(false);
   const [pdfDownloadError, setPdfDownloadError] = useState<string | null>(null);
   // Card-payment sheet — opened from either upsell. We keep it at the
@@ -186,20 +189,38 @@ export function DestinyMatrixReading() {
     });
   };
 
-  const calcMutation = useMutation({
-    mutationFn: destinyApi.calculate,
-    onSuccess: () => {
-      impact("medium");
-      window.setTimeout(() => setShowCalcAnim(false), 600);
-    },
+  // The matrix is a pure function of birth_date — once computed, it never
+  // changes. Cache forever in React Query so switching tabs and coming
+  // back is instant (no LLM hits, no spinner, no "calculate again").
+  const {
+    data: reading,
+    isPending: calcIsPending,
+    isError: calcIsError,
+    error: calcError,
+    refetch: refetchCalc,
+    isFetching: calcIsFetching,
+  } = useQuery({
+    queryKey: ["destiny-matrix", "calculate"],
+    queryFn: destinyApi.calculate,
+    staleTime: Infinity,
+    gcTime: 1000 * 60 * 60,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: 1,
   });
 
+  // Play the intro «Расшифровываем арканы…» animation exactly once per
+  // session — on the first successful load. Re-mounting the screen (tab
+  // switch and back) hits cache → no replay.
+  const introPlayed = useRef(false);
   useEffect(() => {
-    calcMutation.mutate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const reading = calcMutation.data;
+    if (!reading || introPlayed.current) return;
+    introPlayed.current = true;
+    impact("medium");
+    setShowCalcAnim(true);
+    const t = window.setTimeout(() => setShowCalcAnim(false), 600);
+    return () => window.clearTimeout(t);
+  }, [reading, impact]);
 
   const { data: arcanaData, isFetching: arcanaFetching } = useQuery({
     queryKey: ["destiny-matrix", "arcana", activeTap?.num],
@@ -213,7 +234,7 @@ export function DestinyMatrixReading() {
   const handlePurchase = async () => {
     impact("medium");
     const ok = await purchase("destiny_matrix_full");
-    if (ok) calcMutation.mutate();
+    if (ok) void refetchCalc();
   };
 
   const handleDownloadPdf = async () => {
@@ -273,32 +294,30 @@ export function DestinyMatrixReading() {
       </div>
 
       <div className="screen-content destiny-reading__content">
-        {(showCalcAnim || calcMutation.isPending) && (
+        {(showCalcAnim || (calcIsPending && calcIsFetching)) && (
           <div className="destiny-reading__calc">
             <div className="destiny-reading__calc-glow" />
-            <p>{calcMutation.isPending ? "Считаем вашу матрицу…" : "Расшифровываем арканы…"}</p>
+            <p>{calcIsPending ? "Считаем вашу матрицу…" : "Расшифровываем арканы…"}</p>
           </div>
         )}
 
-        {calcMutation.isError && (
+        {calcIsError && (
           <div className="destiny-reading__error">
             <p>
               Не удалось рассчитать матрицу.
-              {calcMutation.error instanceof Error
-                ? ` ${calcMutation.error.message}`
-                : ""}
+              {calcError instanceof Error ? ` ${calcError.message}` : ""}
             </p>
             <button
               type="button"
               className="btn-ghost"
-              onClick={() => calcMutation.mutate()}
+              onClick={() => void refetchCalc()}
             >
               Повторить
             </button>
           </div>
         )}
 
-        {reading && !showCalcAnim && !calcMutation.isPending && (
+        {reading && !showCalcAnim && (
           <>
             <motion.div
               initial={{ opacity: 0, y: -8 }}
