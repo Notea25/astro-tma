@@ -1750,7 +1750,7 @@ function NatalPdfCard({
   } else if (pdfPhase === "queued") {
     label = elapsedSec > 0 ? `В очереди… ${elapsedLabel}` : "В очереди…";
   } else if (pdfPhase === "processing") {
-    label = `Генерируем отчёт… ${elapsedLabel}`;
+    label = `Пишем ваш разбор… ${elapsedLabel}`;
   } else if (isDownloading) {
     label = "Готовим PDF…";
   } else if (entitled) {
@@ -1776,8 +1776,8 @@ function NatalPdfCard({
       </motion.button>
       {generating && (
         <p className={styles.pdfHint} aria-live="polite">
-          Это нормально — генерация занимает 1–2 минуты. Можно свернуть
-          приложение, отчёт будет ждать вас.
+          Собираем вашу карту со звёзд — это занимает 1–2 минуты. Можно
+          свернуть приложение, отчёт будет ждать вас.
         </p>
       )}
       {!entitled && hasChart && !paying && priceRub !== undefined && (

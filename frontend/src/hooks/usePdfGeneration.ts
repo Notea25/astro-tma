@@ -74,10 +74,14 @@ export function usePdfGeneration(): UsePdfGenerationResult {
           throw new Error(st.error || "Не удалось сгенерировать отчёт");
         }
       }
-      throw new Error("Генерация заняла слишком долго. Попробуйте ещё раз.");
+      throw new Error(
+        "Разбор пишется дольше обычного. Попробуйте ещё раз через минуту.",
+      );
     } catch (e) {
       setPhase("error");
-      setError(e instanceof Error ? e.message : "Ошибка генерации отчёта");
+      setError(
+        e instanceof Error ? e.message : "Не удалось подготовить отчёт",
+      );
     } finally {
       inflight.current = false;
     }
