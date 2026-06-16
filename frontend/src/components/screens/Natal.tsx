@@ -1169,6 +1169,34 @@ function getElementSummary(summary: NatalSummaryResponse | undefined): {
   };
 }
 
+function IconSpinner() {
+  // Inline rotating spinner — works inside the PDF button when the
+  // queue is busy. We use framer-motion's animate so the rotation
+  // survives React re-renders without CSS-class plumbing.
+  return (
+    <motion.svg
+      width="25"
+      height="25"
+      viewBox="0 0 25 25"
+      fill="none"
+      animate={{ rotate: 360 }}
+      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+      style={{ transformOrigin: "12.5px 12.5px" }}
+    >
+      <circle
+        cx="12.5"
+        cy="12.5"
+        r="9"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeDasharray="40 20"
+        opacity="0.85"
+      />
+    </motion.svg>
+  );
+}
+
 function IconDownload() {
   return (
     <svg width="25" height="25" viewBox="0 0 25 25" fill="none">
@@ -1689,6 +1717,29 @@ function NatalPdfCard({
   };
 
   const busy = isDownloading || paying;
+  // Generation-state visual feedback: phase ∈ {queued,processing} on
+  // a backend that can spend 90-150 s building the natal report. Static
+  // text alone reads as "frozen" — we layer (a) animated spinner,
+  // (b) elapsed timer that ticks in mm:ss, (c) progress hint sentence
+  // below the button so the user has something to read while waiting.
+  const generating = pdfPhase === "queued" || pdfPhase === "processing";
+  const showSpinner = generating || isDownloading || paying;
+  const [elapsedSec, setElapsedSec] = useState(0);
+  useEffect(() => {
+    if (!generating) {
+      setElapsedSec(0);
+      return;
+    }
+    const startedAt = Date.now();
+    const id = window.setInterval(() => {
+      setElapsedSec(Math.floor((Date.now() - startedAt) / 1000));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [generating]);
+  const elapsedLabel = `${Math.floor(elapsedSec / 60)}:${String(
+    elapsedSec % 60,
+  ).padStart(2, "0")}`;
+
   let label: string;
   if (!hasChart) {
     label = "Сначала заполните данные рождения";
@@ -1697,9 +1748,9 @@ function NatalPdfCard({
   } else if (paying) {
     label = "Открываем оплату…";
   } else if (pdfPhase === "queued") {
-    label = "В очереди…";
+    label = elapsedSec > 0 ? `В очереди… ${elapsedLabel}` : "В очереди…";
   } else if (pdfPhase === "processing") {
-    label = "Генерируем отчёт…";
+    label = `Генерируем отчёт… ${elapsedLabel}`;
   } else if (isDownloading) {
     label = "Готовим PDF…";
   } else if (entitled) {
@@ -1720,9 +1771,15 @@ function NatalPdfCard({
         aria-busy={busy}
         whileTap={{ scale: busy || !hasChart ? 1 : 0.98 }}
       >
-        <IconDownload />
+        {showSpinner ? <IconSpinner /> : <IconDownload />}
         <span>{label}</span>
       </motion.button>
+      {generating && (
+        <p className={styles.pdfHint} aria-live="polite">
+          Это нормально — генерация занимает 1–2 минуты. Можно свернуть
+          приложение, отчёт будет ждать вас.
+        </p>
+      )}
       {!entitled && hasChart && !paying && priceRub !== undefined && (
         <button
           type="button"
