@@ -669,8 +669,8 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .aspect-row.detail-card p {{ color: {TEXT}; font-size: 11.5px; line-height: 1.5; }}
 .reading {{ padding-right: 4mm; }}
 .reading-quote {{ text-align: center; color: {TEXT_DIM}; font: italic 14px "DejaVu Serif", Georgia, serif; margin: 8mm 0 9mm; }}
-.reading h3 {{ color: {GOLD}; font-size: 17px; letter-spacing: 1.5px; margin: 0 0 3mm; }}
-.reading p {{ font-size: 13.5px; line-height: 1.7; margin: 0 0 5.5mm; }}
+.reading h3 {{ color: {GOLD}; font-family: "DejaVu Serif", Georgia, serif; font-size: 22px; font-weight: 500; letter-spacing: 0.01em; line-height: 1.3; text-transform: none; margin: 0 0 2.2mm; }}
+.reading p {{ font-size: 17px; line-height: 1.72; margin: 0 0 6.4mm; color: {TEXT}; }}
 .final {{ display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 18mm; }}
 .final .mark {{ margin-bottom: 8mm; }}
 .final-hero {{ display: flex; flex-direction: column; align-items: center; margin-bottom: 8mm; }}
