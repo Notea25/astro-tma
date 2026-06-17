@@ -115,9 +115,7 @@ export function SynastryReport({ result }: Props) {
           >
             ✦ Портрет отношений
           </div>
-          <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.55, fontSize: 14 }}>
-            {result.summary_ru}
-          </p>
+          <p className="syn-summary__text">{result.summary_ru}</p>
         </div>
       )}
 
