@@ -594,8 +594,8 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .cards-3 {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm; }}
 .grid-2 {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 4.5mm; }}
 .card {{ background: {PANEL}; border: 1px solid {BORDER}; border-radius: 8px; padding: 5mm 6mm; min-height: 39mm; }}
-.card h3 {{ margin: 0; color: {TEXT}; font-size: 13.5px; line-height: 1.25; }}
-.card p {{ margin: 3mm 0 0; font-size: 10.4px; line-height: 1.34; color: {TEXT}; }}
+.card h3 {{ margin: 0; color: {TEXT}; font-size: 15px; line-height: 1.3; }}
+.card p {{ margin: 3mm 0 0; font-size: 12px; line-height: 1.55; color: {TEXT}; }}
 .card-icon {{ color: {GOLD}; font-size: 25px; margin-bottom: 4mm; }}
 .card-meta {{ color: {TEXT_DIM}; font-size: 10px; letter-spacing: .8px; text-transform: uppercase; margin-top: 1.5mm; }}
 .mini-rule {{ width: 14mm; height: 1px; margin-top: 3mm; background: {GOLD_DIM}; }}
@@ -630,8 +630,8 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .tag {{ border: 1px solid rgba(224,91,48,.35); color: #d99072; background: rgba(224,91,48,.13); border-radius: 999px; padding: 1.5mm 5mm; font-size: 11px; }}
 .zero-elements {{ margin-top: 7mm; display: grid; gap: 3.5mm; }}
 .zero-element-card {{ min-height: auto; padding: 4mm 5mm; background: {PANEL_DARK}; }}
-.zero-element-card h3 {{ font-size: 13px; margin-bottom: 2mm; }}
-.zero-element-card p {{ font-size: 11px; line-height: 1.38; color: {TEXT_DIM}; margin: 0; }}
+.zero-element-card h3 {{ font-size: 14px; margin-bottom: 2mm; }}
+.zero-element-card p {{ font-size: 12px; line-height: 1.55; color: {TEXT_DIM}; margin: 0; }}
 .planet-card {{ display: flex; flex-wrap: wrap; align-items: center; }}
 .planet-card .card-icon {{ font-size: 22px; color: var(--planet-color); margin: 0 4mm 0 0; flex: 0 0 auto; }}
 .planet-card > h3 {{ margin: 0; flex: 1 1 auto; }}
@@ -639,7 +639,7 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .planet-card .mini-rule {{ flex-basis: 100%; margin-top: 3mm; }}
 .planet-card > p {{ flex-basis: 100%; }}
 .detail-card {{ min-height: auto; margin-bottom: 3mm; }}
-.detail-card p {{ font-size: 10.6px; line-height: 1.36; color: {TEXT}; }}
+.detail-card p {{ font-size: 12px; line-height: 1.55; color: {TEXT}; }}
 .detail-card.continuation h3::after {{ content: " · продолжение"; color: {TEXT_DIM}; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 12px; }}
 .retro {{ display: inline-block; margin-left: 3mm; padding: 1mm 3mm; border: 1px solid {GOLD_DIM}; border-radius: 999px; color: {GOLD}; font-size: 11px; letter-spacing: 1px; }}
 .houses-grid {{ display: grid; grid-template-columns: 1fr; gap: 0; }}
@@ -652,8 +652,8 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .house-label {{ color: {TEXT_DIM}; font-size: 10.5px; letter-spacing: 1.4px; text-transform: uppercase; }}
 .house-label::before {{ content: "· "; }}
 .house-axis {{ font-weight: 700; }}
-.house-card p {{ margin-top: 3mm; font-size: 11px; line-height: 1.34; }}
-.house-card.detail-card p {{ font-size: 10.2px; line-height: 1.34; }}
+.house-card p {{ margin-top: 3mm; font-size: 12.5px; line-height: 1.55; }}
+.house-card.detail-card p {{ font-size: 12px; line-height: 1.5; }}
 .metrics {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 4mm; margin: 8mm 0 7mm; }}
 .metric {{ text-align: center; background: {PANEL}; border: 1px solid {BORDER}; border-radius: 7px; padding: 4mm 0 3.5mm; }}
 .metric strong {{ color: var(--metric-color, {GOLD}); display: block; font: 22px "DejaVu Serif", Georgia, serif; }}
@@ -662,15 +662,15 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .aspect-group h3 {{ color: var(--aspect-color); font-size: 15px; letter-spacing: 1.2px; text-transform: uppercase; margin: 0 0 2.5mm; }}
 .aspect-group h3 em {{ color: {TEXT_DIM}; text-transform: none; font-size: 11.5px; letter-spacing: 0; margin-left: 3mm; }}
 .aspect-row {{ padding: 3mm 4mm; background: {PANEL}; border: 1px solid {BORDER}; border-radius: 7px; break-inside: avoid; }}
-.aspect-title {{ display: flex; flex-wrap: nowrap; align-items: flex-start; justify-content: space-between; gap: 4mm; color: {TEXT}; font-size: 13.5px; line-height: 1.25; }}
+.aspect-title {{ display: flex; flex-wrap: nowrap; align-items: flex-start; justify-content: space-between; gap: 4mm; color: {TEXT}; font-size: 14.5px; line-height: 1.3; }}
 .aspect-title .aspect-name {{ flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
-.orb {{ flex: 0 0 auto; color: {TEXT_DIM}; white-space: nowrap; font-size: 11.5px; }}
-.aspect-row p {{ display: block; margin: 2.5mm 0 0; color: {TEXT_DIM}; line-height: 1.32; font-size: 12.2px; }}
-.aspect-row.detail-card p {{ color: {TEXT}; font-size: 9.8px; line-height: 1.3; }}
+.orb {{ flex: 0 0 auto; color: {TEXT_DIM}; white-space: nowrap; font-size: 12px; }}
+.aspect-row p {{ display: block; margin: 2.5mm 0 0; color: {TEXT_DIM}; line-height: 1.55; font-size: 13px; }}
+.aspect-row.detail-card p {{ color: {TEXT}; font-size: 11.5px; line-height: 1.5; }}
 .reading {{ padding-right: 4mm; }}
-.reading-quote {{ text-align: center; color: {TEXT_DIM}; font: italic 13px "DejaVu Serif", Georgia, serif; margin: 8mm 0 9mm; }}
-.reading h3 {{ color: {GOLD}; font-size: 15.5px; letter-spacing: 1.5px; margin: 0 0 2.5mm; }}
-.reading p {{ font-size: 11.5px; line-height: 1.4; margin: 0 0 5mm; }}
+.reading-quote {{ text-align: center; color: {TEXT_DIM}; font: italic 14px "DejaVu Serif", Georgia, serif; margin: 8mm 0 9mm; }}
+.reading h3 {{ color: {GOLD}; font-size: 17px; letter-spacing: 1.5px; margin: 0 0 3mm; }}
+.reading p {{ font-size: 13.5px; line-height: 1.7; margin: 0 0 5.5mm; }}
 .final {{ display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 18mm; }}
 .final .mark {{ margin-bottom: 8mm; }}
 .final-hero {{ display: flex; flex-direction: column; align-items: center; margin-bottom: 8mm; }}
@@ -679,9 +679,9 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .glossary-grid {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 5mm; width: 170mm; }}
 .glossary-card {{ background: {PANEL}; border: 1px solid {BORDER}; border-radius: 8px; padding: 7mm 6mm 6mm; min-height: 48mm; text-align: left; position: relative; }}
 .glossary-glyph {{ color: {GOLD}; font-size: 26px; line-height: 1; margin-bottom: 4mm; font-family: "DejaVu Serif", Georgia, serif; }}
-.glossary-card h3 {{ color: {TEXT}; font-size: 14px; margin: 0; letter-spacing: 1px; }}
+.glossary-card h3 {{ color: {TEXT}; font-size: 15px; margin: 0; letter-spacing: 1px; }}
 .glossary-card .mini-rule {{ width: 12mm; height: 1px; margin: 3mm 0 4mm; background: {GOLD_DIM}; }}
-.glossary-card p {{ margin: 0; font-size: 11px; line-height: 1.42; color: {TEXT_DIM}; }}
+.glossary-card p {{ margin: 0; font-size: 12px; line-height: 1.55; color: {TEXT_DIM}; }}
 """
 
 
