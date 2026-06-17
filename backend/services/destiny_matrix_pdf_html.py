@@ -155,7 +155,10 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 /* Octagram page */
 .octa-wrap {{ width: 168mm; height: 168mm; margin: 6mm auto 6mm; background: {BG}; display: grid; place-items: center; }}
 .octa-svg {{ width: 100%; height: 100%; display: block; }}
-.octa-caption {{ text-align: center; color: {TEXT_DIM}; font: italic 12px "DejaVu Serif", Georgia, serif; margin-top: 2mm; }}
+.octa-caption {{ color: {TEXT_DIM}; font: 11.5px/1.55 "DejaVu Serif", Georgia, serif; margin: 3mm 6mm 0; }}
+.octa-caption p {{ margin: 0 0 2.5mm; text-align: left; }}
+.octa-caption p:last-child {{ margin-bottom: 0; }}
+.octa-caption strong {{ color: {GOLD}; font-weight: 600; }}
 .octa-anchors {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 5mm; margin-top: 8mm; }}
 .octa-anchor {{ background: {PANEL}; border: 1px solid {BORDER}; border-radius: 7px; padding: 5mm; text-align: center; }}
 .octa-anchor .num {{ color: {GOLD}; font: 23px "DejaVu Serif", Georgia, serif; }}
@@ -392,6 +395,25 @@ def _octagram_svg(positions: dict[str, Any]) -> str:
         f'marker-start="url(#dm-arr-m)" marker-end="url(#dm-arr-m)"/>'
     )
 
+    # ── Diagonal-arrow labels: «мужская / женская линия» rendered along
+    #    the arrows so the reader can identify what they look at without
+    #    consulting the caption. Slight offset off the line so the text
+    #    doesn't overlap the channel-dots near the centre.
+    p.append(
+        f'<text x="{CX - 50:.1f}" y="{CY - 52:.1f}" '
+        f'transform="rotate(45 {CX - 50:.1f} {CY - 52:.1f})" '
+        f'text-anchor="middle" fill="{FATHER}" '
+        f'font-size="13" font-weight="500" letter-spacing="0.06em" '
+        f'font-family="DejaVu Serif, Georgia, serif">МУЖСКАЯ ЛИНИЯ · РОД ОТЦА</text>'
+    )
+    p.append(
+        f'<text x="{CX - 50:.1f}" y="{CY + 64:.1f}" '
+        f'transform="rotate(-45 {CX - 50:.1f} {CY + 64:.1f})" '
+        f'text-anchor="middle" fill="{MOTHER}" '
+        f'font-size="13" font-weight="500" letter-spacing="0.06em" '
+        f'font-family="DejaVu Serif, Georgia, serif">ЖЕНСКАЯ ЛИНИЯ · РОД МАТЕРИ</text>'
+    )
+
     # ── Dashed money/love diagonal RIGHT_2 → BOT_2 through cross_p ──
     p.append(
         f'<path d="M {RIGHT_2[0]} {RIGHT_2[1]} L {BOT_2[0]} {BOT_2[1]}" '
@@ -483,6 +505,37 @@ def _octagram_svg(positions: dict[str, Any]) -> str:
     # Centre node (slightly smaller — main-md)
     _main((CX, CY), pers.get("center"), 22.0, CENTER_GOLD)
 
+    # ── Node labels (rendered LAST so they sit above the circles)
+    # 4 cardinal points of the personality diamond + 4 ancestral corners.
+    LABEL_COLOR = "rgba(232, 200, 98, 0.78)"
+    LABEL_RED = "rgba(224, 123, 106, 0.85)"
+
+    def _label(x: float, y: float, anchor: str, color: str, text: str) -> None:
+        p.append(
+            f'<text x="{x:.1f}" y="{y:.1f}" text-anchor="{anchor}" '
+            f'fill="{color}" font-size="13" font-weight="500" '
+            f'letter-spacing="0.08em" '
+            f'font-family="DejaVu Serif, Georgia, serif">{text}</text>'
+        )
+
+    # Cardinal nodes — labelled OUTSIDE the diamond corners.
+    _label(N_TOP[0], N_TOP[1] - 38, "middle", LABEL_COLOR, "ТАЛАНТ · МЕСЯЦ")
+    _label(N_RIGHT[0] + 32, N_RIGHT[1] + 5, "start", LABEL_COLOR, "ФИНАНСЫ")
+    _label(N_RIGHT[0] + 32, N_RIGHT[1] + 20, "start", LABEL_COLOR, "ГОД")
+    _label(N_BOTTOM[0], N_BOTTOM[1] + 44, "middle", LABEL_RED, "КАРМИЧЕСКИЙ УРОК")
+    _label(N_LEFT[0] - 32, N_LEFT[1] + 5, "end", LABEL_COLOR, "ХАРАКТЕР")
+    _label(N_LEFT[0] - 32, N_LEFT[1] + 20, "end", LABEL_COLOR, "ДЕНЬ")
+
+    # Ancestral-square corners — labelled OUTSIDE the diagonal corners.
+    _label(N_TL[0] - 4, N_TL[1] - 30, "end", LABEL_COLOR, "РОД ОТЦА")
+    _label(N_TL[0] - 4, N_TL[1] - 15, "end", LABEL_COLOR, "талант")
+    _label(N_TR[0] + 4, N_TR[1] - 30, "start", LABEL_COLOR, "РОД МАТЕРИ")
+    _label(N_TR[0] + 4, N_TR[1] - 15, "start", LABEL_COLOR, "талант")
+    _label(N_BR[0] + 4, N_BR[1] + 26, "start", LABEL_RED, "РОД ОТЦА")
+    _label(N_BR[0] + 4, N_BR[1] + 41, "start", LABEL_RED, "карма")
+    _label(N_BL[0] - 4, N_BL[1] + 26, "end", LABEL_RED, "РОД МАТЕРИ")
+    _label(N_BL[0] - 4, N_BL[1] + 41, "end", LABEL_RED, "карма")
+
     p.append("</svg>")
     return "".join(p)
 
@@ -557,9 +610,20 @@ def _octagram_page(positions: dict[str, Any]) -> str:
     )
     body += f'<div class="octa-wrap">{_octagram_svg(positions)}</div>'
     body += (
-        '<div class="octa-caption">Тёплое золото — личностный ромб (день, месяц, год, '
-        'кармический низ + центр). Голубой — родовой квадрат. Синяя стрелка — мужская '
-        'линия, красная — женская.</div>'
+        '<div class="octa-caption">'
+        '<p><strong>Личностный ромб</strong> — четыре кардинальные точки + центр. '
+        'Слева <strong>День</strong> (характер, как вас видят), сверху '
+        '<strong>Месяц</strong> (главный талант), справа <strong>Год</strong> '
+        '(материальная сфера, финансы), снизу <strong>Карма</strong> '
+        '(главный кармический урок жизни). В центре — настоящий характер.</p>'
+        '<p><strong>Родовой квадрат</strong> — углы, развёрнутые на 45°. '
+        'Верхние два — родовые таланты (отец слева-вверху, мать справа-вверху), '
+        'нижние — родовая карма (отец справа-внизу, мать слева-внизу).</p>'
+        '<p><strong>Синяя стрелка</strong> — мужская линия (род отца, диагональ '
+        'талант→карма по отцовской линии). <strong>Красная стрелка</strong> — '
+        'женская линия (род матери). Числа на лучах между узлами — каналы '
+        'талантов, денег, родителей и партнёрства.</p>'
+        '</div>'
     )
     pers = positions.get("personality", {})
     anchors = [
