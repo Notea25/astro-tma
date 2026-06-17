@@ -106,6 +106,43 @@ function canUseTelegramOpenLink(): boolean {
   return Boolean(WebApp.initData) && typeof WebApp.openLink === "function";
 }
 
+const BOT_USERNAME = (
+  (import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined) ??
+  "astrologiyatut_bot"
+)
+  .trim()
+  .replace(/^@/, "");
+
+/**
+ * After the backend delivers a PDF into the user's chat with the bot,
+ * Telegram WebView doesn't trigger a file download — it shows an inline
+ * preview when the user taps the document in chat. Most users don't
+ * realise that's where the file went. So we prompt them: open the chat
+ * now and they'll see the file immediately, with the standard «...» →
+ * «Сохранить в файлы» path one tap away.
+ */
+function promptOpenBotChat(message: string): void {
+  const open = () => {
+    const url = `https://t.me/${BOT_USERNAME}`;
+    if (typeof WebApp.openTelegramLink === "function") {
+      WebApp.openTelegramLink(url);
+    } else if (typeof WebApp.openLink === "function") {
+      WebApp.openLink(url);
+    } else {
+      window.open(url, "_blank", "noopener");
+    }
+  };
+
+  if (typeof WebApp.showConfirm === "function") {
+    WebApp.showConfirm(message, (confirmed: boolean) => {
+      if (confirmed) open();
+    });
+    return;
+  }
+
+  if (window.confirm(message)) open();
+}
+
 function shouldUseLocalDevFixtures(): boolean {
   return import.meta.env.DEV && !WebApp.initData;
 }
@@ -675,7 +712,9 @@ export const natalApi = {
     if (canUseTelegramOpenLink()) {
       try {
         await request<NatalPdfSendResponse>("POST", "/natal/pdf-send");
-        WebApp.showAlert?.("PDF-отчёт отправлен вам в чат с ботом.");
+        promptOpenBotChat(
+          "PDF-отчёт готов в чате с ботом. Открыть чат, чтобы сохранить файл?",
+        );
       } catch (error) {
         if (!(error instanceof ApiError) || error.status !== 404) {
           throw error;
@@ -1212,7 +1251,9 @@ export const destinyV3Api = {
           "POST",
           "/destiny-matrix/v3/pdf-send",
         );
-        WebApp.showAlert?.("PDF-разбор отправлен вам в чат с ботом.");
+        promptOpenBotChat(
+          "PDF-разбор готов в чате с ботом. Открыть чат, чтобы сохранить файл?",
+        );
       } catch (error) {
         if (!(error instanceof ApiError) || error.status !== 404) throw error;
         const blob = await requestBlob("/destiny-matrix/v3/pdf");
@@ -1262,7 +1303,9 @@ export const destinyApi = {
     if (canUseTelegramOpenLink()) {
       try {
         await request<NatalPdfSendResponse>("POST", "/destiny-matrix/pdf-send");
-        WebApp.showAlert?.("PDF-отчёт отправлен вам в чат с ботом.");
+        promptOpenBotChat(
+          "PDF-отчёт готов в чате с ботом. Открыть чат, чтобы сохранить файл?",
+        );
       } catch (error) {
         if (!(error instanceof ApiError) || error.status !== 404) {
           throw error;
