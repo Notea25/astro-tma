@@ -26,8 +26,18 @@ def _ensure_aware(dt: datetime) -> datetime:
 
 
 def period_start(dt: datetime, period_type: str) -> datetime:
+    """Local-time start of the period containing `dt`.
+
+    Daily   → 00:00 of the same local day.
+    Weekly  → 00:00 of the local Monday of that ISO week. A spread drawn
+              on Wednesday and one drawn on Sunday share the same period
+              and reset together on the following Monday 00:00 local.
+    """
     local = _ensure_aware(dt).astimezone(APP_TZ)
     start = local.replace(hour=0, minute=0, second=0, microsecond=0)
+    if period_type == WEEKLY:
+        # weekday(): Mon=0, Sun=6. Roll back to Monday 00:00 local.
+        start -= timedelta(days=start.weekday())
     return start.astimezone(UTC)
 
 

@@ -327,6 +327,7 @@ export function Tarot() {
                 spreadType={selectedSpread}
                 cards={reading.cards}
                 nextResetAt={reading.next_reset_at}
+                reusedExisting={reading.reused_existing}
                 onAllFlipped={() => setAllFlipped(true)}
               />
               {allFlipped && (
