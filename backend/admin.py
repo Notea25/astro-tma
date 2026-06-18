@@ -27,7 +27,6 @@ from db.models import (
     SubscriptionPlan,
     SubscriptionStatus,
     SupportTicket,
-    SupportTicketStatus,
     TarotCard,
     TarotPositionMeaning,
     TarotReading,
@@ -84,9 +83,14 @@ class UserAdmin(ModelView, model=User):
     name_plural = "Пользователи"
     icon = "fa-solid fa-users"
     column_list = [
-        User.id, User.tg_first_name, User.tg_username,
-        User.sun_sign, User.birth_city, User.tg_is_premium,
-        "app_premium", User.created_at,
+        User.id,
+        User.tg_first_name,
+        User.tg_username,
+        User.sun_sign,
+        User.birth_city,
+        User.tg_is_premium,
+        "app_premium",
+        User.created_at,
     ]
     column_labels = {
         "app_premium": "Premium доступ",
@@ -107,15 +111,19 @@ class UserAdmin(ModelView, model=User):
     def list_query(self, request: Request):
         # Preload subscriptions so the «Premium доступ» formatter
         # doesn't issue a SELECT per row (N+1 → one extra query).
-        return super().list_query(request).options(
-            selectinload(User.subscriptions),
+        return (
+            super()
+            .list_query(request)
+            .options(
+                selectinload(User.subscriptions),
+            )
         )
 
     @action(
         name="grant_premium_year",
         label="Выдать Premium на 1 год",
         confirmation_message="Выдать Premium на 365 дней выбранным пользователям? "
-                             "Если активная подписка уже есть — продлим её на год.",
+        "Если активная подписка уже есть — продлим её на год.",
         add_in_detail=True,
         add_in_list=True,
     )
@@ -142,20 +150,25 @@ class UserAdmin(ModelView, model=User):
                 sub = result.scalar_one_or_none()
                 if sub and sub.expires_at > now:
                     sub.expires_at = sub.expires_at + extension
-                    log.info("admin.premium.extended", user_id=uid,
-                             new_expires=sub.expires_at.isoformat())
-                else:
-                    session.add(Subscription(
+                    log.info(
+                        "admin.premium.extended",
                         user_id=uid,
-                        plan=SubscriptionPlan.PREMIUM_YEAR,
-                        status=SubscriptionStatus.ACTIVE,
-                        stars_paid=0,
-                        tg_payment_charge_id=f"admin-grant-{uid}-{int(now.timestamp())}",
-                        starts_at=now,
-                        expires_at=now + extension,
-                        is_trial=True,
-                        trial_reason="admin_grant",
-                    ))
+                        new_expires=sub.expires_at.isoformat(),
+                    )
+                else:
+                    session.add(
+                        Subscription(
+                            user_id=uid,
+                            plan=SubscriptionPlan.PREMIUM_YEAR,
+                            status=SubscriptionStatus.ACTIVE,
+                            stars_paid=0,
+                            tg_payment_charge_id=f"admin-grant-{uid}-{int(now.timestamp())}",
+                            starts_at=now,
+                            expires_at=now + extension,
+                            is_trial=True,
+                            trial_reason="admin_grant",
+                        )
+                    )
                     log.info("admin.premium.granted", user_id=uid, days=365)
             await session.commit()
         return _redirect_back(request)
@@ -182,8 +195,7 @@ class UserAdmin(ModelView, model=User):
                 )
                 for sub in result.scalars():
                     sub.status = SubscriptionStatus.CANCELLED
-                    log.info("admin.premium.revoked",
-                             user_id=uid, subscription_id=sub.id)
+                    log.info("admin.premium.revoked", user_id=uid, subscription_id=sub.id)
             await session.commit()
         return _redirect_back(request)
 
@@ -198,15 +210,21 @@ def _redirect_back(request: Request) -> RedirectResponse:
     referer = request.headers.get("referer")
     if referer:
         return RedirectResponse(referer, status_code=302)
-    return RedirectResponse(request.url_for("admin:list", identity="user"),
-                            status_code=302)
+    return RedirectResponse(request.url_for("admin:list", identity="user"), status_code=302)
 
 
 class NatalChartAdmin(ModelView, model=NatalChart):
     name = "Натальная карта"
     name_plural = "Натальные карты"
     icon = "fa-solid fa-circle-nodes"
-    column_list = [NatalChart.id, NatalChart.user_id, NatalChart.sun_sign, NatalChart.moon_sign, NatalChart.ascendant_sign, NatalChart.created_at]
+    column_list = [
+        NatalChart.id,
+        NatalChart.user_id,
+        NatalChart.sun_sign,
+        NatalChart.moon_sign,
+        NatalChart.ascendant_sign,
+        NatalChart.created_at,
+    ]
     column_sortable_list = [NatalChart.created_at]
     can_create = False
     can_edit = False
@@ -216,7 +234,13 @@ class InterpretationAdmin(ModelView, model=Interpretation):
     name = "Интерпретация"
     name_plural = "Интерпретации"
     icon = "fa-solid fa-book-open"
-    column_list = [Interpretation.id, Interpretation.planet, Interpretation.sign, Interpretation.house, Interpretation.aspect]
+    column_list = [
+        Interpretation.id,
+        Interpretation.planet,
+        Interpretation.sign,
+        Interpretation.house,
+        Interpretation.aspect,
+    ]
     column_searchable_list = [Interpretation.planet, Interpretation.sign]
     column_sortable_list = [Interpretation.planet, Interpretation.sign]
     can_create = True
@@ -229,7 +253,13 @@ class DailyHoroscopeAdmin(ModelView, model=DailyHoroscope):
     name = "Гороскоп"
     name_plural = "Гороскопы"
     icon = "fa-solid fa-star"
-    column_list = [DailyHoroscope.id, DailyHoroscope.sign, DailyHoroscope.date, DailyHoroscope.period, DailyHoroscope.created_at]
+    column_list = [
+        DailyHoroscope.id,
+        DailyHoroscope.sign,
+        DailyHoroscope.date,
+        DailyHoroscope.period,
+        DailyHoroscope.created_at,
+    ]
     column_searchable_list = [DailyHoroscope.sign]
     column_sortable_list = [DailyHoroscope.date, DailyHoroscope.sign]
     can_create = True
@@ -242,7 +272,13 @@ class TarotCardAdmin(ModelView, model=TarotCard):
     name = "Карта Таро"
     name_plural = "Карты Таро"
     icon = "fa-solid fa-cards-blank"
-    column_list = [TarotCard.id, TarotCard.emoji, TarotCard.name_ru, TarotCard.arcana, TarotCard.number]
+    column_list = [
+        TarotCard.id,
+        TarotCard.emoji,
+        TarotCard.name_ru,
+        TarotCard.arcana,
+        TarotCard.number,
+    ]
     column_searchable_list = [TarotCard.name_ru, TarotCard.name_en]
     column_sortable_list = [TarotCard.arcana, TarotCard.number]
     can_create = True
@@ -255,7 +291,13 @@ class TarotPositionMeaningAdmin(ModelView, model=TarotPositionMeaning):
     name = "Позиция расклада"
     name_plural = "Позиции расклада"
     icon = "fa-solid fa-layer-group"
-    column_list = [TarotPositionMeaning.id, TarotPositionMeaning.card_id, TarotPositionMeaning.spread_type, TarotPositionMeaning.position, TarotPositionMeaning.position_name_ru]
+    column_list = [
+        TarotPositionMeaning.id,
+        TarotPositionMeaning.card_id,
+        TarotPositionMeaning.spread_type,
+        TarotPositionMeaning.position,
+        TarotPositionMeaning.position_name_ru,
+    ]
     column_searchable_list = [TarotPositionMeaning.spread_type]
     column_sortable_list = [TarotPositionMeaning.spread_type, TarotPositionMeaning.position]
     can_create = True
@@ -268,7 +310,12 @@ class TarotReadingAdmin(ModelView, model=TarotReading):
     name = "Расклад"
     name_plural = "Расклады"
     icon = "fa-solid fa-rectangle-history"
-    column_list = [TarotReading.id, TarotReading.user_id, TarotReading.spread_type, TarotReading.created_at]
+    column_list = [
+        TarotReading.id,
+        TarotReading.user_id,
+        TarotReading.spread_type,
+        TarotReading.created_at,
+    ]
     column_sortable_list = [TarotReading.created_at]
     can_create = False
     can_edit = False
@@ -377,7 +424,8 @@ class SubscriptionAdmin(ModelView, model=Subscription):
                 if row.payment_provider != "yukassa" or not row.yukassa_payment_id:
                     log.info(
                         "admin.refund_sub.skipped_non_yukassa",
-                        subscription_id=pk, provider=row.payment_provider,
+                        subscription_id=pk,
+                        provider=row.payment_provider,
                     )
                     continue
                 if row.status == SubscriptionStatus.CANCELLED:
@@ -509,7 +557,8 @@ class PurchaseAdmin(ModelView, model=Purchase):
                 if row.payment_provider != "yukassa" or not row.yukassa_payment_id:
                     log.info(
                         "admin.refund.skipped_non_yukassa",
-                        purchase_id=pk, provider=row.payment_provider,
+                        purchase_id=pk,
+                        provider=row.payment_provider,
                     )
                     continue
                 if row.status == PurchaseStatus.REFUNDED:
@@ -518,7 +567,8 @@ class PurchaseAdmin(ModelView, model=Purchase):
                 if not row.rub_amount_kopecks:
                     log.warning(
                         "admin.refund.no_amount",
-                        purchase_id=pk, payment_id=row.yukassa_payment_id,
+                        purchase_id=pk,
+                        payment_id=row.yukassa_payment_id,
                     )
                     continue
 
@@ -641,10 +691,18 @@ def create_admin(app) -> Admin:
         base_url="/admin",
     )
     for view in [
-        UserAdmin, NatalChartAdmin, InterpretationAdmin,
-        DailyHoroscopeAdmin, TarotCardAdmin, TarotPositionMeaningAdmin,
-        TarotReadingAdmin, MacCardAdmin, MacReadingAdmin,
-        SubscriptionAdmin, PurchaseAdmin, SupportTicketAdmin,
+        UserAdmin,
+        NatalChartAdmin,
+        InterpretationAdmin,
+        DailyHoroscopeAdmin,
+        TarotCardAdmin,
+        TarotPositionMeaningAdmin,
+        TarotReadingAdmin,
+        MacCardAdmin,
+        MacReadingAdmin,
+        SubscriptionAdmin,
+        PurchaseAdmin,
+        SupportTicketAdmin,
     ]:
         admin.add_view(view)
     return admin

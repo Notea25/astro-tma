@@ -20,3 +20,5 @@ ssh_run.py
 # generated natal PDF artifacts
 natal-report.pdf
 *.pdf
+
+аfix.md
