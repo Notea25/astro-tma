@@ -7,11 +7,14 @@ renderer remains the route fallback.
 
 from __future__ import annotations
 
+import base64
 import html
 import math
 import re
 import time
 from datetime import datetime
+from functools import cache
+from pathlib import Path
 from typing import Any
 
 from core.logging import get_logger
@@ -52,6 +55,41 @@ WHEEL_BG = "#071029"
 TEXT = "#f4f0e8"
 TEXT_DIM = "#a9a1bb"
 BORDER = "rgba(214, 184, 90, .22)"
+_FONT_ASSET_DIR = Path(__file__).resolve().parents[1] / "assets" / "fonts"
+
+
+@cache
+def _font_data_uri(filename: str) -> str:
+    data = (_FONT_ASSET_DIR / filename).read_bytes()
+    encoded = base64.b64encode(data).decode("ascii")
+    return f"data:font/truetype;base64,{encoded}"
+
+
+@cache
+def _font_face_css() -> str:
+    return f"""
+@font-face {{
+  font-family: "Forum";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("{_font_data_uri("forum-regular.ttf")}") format("truetype");
+}}
+@font-face {{
+  font-family: "Source Serif";
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url("{_font_data_uri("source-serif-4-roman.ttf")}") format("truetype");
+}}
+@font-face {{
+  font-family: "Source Serif";
+  font-style: italic;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url("{_font_data_uri("source-serif-4-italic.ttf")}") format("truetype");
+}}
+"""
 
 ELEMENT_COLORS = {
     "fire": "#e05b30",
@@ -559,37 +597,43 @@ def _donut_svg(percentages: dict[str, int], dominant: str) -> str:
 
 
 def _css() -> str:
-    return f"""
-@page {{ size: A4; margin: 0; }}
-* {{ box-sizing: border-box; overflow-wrap: anywhere; }}
-html, body {{ margin: 0; padding: 0; background: {BG}; color: {TEXT}; }}
-body {{ font-family: "DejaVu Sans", Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
-.page {{ position: relative; display: block; width: 210mm; height: 297mm; overflow: hidden; padding: 22mm 18mm 17mm; background: {BG}; break-after: page; page-break-after: always; break-inside: avoid; }}
-.cover {{ display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 30mm; }}
-.mark {{ color: {GOLD}; font-size: 32px; margin-bottom: 34mm; line-height: 1; }}
-h1, h2, h3, .serif {{ font-family: "DejaVu Serif", Georgia, serif; font-weight: 400; }}
-h1 {{ margin: 0; color: {GOLD}; font-size: 34px; letter-spacing: 7px; text-transform: uppercase; }}
-.cover-subtitle {{ margin-top: 12mm; font: italic 16px "DejaVu Serif", Georgia, serif; color: {TEXT}; opacity: .92; }}
-.cover-name {{ margin-top: 36mm; font: italic 21px "DejaVu Serif", Georgia, serif; }}
-.cover-meta {{ margin-top: 10mm; color: {TEXT_DIM}; font-size: 13px; line-height: 1.72; }}
-.cover-points {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 19mm; margin-top: 6mm; width: 128mm; }}
-.cover-point .glyph {{ color: {GOLD}; font-size: 28px; line-height: 1; }}
-.cover-point .label {{ margin-top: 7mm; color: {TEXT_DIM}; font-size: 10.5px; letter-spacing: 3px; text-transform: uppercase; }}
-.cover-point .value {{ margin-top: 6mm; font: 15px "DejaVu Serif", Georgia, serif; }}
+    return f"""{_font_face_css()}
+	@page {{ size: A4; margin: 0; }}
+	* {{ box-sizing: border-box; overflow-wrap: anywhere; }}
+	:root {{
+	--pdf-font-title: "Forum", "Source Serif", Georgia, serif;
+	--pdf-font-body: "Source Serif", Georgia, "Times New Roman", serif;
+	--pdf-font-symbol: "Source Serif", "DejaVu Serif", "Noto Sans Symbols 2", "Noto Sans Symbols", "Noto Color Emoji", serif;
+	}}
+	html, body {{ margin: 0; padding: 0; background: {BG}; color: {TEXT}; }}
+	body {{ font-family: var(--pdf-font-body); -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
+	.page {{ position: relative; display: block; width: 210mm; height: 297mm; overflow: hidden; padding: 22mm 18mm 17mm; background: {BG}; break-after: page; page-break-after: always; break-inside: avoid; }}
+	.cover {{ display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 30mm; }}
+	.mark {{ color: {GOLD}; font-size: 32px; margin-bottom: 34mm; line-height: 1; }}
+	.mark, .cover-point .glyph, .card-icon, .dominant-symbol, .zodiac-dot, .glossary-glyph {{ font-family: var(--pdf-font-symbol); }}
+	h1, h2, h3, .serif {{ font-family: var(--pdf-font-title); font-weight: 400; }}
+	h1 {{ margin: 0; color: {GOLD}; font-size: 34px; letter-spacing: 7px; text-transform: uppercase; }}
+	.cover-subtitle {{ margin-top: 12mm; font: italic 16px var(--pdf-font-body); color: {TEXT}; opacity: .92; }}
+	.cover-name {{ margin-top: 36mm; font: italic 21px var(--pdf-font-body); }}
+	.cover-meta {{ margin-top: 10mm; color: {TEXT_DIM}; font-size: 13px; line-height: 1.72; }}
+	.cover-points {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 19mm; margin-top: 6mm; width: 128mm; }}
+	.cover-point .glyph {{ color: {GOLD}; font-size: 28px; line-height: 1; }}
+	.cover-point .label {{ margin-top: 7mm; color: {TEXT_DIM}; font-size: 10.5px; letter-spacing: 3px; text-transform: uppercase; }}
+	.cover-point .value {{ margin-top: 6mm; font: 15px var(--pdf-font-body); }}
 .cover-line {{ width: 32mm; height: 1px; background: {GOLD_DIM}; margin-top: 20mm; }}
 .cover-foot {{ margin-top: 8mm; color: #776f8c; font-size: 10px; letter-spacing: 3px; }}
 .section-head {{ margin-bottom: 4mm; }}
-.section-head-row {{ display: flex; justify-content: space-between; align-items: baseline; gap: 6mm; }}
-h2 {{ margin: 0; color: {GOLD}; font-size: 17px; letter-spacing: 3px; }}
-.rule {{ height: 1px; width: 170mm; background: rgba(214,184,90,.2); margin: 3mm 0 0; }}
-.section-head p {{ margin: 0; color: {TEXT_DIM}; font: italic 10.5px "DejaVu Serif", Georgia, serif; white-space: nowrap; }}
+	.section-head-row {{ display: flex; justify-content: space-between; align-items: baseline; gap: 6mm; }}
+	h2 {{ margin: 0; color: {GOLD}; font-size: 17px; letter-spacing: 3px; }}
+	.rule {{ height: 1px; width: 170mm; background: rgba(214,184,90,.2); margin: 3mm 0 0; }}
+	.section-head p {{ margin: 0; color: {TEXT_DIM}; font: italic 10.5px var(--pdf-font-body); white-space: nowrap; }}
 .section-aside {{ color: #807894; font-size: 12px; margin-top: 5mm; }}
 footer {{ position: absolute; bottom: 7mm; left: 0; right: 0; text-align: center; color: #6d6680; font-size: 10px; letter-spacing: 3px; }}
 footer span {{ letter-spacing: 1px; margin-left: 8px; }}
-.toc-list {{ margin-top: 22mm; }}
-.toc-row {{ display: grid; grid-template-columns: 12mm 1fr 14mm; align-items: center; min-height: 16mm; border-bottom: 1px solid rgba(255,255,255,.025); }}
-.toc-roman {{ color: {GOLD}; font: 15px "DejaVu Serif", Georgia, serif; }}
-.toc-title {{ font: 14px "DejaVu Serif", Georgia, serif; }}
+	.toc-list {{ margin-top: 22mm; }}
+	.toc-row {{ display: grid; grid-template-columns: 12mm 1fr 14mm; align-items: center; min-height: 16mm; border-bottom: 1px solid rgba(255,255,255,.025); }}
+	.toc-roman {{ color: {GOLD}; font: 15px var(--pdf-font-body); }}
+	.toc-title {{ font: 14px var(--pdf-font-body); }}
 .toc-page {{ color: {TEXT_DIM}; text-align: right; font-size: 13px; }}
 .cards-3 {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm; }}
 .grid-2 {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 4.5mm; }}
@@ -602,28 +646,29 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .key-card {{ text-align: center; min-height: 86mm; padding: 8mm 6mm 7mm; }}
 .key-card .card-icon {{ margin-bottom: 2mm; }}
 .key-card .zodiac-dot {{ margin: 5mm auto 3mm; width: 7mm; height: 7mm; border-radius: 50%; display: grid; place-items: center; color: white; font-size: 15px; }}
-.key-card h3 {{ font-size: 19px; }}
-.key-card .mini-rule {{ margin: 4mm auto 0; }}
-.key-card .quote {{ margin-top: 3mm; color: {TEXT_DIM}; font: italic 11px "DejaVu Serif", Georgia, serif; }}
+	.key-card h3 {{ font-size: 19px; }}
+	.key-card .mini-rule {{ margin: 4mm auto 0; }}
+	.key-card .quote {{ margin-top: 3mm; color: {TEXT_DIM}; font: italic 11px var(--pdf-font-body); }}
 .key-card p {{ text-align: center; color: {TEXT_DIM}; margin-top: 4mm; }}
 .dominant-card {{ margin-top: 8mm; border-left: 3px solid {GOLD}; min-height: 35mm; display: grid; grid-template-columns: 12mm 1fr; gap: 5mm; align-items: center; }}
 .dominant-symbol {{ font-size: 27px; color: var(--element-color); }}
 .dominant-card h3 {{ color: {GOLD}; font-size: 17px; }}
-.wheel-wrap {{ width: 164mm; height: 164mm; margin: 9mm auto 7mm; background: {WHEEL_BG}; display: flex; align-items: center; justify-content: center; }}
-.wheel-wrap svg {{ width: 100%; height: 100%; max-width: 100%; display: block; }}
-.wheel-svg {{ width: 100%; height: 100%; display: block; }}
+	.wheel-wrap {{ width: 164mm; height: 164mm; margin: 9mm auto 7mm; background: {WHEEL_BG}; display: flex; align-items: center; justify-content: center; }}
+	.wheel-wrap svg {{ width: 100%; height: 100%; max-width: 100%; display: block; }}
+	.wheel-svg {{ width: 100%; height: 100%; display: block; }}
+	.wheel-svg text {{ font-family: var(--pdf-font-symbol); }}
 .legend {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 3mm 24mm; width: 154mm; margin: 0 auto; color: {TEXT_DIM}; font-size: 11.5px; }}
 .legend-line {{ display: inline-block; width: 13mm; height: 1px; margin-right: 4mm; vertical-align: middle; background: currentColor; }}
-.elements-layout {{ display: grid; grid-template-columns: 78mm 1fr; gap: 9mm; align-items: center; margin-top: 10mm; }}
-.donut {{ width: 72mm; height: 72mm; transform: rotate(-90deg); }}
-.donut text {{ transform: rotate(90deg); transform-origin: 110px 110px; font-family: "DejaVu Serif", Georgia, serif; }}
+	.elements-layout {{ display: grid; grid-template-columns: 78mm 1fr; gap: 9mm; align-items: center; margin-top: 10mm; }}
+	.donut {{ width: 72mm; height: 72mm; transform: rotate(-90deg); }}
+	.donut text {{ transform: rotate(90deg); transform-origin: 110px 110px; font-family: var(--pdf-font-body); }}
 .donut-seg {{ fill: none; stroke-width: 38; transform: rotate(-90deg); transform-origin: 110px 110px; }}
 .donut-kicker {{ fill: #73b568; font-size: 11px; letter-spacing: 2px; }}
 .donut-label {{ fill: {GOLD}; font-size: 17px; }}
-.element-list {{ display: grid; gap: 3mm; }}
-.element-row {{ display: grid; grid-template-columns: 9mm 1fr 12mm; align-items: center; background: {PANEL}; border: 1px solid {BORDER}; border-radius: 7px; padding: 3.5mm 4mm; font: 14px "DejaVu Serif", Georgia, serif; }}
-.swatch {{ width: 6mm; height: 6mm; border-radius: 2px; background: var(--element-color); }}
-.percent {{ color: {GOLD}; text-align: right; font-family: "DejaVu Sans"; font-weight: 700; }}
+	.element-list {{ display: grid; gap: 3mm; }}
+	.element-row {{ display: grid; grid-template-columns: 9mm 1fr 12mm; align-items: center; background: {PANEL}; border: 1px solid {BORDER}; border-radius: 7px; padding: 3.5mm 4mm; font: 14px var(--pdf-font-body); }}
+	.swatch {{ width: 6mm; height: 6mm; border-radius: 2px; background: var(--element-color); }}
+	.percent {{ color: {GOLD}; text-align: right; font-family: var(--pdf-font-body); font-weight: 700; }}
 .element-cards {{ margin-top: 12mm; }}
 .element-card h3 {{ color: var(--element-color); }}
 .tags {{ margin-top: 8mm; display: flex; gap: 3mm; flex-wrap: wrap; }}
@@ -638,25 +683,25 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .planet-card .card-meta {{ margin: 0 0 0 4mm; flex: 0 0 auto; white-space: nowrap; }}
 .planet-card .mini-rule {{ flex-basis: 100%; margin-top: 3mm; }}
 .planet-card > p {{ flex-basis: 100%; }}
-.detail-card {{ min-height: auto; margin-bottom: 3mm; }}
-.detail-card p {{ font-size: 12px; line-height: 1.55; color: {TEXT}; }}
-.detail-card.continuation h3::after {{ content: " · продолжение"; color: {TEXT_DIM}; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 12px; }}
+	.detail-card {{ min-height: auto; margin-bottom: 3mm; }}
+	.detail-card p {{ font-size: 12px; line-height: 1.55; color: {TEXT}; }}
+	.detail-card.continuation h3::after {{ content: " · продолжение"; color: {TEXT_DIM}; font-family: var(--pdf-font-body); font-size: 12px; }}
 .retro {{ display: inline-block; margin-left: 3mm; padding: 1mm 3mm; border: 1px solid {GOLD_DIM}; border-radius: 999px; color: {GOLD}; font-size: 11px; letter-spacing: 1px; }}
 .houses-grid {{ display: grid; grid-template-columns: 1fr; gap: 0; }}
 .house-card {{ padding: 4mm 5mm; }}
-.house-top {{ display: flex; justify-content: space-between; align-items: baseline; gap: 4mm; }}
-.house-head {{ display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 2.5mm; }}
-.house-num {{ color: {GOLD}; font: 15.5px "DejaVu Serif", Georgia, serif; }}
-.house-sign {{ font: 12px "DejaVu Serif", Georgia, serif; }}
+	.house-top {{ display: flex; justify-content: space-between; align-items: baseline; gap: 4mm; }}
+	.house-head {{ display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 2.5mm; }}
+	.house-num {{ color: {GOLD}; font: 15.5px var(--pdf-font-body); }}
+	.house-sign {{ font: 12px var(--pdf-font-body); }}
 .house-degree {{ color: {TEXT_DIM}; font-size: 11px; white-space: nowrap; }}
 .house-label {{ color: {TEXT_DIM}; font-size: 10.5px; letter-spacing: 1.4px; text-transform: uppercase; }}
 .house-label::before {{ content: "· "; }}
 .house-axis {{ font-weight: 700; }}
 .house-card p {{ margin-top: 3mm; font-size: 12.5px; line-height: 1.55; }}
 .house-card.detail-card p {{ font-size: 12px; line-height: 1.5; }}
-.metrics {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 4mm; margin: 8mm 0 7mm; }}
-.metric {{ text-align: center; background: {PANEL}; border: 1px solid {BORDER}; border-radius: 7px; padding: 4mm 0 3.5mm; }}
-.metric strong {{ color: var(--metric-color, {GOLD}); display: block; font: 22px "DejaVu Serif", Georgia, serif; }}
+	.metrics {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 4mm; margin: 8mm 0 7mm; }}
+	.metric {{ text-align: center; background: {PANEL}; border: 1px solid {BORDER}; border-radius: 7px; padding: 4mm 0 3.5mm; }}
+	.metric strong {{ color: var(--metric-color, {GOLD}); display: block; font: 22px var(--pdf-font-body); }}
 .metric span {{ color: {TEXT_DIM}; font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; }}
 .aspect-group {{ margin-top: 3mm; break-inside: avoid; }}
 .aspect-group h3 {{ color: var(--aspect-color); font-size: 15px; letter-spacing: 1.2px; text-transform: uppercase; margin: 0 0 2.5mm; }}
@@ -666,19 +711,19 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .aspect-title .aspect-name {{ flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
 .orb {{ flex: 0 0 auto; color: {TEXT_DIM}; white-space: nowrap; font-size: 12px; }}
 .aspect-row p {{ display: block; margin: 2.5mm 0 0; color: {TEXT_DIM}; line-height: 1.55; font-size: 13px; }}
-.aspect-row.detail-card p {{ color: {TEXT}; font-size: 11.5px; line-height: 1.5; }}
-.reading {{ padding-right: 4mm; }}
-.reading-quote {{ text-align: center; color: {TEXT_DIM}; font: italic 14px "DejaVu Serif", Georgia, serif; margin: 8mm 0 9mm; }}
-.reading h3 {{ color: {GOLD}; font-family: "DejaVu Serif", Georgia, serif; font-size: 22px; font-weight: 500; letter-spacing: 0.01em; line-height: 1.3; text-transform: none; margin: 0 0 2.2mm; }}
+	.aspect-row.detail-card p {{ color: {TEXT}; font-size: 11.5px; line-height: 1.5; }}
+	.reading {{ padding-right: 4mm; }}
+	.reading-quote {{ text-align: center; color: {TEXT_DIM}; font: italic 14px var(--pdf-font-body); margin: 8mm 0 9mm; }}
+	.reading h3 {{ color: {GOLD}; font-family: var(--pdf-font-title); font-size: 22px; font-weight: 400; letter-spacing: 0.01em; line-height: 1.3; text-transform: none; margin: 0 0 2.2mm; }}
 .reading p {{ font-size: 17px; line-height: 1.72; margin: 0 0 6.4mm; color: {TEXT}; }}
 .final {{ display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 18mm; }}
-.final .mark {{ margin-bottom: 8mm; }}
-.final-hero {{ display: flex; flex-direction: column; align-items: center; margin-bottom: 8mm; }}
-.final-copy {{ font: italic 15px/1.6 "DejaVu Serif", Georgia, serif; width: 110mm; }}
-.glossary-title {{ color: {GOLD}; font: 18px "DejaVu Serif", Georgia, serif; letter-spacing: 4px; text-transform: uppercase; margin: 8mm 0 7mm; }}
-.glossary-grid {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 5mm; width: 170mm; }}
-.glossary-card {{ background: {PANEL}; border: 1px solid {BORDER}; border-radius: 8px; padding: 7mm 6mm 6mm; min-height: 48mm; text-align: left; position: relative; }}
-.glossary-glyph {{ color: {GOLD}; font-size: 26px; line-height: 1; margin-bottom: 4mm; font-family: "DejaVu Serif", Georgia, serif; }}
+	.final .mark {{ margin-bottom: 8mm; }}
+	.final-hero {{ display: flex; flex-direction: column; align-items: center; margin-bottom: 8mm; }}
+	.final-copy {{ font: italic 15px/1.6 var(--pdf-font-body); width: 110mm; }}
+	.glossary-title {{ color: {GOLD}; font: 18px var(--pdf-font-title); letter-spacing: 4px; text-transform: uppercase; margin: 8mm 0 7mm; }}
+	.glossary-grid {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 5mm; width: 170mm; }}
+	.glossary-card {{ background: {PANEL}; border: 1px solid {BORDER}; border-radius: 8px; padding: 7mm 6mm 6mm; min-height: 48mm; text-align: left; position: relative; }}
+	.glossary-glyph {{ color: {GOLD}; font-size: 26px; line-height: 1; margin-bottom: 4mm; }}
 .glossary-card h3 {{ color: {TEXT}; font-size: 15px; margin: 0; letter-spacing: 1px; }}
 .glossary-card .mini-rule {{ width: 12mm; height: 1px; margin: 3mm 0 4mm; background: {GOLD_DIM}; }}
 .glossary-card p {{ margin: 0; font-size: 12px; line-height: 1.55; color: {TEXT_DIM}; }}

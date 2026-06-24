@@ -788,6 +788,20 @@ def test_aspect_title_css_keeps_orb_top_aligned():
     assert "white-space: nowrap" in name_rule
 
 
+def test_natal_pdf_css_embeds_forum_and_source_serif_fonts():
+    css = natal_pdf_html._css()
+    assert "@font-face" in css
+    assert "data:font/truetype;base64," in css
+    assert 'font-family: "Forum"' in css
+    assert 'font-family: "Source Serif"' in css
+    assert '--pdf-font-title: "Forum", "Source Serif", Georgia, serif;' in css
+    assert '--pdf-font-body: "Source Serif", Georgia, "Times New Roman", serif;' in css
+    assert "body { font-family: var(--pdf-font-body);" in css
+    assert "h1, h2, h3, .serif { font-family: var(--pdf-font-title); font-weight: 400; }" in css
+    assert 'body { font-family: "DejaVu Sans"' not in css
+    assert 'h1, h2, h3, .serif { font-family: "DejaVu Serif"' not in css
+
+
 def test_pdf_detail_descriptions_do_not_use_short_as_full_source():
     planets, houses, aspects = _sample_chart()
     document = natal_pdf_html.build_natal_pdf_html(
