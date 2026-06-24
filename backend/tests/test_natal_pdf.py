@@ -257,6 +257,47 @@ def test_build_natal_pdf_html_adds_continuation_pages_for_long_reading():
     assert f"{total_pages} / {total_pages}" in document
 
 
+def test_reading_blocks_split_long_paragraph_into_safe_chunks():
+    paragraph = " ".join(f"слово{i}" for i in range(250)) + " ФИНАЛЬНЫЙ_МАРКЕР"
+    blocks = natal_pdf_html._reading_blocks(
+        f"**Аспекты планет**\n{paragraph}",
+        sun_sign="Scorpio",
+        moon_sign="Aquarius",
+        asc_sign="Aries",
+    )
+
+    assert len(blocks) == 2
+    assert blocks[0][0] == "Аспекты планет"
+    assert blocks[1][0] == "Аспекты планет · продолжение"
+    assert natal_pdf_html._word_count(blocks[0][1]) <= 180
+    assert "ФИНАЛЬНЫЙ_МАРКЕР" in blocks[-1][1]
+
+
+def test_pack_reading_by_heights_accounts_for_first_page_quote():
+    blocks = [("Первый", "текст"), ("Второй", "текст"), ("Третий", "текст")]
+    packed = natal_pdf_html._pack_reading_by_heights(blocks, [390.0, 390.0, 390.0])
+
+    assert [len(page) for page in packed] == [1, 2]
+
+
+def test_pack_reading_by_heights_keeps_pages_under_budget():
+    blocks = [(f"Раздел {idx}", "текст") for idx in range(4)]
+    heights = [300.0, 420.0, 300.0, 420.0]
+    packed = natal_pdf_html._pack_reading_by_heights(blocks, heights)
+    height_by_block = dict(zip(blocks, heights, strict=True))
+
+    for page_index, page in enumerate(packed):
+        used = 0.0
+        for block_index, block in enumerate(page):
+            used += height_by_block[block]
+            if block_index:
+                used += natal_pdf_html._READING_BLOCK_GAP_PX
+        budget = natal_pdf_html._PAGE_CONTENT_PX - natal_pdf_html._SECTION_HEAD_PX
+        if page_index == 0:
+            budget -= natal_pdf_html._READING_FIRST_PAGE_QUOTE_PX
+        assert used <= budget
+
+
 def test_build_natal_pdf_html_packs_multiple_aspects_per_page():
     planets, houses, _aspects = _sample_chart()
     aspects = [
@@ -1252,6 +1293,11 @@ async def test_natal_pdf_token_download_does_not_require_telegram_auth(monkeypat
 
     assert response.body == b"%PDF-test"
     assert response.media_type == "application/pdf"
+    assert response.headers["Cache-Control"] == "no-store"
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert "natal_%D0%90%D0%BD%D0%B4%D1%80%D0%B5%D0%B9.pdf" in response.headers[
+        "Content-Disposition"
+    ]
 
 
 @pytest.mark.asyncio

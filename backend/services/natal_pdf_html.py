@@ -712,10 +712,11 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 .orb {{ flex: 0 0 auto; color: {TEXT_DIM}; white-space: nowrap; font-size: 12px; }}
 .aspect-row p {{ display: block; margin: 2.5mm 0 0; color: {TEXT_DIM}; line-height: 1.55; font-size: 13px; }}
 	.aspect-row.detail-card p {{ color: {TEXT}; font-size: 11.5px; line-height: 1.5; }}
-	.reading {{ padding-right: 4mm; }}
-	.reading-quote {{ text-align: center; color: {TEXT_DIM}; font: italic 14px var(--pdf-font-body); margin: 8mm 0 9mm; }}
-	.reading h3 {{ color: {GOLD}; font-family: var(--pdf-font-title); font-size: 22px; font-weight: 400; letter-spacing: 0.01em; line-height: 1.3; text-transform: none; margin: 0 0 2.2mm; }}
-.reading p {{ font-size: 17px; line-height: 1.72; margin: 0 0 6.4mm; color: {TEXT}; }}
+		.reading {{ padding-right: 4mm; }}
+		.reading-quote {{ text-align: center; color: {TEXT_DIM}; font: italic 14px var(--pdf-font-body); margin: 8mm 0 9mm; }}
+		.reading-block {{ display: flow-root; margin: 0; break-inside: avoid; }}
+		.reading h3 {{ color: {GOLD}; font-family: var(--pdf-font-title); font-size: 22px; font-weight: 400; letter-spacing: 0.01em; line-height: 1.3; text-transform: none; margin: 0 0 2.2mm; }}
+	.reading p {{ font-size: 17px; line-height: 1.72; margin: 0 0 6.4mm; color: {TEXT}; }}
 .final {{ display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 18mm; }}
 	.final .mark {{ margin-bottom: 8mm; }}
 	.final-hero {{ display: flex; flex-direction: column; align-items: center; margin-bottom: 8mm; }}
@@ -1179,14 +1180,15 @@ def _aspect_section(aspects: list[dict[str, Any]], descriptions: dict[str, Any] 
     return _Section("Аспекты", "Связи между планетами вашей карты", items, prefix_html=metric_html)
 
 
-def _reading_pages(
+ReadingBlock = tuple[str, str]
+
+
+def _reading_blocks(
     reading: str | None,
     sun_sign: str,
     moon_sign: str,
     asc_sign: str | None,
-    *,
-    start_page: int = 11,
-) -> list[str]:
+) -> list[ReadingBlock]:
     text = str(reading or "").strip()
     if not text:
         text = (
@@ -1212,17 +1214,24 @@ def _reading_pages(
         blocks.append((current_title or "Персональная интерпретация", " ".join(current_lines)))
     expanded_blocks: list[tuple[str, str]] = []
     for title, paragraph in blocks:
-        chunks = _split_words(paragraph, 340)
+        chunks = _split_words(paragraph, 180)
         if not chunks:
             continue
         expanded_blocks.append((title, chunks[0]))
         expanded_blocks.extend((f"{title} · продолжение", chunk) for chunk in chunks[1:])
+    return expanded_blocks
 
+
+def _reading_block_html(title: str, paragraph: str) -> str:
+    return f'<article class="reading-block"><h3>✦ {_e(title)}</h3><p>{_e(paragraph)}</p></article>'
+
+
+def _pack_reading_by_words(blocks: list[ReadingBlock]) -> list[list[ReadingBlock]]:
     page_chunks: list[list[tuple[str, str]]] = []
     current: list[tuple[str, str]] = []
     current_words = 0
-    limits = [300, 380]
-    for title, paragraph in expanded_blocks:
+    limits = [210, 260]
+    for title, paragraph in blocks:
         block_words = _word_count(paragraph) + 10
         limit = limits[min(len(page_chunks), len(limits) - 1)]
         if current and current_words + block_words > limit:
@@ -1233,7 +1242,14 @@ def _reading_pages(
         current_words += block_words
     if current:
         page_chunks.append(current)
+    return page_chunks
 
+
+def _render_reading_pages(
+    page_chunks: list[list[ReadingBlock]],
+    *,
+    start_page: int,
+) -> list[str]:
     pages = []
     for idx, chunk in enumerate(page_chunks, start=start_page):
         if not chunk:
@@ -1243,7 +1259,7 @@ def _reading_pages(
             body += '<div class="reading-quote">«Каждый рисунок звёзд раскрывается только через того, кто его носит»</div>'
         body += (
             '<div class="reading">'
-            + "".join(f"<h3>✦ {_e(title)}</h3><p>{_e(paragraph)}</p>" for title, paragraph in chunk)
+            + "".join(_reading_block_html(title, paragraph) for title, paragraph in chunk)
             + "</div>"
         )
         pages.append(_page(idx, body))
@@ -1284,10 +1300,13 @@ def _final_page(page: int) -> str:
 
 # Usable content height of one .page in CSS px at the 794×1123 viewport:
 # page is 297mm tall with 22mm top + 17mm bottom padding → 258mm of content.
-# 1123px == 297mm ⇒ 258mm ≈ 975px. Keep a small safety margin.
-_PAGE_CONTENT_PX = 1090
+# 1123px == 297mm ⇒ 258mm ≈ 976px. Keep a safety margin for browser/PDF
+# rounding and the absolutely positioned footer.
+_PAGE_CONTENT_PX = 940
 # Approx px height the section header (title + rule) eats on a section's pages.
 _SECTION_HEAD_PX = 96
+_READING_FIRST_PAGE_QUOTE_PX = 88
+_READING_BLOCK_GAP_PX = 30
 
 
 def _pack_section_by_words(section: _Section) -> list[list[_SectionItem]]:
@@ -1325,12 +1344,12 @@ def _assemble_natal_html(
     planets: dict[str, dict[str, Any]],
     houses: list[dict[str, Any]],
     aspects: list[dict[str, Any]],
-    reading: str | None,
     descriptions: dict[str, Any] | None,
     wheel_svg: str | None,
     planet_split: list[list[_SectionItem]],
     house_split: list[list[_SectionItem]],
     aspect_split: list[list[_SectionItem]],
+    reading_split: list[list[ReadingBlock]],
 ) -> str:
     planet_sec = _planet_section(planets, descriptions)
     house_sec = _houses_section(houses, descriptions)
@@ -1380,7 +1399,7 @@ def _assemble_natal_html(
         *planet_pages,
         *house_pages,
         *aspect_pages,
-        *_reading_pages(reading, sun_sign, moon_sign, asc_sign, start_page=reading_start),
+        *_render_reading_pages(reading_split, start_page=reading_start),
     ]
     pages.append(_final_page(len(pages) + 1))
     body = "".join(pages).replace(TOTAL_PAGES_TOKEN, str(len(pages)))
@@ -1404,6 +1423,7 @@ def build_natal_pdf_html(
 ) -> str:
     """Synchronous build with word-count packing (fallback / tests). The async
     renderer uses measured heights for tighter, overflow-free packing."""
+    reading_blocks = _reading_blocks(reading, sun_sign, moon_sign, asc_sign)
     return _assemble_natal_html(
         user_name=user_name,
         birth_date=birth_date,
@@ -1415,12 +1435,12 @@ def build_natal_pdf_html(
         planets=planets,
         houses=houses,
         aspects=aspects,
-        reading=reading,
         descriptions=descriptions,
         wheel_svg=wheel_svg,
         planet_split=_pack_section_by_words(_planet_section(planets, descriptions)),
         house_split=_pack_section_by_words(_houses_section(houses, descriptions)),
         aspect_split=_pack_section_by_words(_aspect_section(aspects, descriptions)),
+        reading_split=_pack_reading_by_words(reading_blocks),
     )
 
 
@@ -1448,6 +1468,22 @@ def _measure_doc(sections: list[_Section]) -> str:
         "break-after:auto !important;page-break-after:auto !important;}}"
     )
     body = "".join(blocks)
+    return (
+        "<!doctype html><html><head><meta charset='utf-8'>"
+        f"<style>{_css()}{extra}</style></head><body>{body}</body></html>"
+    )
+
+
+def _measure_reading_doc(blocks: list[ReadingBlock]) -> str:
+    body = "".join(
+        f'<div class="page measure reading-measure" data-rid="{idx}">'
+        f'<div class="reading">{_reading_block_html(title, paragraph)}</div></div>'
+        for idx, (title, paragraph) in enumerate(blocks)
+    )
+    extra = (
+        ".measure{{height:auto !important;overflow:visible !important;"
+        "break-after:auto !important;page-break-after:auto !important;}}"
+    )
     return (
         "<!doctype html><html><head><meta charset='utf-8'>"
         f"<style>{_css()}{extra}</style></head><body>{body}</body></html>"
@@ -1489,6 +1525,35 @@ def _pack_section_by_heights(
     return pages
 
 
+def _pack_reading_by_heights(
+    blocks: list[ReadingBlock],
+    heights: list[float],
+) -> list[list[ReadingBlock]]:
+    if not blocks:
+        return []
+    if len(blocks) != len(heights):
+        raise ValueError("reading block height count mismatch")
+    pages: list[list[ReadingBlock]] = []
+    current: list[ReadingBlock] = []
+    used = 0.0
+    for block, height in zip(blocks, heights):
+        budget = _PAGE_CONTENT_PX - _SECTION_HEAD_PX
+        if not pages:
+            budget -= _READING_FIRST_PAGE_QUOTE_PX
+        cost = height + (_READING_BLOCK_GAP_PX if current else 0.0)
+        if current and used + cost > budget:
+            pages.append(current)
+            current = []
+            used = 0.0
+            budget = _PAGE_CONTENT_PX - _SECTION_HEAD_PX
+            cost = height
+        current.append(block)
+        used += cost
+    if current:
+        pages.append(current)
+    return pages
+
+
 async def generate_natal_pdf_html(
     user_name: str,
     birth_date: str,
@@ -1511,6 +1576,7 @@ async def generate_natal_pdf_html(
     planet_sec = _planet_section(planets, descriptions)
     house_sec = _houses_section(houses, descriptions)
     aspect_sec = _aspect_section(aspects, descriptions)
+    reading_blocks = _reading_blocks(reading, sun_sign, moon_sign, asc_sign)
     sections = [planet_sec, house_sec, aspect_sec]
     log.info(
         "natal.pdf_html_render_start",
@@ -1561,11 +1627,31 @@ async def generate_natal_pdf_html(
                         planet_split = _pack_section_by_heights(planet_sec, per_section[0])
                         house_split = _pack_section_by_heights(house_sec, per_section[1])
                         aspect_split = _pack_section_by_heights(aspect_sec, per_section[2])
+
+                        await page.set_content(
+                            _measure_reading_doc(reading_blocks), wait_until="load"
+                        )
+                        raw_reading = await page.evaluate(
+                            """() => {
+                                const out = [];
+                                document.querySelectorAll('[data-rid]').forEach(el => {
+                                    out[Number(el.getAttribute('data-rid'))] =
+                                        el.firstElementChild
+                                            ? el.firstElementChild.getBoundingClientRect().height
+                                            : el.getBoundingClientRect().height;
+                                });
+                                return out;
+                            }"""
+                        )
+                        reading_split = _pack_reading_by_heights(
+                            reading_blocks, [float(h) for h in raw_reading]
+                        )
                     except Exception as me:  # noqa: BLE001
                         log.warning("natal.pdf_measure_failed_fallback", error=str(me))
                         planet_split = _pack_section_by_words(planet_sec)
                         house_split = _pack_section_by_words(house_sec)
                         aspect_split = _pack_section_by_words(aspect_sec)
+                        reading_split = _pack_reading_by_words(reading_blocks)
 
                     document = _assemble_natal_html(
                         user_name=user_name,
@@ -1578,12 +1664,12 @@ async def generate_natal_pdf_html(
                         planets=planets,
                         houses=houses,
                         aspects=aspects,
-                        reading=reading,
                         descriptions=descriptions,
                         wheel_svg=wheel_svg,
                         planet_split=planet_split,
                         house_split=house_split,
                         aspect_split=aspect_split,
+                        reading_split=reading_split,
                     )
                     # ── Phase 2: render the final packed document ──
                     stage = "set_content"

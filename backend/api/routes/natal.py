@@ -927,7 +927,11 @@ async def get_natal_pdf_by_token(
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"},
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}",
+            "X-Content-Type-Options": "nosniff",
+        },
     )
 
 
