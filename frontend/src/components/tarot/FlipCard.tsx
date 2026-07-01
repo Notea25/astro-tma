@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { motion } from 'framer-motion'
 import styles from './FlipCard.module.css'
 
 interface Props {
@@ -17,10 +18,17 @@ export function FlipCard({ revealed, width, height, back, front, onClick }: Prop
       style={{ width, height }}
       onClick={onClick}
     >
-      <div className={`${styles.cardInner} ${revealed ? styles.revealed : ''}`}>
+      <motion.div
+        className={styles.cardInner}
+        animate={{ rotateY: revealed ? 180 : 0 }}
+        transition={{
+          duration: 0.65,
+          ease: [0.22, 0.61, 0.36, 1],
+        }}
+      >
         <div className={styles.cardBackFace}>{back}</div>
         <div className={styles.cardFrontFace}>{front}</div>
-      </div>
+      </motion.div>
     </div>
   )
 }

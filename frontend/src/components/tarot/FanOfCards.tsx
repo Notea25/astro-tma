@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { motion } from 'framer-motion'
 import { FAN_CARD_H, FAN_CARD_W } from '@/data/spread-config'
 import styles from './FanOfCards.module.css'
 
@@ -26,31 +27,37 @@ export function FanOfCards({ cards, onPick, renderCard }: Props) {
 
   const spreadDeg = Math.min(200, Math.max(110, viewW * 0.164 + 36))
 
-  // Active (non-gone) cards — they form the visible arc
-  const active = cards.filter(c => !c.gone)
+  // Active (non-gone) cards form the visible arc.
+  const active = cards.filter((card) => !card.gone)
   const N = active.length
-  if (N === 0) return null
 
   return (
     <div className={styles.fanContainer}>
       {active.map((card, i) => {
         const t = N === 1 ? 0.5 : i / (N - 1)
         const angleDeg = spreadDeg * (t - 0.5)
-        const delay = i * 0.038
+        const delay = i * 0.032
         return (
-          <div
+          <motion.div
             key={card.id}
             className={styles.fanCardWrapper}
+            initial={{ opacity: 0, y: 72, scale: 0.82, rotate: angleDeg }}
+            animate={{ opacity: 1, y: 0, scale: 1, rotate: angleDeg }}
+            whileHover={{ y: -34, scale: 1.035, zIndex: 200 }}
+            whileTap={{ scale: 0.96 }}
+            transition={{
+              delay,
+              duration: 0.52,
+              ease: [0.22, 0.61, 0.36, 1],
+            }}
             style={
               {
-                '--angle': `${angleDeg}deg`,
-                '--appear-delay': `${delay}s`,
                 '--fan-card-half': `${FAN_CARD_W / 2}px`,
                 zIndex: i + 1,
               } as React.CSSProperties
             }
             onClick={(e) => {
-              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+              const rect = e.currentTarget.getBoundingClientRect()
               onPick(card.id, rect, angleDeg)
             }}
           >
@@ -60,7 +67,7 @@ export function FanOfCards({ cards, onPick, renderCard }: Props) {
             >
               {renderCard()}
             </div>
-          </div>
+          </motion.div>
         )
       })}
     </div>

@@ -20,6 +20,7 @@ const INITIAL_FAN_COUNT = 15
 const FLY_TO_SLOT_SCALE = CARD_H / FAN_CARD_H
 const SLOT_OFFSET_X = (SLOT_W - CARD_W) / 2
 const SLOT_OFFSET_Y = (SLOT_H - CARD_H) / 2
+const SHUFFLE_DURATION_MS = 1800
 
 type DrawSpreadKey = Exclude<SpreadKey, 'celtic_cross'>
 type Phase = 'idle' | 'shuffle' | 'fan' | 'reading' | 'complete'
@@ -142,7 +143,7 @@ export function DrawSpreadFlow({
     setTimeout(() => {
       setFanCards(Array.from({ length: INITIAL_FAN_COUNT }, (_, id) => ({ id })))
       setPhase('fan')
-    }, 1200)
+    }, SHUFFLE_DURATION_MS)
   }, [phase, impact])
 
   const handleFanPick = useCallback(
@@ -371,7 +372,7 @@ export function DrawSpreadFlow({
         </div>
       )}
 
-      {phase === 'fan' && fanCards.filter((card) => !card.gone).length > 0 && (
+      {phase === 'fan' && fanCards.length > 0 && (
         <FanOfCards
           cards={fanCards}
           onPick={handleFanPick}
