@@ -9127,6 +9127,17 @@ body::before {
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
 }
+/* Single-cell variant: centred card, no forced 3-column grid — used
+   after the «купили» counter was removed and only «приглашённых
+   друзей» remains. */
+.referral-stats--single {
+  display: flex;
+  justify-content: center;
+}
+.referral-stats--single .referral-stats__cell {
+  min-width: 180px;
+  padding: 16px 24px;
+}
 .referral-stats__cell {
   display: flex;
   flex-direction: column;

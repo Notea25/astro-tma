@@ -116,18 +116,14 @@ export function Referral() {
         </motion.div>
 
         <motion.div
-          className="referral-stats"
+          className="referral-stats referral-stats--single"
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15, duration: 0.4 }}
         >
           <div className="referral-stats__cell">
             <div className="referral-stats__value">{data?.stats.invited_total ?? 0}</div>
-            <div className="referral-stats__label">друзей</div>
-          </div>
-          <div className="referral-stats__cell">
-            <div className="referral-stats__value">{data?.stats.purchased ?? 0}</div>
-            <div className="referral-stats__label">купили</div>
+            <div className="referral-stats__label">приглашённых друзей</div>
           </div>
         </motion.div>
       </div>
