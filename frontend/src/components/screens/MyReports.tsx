@@ -11,6 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { usersApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
+import { QueryStateFallback } from "@/components/ui/QueryStateFallback";
 
 type ReportRow = {
   title: string;
@@ -24,7 +25,7 @@ export function MyReports() {
   const { setScreen } = useAppStore();
   const { impact } = useHaptic();
 
-  const { data, isLoading } = useQuery({
+  const reportsQuery = useQuery({
     queryKey: ["my-reports"],
     queryFn: usersApi.getMyReports,
     staleTime: 1000 * 30,
@@ -35,10 +36,10 @@ export function MyReports() {
     setScreen("profile", "back");
   };
 
-  const rows: ReportRow[] = [];
+  const buildRows = (data: Awaited<ReturnType<typeof usersApi.getMyReports>>): ReportRow[] => {
+    const rows: ReportRow[] = [];
 
-  // ── Натальная карта ─────────────────────────────────────
-  if (data) {
+    // ── Натальная карта ─────────────────────────────────────
     const n = data.natal;
     let subtitle: string;
     let disabled = false;
@@ -80,7 +81,7 @@ export function MyReports() {
     } else if (!m.has_content) {
       m_subtitle = "Откройте — разбор соберётся за минуту";
     } else {
-      m_subtitle = "Готов · 12 разделов + 8 предназначений";
+      m_subtitle = "Готов · 15 разделов";
     }
     rows.push({
       title: "Матрица Судьбы",
@@ -114,7 +115,9 @@ export function MyReports() {
         setScreen("synastry");
       },
     });
-  }
+
+    return rows;
+  };
 
   return (
     <div className="screen">
@@ -142,30 +145,39 @@ export function MyReports() {
       </div>
 
       <div className="myreports">
-        {isLoading && <p className="myreports__loading">Загружаем…</p>}
-        {!isLoading && rows.map((r, i) => (
-          <motion.button
-            key={r.title}
-            type="button"
-            className={`pr-row2 myreports__row${
-              r.open_disabled ? " myreports__row--disabled" : ""
-            }`}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.04 * i }}
-            onClick={r.onOpen}
-            disabled={r.open_disabled}
-          >
-            <span className="pr-row2__ic myreports__ic" aria-hidden="true">
-              {r.emoji}
-            </span>
-            <span className="pr-row2__main">
-              <span className="pr-row2__t">{r.title}</span>
-              <span className="pr-row2__s">{r.subtitle}</span>
-            </span>
-            <span className="pr-row2__chev" aria-hidden="true">›</span>
-          </motion.button>
-        ))}
+        <QueryStateFallback
+          query={reportsQuery}
+          onRetry={() => reportsQuery.refetch()}
+          errorTitle="Не удалось загрузить разборы"
+        >
+          {(data) => (
+            <>
+              {buildRows(data).map((r, i) => (
+                <motion.button
+                  key={r.title}
+                  type="button"
+                  className={`pr-row2 myreports__row${
+                    r.open_disabled ? " myreports__row--disabled" : ""
+                  }`}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.04 * i }}
+                  onClick={r.onOpen}
+                  disabled={r.open_disabled}
+                >
+                  <span className="pr-row2__ic myreports__ic" aria-hidden="true">
+                    {r.emoji}
+                  </span>
+                  <span className="pr-row2__main">
+                    <span className="pr-row2__t">{r.title}</span>
+                    <span className="pr-row2__s">{r.subtitle}</span>
+                  </span>
+                  <span className="pr-row2__chev" aria-hidden="true">›</span>
+                </motion.button>
+              ))}
+            </>
+          )}
+        </QueryStateFallback>
       </div>
     </div>
   );

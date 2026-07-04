@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import WebApp from "@twa-dev/sdk";
 import { PremiumGate } from "@/components/ui/PremiumGate";
 import {
   CityAutocomplete,
@@ -178,7 +179,12 @@ export function Synastry() {
     },
     onError: (err) => {
       notification("error");
-      if (err instanceof Error && window.alert) window.alert(err.message);
+      const msg = err instanceof Error ? err.message : "Не удалось принять приглашение.";
+      if (typeof WebApp.showAlert === "function") {
+        WebApp.showAlert(msg);
+      } else if (typeof window !== "undefined" && window.alert) {
+        window.alert(msg);
+      }
     },
   });
 
@@ -424,7 +430,7 @@ export function Synastry() {
                   </>
                 )}
                 {requestMutation.error instanceof ApiError && (
-                  <p style={{ color: "#e88b8b", fontSize: 12, marginTop: 8 }}>
+                  <p className="syn-form-error">
                     {requestMutation.error.status === 422
                       ? "Заполните данные рождения в профиле."
                       : requestMutation.error.status === 402
@@ -615,7 +621,7 @@ function ManualPartnerForm({
       </button>
 
       {errMsg && (
-        <p style={{ color: "#e88b8b", fontSize: 12, marginTop: 8 }}>{errMsg}</p>
+        <p className="syn-form-error">{errMsg}</p>
       )}
     </div>
   );
@@ -740,8 +746,17 @@ function SynastryHistorySection({
             aria-label="Удалить"
             onClick={(e) => {
               e.stopPropagation();
-              if (window.confirm("Удалить расклад из истории?")) {
-                hideMutation.mutate(item.id);
+              const confirmMsg = "Удалить разбор из истории?";
+              const doDelete = () => hideMutation.mutate(item.id);
+              if (typeof WebApp.showConfirm === "function") {
+                WebApp.showConfirm(confirmMsg, (confirmed: boolean) => {
+                  if (confirmed) doDelete();
+                });
+              } else if (
+                typeof window !== "undefined" &&
+                window.confirm(confirmMsg)
+              ) {
+                doDelete();
               }
             }}
             disabled={hideMutation.isPending}

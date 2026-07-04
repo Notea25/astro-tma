@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
+import WebApp from "@twa-dev/sdk";
 import { tarotApi } from "@/services/api";
 import { useHaptic } from "@/hooks/useTelegram";
 import { MeaningText } from "@/components/ui/MeaningText";
@@ -97,12 +98,13 @@ export function ThreeCardFlow({ onProgressChange }: ThreeCardFlowProps = {}) {
   const drawMutation = useMutation({
     mutationFn: () => tarotApi.draw("three_card"),
     onError: (err) => {
-      // 429 = monthly rate limit hit — surface the server message.
+      // 429 = monthly rate limit hit — surface the server message. Use
+      // WebApp.showAlert in TMA so the modal is native Telegram (no
+      // browser-hosted-by hint in the header, no scary bare host name).
       const message = err instanceof Error ? err.message : String(err);
-      if (typeof window !== "undefined" && window.alert) {
-        // Telegram WebApp.showAlert can't be required here without dragging
-        // the @twa-dev/sdk import into this file; native confirm/alert is
-        // good enough on TMA + desktop.
+      if (typeof WebApp.showAlert === "function") {
+        WebApp.showAlert(message);
+      } else if (typeof window !== "undefined" && window.alert) {
         window.alert(message);
       }
     },

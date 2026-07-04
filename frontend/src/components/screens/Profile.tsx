@@ -605,9 +605,9 @@ export function Profile() {
                     {formatBirthDateRu(birthDate) ?? birthDate}
                   </div>
                   <p className="form-hint form-hint--locked">
-                    🔒 Дата рождения уже сохранена и не меняется — она задаёт
-                    всю Матрицу Судьбы и натальную карту. Город и время изменить
-                    можно.
+                    Дата рождения уже сохранена и не меняется — она задаёт
+                    всю Матрицу Судьбы и натальную карту. Город и время
+                    изменить можно.
                   </p>
                 </div>
               ) : (
@@ -615,8 +615,9 @@ export function Profile() {
                   <label className="form-label">Дата рождения</label>
                   <BirthDateInput value={birthDate} onChange={setBirthDate} />
                   <p className="form-hint form-hint--locked">
-                    ⚠️ Дата зафиксируется только после кнопки «Сохранить» —
-                    потом изменить будет нельзя.
+                    Проверьте дату внимательно — после сохранения изменить
+                    её <strong>нельзя</strong>. Дата задаёт всю Матрицу
+                    Судьбы и натальную карту.
                   </p>
                 </div>
               )}

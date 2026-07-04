@@ -170,9 +170,17 @@ export default function App() {
 
   useEffect(() => {
     syncUser.mutate();
+    // Splash cap: never show splash longer than 5s (guards against a
+    // stalled backend), but if the user sync finishes earlier, the
+    // effect below trips `ready` immediately — no fake 5-second wait
+    // for returning users whose data is already cached.
     const timer = setTimeout(() => setReady(true), 5000);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (synced && !ready) setReady(true);
+  }, [synced, ready]);
 
   // Capture syn_<token> from start_param into the persisted store as soon as
   // we see it — before splash, before onboarding gate. The token survives a

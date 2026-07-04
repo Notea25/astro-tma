@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { usersApi } from "@/services/api";
 import { useAppStore } from "@/stores/app";
 import { useTelegramBackButton } from "@/hooks/useTelegram";
+import { QueryStateFallback } from "@/components/ui/QueryStateFallback";
 
 const MONTHS_RU_GENITIVE = [
   "января", "февраля", "марта", "апреля", "мая", "июня",
@@ -28,14 +29,11 @@ export function Purchases() {
   const goBack = () => setScreen("profile", "back");
   useTelegramBackButton(goBack, true);
 
-  const { data, isLoading } = useQuery({
+  const purchasesQuery = useQuery({
     queryKey: ["my-purchases"],
     queryFn: usersApi.getPurchases,
     staleTime: 1000 * 60 * 5,
   });
-
-  const purchases = data?.purchases ?? [];
-  const active = data?.active_subscription ?? null;
 
   return (
     <div className="screen purchases-screen">
@@ -66,54 +64,64 @@ export function Purchases() {
       </div>
 
       <div className="screen-content">
-        {isLoading ? (
-          <div className="purchases-empty">Загружаем…</div>
-        ) : purchases.length === 0 && !active ? (
-          <div className="purchases-empty">
-            <div className="purchases-empty__icon" aria-hidden="true">✦</div>
-            <p>У вас пока нет покупок.</p>
-            <button
-              type="button"
-              className="btn-stars"
-              onClick={() => setScreen("premium")}
-            >
-              Открыть Premium
-            </button>
-          </div>
-        ) : (
-          <>
-            <motion.div
-              className="natal-card purchases-list"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              {active && (
-                <div className="purchase-row purchase-row--active">
-                  <div className="purchase-row__main">
-                    <div className="purchase-row__title">Премиум подписка</div>
-                    <div className="purchase-row__meta">
-                      {formatExpiresRu(active.expires_at) ?? "активна"}
+        <QueryStateFallback
+          query={purchasesQuery}
+          onRetry={() => purchasesQuery.refetch()}
+          errorTitle="Не удалось загрузить историю покупок"
+          errorHint="Проверьте подключение и попробуйте ещё раз. Если вы недавно купили Premium — покупка сохранена, просто не отображается сейчас."
+        >
+          {(data) => {
+            const purchases = data.purchases ?? [];
+            const active = data.active_subscription ?? null;
+            if (purchases.length === 0 && !active) {
+              return (
+                <div className="purchases-empty">
+                  <div className="purchases-empty__icon" aria-hidden="true">✦</div>
+                  <p>У вас пока нет покупок.</p>
+                  <button
+                    type="button"
+                    className="btn-stars"
+                    onClick={() => setScreen("premium")}
+                  >
+                    Открыть Premium
+                  </button>
+                </div>
+              );
+            }
+            return (
+              <motion.div
+                className="natal-card purchases-list"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                {active && (
+                  <div className="purchase-row purchase-row--active">
+                    <div className="purchase-row__main">
+                      <div className="purchase-row__title">Премиум подписка</div>
+                      <div className="purchase-row__meta">
+                        {formatExpiresRu(active.expires_at) ?? "активна"}
+                      </div>
+                    </div>
+                    <div className="purchase-row__stars">
+                      {active.stars_paid} ⭐
                     </div>
                   </div>
-                  <div className="purchase-row__stars">
-                    {active.stars_paid} ⭐
-                  </div>
-                </div>
-              )}
-              {purchases.map((p, idx) => (
-                <div key={`${p.product_id}-${idx}`} className="purchase-row">
-                  <div className="purchase-row__main">
-                    <div className="purchase-row__title">{p.product_name}</div>
-                    <div className="purchase-row__meta">
-                      {formatPurchaseDate(p.created_at)}
+                )}
+                {purchases.map((p, idx) => (
+                  <div key={`${p.product_id}-${idx}`} className="purchase-row">
+                    <div className="purchase-row__main">
+                      <div className="purchase-row__title">{p.product_name}</div>
+                      <div className="purchase-row__meta">
+                        {formatPurchaseDate(p.created_at)}
+                      </div>
                     </div>
+                    <div className="purchase-row__stars">{p.stars_amount} ⭐</div>
                   </div>
-                  <div className="purchase-row__stars">{p.stars_amount} ⭐</div>
-                </div>
-              ))}
-            </motion.div>
-          </>
-        )}
+                ))}
+              </motion.div>
+            );
+          }}
+        </QueryStateFallback>
       </div>
     </div>
   );

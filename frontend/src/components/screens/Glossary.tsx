@@ -19,7 +19,7 @@ export function Glossary() {
   const [query, setQuery] = useState("");
   const [activeCat, setActiveCat] = useState<string>("all");
 
-  const { data: terms, isLoading } = useQuery({
+  const { data: terms, isLoading, isError, refetch } = useQuery({
     queryKey: ["glossary", query],
     queryFn: () => glossaryApi.list(query ? { q: query } : undefined),
     staleTime: 1000 * 60 * 10,
@@ -110,6 +110,16 @@ export function Glossary() {
           <p style={{ color: "var(--text-dim)", textAlign: "center" }}>
             Загрузка...
           </p>
+        )}
+
+        {isError && !terms && (
+          <div className="query-fallback query-fallback--error">
+            <p className="query-fallback__title">Не удалось загрузить глоссарий</p>
+            <p className="query-fallback__hint">Проверьте подключение и попробуйте ещё раз.</p>
+            <button type="button" className="btn-ghost" onClick={() => refetch()}>
+              Повторить
+            </button>
+          </div>
         )}
 
         {terms && terms.length === 0 && (

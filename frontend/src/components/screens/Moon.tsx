@@ -120,13 +120,23 @@ export function Moon() {
   const [month] = useState(now.getMonth() + 1);
   const [selectedDay, setSelectedDay] = useState(now.getDate());
 
-  const { data: moonPhase, isLoading: moonLoading } = useQuery({
+  const {
+    data: moonPhase,
+    isLoading: moonLoading,
+    isError: moonError,
+    refetch: refetchMoon,
+  } = useQuery({
     queryKey: ["moon-phase"],
     queryFn: horoscopeApi.getMoon,
     staleTime: 1000 * 60 * 60,
   });
 
-  const { data: calendarResp, isLoading: calendarLoading } = useQuery({
+  const {
+    data: calendarResp,
+    isLoading: calendarLoading,
+    isError: calendarError,
+    refetch: refetchCalendar,
+  } = useQuery({
     queryKey: ["moon-calendar", year, month],
     queryFn: () => horoscopeApi.getMoonCalendar(year, month),
     staleTime: 1000 * 60 * 60 * 24,
@@ -184,6 +194,22 @@ export function Moon() {
         </div>
 
         {/* Phase info for selected day */}
+        {moonError && !moonPhase && (
+          <div className="query-fallback query-fallback--error">
+            <p className="query-fallback__title">Не удалось загрузить фазу Луны</p>
+            <p className="query-fallback__hint">Проверьте подключение и попробуйте ещё раз.</p>
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={() => {
+                impact("light");
+                refetchMoon();
+              }}
+            >
+              Повторить
+            </button>
+          </div>
+        )}
         {moonLoading && !selectedData && <MoonPhaseSkeleton />}
         {(selectedData || moonPhase) &&
           (() => {
@@ -291,6 +317,21 @@ export function Moon() {
           })()}
 
         {/* Monthly calendar grid */}
+        {calendarError && !calendarResp && (
+          <div className="query-fallback query-fallback--error">
+            <p className="query-fallback__title">Не удалось загрузить лунный календарь</p>
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={() => {
+                impact("light");
+                refetchCalendar();
+              }}
+            >
+              Повторить
+            </button>
+          </div>
+        )}
         {calendarLoading && <MoonCalendarSkeleton />}
         {calendar && (
           <div className="moon-calendar">

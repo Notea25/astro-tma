@@ -43,7 +43,7 @@ export function News() {
   const { setScreen, setNewsId } = useAppStore();
   const [filter, setFilter] = useState<string>("all");
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["news"],
     queryFn: () => newsApi.list({ limit: 30 }),
     staleTime: 1000 * 60 * 30,
@@ -123,6 +123,15 @@ export function News() {
           <p style={{ color: "var(--text-dim)", textAlign: "center" }}>
             Загрузка...
           </p>
+        )}
+        {isError && !data && (
+          <div className="query-fallback query-fallback--error">
+            <p className="query-fallback__title">Не удалось загрузить новости</p>
+            <p className="query-fallback__hint">Проверьте подключение и попробуйте ещё раз.</p>
+            <button type="button" className="btn-ghost" onClick={() => refetch()}>
+              Повторить
+            </button>
+          </div>
         )}
         {data && data.length === 0 && (
           <p style={{ color: "var(--text-dim)", textAlign: "center" }}>

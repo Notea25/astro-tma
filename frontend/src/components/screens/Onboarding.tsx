@@ -307,7 +307,11 @@ export function Onboarding() {
           animate={{ opacity: 1, x: 0 }}
         >
           <div className="step-header">
-            <button className="btn-back" onClick={() => setStep("welcome")}>
+            <button
+              className="btn-back"
+              onClick={() => setStep("welcome")}
+              aria-label="Назад"
+            >
               <svg
                 width="20"
                 height="20"
@@ -336,6 +340,8 @@ export function Onboarding() {
               onClick={() => handleGenderSelect("male")}
               whileTap={{ scale: 0.95 }}
               disabled={genderMutation.isPending || upsertMutation.isPending}
+              aria-label="Выбрать: Мужчина"
+              aria-pressed={gender === "male"}
             >
               <div className="gender-card__icon">
                 <GenderIcon type="male" size={56} />
@@ -348,6 +354,8 @@ export function Onboarding() {
               onClick={() => handleGenderSelect("female")}
               whileTap={{ scale: 0.95 }}
               disabled={genderMutation.isPending || upsertMutation.isPending}
+              aria-label="Выбрать: Женщина"
+              aria-pressed={gender === "female"}
             >
               <div className="gender-card__icon">
                 <GenderIcon type="female" size={56} />
@@ -371,7 +379,11 @@ export function Onboarding() {
           animate={{ opacity: 1, x: 0 }}
         >
           <div className="step-header">
-            <button className="btn-back" onClick={() => setStep("gender")}>
+            <button
+              className="btn-back"
+              onClick={() => setStep("gender")}
+              aria-label="Назад"
+            >
               <svg
                 width="20"
                 height="20"
@@ -394,10 +406,27 @@ export function Onboarding() {
           <h2 className="step-title">Дата рождения</h2>
           <p className="step-desc">Нужна для расчёта персонального гороскопа</p>
           <div className="onboarding__warning" role="note">
-            <span className="onboarding__warning-icon" aria-hidden="true">⚠️</span>
+            <span className="onboarding__warning-icon" aria-hidden="true">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 18 18"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="4" y="2" width="10" height="14" rx="1.5" />
+                <path d="M6.5 6h5M6.5 9h5M6.5 12h3" />
+                <circle cx="14" cy="14" r="2.6" fill="currentColor" opacity="0.15" />
+                <path d="M14 12.5v1.6M14 15.2v.05" />
+              </svg>
+            </span>
             <span>
               Проверь дату внимательно — после сохранения изменить её
-              <strong> нельзя</strong>.
+              <strong> нельзя</strong>. Дата задаёт всю Матрицу Судьбы и
+              натальную карту. Город и время можно изменить в профиле позже.
             </span>
           </div>
           <div className="form-group">
@@ -555,7 +584,11 @@ export function Onboarding() {
           animate={{ opacity: 1, x: 0 }}
         >
           <div className="step-header">
-            <button className="btn-back" onClick={() => setStep("birth_date")}>
+            <button
+              className="btn-back"
+              onClick={() => setStep("birth_date")}
+              aria-label="Назад"
+            >
               <svg
                 width="20"
                 height="20"

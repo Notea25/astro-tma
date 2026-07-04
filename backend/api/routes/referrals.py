@@ -18,7 +18,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.middleware.telegram_auth import get_tg_user
 from core.logging import get_logger
-from core.settings import settings
 from db.database import get_db
 from db.models import (
     Purchase,
@@ -26,6 +25,7 @@ from db.models import (
     User,
 )
 from services.referrals.code import get_or_create_referral_code
+from services.telegram_bot import resolve_bot_username
 from services.users import repository as user_repo
 
 log = get_logger(__name__)
@@ -52,9 +52,13 @@ class ReferralInfoResponse(BaseModel):
     stats: ReferralStats
 
 
-def _build_invite_url(code: str) -> str:
-    bot = (settings.TELEGRAM_BOT_USERNAME or "").lstrip("@")
-    if not bot:
+async def _build_invite_url(code: str) -> str:
+    """Build the invite URL. Uses `resolve_bot_username` so a missing
+    or placeholder `TELEGRAM_BOT_USERNAME` ENV falls back to a live
+    getMe call — the same logic already used for synastry invites."""
+    try:
+        bot = await resolve_bot_username()
+    except HTTPException:
         return ""
     return f"https://t.me/{bot}?start=ref_{code}"
 
@@ -89,7 +93,7 @@ async def get_my_referral_info(
     ).scalar_one() or 0
     return ReferralInfoResponse(
         code=code,
-        invite_url=_build_invite_url(code),
+        invite_url=await _build_invite_url(code),
         stats=ReferralStats(
             invited_total=int(invited_total),
             purchased=int(purchased),

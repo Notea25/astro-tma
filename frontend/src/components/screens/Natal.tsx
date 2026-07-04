@@ -2331,7 +2331,12 @@ export function Natal() {
     error: pdfDownloadError,
   } = usePdfGeneration();
 
-  const { data: summary, isLoading: summaryLoading } = useQuery({
+  const {
+    data: summary,
+    isLoading: summaryLoading,
+    isError: summaryIsError,
+    refetch: refetchSummary,
+  } = useQuery({
     queryKey: ["natal-summary"],
     queryFn: natalApi.getSummary,
     enabled: hasBirthData,
@@ -2534,6 +2539,35 @@ export function Natal() {
       );
     }
 
+    // Two distinct failure modes:
+    //   • Network/backend error → server didn't answer, show retry.
+    //   • Backend answered but chart is still being generated → show a
+    //     patient «Считаем…» message instead of the earlier misleading
+    //     «проверьте дату/город» which sent users back to Profile to
+    //     re-check already-correct data.
+    if (summaryIsError && !summary) {
+      return (
+        <motion.div
+          className={styles.referencePanel}
+          initial={false}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div className={styles.loadingState}>
+            Не удалось загрузить карту. Проверьте подключение и попробуйте
+            ещё раз.
+            <button
+              type="button"
+              className="btn-ghost"
+              style={{ marginTop: 12 }}
+              onClick={() => refetchSummary()}
+            >
+              Повторить
+            </button>
+          </div>
+        </motion.div>
+      );
+    }
+
     if (!summary?.has_chart) {
       return (
         <motion.div
@@ -2542,7 +2576,9 @@ export function Natal() {
           animate={{ opacity: 1, y: 0 }}
         >
           <div className={styles.loadingState}>
-            Нет данных — проверьте дату, время и город рождения.
+            Ваша карта ещё готовится — обычно это занимает несколько
+            секунд. Если через минуту всё ещё пусто, проверьте данные
+            рождения в профиле.
           </div>
         </motion.div>
       );

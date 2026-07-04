@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useReducedMotion } from 'framer-motion'
 import { FanOfCards, type FanCard } from './FanOfCards'
 import { FlipCard } from './FlipCard'
 import { TarotCardBack } from './TarotCardBack'
@@ -136,6 +137,9 @@ export function DrawSpreadFlow({
     return () => clearTimeout(t)
   }, [isAutoRevealing, phase, isAllRevealed, revealedCount, cards.length])
 
+  const prefersReducedMotion = useReducedMotion()
+  const shuffleDuration = prefersReducedMotion ? 200 : SHUFFLE_DURATION_MS
+
   const handleDeckClick = useCallback(() => {
     if (phase !== 'idle') return
     impact('medium')
@@ -143,8 +147,8 @@ export function DrawSpreadFlow({
     setTimeout(() => {
       setFanCards(Array.from({ length: INITIAL_FAN_COUNT }, (_, id) => ({ id })))
       setPhase('fan')
-    }, SHUFFLE_DURATION_MS)
-  }, [phase, impact])
+    }, shuffleDuration)
+  }, [phase, impact, shuffleDuration])
 
   const handleFanPick = useCallback(
     (id: number, rect: DOMRect, startRot: number) => {

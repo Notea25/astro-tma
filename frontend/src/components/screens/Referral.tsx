@@ -9,7 +9,7 @@ export function Referral() {
   const { setScreen } = useAppStore();
   const { impact, notification } = useHaptic();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["referral-me"],
     queryFn: referralsApi.getMe,
     staleTime: 1000 * 60 * 2,
@@ -87,6 +87,20 @@ export function Referral() {
           {isLoading ? (
             <div className="referral-link-card__url referral-link-card__url--loading">
               Готовим…
+            </div>
+          ) : isError ? (
+            <div className="referral-link-card__url referral-link-card__url--error">
+              Не удалось загрузить ссылку.{" "}
+              <button
+                type="button"
+                className="referral-link-card__retry"
+                onClick={() => {
+                  impact("light");
+                  refetch();
+                }}
+              >
+                Повторить
+              </button>
             </div>
           ) : inviteUrl ? (
             <div className="referral-link-card__url" title={inviteUrl}>

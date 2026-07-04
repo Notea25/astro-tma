@@ -1653,6 +1653,42 @@ body::after {
   line-height: 1.45;
 }
 
+/* QueryStateFallback — the shared shell for loading/error states across
+   every useQuery-driven screen. Same look as horoscope-error, just
+   wrapped in a card-agnostic container that plays nicely inside any
+   screen-content. */
+.query-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 40px 20px;
+  text-align: center;
+  min-height: 160px;
+}
+.query-fallback--loading {
+  color: var(--text-dim);
+}
+.query-fallback--error {
+  background: rgba(20, 18, 16, 0.5);
+  border: 1px solid rgba(212, 178, 84, 0.18);
+  border-radius: 14px;
+}
+.query-fallback__title {
+  margin: 0;
+  color: var(--gold);
+  font-family: "Playfair Display", serif;
+  font-size: 1rem;
+}
+.query-fallback__hint {
+  margin: 0;
+  color: var(--text-mute);
+  font-size: 0.9rem;
+  line-height: 1.55;
+  max-width: 32em;
+}
+
 /* Lock-warning banner above the birth-date inputs in onboarding. The
    date drives Destiny Matrix + natal chart, so we make the
    "сохраняется один раз" rule visible BEFORE the user types. */
@@ -7241,6 +7277,15 @@ body::before {
   margin: 0;
 }
 
+/* Form-level error strip under invite/create actions on Synastry.
+   Extracted from inline styles so brand-typography rules apply. */
+.syn-form-error {
+  color: #e88b8b;
+  font-size: 12.5px;
+  line-height: 1.4;
+  margin-top: 8px;
+}
+
 /* Pair summary («Портрет отношений») — long-form reading text inside
    a horoscope-card. Matches the inline-reading typography elsewhere. */
 .syn-summary__text {
@@ -9116,6 +9161,21 @@ body::before {
 }
 .referral-link-card__url--loading {
   color: var(--text-muted);
+}
+.referral-link-card__url--error {
+  color: rgba(232, 139, 139, 0.9);
+  white-space: normal;
+  font-family: inherit;
+  font-size: 13px;
+}
+.referral-link-card__retry {
+  background: none;
+  border: none;
+  color: var(--gold-light);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
 }
 .referral-link-card__buttons {
   display: grid;

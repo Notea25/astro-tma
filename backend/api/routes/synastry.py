@@ -4,7 +4,6 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -45,17 +44,9 @@ async def _has_synastry_access(db, user_id: int) -> bool:
     return await user_repo.has_purchased(db, user_id, "synastry")
 
 _TOKEN_TTL_DAYS = 7
-_BOT_USERNAME_CACHE: str | None = None
-_BOT_USERNAME_PLACEHOLDERS = {
-    "",
-    "astro_bot",
-    "bot_username",
-    "your_bot_username",
-    "telegram_bot_username",
-    "changeme",
-}
 
 from services.astro.planet_names import PLANET_RU as _PLANET_RU  # noqa: E402
+from services.telegram_bot import resolve_bot_username  # noqa: E402
 
 _ASPECT_RU: dict[str, str] = {
     "conjunction": "Соединение", "opposition": "Оппозиция", "square": "Квадрат",
@@ -63,57 +54,8 @@ _ASPECT_RU: dict[str, str] = {
 }
 
 
-def _clean_bot_username(value: str | None) -> str:
-    return (value or "").strip().lstrip("@")
-
-
-def _is_placeholder_bot_username(value: str) -> bool:
-    return value.lower() in _BOT_USERNAME_PLACEHOLDERS
-
-
-async def _resolve_bot_username() -> str:
-    global _BOT_USERNAME_CACHE
-
-    bot = (settings.TELEGRAM_BOT_USERNAME or "").strip().lstrip("@")
-    if bot and not _is_placeholder_bot_username(bot):
-        return bot
-
-    if _BOT_USERNAME_CACHE:
-        return _BOT_USERNAME_CACHE
-
-    token = (settings.TELEGRAM_BOT_TOKEN or "").strip()
-    if not token:
-        raise HTTPException(
-            status.HTTP_500_INTERNAL_SERVER_ERROR,
-            "TELEGRAM_BOT_TOKEN не настроен",
-        )
-
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get(f"https://api.telegram.org/bot{token}/getMe")
-            resp.raise_for_status()
-            payload = resp.json()
-    except httpx.HTTPError as e:
-        log.warning("synastry.bot_username_resolve_failed", error=str(e))
-        raise HTTPException(
-            status.HTTP_500_INTERNAL_SERVER_ERROR,
-            "Не удалось определить Telegram bot username",
-        ) from e
-
-    resolved = _clean_bot_username(payload.get("result", {}).get("username"))
-    if not resolved:
-        log.warning("synastry.bot_username_missing", payload_ok=payload.get("ok"))
-        raise HTTPException(
-            status.HTTP_500_INTERNAL_SERVER_ERROR,
-            "Telegram bot username не найден",
-        )
-
-    _BOT_USERNAME_CACHE = resolved
-    return resolved
-
-
 async def _invite_url(token: str) -> str:
-    bot = await _resolve_bot_username()
+    bot = await resolve_bot_username()
     return f"https://t.me/{bot}?startapp=syn_{token}"
 
 

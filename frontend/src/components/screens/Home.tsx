@@ -555,8 +555,10 @@ export function Home() {
           </motion.div>
         )}
 
-        {/* Zodiac signs — horizontal scroll */}
-        {period === "today" && (
+        {/* Zodiac signs — horizontal scroll. Shown on every period so
+            that switching to «Завтра/Неделя/Месяц» doesn't leave the
+            main screen almost empty. */}
+        {(
           <section className="home-zodiac-section">
             <div className="home-zodiac-section__head">
               <h2 className="section-title">Знаки зодиака</h2>
@@ -612,8 +614,10 @@ export function Home() {
         {/* Quick tiles — links to main practice screens.
             Order: Natal → Synastry → Destiny Matrix → Tarot. The lunar
             calendar tile was replaced by Destiny Matrix per product
-            decision; the moon screen is still reachable from Discover. */}
-        {period === "today" && (
+            decision; the moon screen is still reachable from Discover.
+            Shown on every period tab so users always have quick access
+            to the four core products. */}
+        {(
           <section className="home-tiles">
             <button
               className="home-tile"
@@ -622,16 +626,16 @@ export function Home() {
                 setScreen("natal");
               }}
             >
-              <span className="home-tile__emoji" aria-hidden="true">
+              <div className="home-tile__emoji" aria-hidden="true">
                 <IconNatal size={26} />
-              </span>
-              <span className="home-tile__title">Натальная карта</span>
-              <span className="home-tile__desc">
+              </div>
+              <div className="home-tile__title">Натальная карта</div>
+              <div className="home-tile__desc">
                 Расшифровка вашей карты рождения
-              </span>
-              <span className="home-tile__arrow" aria-hidden="true">
+              </div>
+              <div className="home-tile__arrow" aria-hidden="true">
                 ›
-              </span>
+              </div>
             </button>
             <button
               className="home-tile"
@@ -640,14 +644,16 @@ export function Home() {
                 setScreen("synastry");
               }}
             >
-              <span className="home-tile__emoji" aria-hidden="true">
+              <div className="home-tile__emoji" aria-hidden="true">
                 <IconHeart size={26} />
-              </span>
-              <span className="home-tile__title">Совместимость</span>
-              <span className="home-tile__desc">Сравните два знака</span>
-              <span className="home-tile__arrow" aria-hidden="true">
+              </div>
+              <div className="home-tile__title">Совместимость</div>
+              <div className="home-tile__desc">
+                Полный разбор пары по натальным картам
+              </div>
+              <div className="home-tile__arrow" aria-hidden="true">
                 ›
-              </span>
+              </div>
             </button>
             <button
               className="home-tile"
@@ -656,16 +662,16 @@ export function Home() {
                 setScreen("destiny_matrix_info");
               }}
             >
-              <span className="home-tile__emoji" aria-hidden="true">
+              <div className="home-tile__emoji" aria-hidden="true">
                 <IconMatrix size={26} />
-              </span>
-              <span className="home-tile__title">Матрица судьбы</span>
-              <span className="home-tile__desc">
-                22 аркана по дате рождения
-              </span>
-              <span className="home-tile__arrow" aria-hidden="true">
+              </div>
+              <div className="home-tile__title">Матрица судьбы</div>
+              <div className="home-tile__desc">
+                15 разделов по дате рождения
+              </div>
+              <div className="home-tile__arrow" aria-hidden="true">
                 ›
-              </span>
+              </div>
             </button>
             <button
               className="home-tile"
@@ -674,14 +680,14 @@ export function Home() {
                 setScreen("tarot");
               }}
             >
-              <span className="home-tile__emoji" aria-hidden="true">
+              <div className="home-tile__emoji" aria-hidden="true">
                 <IconCards size={26} />
-              </span>
-              <span className="home-tile__title">Таро</span>
-              <span className="home-tile__desc">Расклады и совет дня</span>
-              <span className="home-tile__arrow" aria-hidden="true">
+              </div>
+              <div className="home-tile__title">Таро</div>
+              <div className="home-tile__desc">Расклады и совет дня</div>
+              <div className="home-tile__arrow" aria-hidden="true">
                 ›
-              </span>
+              </div>
             </button>
           </section>
         )}
