@@ -72,15 +72,25 @@ _CLOSINGS = (
     "Не торопите события: день лучше раскрывается постепенно.",
 )
 
-# Tease, don't conclude — every pattern ends with `{teaser}` so the
-# message visually breaks off mid-thought. The CTA button "Читать далее"
-# is the only natural way for the user to finish reading.
+# Every pattern ends with `{teaser}` so the message visually breaks off
+# mid-thought. The CTA button "Читать продолжение" is the only natural
+# way for the user to finish reading.
+#
+# Five DIFFERENT layouts — not just whitespace variants. Ordering is
+# deterministic (see `_pattern_index` below) so a given user cycles
+# through them day by day: today Pattern-0, tomorrow Pattern-1, and so
+# on. That guarantees no visual duplicate on consecutive days.
 _MESSAGE_PATTERNS = (
+    # 0 · Classic bulletin — greeting → intro → teaser.
     "{greeting}\n{intro}\n\n{teaser}",
-    "{greeting}\n\n{intro}\n{teaser}",
-    "{greeting}\n{intro}\n\n{bridge}\n{teaser}",
-    "{greeting}\n{intro}\n{bridge_lc}\n{teaser}",
-    "{greeting}\n\n{intro}\n\n{bridge}\n{teaser}",
+    # 1 · «Записка от звёзд» — quoted teaser under a compact header.
+    "{greeting}\n\n✦ {sign} · {day}\n«{teaser}»",
+    # 2 · Diary entry — name-date lead, sign+bridge on the next line.
+    "<b>{name}, {day}.</b>\n{sign} — {bridge_lc}\n\n{teaser}",
+    # 3 · Bridged report — full four-part composition.
+    "{greeting}\n\n{intro}\n{bridge}\n{teaser}",
+    # 4 · Direct address — em-dash speech, minimal chrome.
+    "{greeting}\n{sign} · {day}\n\n— {teaser}",
 )
 
 _SENTENCE_RE = re.compile(r"[^.!?…]+[.!?…]+", re.MULTILINE)
@@ -244,6 +254,15 @@ def _sentence_teaser(text: str, *, target_chars: int = 240) -> str:
     return _cliffhanger_cut(joined, target_chars=target_chars) or joined
 
 
+def daily_style_index(target_date: date) -> int:
+    """Style rotates strictly by ordinal date — all users on the same
+    calendar day see the same layout+wording style, and two consecutive
+    days can never share one. Exposed so llm_horoscope can align the
+    prompt-style index with the push-pattern index (same day → same
+    stylistic register in both the text and its wrapper)."""
+    return target_date.toordinal() % len(_MESSAGE_PATTERNS)
+
+
 def build_daily_message(
     user: User,
     sign_ru: str,
@@ -262,9 +281,14 @@ def build_daily_message(
     intro = _pick(_INTROS, variant, 5).format(sign=sign_ru, day=day)
     bridge = _pick(_BRIDGES, variant, 10)
     closing = _pick(_CLOSINGS, variant, 15)
-    pattern = _pick(_MESSAGE_PATTERNS, variant, 20)
+    # Pattern rotates by date, NOT by user hash — the whole point is that
+    # any given user sees a different structure every calendar day.
+    pattern = _MESSAGE_PATTERNS[daily_style_index(target_date)]
 
     return pattern.format(
+        name=name,
+        sign=sign_ru,
+        day=day,
         greeting=f"<b>{greeting}</b>",
         intro=intro,
         bridge=bridge,
