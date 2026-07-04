@@ -119,8 +119,24 @@ export function MyReports() {
   return (
     <div className="screen">
       <div className="screen-header screen-header--with-back">
-        <button type="button" className="screen-back" onClick={goBack}>
-          ‹
+        <button
+          type="button"
+          className="back-btn"
+          onClick={goBack}
+          aria-label="Назад"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M13 4l-6 6 6 6" />
+          </svg>
         </button>
         <h1 className="screen-title">Мои разборы</h1>
       </div>
