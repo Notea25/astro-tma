@@ -155,12 +155,11 @@ const COLOR_DOT = "rgba(232, 200, 98, 0.95)"; // small dots default
 const COLOR_DOT_RED = "#e07b6a"; // karmic dots
 const COLOR_DOT_PINK = "#d27b9c"; // love/comfort accent
 const COLOR_DOT_ORANGE = "#e8a553"; // money accent
-const COLOR_LABEL_DIM = "rgba(220, 215, 200, 0.55)"; // muted side labels
 const COLOR_FATHER = "rgba(120, 145, 220, 0.75)"; // blue — отцовская линия
 const COLOR_MOTHER = "rgba(220, 110, 130, 0.75)"; // red — материнская
 const COLOR_INNER_RING = "rgba(232, 200, 98, 0.25)"; // inner circle outline
 
-// Inner soul-circle radius (heart, $, ЗОНА КОМФОРТА живут внутри).
+// Inner soul-circle radius (heart and $ live inside).
 const R_INNER = 155;
 // Comfort dots — РОВНО ГОРИЗОНТАЛЬНО справа от центра, вплотную.
 // comfort_a ближе к центру, comfort_b дальше (ближе к money point).
@@ -606,56 +605,6 @@ function RenderedNode({
   );
 }
 
-// ── Diagonal-line text label, rotated so it reads along the line ───────
-interface DiagLabelProps {
-  from: [number, number];
-  to: [number, number];
-  text: string;
-  t?: number; // fraction along the line (default 0.55)
-  offset?: number; // perpendicular offset
-  color?: string;
-}
-
-function DiagLabel({
-  from,
-  to,
-  text,
-  t = 0.55,
-  offset = 12,
-  color,
-}: DiagLabelProps) {
-  const x = from[0] + t * (to[0] - from[0]);
-  const y = from[1] + t * (to[1] - from[1]);
-  const dx = to[0] - from[0];
-  const dy = to[1] - from[1];
-  // Keep text upright-ish: flip rotation if it would be upside-down.
-  let angle = (Math.atan2(dy, dx) * 180) / Math.PI;
-  if (angle > 90) angle -= 180;
-  if (angle < -90) angle += 180;
-  // Offset perpendicular to the line
-  const len = Math.hypot(dx, dy) || 1;
-  const ox = (-dy / len) * offset;
-  const oy = (dx / len) * offset;
-  return (
-    <text
-      x={x + ox}
-      y={y + oy}
-      transform={`rotate(${angle} ${x + ox} ${y + oy})`}
-      textAnchor="middle"
-      dominantBaseline="central"
-      fontSize="10"
-      fontStyle="italic"
-      fill={color ?? COLOR_LABEL_DIM}
-      style={{
-        fontFamily: "Inter, system-ui, sans-serif",
-        letterSpacing: "0.02em",
-      }}
-    >
-      {text}
-    </text>
-  );
-}
-
 interface Props {
   positions: DestinyMatrixPositions;
   hasFullAccess: boolean;
@@ -770,92 +719,6 @@ export function DestinyOctagram({
         strokeWidth="1.3"
       />
 
-      {/* ── Side-of-world labels (выше/ниже/сбоку новых вынесенных узлов) ── */}
-      <text
-        x={NODE_TOP[0]}
-        y={NODE_TOP[1] - 36}
-        textAnchor="middle"
-        fontSize="14"
-        fill={COLOR_LABEL_DIM}
-        style={{
-          fontFamily: "Inter, system-ui, sans-serif",
-          letterSpacing: "0.06em",
-        }}
-      >
-        небо
-      </text>
-      <text
-        x={NODE_BOTTOM[0]}
-        y={NODE_BOTTOM[1] + 42}
-        textAnchor="middle"
-        fontSize="14"
-        fill={COLOR_LABEL_DIM}
-        style={{
-          fontFamily: "Inter, system-ui, sans-serif",
-          letterSpacing: "0.06em",
-        }}
-      >
-        небо
-      </text>
-      <text
-        x={NODE_LEFT[0] - 30}
-        y={NODE_LEFT[1]}
-        textAnchor="end"
-        dominantBaseline="central"
-        fontSize="14"
-        fill={COLOR_LABEL_DIM}
-        style={{
-          fontFamily: "Inter, system-ui, sans-serif",
-          letterSpacing: "0.06em",
-        }}
-      >
-        земля
-      </text>
-      <text
-        x={NODE_RIGHT[0] + 30}
-        y={NODE_RIGHT[1]}
-        textAnchor="start"
-        dominantBaseline="central"
-        fontSize="14"
-        fill={COLOR_LABEL_DIM}
-        style={{
-          fontFamily: "Inter, system-ui, sans-serif",
-          letterSpacing: "0.06em",
-        }}
-      >
-        земля
-      </text>
-
-      {/* ── Diagonal labels — родовые каналы ── */}
-      <DiagLabel
-        from={TL}
-        to={[CX, CY]}
-        text="Отец · таланты"
-        t={0.32}
-        offset={-18}
-      />
-      <DiagLabel
-        from={TR}
-        to={[CX, CY]}
-        text="Мать · таланты"
-        t={0.32}
-        offset={18}
-      />
-      <DiagLabel
-        from={[CX, CY]}
-        to={BR}
-        text="Отец · карма"
-        t={0.68}
-        offset={-18}
-      />
-      <DiagLabel
-        from={[CX, CY]}
-        to={BL}
-        text="Мать · карма"
-        t={0.68}
-        offset={18}
-      />
-
       {/* ── Inner soul circle ── */}
       <circle
         cx={CX}
@@ -914,24 +777,6 @@ export function DestinyOctagram({
         markerEnd="url(#dm-arrow-mother)"
       />
 
-      {/* Labels на стрелках линий рода (внутри круга) */}
-      <DiagLabel
-        from={[CX - 75, CY - 75]}
-        to={[CX, CY]}
-        text="линия мужского рода"
-        t={0.5}
-        offset={-9}
-        color={COLOR_FATHER}
-      />
-      <DiagLabel
-        from={[CX + 75, CY + 75]}
-        to={[CX, CY]}
-        text="линия женского рода"
-        t={0.5}
-        offset={-9}
-        color={COLOR_MOTHER}
-      />
-
       {/* Штрихпунктирная диагональ от year_2 (money) до bottom_2 (love)
           через нижне-правый сектор. По спеке проходит через cross_p (380,380). */}
       {RENDER_MODE === "all" && (
@@ -944,22 +789,6 @@ export function DestinyOctagram({
           opacity="0.7"
         />
       )}
-
-      {/* ── ЗОНА КОМФОРТА — text внутри круга ── */}
-      <text
-        x={CX}
-        y={CY + 60}
-        textAnchor="middle"
-        fontSize="9"
-        fill={COLOR_LABEL_DIM}
-        fontWeight={500}
-        style={{
-          fontFamily: "Inter, system-ui, sans-serif",
-          letterSpacing: "0.12em",
-        }}
-      >
-        ЗОНА КОМФОРТА
-      </text>
 
       {/* Heart icon — позиция (345, 400) по спеке §6.1, слева от штрихпунктира */}
       <g transform={`translate(${HEART_POS[0]} ${HEART_POS[1]}) scale(0.5)`}>

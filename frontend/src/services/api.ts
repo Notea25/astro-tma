@@ -692,16 +692,25 @@ export const natalApi = {
   // /pdf-download/{token} endpoint the queue worker mints).
   downloadByToken: async (token: string, filename = "natal-chart.pdf") => {
     const path = `/natal/pdf-download/${token}`;
-    if (canUseTelegramOpenLink()) {
-      triggerDownload(apiUrl(path), filename);
-      return;
-    }
     try {
       const blob = await requestBlob(path);
       triggerBlobDownload(blob, filename);
     } catch {
+      if (canUseTelegramOpenLink()) {
+        throw new Error(
+          "Telegram не дал скачать файл напрямую. Нажмите «Отправить в бота» — PDF придёт документом в чат.",
+        );
+      }
       triggerDownload(apiUrl(path), filename);
     }
+  },
+
+  sendPdfToTelegram: async () => {
+    await ensureWheelSvgUploaded();
+    await request<NatalPdfSendResponse>("POST", "/natal/pdf-send");
+    promptOpenBotChat(
+      "PDF-отчёт готов в чате с ботом. Открыть чат, чтобы сохранить файл?",
+    );
   },
 
   downloadPdf: async () => {
