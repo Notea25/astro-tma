@@ -82,7 +82,7 @@ export function NatalFullReading() {
         <button type="button" className="screen-back" onClick={goBack}>
           ‹
         </button>
-        <h1 className="screen-title">Мой разбор</h1>
+        <h1 className="screen-title">Полный отчёт</h1>
       </div>
 
       <motion.div
@@ -99,7 +99,7 @@ export function NatalFullReading() {
 
         {!isLoading && !reading && (
           <p className="natal-fr__empty">
-            Разбор ещё не готов. Откройте «Скачать PDF» — он соберётся
+            Полный отчёт ещё не готов. Откройте «Полный отчёт PDF» — он соберётся
             за минуту и сохранится здесь же.
           </p>
         )}
@@ -118,7 +118,7 @@ export function NatalFullReading() {
             {pdfPhase === "processing" && "Пишем PDF…"}
             {pdfPhase !== "queued" &&
               pdfPhase !== "processing" &&
-              "Скачать PDF"}
+              "Полный отчёт PDF"}
           </button>
           {pdfError && <p className="natal-fr__pdf-error">{pdfError}</p>}
         </div>
