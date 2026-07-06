@@ -698,7 +698,7 @@ export const natalApi = {
     } catch {
       if (canUseTelegramOpenLink()) {
         throw new Error(
-          "Telegram не дал скачать файл напрямую. Нажмите «Отправить в бота» — PDF придёт документом в чат.",
+          "Telegram не дал скачать полный отчёт PDF напрямую. Нажмите «Отправить полный отчёт PDF в бота» — файл придёт документом в чат.",
         );
       }
       triggerDownload(apiUrl(path), filename);
@@ -709,7 +709,7 @@ export const natalApi = {
     await ensureWheelSvgUploaded();
     await request<NatalPdfSendResponse>("POST", "/natal/pdf-send");
     promptOpenBotChat(
-      "PDF-отчёт готов в чате с ботом. Открыть чат, чтобы сохранить файл?",
+      "Полный отчёт PDF готов в чате с ботом. Открыть чат, чтобы сохранить файл?",
     );
   },
 
@@ -722,7 +722,7 @@ export const natalApi = {
       try {
         await request<NatalPdfSendResponse>("POST", "/natal/pdf-send");
         promptOpenBotChat(
-          "PDF-отчёт готов в чате с ботом. Открыть чат, чтобы сохранить файл?",
+          "Полный отчёт PDF готов в чате с ботом. Открыть чат, чтобы сохранить файл?",
         );
       } catch (error) {
         if (!(error instanceof ApiError) || error.status !== 404) {

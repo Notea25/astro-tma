@@ -1752,9 +1752,9 @@ function NatalPdfCard({
   } else if (isDownloading) {
     label = "Готовим PDF…";
   } else if (entitled) {
-    label = "Скачать PDF";
+    label = "Полный отчёт PDF";
   } else {
-    label = `Открыть отчёт — ${price} ⭐`;
+    label = `Открыть полный отчёт PDF — ${price} ⭐`;
   }
 
   return (
@@ -1778,7 +1778,7 @@ function NatalPdfCard({
               className={styles.pdfReadInapp ?? "natal-read-inapp"}
               onClick={onSendToBot}
             >
-              Отправить PDF в бота ›
+              Отправить полный отчёт PDF в бота ›
             </button>
           )}
           <button
@@ -1786,7 +1786,7 @@ function NatalPdfCard({
             className={styles.pdfReadInapp ?? "natal-read-inapp"}
             onClick={() => useAppStore.getState().setScreen("natal_full_reading")}
           >
-            Открыть мой разбор в приложении ›
+            Открыть полный отчёт в приложении ›
           </button>
         </>
       )}
@@ -1798,8 +1798,8 @@ function NatalPdfCard({
       )}
       {entitled && hasChart && !busy && canSendToTelegramChat && (
         <p className={styles.pdfHint}>
-          Если Telegram открывает предпросмотр вместо скачивания, выберите
-          отправку в бота — файл придёт документом в чат.
+          Один и тот же полный разбор можно скачать PDF-файлом, отправить
+          в бота или открыть текстом в приложении.
         </p>
       )}
       {!entitled && hasChart && !paying && priceRub !== undefined && (
@@ -1822,7 +1822,7 @@ function NatalPdfCard({
       )}
       {!entitled && hasChart && !paying && (
         <p className={styles.pdfHint}>
-          Премиум-доступ ко всей карте + PDF-отчёт. Также входит в
+          Премиум-доступ ко всей карте + полный отчёт PDF. Также входит в
           Premium-подписку.
         </p>
       )}
