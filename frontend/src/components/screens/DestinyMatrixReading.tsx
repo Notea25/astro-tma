@@ -38,6 +38,7 @@ import { DestinyV3Narrative } from "@/components/destiny/DestinyV3Narrative";
 import { DestinyPurposes } from "@/components/destiny/DestinyPurposes";
 import { DestinyChannels } from "@/components/destiny/DestinyChannels";
 import { DestinyHealthMap } from "@/components/destiny/DestinyHealthMap";
+import { DestinyMatrixLegend } from "@/components/destiny/DestinyMatrixLegend";
 
 // Human-friendly title shown in the bottom-sheet header for each tap-target.
 // Wording follows the canonical Russian Destiny Matrix cheat-sheet so users
@@ -334,6 +335,8 @@ export function DestinyMatrixReading() {
                 onNodeTap={openOctagramTap}
               />
             </motion.div>
+
+            <DestinyMatrixLegend />
 
             {!reading.has_full_access && (
               <>

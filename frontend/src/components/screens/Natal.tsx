@@ -1692,26 +1692,24 @@ function NatalPdfCard({
   pdfPhase,
   error,
   onDownload,
+  onSendToBot,
 }: {
   hasChart: boolean;
   isDownloading: boolean;
   pdfPhase: import("@/hooks/usePdfGeneration").PdfPhase;
   error: string | null;
   onDownload: () => void;
+  onSendToBot: () => void;
 }) {
   const entitled = useEntitlement("natal_full");
   const price = useProductPrice("natal_full") ?? 149;
   const priceRub = useProductPriceRub("natal_full");
   const { purchase, activating, phase, error: payError } = usePayment();
   const paying = phase === "opening" || phase === "activating";
-  const sendToTelegramChat = Boolean(WebApp.initData);
+  const canSendToTelegramChat = Boolean(WebApp.initData);
 
-  const handleClick = async () => {
+  const handlePurchase = async () => {
     if (!hasChart) return;
-    if (entitled) {
-      onDownload();
-      return;
-    }
     const ok = await purchase("natal_full");
     if (ok) onDownload();
   };
@@ -1754,9 +1752,7 @@ function NatalPdfCard({
   } else if (isDownloading) {
     label = "Готовим PDF…";
   } else if (entitled) {
-    label = sendToTelegramChat
-      ? "Получить полный отчёт"
-      : "Скачать полный отчёт";
+    label = "Скачать PDF";
   } else {
     label = `Открыть отчёт — ${price} ⭐`;
   }
@@ -1766,7 +1762,7 @@ function NatalPdfCard({
       <motion.button
         type="button"
         className={styles.pdfButton}
-        onClick={handleClick}
+        onClick={entitled ? onDownload : handlePurchase}
         disabled={!hasChart || busy}
         aria-busy={busy}
         whileTap={{ scale: busy || !hasChart ? 1 : 0.98 }}
@@ -1775,18 +1771,35 @@ function NatalPdfCard({
         <span>{label}</span>
       </motion.button>
       {entitled && hasChart && !busy && (
-        <button
-          type="button"
-          className={styles.pdfReadInapp ?? "natal-read-inapp"}
-          onClick={() => useAppStore.getState().setScreen("natal_full_reading")}
-        >
-          Открыть мой разбор в приложении ›
-        </button>
+        <>
+          {canSendToTelegramChat && (
+            <button
+              type="button"
+              className={styles.pdfReadInapp ?? "natal-read-inapp"}
+              onClick={onSendToBot}
+            >
+              Отправить PDF в бота ›
+            </button>
+          )}
+          <button
+            type="button"
+            className={styles.pdfReadInapp ?? "natal-read-inapp"}
+            onClick={() => useAppStore.getState().setScreen("natal_full_reading")}
+          >
+            Открыть мой разбор в приложении ›
+          </button>
+        </>
       )}
       {generating && (
         <p className={styles.pdfHint} aria-live="polite">
           Собираем вашу карту со звёзд — это занимает 1–2 минуты. Можно
-          свернуть приложение, отчёт будет ждать вас.
+          свернуть приложение, а после подготовки мы выполним выбранное действие.
+        </p>
+      )}
+      {entitled && hasChart && !busy && canSendToTelegramChat && (
+        <p className={styles.pdfHint}>
+          Если Telegram открывает предпросмотр вместо скачивания, выберите
+          отправку в бота — файл придёт документом в чат.
         </p>
       )}
       {!entitled && hasChart && !paying && priceRub !== undefined && (
@@ -2519,7 +2532,12 @@ export function Natal() {
     return slides;
   }, [mini, summary?.has_chart]);
 
-  const handlePdfDownload = startPdfGeneration;
+  const handlePdfDownload = () => {
+    void startPdfGeneration("download");
+  };
+  const handlePdfSendToBot = () => {
+    void startPdfGeneration("telegram");
+  };
 
   const renderFullPanel = () => {
     if (summaryLoading) {
@@ -2637,6 +2655,7 @@ export function Natal() {
             pdfPhase={pdfPhase}
             error={pdfDownloadError}
             onDownload={handlePdfDownload}
+            onSendToBot={handlePdfSendToBot}
           />
         </>
       );
@@ -2665,6 +2684,7 @@ export function Natal() {
             pdfPhase={pdfPhase}
             error={pdfDownloadError}
             onDownload={handlePdfDownload}
+            onSendToBot={handlePdfSendToBot}
           />
         </>
       );
@@ -2679,6 +2699,7 @@ export function Natal() {
           pdfPhase={pdfPhase}
           error={pdfDownloadError}
           onDownload={handlePdfDownload}
+          onSendToBot={handlePdfSendToBot}
         />
       </>
     );

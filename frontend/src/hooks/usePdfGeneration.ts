@@ -11,10 +11,11 @@
 import { useCallback, useRef, useState } from "react";
 import { natalApi } from "@/services/api";
 
+export type PdfDeliveryMode = "download" | "telegram";
 export type PdfPhase = "idle" | "queued" | "processing" | "ready" | "error";
 
 interface UsePdfGenerationResult {
-  start: () => Promise<void>;
+  start: (mode?: PdfDeliveryMode) => Promise<void>;
   phase: PdfPhase;
   /** True while a job is queued or processing (UI shows a loader). */
   busy: boolean;
@@ -29,7 +30,22 @@ export function usePdfGeneration(): UsePdfGenerationResult {
   const [error, setError] = useState<string | null>(null);
   const inflight = useRef(false);
 
-  const start = useCallback(async () => {
+  const deliverReadyPdf = useCallback(
+    async (
+      mode: PdfDeliveryMode,
+      token: string,
+      filename: string | undefined,
+    ) => {
+      if (mode === "telegram") {
+        await natalApi.sendPdfToTelegram();
+        return;
+      }
+      await natalApi.downloadByToken(token, filename);
+    },
+    [],
+  );
+
+  const start = useCallback(async (mode: PdfDeliveryMode = "download") => {
     if (inflight.current) return;
     inflight.current = true;
     setError(null);
@@ -43,10 +59,7 @@ export function usePdfGeneration(): UsePdfGenerationResult {
 
       if (res.status === "ready" && res.download_token) {
         setPhase("ready");
-        await natalApi.downloadByToken(
-          res.download_token,
-          res.filename ?? undefined,
-        );
+        await deliverReadyPdf(mode, res.download_token, res.filename ?? undefined);
         return;
       }
 
@@ -65,10 +78,7 @@ export function usePdfGeneration(): UsePdfGenerationResult {
           setPhase("processing");
         } else if (st.status === "ready" && st.download_token) {
           setPhase("ready");
-          await natalApi.downloadByToken(
-            st.download_token,
-            st.filename ?? undefined,
-          );
+          await deliverReadyPdf(mode, st.download_token, st.filename ?? undefined);
           return;
         } else if (st.status === "failed") {
           throw new Error(st.error || "Не удалось сгенерировать отчёт");
@@ -85,7 +95,7 @@ export function usePdfGeneration(): UsePdfGenerationResult {
     } finally {
       inflight.current = false;
     }
-  }, []);
+  }, [deliverReadyPdf]);
 
   return {
     start,
