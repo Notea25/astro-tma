@@ -14,6 +14,7 @@ from sqlalchemy import select, tuple_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.logging import get_logger
+from core.settings import settings
 from db.database import AsyncSessionLocal
 from db.models import TransitInterpretation
 from services.llm_utils import first_text_block
@@ -50,7 +51,7 @@ async def _llm_batch(
     if not missing:
         return {}
 
-    import anthropic
+    from services.llm_client import create_llm_client
 
     items = []
     for i, (tp, np, aspect) in enumerate(missing):
@@ -89,10 +90,10 @@ async def _llm_batch(
     try:
         from services.llm_pool import llm_semaphore
 
-        client = anthropic.AsyncAnthropic(api_key=api_key)
+        client = create_llm_client(api_key)
         async with llm_semaphore:
             message = await client.messages.create(
-                model="claude-haiku-4-5-20251001",
+                model=settings.LLM_MODEL,
                 max_tokens=4000,
                 messages=[{"role": "user", "content": prompt}],
             )
@@ -305,7 +306,7 @@ async def _llm_advice(
     Returns a dict with the same keys as the DB columns; any None means
     «model didn't return it», so the UI block stays hidden.
     """
-    import anthropic
+    from services.llm_client import create_llm_client
 
     tp_ru = _PLANET_RU.get(tp, tp)
     np_ru = _PLANET_RU.get(np, np)
@@ -343,10 +344,10 @@ async def _llm_advice(
     try:
         from services.llm_pool import llm_semaphore
 
-        client = anthropic.AsyncAnthropic(api_key=api_key)
+        client = create_llm_client(api_key)
         async with llm_semaphore:
             message = await client.messages.create(
-                model="claude-haiku-4-5-20251001",
+                model=settings.LLM_MODEL,
                 max_tokens=900,
                 messages=[{"role": "user", "content": prompt}],
             )

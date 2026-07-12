@@ -1,5 +1,5 @@
 """
-LLM-based natal chart interpretation via Anthropic Claude.
+Provider-neutral LLM-based natal chart interpretation.
 
 Generates a holistic, personal reading in Russian from raw chart data.
 Result is cached by the caller — this function always calls the API.
@@ -8,6 +8,8 @@ Result is cached by the caller — this function always calls the API.
 from __future__ import annotations
 
 from core.logging import get_logger
+from core.settings import settings
+from services.llm_client import create_llm_client
 from services.llm_utils import first_text_block
 
 log = get_logger(__name__)
@@ -184,33 +186,31 @@ async def generate_natal_reading(
     nodes: dict | None = None,
 ) -> str:
     """
-    Call Claude to generate a natal chart reading in Russian.
+    Call the configured LLM to generate a natal chart reading in Russian.
     Raises on API error — caller should catch and handle gracefully.
 
     ``gender`` ('male' / 'female' / None) anchors the grammatical forms in
     the generated text. Caller is responsible for storing the value next
     to the cached reading so future requests can detect a stale gender.
     """
-    import anthropic
-
     from services.llm_pool import llm_semaphore
     from services.quality_validator import Severity, TextValidator, ValidationContext
-    from services.rate_limiter import AnthropicLimiter
+    from services.rate_limiter import LLMLimiter
 
     prompt = _build_prompt(
         sun_sign, moon_sign, ascendant_sign, planets, aspects, gender, nodes=nodes
     )
 
-    client = anthropic.AsyncAnthropic(api_key=api_key)
+    client = create_llm_client(api_key)
     validator = TextValidator(use_spellchecker=False)
     ctx = ValidationContext(section_kind="synthesis", subject="Натальный разбор")
 
     async def _call(max_tokens: int) -> tuple[str, str | None]:
         # 9000 (было 7000): на 8-разделочном ~1200-1500-словном тексте 7k токенов
         # упирались в потолок и обрывали последнюю секцию на полуслове («…строите карь»).
-        async with llm_semaphore, AnthropicLimiter(max_tokens):
+        async with llm_semaphore, LLMLimiter(max_tokens):
             message = await client.messages.create(
-                model="claude-haiku-4-5-20251001",
+                model=settings.LLM_MODEL,
                 max_tokens=max_tokens,
                 messages=[{"role": "user", "content": prompt}],
             )
@@ -308,17 +308,15 @@ async def generate_natal_mini_reading(
     Shown on the natal screen before the user requests the full PDF reading.
     Raises on API error — caller should catch and handle gracefully.
     """
-    import anthropic
-
     from services.llm_pool import llm_semaphore
-    from services.rate_limiter import AnthropicLimiter
+    from services.rate_limiter import LLMLimiter
 
     prompt = _build_mini_prompt(sun_sign, moon_sign, ascendant_sign, gender)
 
-    client = anthropic.AsyncAnthropic(api_key=api_key)
-    async with llm_semaphore, AnthropicLimiter(700):
+    client = create_llm_client(api_key)
+    async with llm_semaphore, LLMLimiter(700):
         message = await client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model=settings.LLM_MODEL,
             max_tokens=700,
             messages=[{"role": "user", "content": prompt}],
         )

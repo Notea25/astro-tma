@@ -1,6 +1,5 @@
 """Tests for natal PDF generation and temporary download links."""
 
-import sys
 from types import SimpleNamespace
 
 import pytest
@@ -444,12 +443,11 @@ async def test_generate_natal_reading_uses_expanded_token_budget(monkeypatch):
             calls.update(kwargs)
             return SimpleNamespace(content=[SimpleNamespace(text="Развёрнутое чтение.")])
 
-    class FakeAnthropic:
-        def __init__(self, api_key):
-            calls["api_key"] = api_key
-            self.messages = FakeMessages()
+    def fake_client(api_key):
+        calls["api_key"] = api_key
+        return SimpleNamespace(messages=FakeMessages())
 
-    monkeypatch.setitem(sys.modules, "anthropic", SimpleNamespace(AsyncAnthropic=FakeAnthropic))
+    monkeypatch.setattr(llm_interpreter, "create_llm_client", fake_client)
 
     reading = await llm_interpreter.generate_natal_reading(
         sun_sign="Scorpio",
@@ -1093,7 +1091,7 @@ async def test_get_or_generate_descriptions_regenerates_stale_cached_text(monkey
         }
 
     db.commit = fake_commit
-    monkeypatch.setattr(natal.settings, "ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.setattr(natal.settings, "LLM_API_KEY", "test-key")
     monkeypatch.setattr(natal, "generate_natal_descriptions", fake_generate_natal_descriptions)
 
     descriptions = await natal._get_or_generate_descriptions(db, user)
@@ -1137,7 +1135,7 @@ async def test_get_or_generate_descriptions_rejects_shifted_house_keys(monkeypat
         }
 
     db.commit = fake_commit
-    monkeypatch.setattr(natal.settings, "ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.setattr(natal.settings, "LLM_API_KEY", "test-key")
     monkeypatch.setattr(natal, "generate_natal_descriptions", fake_generate_natal_descriptions)
 
     descriptions = await natal._get_or_generate_descriptions(db, user)
@@ -1223,7 +1221,7 @@ async def test_get_natal_full_refreshes_short_cached_reading(monkeypatch):
     monkeypatch.setattr(natal.user_repo, "has_purchased", fake_true)
     monkeypatch.setattr(natal, "cache_get", fake_cache_get)
     monkeypatch.setattr(natal, "cache_set", fake_cache_set)
-    monkeypatch.setattr(natal.settings, "ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.setattr(natal.settings, "LLM_API_KEY", "test-key")
     monkeypatch.setattr(natal, "generate_natal_reading", fake_generate_natal_reading)
 
     result = await natal.get_natal_full(tg_user={"id": 1001}, db=object())
@@ -1447,7 +1445,7 @@ async def test_pdf_reading_is_generated_when_full_chart_cache_is_cold(monkeypatc
 
     monkeypatch.setattr(natal, "cache_get", fake_cache_get)
     monkeypatch.setattr(natal, "cache_set", fake_cache_set)
-    monkeypatch.setattr(natal.settings, "ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.setattr(natal.settings, "LLM_API_KEY", "test-key")
     monkeypatch.setattr(natal, "generate_natal_reading", fake_reading)
 
     reading = await natal._get_or_generate_pdf_reading(user, chart, planets, aspects)
@@ -1698,11 +1696,11 @@ async def test_reading_retries_on_truncation(monkeypatch):
             seen.append(kwargs["max_tokens"])
             return seq[len(seen) - 1]
 
-    class FakeAnthropic:
-        def __init__(self, api_key):
-            self.messages = FakeMessages()
-
-    monkeypatch.setitem(sys.modules, "anthropic", SimpleNamespace(AsyncAnthropic=FakeAnthropic))
+    monkeypatch.setattr(
+        llm_interpreter,
+        "create_llm_client",
+        lambda _api_key: SimpleNamespace(messages=FakeMessages()),
+    )
 
     reading = await llm_interpreter.generate_natal_reading(
         sun_sign="Scorpio",
@@ -1730,11 +1728,11 @@ async def test_reading_no_retry_when_complete(monkeypatch):
             seen.append(kwargs["max_tokens"])
             return SimpleNamespace(content=[SimpleNamespace(text=full)], stop_reason="end_turn")
 
-    class FakeAnthropic:
-        def __init__(self, api_key):
-            self.messages = FakeMessages()
-
-    monkeypatch.setitem(sys.modules, "anthropic", SimpleNamespace(AsyncAnthropic=FakeAnthropic))
+    monkeypatch.setattr(
+        llm_interpreter,
+        "create_llm_client",
+        lambda _api_key: SimpleNamespace(messages=FakeMessages()),
+    )
 
     reading = await llm_interpreter.generate_natal_reading(
         sun_sign="Scorpio",

@@ -68,7 +68,7 @@ services:
   # ── Worker (arq) ────────────────────────────────────────────────────────────
   # Background natal-PDF generation. Same image as backend (Chromium/Playwright
   # already installed), just a different command. Scale with --scale worker=N;
-  # the Redis token bucket keeps all replicas under the Anthropic key's TPM.
+  # the Redis token bucket keeps all replicas under the configured LLM key's TPM.
   worker:
     build:
       context: ./backend

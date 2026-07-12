@@ -14,6 +14,7 @@ import re
 from typing import Any
 
 from core.logging import get_logger
+from core.settings import settings
 from services.astro.sign_cases import sign_ru
 from services.llm_utils import first_text_block
 from services.quality_validator import (
@@ -35,7 +36,7 @@ _SECTION_KIND = {
 # Validator reused across entries; spellchecker off (astro terms ⇒ false positives).
 _VALIDATOR = TextValidator(use_spellchecker=False)
 
-_MODEL = "claude-haiku-4-5-20251001"
+_MODEL = settings.LLM_MODEL
 
 from services.astro.planet_names import PLANET_RU as _PLANET_RU  # noqa: E402
 
@@ -65,7 +66,7 @@ _ASPECT_RU: dict[str, str] = {
 }
 
 
-# Free-tier Anthropic keys cap output at ~10k tokens/min. Output tokens are the
+# Some provider tiers cap output tokens/minute. Output tokens are the
 # bottleneck (the bucket throttles them), so these targets are kept tight —
 # halved from the earlier values to roughly halve generation time on any tier.
 # Upper hints, not floors — the prompt tells the model "shorter is better".
@@ -507,9 +508,9 @@ async def _call_tool(
     block carries an already-parsed dict matching `input_schema`. No JSON
     string handling needed on our side."""
     from services.llm_pool import llm_semaphore
-    from services.rate_limiter import AnthropicLimiter
+    from services.rate_limiter import LLMLimiter
 
-    async with llm_semaphore, AnthropicLimiter(max_tokens):
+    async with llm_semaphore, LLMLimiter(max_tokens):
         message = await client.messages.create(
             model=_MODEL,
             max_tokens=max_tokens,
@@ -532,9 +533,9 @@ async def _call_tool(
 async def _call_llm(client: Any, prompt: str, max_tokens: int) -> str:
     """Legacy plain-text call — kept for any future free-form prompt."""
     from services.llm_pool import llm_semaphore
-    from services.rate_limiter import AnthropicLimiter
+    from services.rate_limiter import LLMLimiter
 
-    async with llm_semaphore, AnthropicLimiter(max_tokens):
+    async with llm_semaphore, LLMLimiter(max_tokens):
         message = await client.messages.create(
             model=_MODEL,
             max_tokens=max_tokens,
@@ -1024,10 +1025,10 @@ async def generate_natal_descriptions(
     ``gender`` is propagated into every batch prompt so adjectives/past-
     tense verbs match the reader. Caller should also write ``gender`` into
     the cached payload so a profile change triggers a regen."""
-    import anthropic
+    from services.llm_client import create_llm_client
 
-    client = anthropic.AsyncAnthropic(api_key=api_key)
-    # Concurrency and the Anthropic per-minute output-token limit are now
+    client = create_llm_client(api_key)
+    # Concurrency and the provider per-minute output-token limit are now
     # governed globally: llm_semaphore (in-process conn cap) + the distributed
     # token bucket, both inside _call_tool. Backoff in _call_tool_chunk still
     # absorbs residual 429/529 spikes.

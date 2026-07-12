@@ -105,7 +105,7 @@ async def _pregenerate_interpretation(
 
     Errors are swallowed — pre-generation is best-effort, the live
     /interpretation endpoint will retry on the next click."""
-    if not settings.ANTHROPIC_API_KEY:
+    if not settings.LLM_API_KEY:
         return
     from db.database import AsyncSessionLocal
 
@@ -123,7 +123,7 @@ async def _pregenerate_interpretation(
             sections, model = await generate_interpretation(
                 positions=positions,
                 first_name=first_name,
-                api_key=settings.ANTHROPIC_API_KEY,
+                api_key=settings.LLM_API_KEY,
                 gender=gender,
             )
             if model == "fallback":
@@ -180,7 +180,7 @@ async def calculate(
 
     Kicks off LLM narrative pre-generation in the background so the
     subsequent /interpretation call from the frontend returns
-    immediately from cache instead of blocking on the 3-5s Anthropic
+    immediately from cache instead of blocking on the provider
     round-trip."""
     user = await user_repo.get_by_id(db, tg_user["id"])
     if not user:
@@ -443,7 +443,7 @@ async def get_interpretation(
     sections, model = await generate_interpretation(
         positions=reading.positions,
         first_name=user.tg_first_name,
-        api_key=settings.ANTHROPIC_API_KEY,
+        api_key=settings.LLM_API_KEY,
         gender=current_gender,
     )
 
@@ -574,7 +574,7 @@ async def _get_or_generate_pdf_sections(
     sections, model = await generate_interpretation(
         positions=reading.positions,
         first_name=user.tg_first_name,
-        api_key=settings.ANTHROPIC_API_KEY,
+        api_key=settings.LLM_API_KEY,
         gender=current_gender,
     )
 

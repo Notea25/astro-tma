@@ -1,5 +1,5 @@
 """
-LLM-based tarot narrative interpretation via Anthropic Claude.
+Provider-neutral LLM-based tarot narrative interpretation.
 
 Supports all 4 spread types: three_card, celtic_cross, week, relationship.
 Each subsequent card is explained in the context of previous cards to build
@@ -15,6 +15,8 @@ import re
 from typing import Any
 
 from core.logging import get_logger
+from core.settings import settings
+from services.llm_client import create_llm_client
 from services.llm_utils import first_text_block
 
 log = get_logger(__name__)
@@ -200,7 +202,7 @@ async def generate_spread_interpretation(
     gender: str | None = None,
 ) -> dict[str, Any]:
     """
-    Call Claude to generate a narrative interpretation for the given spread.
+    Call the configured LLM to generate a narrative interpretation for the spread.
 
     `cards` must have exactly `expected_card_count(spread_type)` items, each
     a dict with at least: name_ru, reversed, keywords_ru.
@@ -211,8 +213,6 @@ async def generate_spread_interpretation(
     output. Caller should record it next to the cached payload so a
     profile change triggers a regen.
     """
-    import anthropic
-
     if not is_supported_spread(spread_type):
         raise ValueError(f"unsupported spread: {spread_type!r}")
 
@@ -231,10 +231,10 @@ async def generate_spread_interpretation(
     # (celtic 10 cards) without truncating the smaller ones.
     cap = 600 + expected_n * 180
 
-    client = anthropic.AsyncAnthropic(api_key=api_key)
+    client = create_llm_client(api_key)
     async with llm_semaphore:
         message = await client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model=settings.LLM_MODEL,
             max_tokens=cap,
             messages=[{"role": "user", "content": prompt}],
         )

@@ -1,4 +1,4 @@
-"""V3 destiny-matrix interpreter — 15 sections, one Sonnet call each.
+"""V3 destiny-matrix interpreter — independently generated cached sections.
 
 Replaces the legacy 8-section interpreter (`interpreter.py`) for V3
 readings. Each section is generated independently so the frontend
@@ -58,7 +58,7 @@ from services.llm_pool import llm_semaphore
 
 log = get_logger(__name__)
 
-MODEL_V3 = "claude-sonnet-4-5-20250929"
+MODEL_V3 = settings.LLM_MODEL
 
 SECTION_TITLES: dict[str, str] = {
     "visitka":       "Визитка",
@@ -954,9 +954,10 @@ async def load_cached_sections(
     return {r.section: r.content for r in rows.scalars()}
 
 
-def _anthropic_client() -> Any:
-    import anthropic
-    return anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+def _llm_client() -> Any:
+    from services.llm_client import create_llm_client
+
+    return create_llm_client()
 
 
 async def regenerate_sections(
@@ -969,8 +970,8 @@ async def regenerate_sections(
     each result independently, and return the dict. Sections that fail
     are skipped — others still get cached so the user can retry just
     the failing ones."""
-    if not settings.ANTHROPIC_API_KEY:
-        log.warning("v3_interpreter: ANTHROPIC_API_KEY missing — returning empty")
+    if not settings.LLM_API_KEY:
+        log.warning("v3_interpreter: LLM_API_KEY missing — returning empty")
         return {}
 
     specs = (
@@ -980,7 +981,7 @@ async def regenerate_sections(
     if not specs:
         return {}
 
-    client = _anthropic_client()
+    client = _llm_client()
     coros: list[Awaitable[tuple[str, str, int]]] = [
         _generate_one(client, spec, ctx) for spec in specs
     ]

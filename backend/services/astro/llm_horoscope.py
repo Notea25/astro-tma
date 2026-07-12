@@ -1,5 +1,5 @@
 """
-LLM-based daily horoscope generation via Anthropic Claude Haiku.
+Provider-neutral LLM-based daily horoscope generation.
 
 Generates unique daily horoscope texts in Russian for all 12 zodiac signs.
 Called by APScheduler at 00:05 UTC nightly.
@@ -215,24 +215,23 @@ async def generate_daily_horoscope(
     target_date: date | None = None,
     period: str = "today",
 ) -> str | None:
-    """Generate a single horoscope text via Claude Haiku. Returns None on failure."""
-    if not settings.ANTHROPIC_API_KEY:
+    """Generate a single horoscope text. Returns None on failure."""
+    if not settings.LLM_API_KEY:
         log.warning("llm_horoscope.no_api_key")
         return None
 
     target_date = target_date or date.today()
 
     try:
-        import anthropic
-
+        from services.llm_client import create_llm_client
         from services.llm_pool import llm_semaphore
 
-        client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+        client = create_llm_client()
         prompt = _build_horoscope_prompt(sign, target_date, period)
 
         async with llm_semaphore:
             message = await client.messages.create(
-                model="claude-haiku-4-5-20251001",
+                model=settings.LLM_MODEL,
                 max_tokens=500,
                 messages=[{"role": "user", "content": prompt}],
             )
@@ -246,20 +245,19 @@ async def generate_daily_horoscope(
 
 async def generate_energy_scores_llm(sign: str, target_date: date) -> dict[str, int]:
     """Generate energy scores via LLM. Returns dict with love/career/health/luck (0-100)."""
-    if not settings.ANTHROPIC_API_KEY:
+    if not settings.LLM_API_KEY:
         return _fallback_scores(sign)
 
     try:
-        import anthropic
-
+        from services.llm_client import create_llm_client
         from services.llm_pool import llm_semaphore
 
-        client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+        client = create_llm_client()
         sign_ru = _SIGN_RU.get(sign, sign)
 
         async with llm_semaphore:
             message = await client.messages.create(
-                model="claude-haiku-4-5-20251001",
+                model=settings.LLM_MODEL,
                 max_tokens=100,
                 messages=[{
                     "role": "user",

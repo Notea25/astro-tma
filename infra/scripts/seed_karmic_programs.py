@@ -40,7 +40,7 @@ from db.database import AsyncSessionLocal  # noqa: E402
 from db.models import ArcanaBase, KarmicProgram  # noqa: E402
 from services.destiny_matrix.calculator import reduce  # noqa: E402
 
-_MODEL = "claude-sonnet-4-5-20250929"
+_MODEL = settings.LLM_MODEL
 _REFERENCE_KEY = "19-22-3"
 _REFERENCE = {
     "key": _REFERENCE_KEY,
@@ -268,12 +268,13 @@ async def main(*, dry_run: bool = False, missing_only: bool = False) -> None:
             print(f"  {k[0]:2d}-{k[1]:2d}-{k[2]:2d}", flush=True)
         return
 
-    if not settings.ANTHROPIC_API_KEY:
-        print("ANTHROPIC_API_KEY missing — aborting", flush=True)
+    if not settings.LLM_API_KEY:
+        print("LLM_API_KEY missing — aborting", flush=True)
         sys.exit(1)
 
-    import anthropic
-    client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+    from services.llm_client import create_llm_client
+
+    client = create_llm_client()
 
     async with AsyncSessionLocal() as session:
         existing: set[str] = set()

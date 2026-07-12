@@ -281,7 +281,7 @@ async def interpret_reading(
         payload = {k: v for k, v in cached.items() if k != "gender_used"}
         return TarotInterpretationResponse(**payload)
 
-    if not settings.ANTHROPIC_API_KEY:
+    if not settings.LLM_API_KEY:
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE,
             "Interpretation service is not configured",
@@ -317,7 +317,7 @@ async def interpret_reading(
         parsed = await generate_spread_interpretation(
             spread_type=reading.spread_type,
             cards=prompt_cards,
-            api_key=settings.ANTHROPIC_API_KEY,
+            api_key=settings.LLM_API_KEY,
             gender=current_gender,
         )
     except Exception as e:  # noqa: BLE001

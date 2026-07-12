@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """V2 seeder for `arcana_meanings` — 22 arcana × 9 contexts with
-`meaning`, `plus`, `minus`, `professions` filled by Claude Haiku.
+`meaning`, `plus`, `minus`, `professions` filled by the configured LLM.
 
 Each LLM call covers ONE arcana and returns all 9 contexts at once via
-Anthropic `tool_use` (so we don't have to parse loose JSON). Writes
+provider-neutral tool calling (so we don't have to parse loose JSON). Writes
 gender='any' rows. Gender overrides can be added in a follow-up pass
 without re-running this script (the unique constraint is on
 ``(arcana_num, context, gender)``).
 
-Cost: ~$3-5 in Haiku 4.5 tokens, ~3-5 minutes wall-clock.
+Cost depends on the configured provider and model.
 
 Run:
     docker compose exec backend python /app/infra/scripts/seed_destiny_arcana_v2.py
@@ -30,7 +30,7 @@ import asyncio
 import json
 import os
 import sys
-from typing import Any, cast
+from typing import Any
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../backend"))
 
@@ -46,8 +46,8 @@ from services.destiny_matrix.arcana_names import (  # noqa: E402
     CONTEXTS,
 )
 
-_MODEL_DEFAULT = "claude-haiku-4-5-20251001"
-_MODEL_SONNET = "claude-sonnet-4-6"
+_MODEL_DEFAULT = settings.LLM_MODEL
+_MODEL_SONNET = settings.LLM_MODEL  # legacy CLI alias; provider model comes from env
 _MODEL = _MODEL_DEFAULT  # mutated by main() when --sonnet is passed
 
 _CONTEXT_BRIEFS = {
@@ -66,7 +66,7 @@ _CONTEXTS_WITH_PROFESSIONS = {"finance", "material_karma"}
 
 
 def _tool_schema() -> dict[str, Any]:
-    """Anthropic tool_use schema — one tool that returns all 9 contexts at once."""
+    """Provider-neutral tool schema returning all nine contexts at once."""
     context_props: dict[str, Any] = {}
     for ctx in CONTEXTS:
         props = {
@@ -160,9 +160,8 @@ async def _generate_one(client: Any, arcana_num: int) -> dict[str, dict[str, str
     name = ARCANA_NAMES_RU[arcana_num]
     keywords = ARCANA_KEYWORDS_RU.get(arcana_num, [])
 
-    from anthropic.types import ToolChoiceToolParam, ToolParam
-    tools = cast(list[ToolParam], [_tool_schema()])
-    tool_choice: ToolChoiceToolParam = {
+    tools = [_tool_schema()]
+    tool_choice = {
         "type": "tool",
         "name": "publish_arcana_meanings",
     }
@@ -223,12 +222,13 @@ async def main(
     if sonnet:
         _MODEL = _MODEL_SONNET
         print(f"Using model: {_MODEL}", flush=True)
-    if not settings.ANTHROPIC_API_KEY:
-        print("ANTHROPIC_API_KEY missing — aborting", flush=True)
+    if not settings.LLM_API_KEY:
+        print("LLM_API_KEY missing — aborting", flush=True)
         sys.exit(1)
 
-    import anthropic
-    client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+    from services.llm_client import create_llm_client
+
+    client = create_llm_client()
 
     async with AsyncSessionLocal() as session:
         if wipe and not dry_run:

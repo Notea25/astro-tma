@@ -67,8 +67,10 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: RedisDsn = "redis://localhost:6379/0"  # type: ignore[assignment]
 
-    # Natal-PDF queue (arq worker) + Anthropic rate limiting
-    ANTHROPIC_OUTPUT_TPM: int = 9000  # per-minute output-token budget (under free-tier 10k)
+    # Natal-PDF queue + provider-neutral LLM limits
+    LLM_OUTPUT_TPM: int = 100000
+    LLM_CONCURRENCY: int = 6
+    LLM_TIMEOUT_SECONDS: float = 120.0
     ARQ_MAX_JOBS: int = 10  # jobs a single worker pulls at once
     ARQ_JOB_TIMEOUT: int = 600  # seconds; free-tier generation can be slow
 
@@ -84,8 +86,10 @@ class Settings(BaseSettings):
     ADMIN_USERNAME: str
     ADMIN_PASSWORD: str
 
-    # Anthropic
-    ANTHROPIC_API_KEY: str = ""
+    # OpenAI-compatible LLM provider. Switching provider requires only env changes.
+    LLM_API_KEY: str = ""
+    LLM_BASE_URL: str = "https://api.deepseek.com"
+    LLM_MODEL: str = "deepseek-v4-flash"
 
     # GeoNames
     GEONAMES_USERNAME: str = "demo"

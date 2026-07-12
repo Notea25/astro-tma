@@ -10,14 +10,16 @@ LLM failure (caller gets either real text or a generic fallback).
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 
 from core.logging import get_logger
+from core.settings import settings
 from services.destiny_matrix.arcana_names import ARCANA_NAMES_RU
+from services.llm_client import create_llm_client
 
 log = get_logger(__name__)
 
-_MODEL = "claude-haiku-4-5-20251001"
+_MODEL = settings.LLM_MODEL
 
 # Соответствует §8 MATRIX_DESTINY_SPEC.md — JSON-контракт ответа модели.
 SECTION_KEYS = (
@@ -70,7 +72,7 @@ _SYSTEM_PROMPT = """Ты — астролог-практик, эксперт п�
 Возвращай результат ТОЛЬКО через вызов инструмента publish_reading."""
 
 
-# Anthropic tool-use schema — modelo возвращает structured output, мы
+# Provider-neutral tool schema — the model returns structured output, we
 # его декодируем безопасно из tool_use.input (никаких ручных JSON.parse).
 _PUBLISH_TOOL = {
     "name": "publish_reading",
@@ -222,7 +224,7 @@ async def generate_interpretation(
     """Returns (sections_dict, model_name_used). Falls back to static text
     if api_key is missing or LLM call fails — never raises.
 
-    Uses Anthropic tool_use so structured output is parsed by the SDK —
+    Uses provider-neutral tool calling so structured output is parsed by the adapter —
     no fragile manual JSON parsing of free-form text (the old approach
     blew up on long replies because LLM rarely escapes embedded quotes
     or newlines correctly in 4 KB of prose).
@@ -235,17 +237,14 @@ async def generate_interpretation(
         log.warning("destiny_matrix.interp.no_api_key")
         return _fallback_sections(positions), "fallback"
 
-    import anthropic
-    from anthropic.types import MessageParam, ToolChoiceToolParam, ToolParam
-
     from services.llm_pool import llm_semaphore
 
     user_prompt = _build_user_prompt(positions, first_name, gender)
     try:
-        client = anthropic.AsyncAnthropic(api_key=api_key)
-        tools = cast(list[ToolParam], [_PUBLISH_TOOL])
-        tool_choice: ToolChoiceToolParam = {"type": "tool", "name": "publish_reading"}
-        messages: list[MessageParam] = [{"role": "user", "content": user_prompt}]
+        client = create_llm_client(api_key)
+        tools = [_PUBLISH_TOOL]
+        tool_choice = {"type": "tool", "name": "publish_reading"}
+        messages = [{"role": "user", "content": user_prompt}]
         async with llm_semaphore:
             message = await client.messages.create(
                 model=_MODEL,

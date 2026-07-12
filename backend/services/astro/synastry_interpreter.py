@@ -20,6 +20,7 @@ from sqlalchemy import select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.logging import get_logger
+from core.settings import settings
 from db.models import SynastryInterpretation, SynastryPairSummary
 from services.llm_utils import first_text_block
 
@@ -79,7 +80,7 @@ async def _llm_batch(missing: list[tuple[str, str, str]], api_key: str) -> dict[
     if not missing:
         return {}
 
-    import anthropic
+    from services.llm_client import create_llm_client
 
     items = []
     for i, (p1, p2, aspect) in enumerate(missing):
@@ -108,10 +109,10 @@ async def _llm_batch(missing: list[tuple[str, str, str]], api_key: str) -> dict[
     try:
         from services.llm_pool import llm_semaphore
 
-        client = anthropic.AsyncAnthropic(api_key=api_key)
+        client = create_llm_client(api_key)
         async with llm_semaphore:
             message = await client.messages.create(
-                model="claude-haiku-4-5-20251001",
+                model=settings.LLM_MODEL,
                 max_tokens=2500,
                 messages=[{"role": "user", "content": prompt}],
             )
@@ -255,7 +256,7 @@ async def get_or_generate_pair_summary(
     if not api_key:
         return None
 
-    import anthropic
+    from services.llm_client import create_llm_client
 
     aspect_lines = []
     for a in aspects[:10]:
@@ -311,10 +312,10 @@ async def get_or_generate_pair_summary(
     try:
         from services.llm_pool import llm_semaphore
 
-        client = anthropic.AsyncAnthropic(api_key=api_key)
+        client = create_llm_client(api_key)
         async with llm_semaphore:
             message = await client.messages.create(
-                model="claude-haiku-4-5-20251001",
+                model=settings.LLM_MODEL,
                 max_tokens=900,
                 messages=[{"role": "user", "content": prompt}],
             )

@@ -1,7 +1,7 @@
-"""Global concurrency gate for Anthropic API calls.
+"""Global concurrency gate for provider-neutral LLM API calls.
 
-Anthropic's tier-1 plan caps at ~50 RPM with a low concurrent-connection
-ceiling. Without coordination, a sudden burst of users hitting any
+Provider plans can impose low concurrent-connection ceilings. Without
+coordination, a sudden burst of users hitting any
 LLM-backed endpoint (cold destiny interpretation, first natal reading,
 first tarot interpretation) can quickly trigger HTTP 429s — which then
 cascade into user-visible errors because most of our callers don't

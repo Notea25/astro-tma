@@ -4,7 +4,7 @@ Glossary seed — idempotent upsert of astrology terms.
 Usage:
     python -m services.glossary.seed
 
-If ANTHROPIC_API_KEY is set, missing `full_ru` fields are filled via LLM.
+If LLM_API_KEY is set, missing `full_ru` fields are filled via LLM.
 Existing terms are updated by slug (non-destructive — preserves `full_ru` if already present).
 """
 
@@ -98,12 +98,13 @@ SEED: list[tuple[str, str, GlossaryCategory, str, list[str]]] = [
 
 
 async def _generate_full(title: str, short: str, category: str) -> str:
-    """Generate full description via Anthropic, fall back to short text."""
-    if not settings.ANTHROPIC_API_KEY:
+    """Generate full description via the configured LLM, fall back to short text."""
+    if not settings.LLM_API_KEY:
         return short
     try:
-        import anthropic
-        client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+        from services.llm_client import create_llm_client
+
+        client = create_llm_client()
         prompt = (
             f"Ты пишешь статью глоссария для популярного приложения с астрологией. "
             f"Читатели — обычные люди, которые только знакомятся с темой.\n\n"
@@ -119,7 +120,7 @@ async def _generate_full(title: str, short: str, category: str) -> str:
             f"- Без markdown, без списков, без заголовков — только абзацы."
         )
         message = await client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model=settings.LLM_MODEL,
             max_tokens=500,
             messages=[{"role": "user", "content": prompt}],
         )

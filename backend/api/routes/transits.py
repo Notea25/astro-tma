@@ -145,7 +145,7 @@ async def _build_response(
     texts, missing_count = await get_or_generate_transit_texts(
         db,
         raw_transits,
-        settings.ANTHROPIC_API_KEY,
+        settings.LLM_API_KEY,
         blocking=False,
         on_background_complete=_invalidate,
     )
@@ -323,7 +323,7 @@ async def get_transit_details_endpoint(
         natal_planet=payload.natal_planet,
         aspect=payload.aspect,
         natal_chart=chart,
-        api_key=settings.ANTHROPIC_API_KEY,
+        api_key=settings.LLM_API_KEY,
     )
     return TransitDetailsResponse(**details)
 
@@ -363,7 +363,7 @@ async def _build_period_response(
     texts, missing_count = await get_or_generate_transit_texts(
         db,
         aspect_events,
-        settings.ANTHROPIC_API_KEY,
+        settings.LLM_API_KEY,
         blocking=False,
         on_background_complete=_invalidate,
     )

@@ -43,7 +43,7 @@ from core.settings import settings  # noqa: E402
 from db.database import AsyncSessionLocal  # noqa: E402
 from db.models import KarmicProgram  # noqa: E402
 
-_MODEL = "claude-sonnet-4-5-20250929"
+_MODEL = settings.LLM_MODEL
 
 
 def _find_canonical_json() -> Path:
@@ -259,12 +259,13 @@ async def main(*, dry_run: bool = False, skip_truncate: bool = False) -> None:
             print(f"  {key:>10}  «{prog['name']}»{ref}", flush=True)
         return
 
-    if not settings.ANTHROPIC_API_KEY:
-        print("ANTHROPIC_API_KEY missing — aborting", flush=True)
+    if not settings.LLM_API_KEY:
+        print("LLM_API_KEY missing — aborting", flush=True)
         sys.exit(1)
 
-    import anthropic
-    client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+    from services.llm_client import create_llm_client
+
+    client = create_llm_client()
 
     async with AsyncSessionLocal() as session:
         if not skip_truncate:

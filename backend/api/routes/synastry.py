@@ -338,7 +338,7 @@ async def accept_request(
         # Re-fetch interpretations from cache (cheap) — text bodies are not
         # stored in result_json so the table can be regenerated/edited later.
         texts = await get_or_generate_aspect_texts(
-            db, data["aspects"], settings.ANTHROPIC_API_KEY
+            db, data["aspects"], settings.LLM_API_KEY
         )
         return SynastryResult(
             id=req.id,
@@ -400,7 +400,7 @@ async def accept_request(
     # (p1,p2,aspect) triple, summary by deterministic hash of inputs. Same
     # pair recomputed twice yields the same prose.
     texts = await get_or_generate_aspect_texts(
-        db, raw["aspects"], settings.ANTHROPIC_API_KEY
+        db, raw["aspects"], settings.LLM_API_KEY
     )
     summary = await generate_pair_summary(
         db,
@@ -408,7 +408,7 @@ async def accept_request(
         partner.tg_first_name,
         raw["aspects"],
         raw["scores"],
-        settings.ANTHROPIC_API_KEY,
+        settings.LLM_API_KEY,
     )
 
     req.partner_user_id = partner.id
@@ -553,7 +553,7 @@ async def manual_synastry(
     # Aspect texts and pair summary — both cached by (p1,p2,aspect) /
     # input-hash respectively. Same partner data → same texts.
     texts = await get_or_generate_aspect_texts(
-        db, raw["aspects"], settings.ANTHROPIC_API_KEY
+        db, raw["aspects"], settings.LLM_API_KEY
     )
     summary = await generate_pair_summary(
         db,
@@ -561,7 +561,7 @@ async def manual_synastry(
         payload.partner_name,
         raw["aspects"],
         raw["scores"],
-        settings.ANTHROPIC_API_KEY,
+        settings.LLM_API_KEY,
     )
 
     # Persist as a SynastryRequest with no partner_user_id — this is the
@@ -657,7 +657,7 @@ async def get_result(
         partner_chart_data = data.get("partner_chart_data")
 
     texts = await get_or_generate_aspect_texts(
-        db, data["aspects"], settings.ANTHROPIC_API_KEY
+        db, data["aspects"], settings.LLM_API_KEY
     )
 
     return SynastryResult(

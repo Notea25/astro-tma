@@ -4,7 +4,7 @@ Runs as a separate container (`arq worker.WorkerSettings`) sharing the same
 image as the API. It connects to the same Redis and Postgres, pulls
 `generate_natal_pdf_task` jobs, and does the slow LLM work outside the HTTP
 request path. The global token bucket (services.rate_limiter) keeps all worker
-replicas under the Anthropic per-minute output-token ceiling.
+replicas under the configured provider's output-token ceiling.
 """
 
 from __future__ import annotations

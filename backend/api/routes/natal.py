@@ -163,7 +163,7 @@ async def _get_or_generate_descriptions(
     ):
         return stored
 
-    if not settings.ANTHROPIC_API_KEY:
+    if not settings.LLM_API_KEY:
         return _empty_descriptions()
 
     planets = chart_data.get("planets", {})
@@ -175,7 +175,7 @@ async def _get_or_generate_descriptions(
             planets=planets,
             houses=houses,
             aspects=aspects,
-            api_key=settings.ANTHROPIC_API_KEY,
+            api_key=settings.LLM_API_KEY,
             gender=current_gender,
         )
     except Exception as e:
@@ -305,7 +305,7 @@ async def _get_or_generate_pdf_reading(
     if fresh:
         return fresh
 
-    if not settings.ANTHROPIC_API_KEY:
+    if not settings.LLM_API_KEY:
         return None
 
     try:
@@ -315,7 +315,7 @@ async def _get_or_generate_pdf_reading(
             ascendant_sign=chart.ascendant_sign,
             planets=planets,
             aspects=aspects,
-            api_key=settings.ANTHROPIC_API_KEY,
+            api_key=settings.LLM_API_KEY,
             gender=current_gender,
             nodes=(getattr(chart, "chart_data", None) or {}).get("nodes"),
         )
@@ -675,14 +675,14 @@ async def get_natal_mini(
         }
 
     mini_reading: str | None = None
-    if settings.ANTHROPIC_API_KEY and user.id not in _MINI_INFLIGHT:
+    if settings.LLM_API_KEY and user.id not in _MINI_INFLIGHT:
         _MINI_INFLIGHT.add(user.id)
         try:
             mini_reading = await generate_natal_mini_reading(
                 sun_sign=chart.sun_sign,
                 moon_sign=chart.moon_sign,
                 ascendant_sign=chart.ascendant_sign,
-                api_key=settings.ANTHROPIC_API_KEY,
+                api_key=settings.LLM_API_KEY,
                 gender=current_gender,
             )
         except Exception as e:
@@ -751,10 +751,10 @@ async def get_natal_full(
         cached_gender = cached.get("reading_gender")
         gender_matches = cached_gender == current_gender
         if _reading_is_fresh(cached, current_gender) or (
-            gender_matches and not settings.ANTHROPIC_API_KEY
+            gender_matches and not settings.LLM_API_KEY
         ):
             return cached
-        if not settings.ANTHROPIC_API_KEY:
+        if not settings.LLM_API_KEY:
             return cached
         try:
             refreshed_reading = await generate_natal_reading(
@@ -763,7 +763,7 @@ async def get_natal_full(
                 ascendant_sign=chart.ascendant_sign,
                 planets=planets,
                 aspects=aspects[:10],
-                api_key=settings.ANTHROPIC_API_KEY,
+                api_key=settings.LLM_API_KEY,
                 gender=current_gender,
                 nodes=chart.chart_data.get("nodes"),
             )
@@ -785,7 +785,7 @@ async def get_natal_full(
 
     # Generate LLM interpretation if API key is set
     llm_reading: str | None = None
-    if settings.ANTHROPIC_API_KEY:
+    if settings.LLM_API_KEY:
         try:
             llm_reading = await generate_natal_reading(
                 sun_sign=chart.sun_sign,
@@ -793,7 +793,7 @@ async def get_natal_full(
                 ascendant_sign=chart.ascendant_sign,
                 planets=planets,
                 aspects=chart.chart_data.get("aspects", [])[:10],
-                api_key=settings.ANTHROPIC_API_KEY,
+                api_key=settings.LLM_API_KEY,
                 gender=current_gender,
                 nodes=chart.chart_data.get("nodes"),
             )

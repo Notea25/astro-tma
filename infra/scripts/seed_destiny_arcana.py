@@ -8,7 +8,7 @@ arcana in one of these life contexts:
     personality, talents, purpose, parental, ancestral,
     relationships, finance, material_karma, karmic_tail
 
-Generates content via Claude Haiku (one batched call per arcana with all
+Generates content via the configured LLM (one batched call per arcana with all
 9 contexts in a single JSON tool-call). At Haiku 4.5 rates this costs
 about $3-5 in total and takes ~5-10 minutes.
 
@@ -41,7 +41,7 @@ from services.destiny_matrix.arcana_names import (  # noqa: E402
 )
 
 
-_MODEL = "claude-haiku-4-5-20251001"
+_MODEL = settings.LLM_MODEL
 
 
 _CONTEXT_HEADERS = {
@@ -120,12 +120,13 @@ async def _existing_arcana_nums(session) -> set[int]:
 
 
 async def main(dry_run: bool = False, missing_only: bool = False, wipe: bool = False) -> None:
-    if not settings.ANTHROPIC_API_KEY:
-        print("ANTHROPIC_API_KEY missing — aborting")
+    if not settings.LLM_API_KEY:
+        print("LLM_API_KEY missing — aborting")
         sys.exit(1)
 
-    import anthropic
-    client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+    from services.llm_client import create_llm_client
+
+    client = create_llm_client()
 
     async with AsyncSessionLocal() as session:
         if wipe and not dry_run:

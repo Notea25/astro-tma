@@ -14,7 +14,7 @@ async def generate_body(event: dict[str, Any]) -> str:
     source = event.get("source_data", {})
     title = event.get("title_ru", "Астрологическое событие")
 
-    if not settings.ANTHROPIC_API_KEY:
+    if not settings.LLM_API_KEY:
         return _fallback_body(title, source)
 
     prompt = (
@@ -35,14 +35,13 @@ async def generate_body(event: dict[str, Any]) -> str:
         f"- Обращайся на «вы», без официоза."
     )
     try:
-        import anthropic
-
+        from services.llm_client import create_llm_client
         from services.llm_pool import llm_semaphore
 
-        client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+        client = create_llm_client()
         async with llm_semaphore:
             message = await client.messages.create(
-                model="claude-haiku-4-5-20251001",
+                model=settings.LLM_MODEL,
                 max_tokens=600,
                 messages=[{"role": "user", "content": prompt}],
             )

@@ -79,8 +79,24 @@ git clone <repo>
 cd astro-tma
 cp .env.example .env
 # Заполните .env — минимум: TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_USERNAME (для синастрии),
-# APP_SECRET_KEY, ANTHROPIC_API_KEY (для генерации глоссария и новостей)
+# APP_SECRET_KEY, LLM_API_KEY, LLM_BASE_URL и LLM_MODEL
 ```
+
+LLM-провайдер должен поддерживать OpenAI Chat Completions. Для переключения
+провайдера достаточно изменить три переменные и пересоздать `backend`/`worker`:
+
+```bash
+# DeepSeek
+LLM_BASE_URL=https://api.deepseek.com
+LLM_MODEL=deepseek-v4-flash
+LLM_API_KEY=...
+
+# Groq, пример альтернативы
+# LLM_BASE_URL=https://api.groq.com/openai/v1
+# LLM_MODEL=openai/gpt-oss-20b
+```
+
+Ключ хранится только в production `.env` на VPS и не передаётся во frontend.
 
 ### 3. Запуск backend
 ```bash
@@ -94,7 +110,7 @@ docker compose exec backend alembic upgrade head
 docker cp infra/scripts/seed_tarot.py astro-tma-backend-1:/tmp/seed_tarot.py
 docker compose exec -e PYTHONPATH=/app backend python /tmp/seed_tarot.py
 
-# Засеять глоссарий (~45 терминов; требует ANTHROPIC_API_KEY для полных описаний)
+# Засеять глоссарий (~45 терминов; требует LLM_API_KEY для полных описаний)
 docker compose exec -e PYTHONPATH=/app backend python -m services.glossary.seed
 ```
 
