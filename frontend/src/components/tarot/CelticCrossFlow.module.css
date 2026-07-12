@@ -202,7 +202,8 @@
   bottom: auto;
   left: auto;
   align-self: flex-end;
-  margin: -64px max(8px, var(--content-px)) 12px 0;
+  max-width: calc(100% - 16px);
+  margin: 4px max(8px, var(--content-px)) 12px 0;
   transform: scale(0.74);
   transform-origin: bottom right;
   opacity: 0.58;
