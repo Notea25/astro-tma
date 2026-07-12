@@ -110,6 +110,10 @@ async def save_natal_chart(
         chart.moon_sign = moon_sign
         chart.ascendant_sign = ascendant_sign
         chart.chart_data = chart_data
+        chart.reading_text = None
+        chart.reading_gender = None
+        chart.reading_version = None
+        chart.reading_status = None
     else:
         chart = NatalChart(
             user_id=user_id,

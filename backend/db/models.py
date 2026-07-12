@@ -16,6 +16,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     SmallInteger,
     String,
     Text,
@@ -146,7 +147,27 @@ class NatalChart(TimestampMixin, Base):
     ascendant_sign: Mapped[str | None] = mapped_column(String(32))
     chart_data: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     chart_svg_url: Mapped[str | None] = mapped_column(Text)
+    # Durable generated copy. Redis remains a hot cache, but an eviction must
+    # never force the user to pay for the same LLM reading again.
+    reading_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reading_gender: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    reading_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    reading_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
     user: Mapped["User"] = relationship(back_populates="natal_chart")
+
+
+class NatalPdfCache(Base):
+    """One durable rendered PDF per user, kept out of hot NatalChart loads."""
+
+    __tablename__ = "natal_pdf_cache"
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    cache_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    pdf_bytes: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
 
 # ── Interpretation ────────────────────────────────────────────────────────────

@@ -66,7 +66,16 @@ async def generate_natal_pdf_task(ctx: dict, user_id: int, job_id: str) -> dict:
             # Both short-circuit on a warm cache; otherwise hit the LLM (rate-
             # limited by the global token bucket).
             await _get_or_generate_descriptions(db, user)
-            await _get_or_generate_pdf_reading(user, chart, planets, aspects)
+            reading = await _get_or_generate_pdf_reading(
+                db, user, chart, planets, aspects
+            )
+            if not reading:
+                await set_job_status(
+                    job_id,
+                    "failed",
+                    error="Не удалось подготовить проверенный текст отчёта",
+                )
+                return {"status": "failed"}
 
             token = token_urlsafe(24)
             await cache_set(

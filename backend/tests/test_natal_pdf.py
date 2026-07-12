@@ -45,6 +45,36 @@ def _sample_chart():
     return planets, houses, aspects
 
 
+def _expanded_reading() -> str:
+    headings = (
+        "Основа личности",
+        "Управитель гороскопа",
+        "Личные планеты",
+        "Высшие планеты",
+        "Дома гороскопа",
+        "Аспекты планет",
+        "Заключительный синтез",
+    )
+    return "\n".join(
+        part
+        for heading in headings
+        for part in (f"**{heading}**", "слово " * 160)
+    )
+
+
+class _CommitDB:
+    def __init__(self) -> None:
+        self.commits = 0
+        self.executions = 0
+
+    async def execute(self, _statement):
+        self.executions += 1
+        return SimpleNamespace(scalar_one_or_none=lambda: None)
+
+    async def commit(self) -> None:
+        self.commits += 1
+
+
 def test_generate_natal_pdf_returns_pdf_with_incomplete_descriptions():
     planets, houses, aspects = _sample_chart()
 
@@ -431,6 +461,66 @@ def test_cached_pdf_reading_requires_current_version_and_expanded_text():
 
     assert natal._reading_is_fresh(old_cached, None) is None
     assert natal._reading_is_fresh(fresh_cached, None) == fresh_cached["reading"]
+
+
+def test_validated_fallback_is_ready_even_when_legacy_cache_has_no_status():
+    from api.routes import natal
+    from services.astro.fact_context import safe_natal_fallback
+
+    fallback = safe_natal_fallback("Рыбы", "Дева")
+    cached = {
+        "reading": fallback,
+        "reading_gender": "male",
+        "reading_version": natal.NATAL_READING_VERSION,
+    }
+
+    assert natal._reading_is_fresh(cached, "male") == fallback
+    assert (
+        natal._classify_ready_reading(fallback)
+        == natal.READING_STATUS_FALLBACK
+    )
+    assert (
+        natal._reading_is_fresh(
+            {
+                "reading": "Короткий непроверенный ответ.",
+                "reading_gender": "male",
+                "reading_version": natal.NATAL_READING_VERSION,
+                "reading_status": natal.READING_STATUS_FALLBACK,
+            },
+            "male",
+        )
+        is None
+    )
+
+
+@pytest.mark.asyncio
+async def test_legacy_redis_fallback_is_migrated_to_postgres(monkeypatch):
+    from api.routes import natal
+    from services.astro.fact_context import safe_natal_fallback
+
+    fallback = safe_natal_fallback("Рыбы", "Дева")
+    chart = SimpleNamespace(
+        reading_text=None,
+        reading_gender=None,
+        reading_version=None,
+        reading_status=None,
+    )
+    user = SimpleNamespace(id=1001, gender=None, natal_chart=chart)
+    db = _CommitDB()
+
+    async def fake_cache_get(_key):
+        return {
+            "reading": fallback,
+            "reading_gender": None,
+            "reading_version": natal.NATAL_READING_VERSION,
+        }
+
+    monkeypatch.setattr(natal, "cache_get", fake_cache_get)
+
+    assert await natal._get_ready_pdf_reading(db, user) == fallback
+    assert chart.reading_text == fallback
+    assert chart.reading_status == natal.READING_STATUS_FALLBACK
+    assert db.commits == 1
 
 
 @pytest.mark.asyncio
@@ -1181,20 +1271,7 @@ async def test_get_natal_full_refreshes_short_cached_reading(monkeypatch):
     )
     user = SimpleNamespace(id=1001, natal_chart=chart, gender=None)
     cached = {"reading": "**Ядро личности**\nКоротко.", "planets": chart.chart_data["planets"]}
-    refreshed_text = "\n".join(
-        [
-            "**Ядро личности**",
-            "слово " * 140,
-            "**Ум и общение**",
-            "слово " * 140,
-            "**Любовь и ценности**",
-            "слово " * 140,
-            "**Энергия и воля**",
-            "слово " * 140,
-            "**Удача и вызовы**",
-            "слово " * 140,
-        ]
-    )
+    refreshed_text = _expanded_reading()
     calls = {}
 
     async def fake_get_by_id(_db, user_id):
@@ -1216,6 +1293,9 @@ async def test_get_natal_full_refreshes_short_cached_reading(monkeypatch):
         calls["reading_kwargs"] = kwargs
         return refreshed_text
 
+    async def fake_interpretations(*_args, **_kwargs):
+        return []
+
     monkeypatch.setattr(natal.user_repo, "get_by_id", fake_get_by_id)
     monkeypatch.setattr(natal.user_repo, "is_premium", fake_true)
     monkeypatch.setattr(natal.user_repo, "has_purchased", fake_true)
@@ -1223,8 +1303,9 @@ async def test_get_natal_full_refreshes_short_cached_reading(monkeypatch):
     monkeypatch.setattr(natal, "cache_set", fake_cache_set)
     monkeypatch.setattr(natal.settings, "LLM_API_KEY", "test-key")
     monkeypatch.setattr(natal, "generate_natal_reading", fake_generate_natal_reading)
+    monkeypatch.setattr(natal, "_load_db_interpretations", fake_interpretations)
 
-    result = await natal.get_natal_full(tg_user={"id": 1001}, db=object())
+    result = await natal.get_natal_full(tg_user={"id": 1001}, db=_CommitDB())
 
     assert result["reading"] == refreshed_text
     assert result["planets"] == chart.chart_data["planets"]
@@ -1388,7 +1469,7 @@ async def test_build_natal_pdf_response_blocks_until_full_copy_ready(monkeypatch
         calls["descriptions_called"] = True
         return full_descriptions
 
-    async def fake_reading(_user, _chart, _planets, _aspects):
+    async def fake_reading(_db, _user, _chart, _planets, _aspects):
         calls["reading_called"] = True
         return "Полный персональный разбор."
 
@@ -1409,13 +1490,115 @@ async def test_build_natal_pdf_response_blocks_until_full_copy_ready(monkeypatch
     monkeypatch.setattr(natal_pdf_html, "generate_natal_pdf_html", fake_generate_natal_pdf_html)
     monkeypatch.setattr(natal_pdf, "generate_natal_pdf", fake_generate_natal_pdf)
 
-    response = await natal._build_natal_pdf_response(db=object(), user=user)
+    response = await natal._build_natal_pdf_response(db=_CommitDB(), user=user)
 
     assert response.body == b"%PDF-full"
     assert calls["descriptions_called"] is True
     assert calls["reading_called"] is True
     assert calls["pdf_kwargs"]["descriptions"] == full_descriptions
     assert calls["pdf_kwargs"]["reading"] == "Полный персональный разбор."
+
+
+@pytest.mark.asyncio
+async def test_rendered_pdf_is_reused_from_postgres(monkeypatch):
+    from api.routes import natal
+    from services import natal_pdf_html
+
+    planets, houses, aspects = _sample_chart()
+    reading = _expanded_reading()
+    descriptions = {"planets": {"sun": {"full": "Описание Солнца."}}}
+    chart = SimpleNamespace(
+        chart_data={"planets": planets, "houses": houses, "aspects": aspects},
+        sun_sign="Scorpio",
+        moon_sign="Aquarius",
+        ascendant_sign="Aries",
+        reading_status=natal.READING_STATUS_FULL,
+    )
+    user = SimpleNamespace(
+        id=1001,
+        tg_first_name="Андрей",
+        birth_date=None,
+        birth_time_known=True,
+        birth_city="Минск",
+        gender=None,
+        natal_chart=chart,
+    )
+    db = _CommitDB()
+    renders = {"count": 0}
+    pdf_store: dict[tuple[int, str], bytes] = {}
+
+    async def fake_cached_reading(_db, _user):
+        return reading
+
+    async def fake_html_renderer(**_kwargs):
+        renders["count"] += 1
+        return b"%PDF-persisted"
+
+    async def fake_cache_get(_key):
+        return None
+
+    async def fake_stored_pdf(_db, user_id, cache_key):
+        return pdf_store.get((user_id, cache_key))
+
+    async def fake_persist_pdf(_db, pdf_user, *, cache_key, pdf_bytes):
+        pdf_store[(pdf_user.id, cache_key)] = pdf_bytes
+        await _db.commit()
+
+    monkeypatch.setattr(natal, "_get_stored_descriptions", lambda _user: descriptions)
+    monkeypatch.setattr(natal, "_get_cached_pdf_reading", fake_cached_reading)
+    monkeypatch.setattr(natal, "cache_get", fake_cache_get)
+    monkeypatch.setattr(natal, "_stored_pdf_bytes", fake_stored_pdf)
+    monkeypatch.setattr(natal, "_persist_rendered_pdf", fake_persist_pdf)
+    monkeypatch.setattr(natal_pdf_html, "generate_natal_pdf_html", fake_html_renderer)
+
+    first = await natal._build_natal_pdf_bytes(db, user)
+    second = await natal._build_natal_pdf_bytes(db, user)
+
+    assert first == second == b"%PDF-persisted"
+    assert renders["count"] == 1
+    assert list(pdf_store.values()) == [b"%PDF-persisted"]
+    assert len(next(iter(pdf_store))[1]) == 64
+    assert db.commits == 1
+
+
+def test_pdf_hash_changes_only_when_document_inputs_change():
+    from api.routes import natal
+
+    chart = SimpleNamespace(
+        chart_data={"planets": {"sun": {"sign": "Pisces"}}},
+        sun_sign="Pisces",
+        moon_sign="Virgo",
+        ascendant_sign="Leo",
+        reading_status=natal.READING_STATUS_FULL,
+    )
+    user = SimpleNamespace(
+        tg_first_name="Astro QA",
+        birth_date="2000-02-20 14:30:00",
+        birth_time_known=True,
+        birth_city="Москва",
+        gender=None,
+        natal_chart=chart,
+    )
+    descriptions = {"planets": {"sun": {"full": "Текст."}}}
+
+    original = natal._natal_pdf_input_hash(
+        user, descriptions=descriptions, reading="Разбор"
+    )
+    assert original == natal._natal_pdf_input_hash(
+        user, descriptions=descriptions, reading="Разбор"
+    )
+
+    user.birth_city = "Минск"
+    changed_profile = natal._natal_pdf_input_hash(
+        user, descriptions=descriptions, reading="Разбор"
+    )
+    assert changed_profile != original
+
+    user.birth_city = "Москва"
+    changed_reading = natal._natal_pdf_input_hash(
+        user, descriptions=descriptions, reading="Новый разбор"
+    )
+    assert changed_reading != original
 
 
 @pytest.mark.asyncio
@@ -1427,10 +1610,11 @@ async def test_pdf_reading_is_generated_when_full_chart_cache_is_cold(monkeypatc
         sun_sign="Scorpio",
         moon_sign="Aquarius",
         ascendant_sign="Aries",
+        chart_data={},
     )
     planets = {"sun": {"sign": "Scorpio"}}
     aspects = [{"p1": "Sun", "p2": "Moon", "aspect": "square", "orb": 1.2}]
-    user = SimpleNamespace(id=1001, gender=None)
+    user = SimpleNamespace(id=1001, gender=None, natal_chart=chart)
 
     async def fake_cache_get(key):
         calls["cache_get_key"] = key
@@ -1441,18 +1625,24 @@ async def test_pdf_reading_is_generated_when_full_chart_cache_is_cold(monkeypatc
 
     async def fake_reading(**kwargs):
         calls["reading_kwargs"] = kwargs
-        return "Полное итоговое чтение карты."
+        return _expanded_reading()
 
     monkeypatch.setattr(natal, "cache_get", fake_cache_get)
     monkeypatch.setattr(natal, "cache_set", fake_cache_set)
     monkeypatch.setattr(natal.settings, "LLM_API_KEY", "test-key")
     monkeypatch.setattr(natal, "generate_natal_reading", fake_reading)
 
-    reading = await natal._get_or_generate_pdf_reading(user, chart, planets, aspects)
+    db = _CommitDB()
+    reading = await natal._get_or_generate_pdf_reading(
+        db, user, chart, planets, aspects
+    )
 
-    assert reading == "Полное итоговое чтение карты."
+    assert reading == _expanded_reading()
     assert calls["reading_kwargs"]["aspects"] == aspects
     assert calls["cache_set"][1]["reading_version"] == natal.NATAL_READING_VERSION
+    assert chart.reading_text == reading
+    assert chart.reading_status == natal.READING_STATUS_FULL
+    assert db.commits == 1
 
 
 class _FakeRedis:
@@ -1483,8 +1673,8 @@ async def test_start_pdf_fast_path_returns_ready_without_enqueue(monkeypatch):
     async def fake_user(_db, _uid):
         return user
 
-    async def fake_cache_get(_key):
-        return {"reading": "x", "reading_gender": None}
+    async def fake_ready_reading(_db, _user):
+        return "reading-text"
 
     async def fake_cache_set(key, value, ttl):
         calls.setdefault("cache_set", []).append(key)
@@ -1494,8 +1684,7 @@ async def test_start_pdf_fast_path_returns_ready_without_enqueue(monkeypatch):
 
     monkeypatch.setattr(natal, "_get_pdf_user_or_error", fake_user)
     monkeypatch.setattr(natal, "_get_stored_descriptions", lambda u: {"planets": {"sun": {}}})
-    monkeypatch.setattr(natal, "_reading_is_fresh", lambda c, g: "reading-text")
-    monkeypatch.setattr(natal, "cache_get", fake_cache_get)
+    monkeypatch.setattr(natal, "_get_ready_pdf_reading", fake_ready_reading)
     monkeypatch.setattr(natal, "cache_set", fake_cache_set)
     monkeypatch.setattr("services.arq_pool.get_arq_pool", fail_enqueue)
 
@@ -1518,7 +1707,7 @@ async def test_start_pdf_dedups_concurrent_requests(monkeypatch):
     async def fake_user(_db, _uid):
         return user
 
-    async def fake_cache_get(_key):
+    async def fake_ready_reading(_db, _user):
         return None  # reading not fresh → no fast-path
 
     async def fake_set_status(job_id, status, **fields):
@@ -1533,8 +1722,7 @@ async def test_start_pdf_dedups_concurrent_requests(monkeypatch):
 
     monkeypatch.setattr(natal, "_get_pdf_user_or_error", fake_user)
     monkeypatch.setattr(natal, "_get_stored_descriptions", lambda u: {})
-    monkeypatch.setattr(natal, "_reading_is_fresh", lambda c, g: None)
-    monkeypatch.setattr(natal, "cache_get", fake_cache_get)
+    monkeypatch.setattr(natal, "_get_ready_pdf_reading", fake_ready_reading)
     monkeypatch.setattr(natal, "get_redis", lambda: redis)
     monkeypatch.setattr("services.job_status.set_job_status", fake_set_status)
     monkeypatch.setattr("services.job_status.get_job_status", fake_get_status)
