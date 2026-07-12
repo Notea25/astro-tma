@@ -17,11 +17,13 @@ import re
 from typing import Any
 
 from sqlalchemy import select, tuple_
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.logging import get_logger
 from core.settings import settings
 from db.models import SynastryInterpretation, SynastryPairSummary
+from services.content_version import CONTENT_VERSION
 from services.llm_utils import first_text_block
 
 log = get_logger(__name__)
@@ -106,15 +108,21 @@ async def _llm_batch(missing: list[tuple[str, str, str]], api_key: str) -> dict[
 
 Верни ТОЛЬКО JSON-массив строк в порядке списка, без обёртки. Пример: ["текст1", "текст2", ...]"""
 
-    try:
-        from services.llm_pool import llm_semaphore
+    from services.astro.fact_context import (
+        AstroFactContext,
+        safe_symbolic_fallback,
+        validate_generated_text,
+    )
+    from services.llm_pool import llm_semaphore
 
-        client = create_llm_client(api_key)
+    client = create_llm_client(api_key)
+
+    async def _call(request_prompt: str) -> list[str] | None:
         async with llm_semaphore:
             message = await client.messages.create(
                 model=settings.LLM_MODEL,
                 max_tokens=2500,
-                messages=[{"role": "user", "content": prompt}],
+                messages=[{"role": "user", "content": request_prompt}],
             )
         raw = first_text_block(message.content).strip()
         # Strip code fences if model adds them
@@ -126,8 +134,35 @@ async def _llm_batch(missing: list[tuple[str, str, str]], api_key: str) -> dict[
         texts = json.loads(raw)
         if not isinstance(texts, list) or len(texts) != len(missing):
             log.warning("synastry_interp.llm_shape_mismatch", expected=len(missing), got=len(texts) if isinstance(texts, list) else "non-list")
+            return None
+        return [str(text).strip() for text in texts]
+
+    def _errors(texts: list[str]) -> list[str]:
+        errors: list[str] = []
+        for index, (triple, text) in enumerate(zip(missing, texts), start=1):
+            context = AstroFactContext.from_chart(
+                planets={},
+                aspects=[{"p1": triple[0], "p2": triple[1], "aspect": triple[2]}],
+                birth_time_known=False,
+            )
+            errors.extend(f"item {index}: {error}" for error in validate_generated_text(text, context))
+        return errors
+
+    try:
+        texts = await _call(prompt)
+        if texts is None:
             return {}
-        return {triple: str(text).strip() for triple, text in zip(missing, texts) if text}
+        errors = _errors(texts)
+        if errors:
+            texts = await _call(
+                prompt + "\n\nИсправь отклонённый ответ:\n- " + "\n- ".join(errors)
+            )
+        if texts is None or _errors(texts):
+            return {
+                triple: safe_symbolic_fallback("Аспект совместимости")
+                for triple in missing
+            }
+        return {triple: text for triple, text in zip(missing, texts) if text}
     except Exception as e:  # noqa: BLE001 — we want broad catch; caller handles empty dict
         log.error("synastry_interp.llm_failed", error=str(e), count=len(missing))
         return {}
@@ -163,6 +198,7 @@ async def get_or_generate_aspect_texts(
             SynastryInterpretation.aspect,
             SynastryInterpretation.text_ru,
         ).where(
+            SynastryInterpretation.content_version == CONTENT_VERSION,
             tuple_(
                 SynastryInterpretation.p1,
                 SynastryInterpretation.p2,
@@ -186,6 +222,7 @@ async def get_or_generate_aspect_texts(
                     p2=triple[1],
                     aspect=triple[2],
                     text_ru=text,
+                    content_version=CONTENT_VERSION,
                 )
             )
             cached[triple] = text
@@ -204,11 +241,11 @@ def _pair_summary_key(
     initiator_name: str | None,
     partner_name: str | None,
     aspects: list[dict[str, Any]],
-    scores: dict[str, int],
 ) -> str:
     """Deterministic hash of every input that shapes the prompt — used as
     the cache key so the same conceptual pair returns the same text."""
     payload = {
+        "v": CONTENT_VERSION,
         "i": (initiator_name or "").strip().lower(),
         "p": (partner_name or "").strip().lower(),
         # Sort aspects so reordering doesn't bust the cache.
@@ -221,7 +258,6 @@ def _pair_summary_key(
             )
             for a in aspects[:10]
         ),
-        "s": {k: int(v) for k, v in scores.items()},
     }
     blob = json.dumps(payload, sort_keys=True, ensure_ascii=False)
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()
@@ -232,21 +268,21 @@ async def get_or_generate_pair_summary(
     initiator_name: str | None,
     partner_name: str | None,
     aspects: list[dict[str, Any]],
-    scores: dict[str, int],
     api_key: str | None,
 ) -> str | None:
     """LLM-generated pair portrait, cached in synastry_pair_summaries by a
-    deterministic hash of (names, aspects, scores). Same inputs always
+    deterministic hash of names and aspects. Same inputs always
     return the same text — eliminates the "two recalculations give two
     different summaries" bug. Returns None if no API key and no cache hit."""
     if not aspects:
         return None
 
-    key = _pair_summary_key(initiator_name, partner_name, aspects, scores)
+    key = _pair_summary_key(initiator_name, partner_name, aspects)
 
     cached = await db.execute(
         select(SynastryPairSummary.summary_ru).where(
-            SynastryPairSummary.key_hash == key
+            SynastryPairSummary.key_hash == key,
+            SynastryPairSummary.content_version == CONTENT_VERSION,
         )
     )
     row = cached.scalar_one_or_none()
@@ -264,12 +300,6 @@ async def get_or_generate_pair_summary(
         p2 = _PLANET_RU.get(a["p2_name"].lower(), a["p2_name"])
         asp = _ASPECT_RU.get(a["aspect"], a["aspect"])
         aspect_lines.append(f"- {p1} {asp} {p2} (орб {a['orb']:.1f}°)")
-
-    score_line = (
-        f"Любовь {scores.get('love', 0)}, общение {scores.get('communication', 0)}, "
-        f"доверие {scores.get('trust', 0)}, страсть {scores.get('passion', 0)}, "
-        f"общая совместимость {scores.get('overall', 0)}."
-    )
 
     # SECURITY_AUDIT.md H5 — sanitize names before interpolating into prompt.
     # Strip control chars / newlines / instruction-shaped tokens so a user
@@ -292,9 +322,6 @@ async def get_or_generate_pair_summary(
 Ключевые аспекты их совместимости:
 {chr(10).join(aspect_lines)}
 
-Баллы по сферам (от 15 до 95):
-{score_line}
-
 Структура (4 коротких абзаца, без заголовков):
 1. Главная тема их союза — 1-2 предложения.
 2. Где им вместе легко, что хорошо складывается — 2-3 предложения.
@@ -309,7 +336,7 @@ async def get_or_generate_pair_summary(
 - Без клише вроде «противоположности притягиваются».
 - Без markdown, без нумерации в тексте."""
 
-    try:
+    async def _call(request_prompt: str) -> str:
         from services.llm_pool import llm_semaphore
 
         client = create_llm_client(api_key)
@@ -317,22 +344,56 @@ async def get_or_generate_pair_summary(
             message = await client.messages.create(
                 model=settings.LLM_MODEL,
                 max_tokens=900,
-                messages=[{"role": "user", "content": prompt}],
+                messages=[{"role": "user", "content": request_prompt}],
             )
-        text = first_text_block(message.content).strip()
+        return first_text_block(message.content).strip()
+
+    try:
+        text = await _call(prompt)
     except Exception as e:  # noqa: BLE001
         log.error("synastry_summary.failed", error=str(e))
         return None
 
     if not text:
         return None
+    from services.astro.fact_context import (
+        AstroFactContext,
+        safe_symbolic_fallback,
+        validate_generated_text,
+    )
 
-    db.add(SynastryPairSummary(key_hash=key, summary_ru=text))
-    try:
-        await db.flush()
-    except Exception as e:  # noqa: BLE001
-        # Race: another concurrent request may have inserted the same key.
-        log.warning("synastry_summary.cache_collision", error=str(e))
+    facts = AstroFactContext.from_chart(
+        planets={},
+        aspects=[
+            {"p1": a["p1_name"], "p2": a["p2_name"], "aspect": a["aspect"]}
+            for a in aspects
+        ],
+        birth_time_known=False,
+    )
+    errors = validate_generated_text(text, facts)
+    if errors:
+        try:
+            text = await _call(
+                prompt + "\n\nИсправь отклонённый ответ:\n- " + "\n- ".join(errors)
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.warning("synastry_summary.retry_failed", error=str(exc))
+            text = ""
+        if not text or validate_generated_text(text, facts):
+            text = safe_symbolic_fallback("Портрет пары")
+
+    stmt = (
+        pg_insert(SynastryPairSummary)
+        .values(
+            key_hash=key,
+            summary_ru=text,
+            content_version=CONTENT_VERSION,
+        )
+        .on_conflict_do_nothing(
+            index_elements=["key_hash", "content_version"]
+        )
+    )
+    await db.execute(stmt)
     log.info("synastry_summary.done", chars=len(text), cached=False)
     return text
 

@@ -9,6 +9,7 @@ from typing import Any
 from kerykeion import AstrologicalSubjectFactory, SynastryAspects
 
 from core.logging import get_logger
+from services.astro.aspect_policy import is_classic_planet
 from services.astro.natal import _PLANET_ATTRS
 
 log = get_logger(__name__)
@@ -94,6 +95,11 @@ def calculate_transits(
         if callable(aspect_raw):
             aspect_raw = aspect_raw()
         aspect_name = str(aspect_raw).lower()
+        if not (
+            is_classic_planet(str(aspect.p1_name))
+            and is_classic_planet(str(aspect.p2_name))
+        ):
+            continue
         if aspect_name not in TRANSIT_ORBS:
             continue
         if abs(aspect.orbit) > TRANSIT_ORBS[aspect_name]:
@@ -101,6 +107,7 @@ def calculate_transits(
 
         weight = (
             PLANET_WEIGHT.get(aspect.p1_name.lower(), 1)
+            + PLANET_WEIGHT.get(aspect.p2_name.lower(), 1)
             + ASPECT_WEIGHT.get(aspect_name, 1)
         )
 
@@ -133,62 +140,16 @@ def calculate_transits(
             "applying": applying,
         })
 
-    results.sort(key=lambda x: x["weight"], reverse=True)
+    results.sort(
+        key=lambda item: (
+            -int(item["weight"]),
+            float(item["orb"]),
+            str(item["transit_planet"]),
+            str(item["natal_planet"]),
+        )
+    )
     log.debug("transits.calculated", count=len(results), date=dt.date().isoformat())
     return results[:10]  # top 10 most significant
-
-
-def build_energy_scores(transits: list[dict[str, Any]], base_sign: str) -> dict[str, int]:
-    """
-    Derive love / career / health / luck scores from active transits.
-    Returns values 0–100. Used for the progress bars in the UI.
-    """
-    base = 55  # neutral baseline
-
-    # Sign-based modifiers (static component)
-    sign_mod: dict[str, dict[str, int]] = {
-        "aries":       {"love": -2, "career": 5, "health": 5, "luck": 3},
-        "taurus":      {"love": 5,  "career": 2, "health": 3, "luck": 2},
-        "gemini":      {"love": 2,  "career": 5, "health": -2,"luck": 3},
-        "cancer":      {"love": 8,  "career": -2,"health": 3, "luck": 0},
-        "leo":         {"love": 5,  "career": 8, "health": 3, "luck": 5},
-        "virgo":       {"love": -2, "career": 8, "health": 5, "luck": 2},
-        "libra":       {"love": 8,  "career": 2, "health": 0, "luck": 5},
-        "scorpio":     {"love": 5,  "career": 3, "health": -3,"luck": 2},
-        "sagittarius": {"love": 3,  "career": 3, "health": 5, "luck": 8},
-        "capricorn":   {"love": -3, "career": 10,"health": 2, "luck": 3},
-        "aquarius":    {"love": 2,  "career": 5, "health": 0, "luck": 5},
-        "pisces":      {"love": 5,  "career": -2,"health": 2, "luck": 3},
-    }
-
-    mods = sign_mod.get(base_sign.lower(), {})
-    scores = {
-        "love":   base + mods.get("love", 0),
-        "career": base + mods.get("career", 0),
-        "health": base + mods.get("health", 0),
-        "luck":   base + mods.get("luck", 0),
-    }
-
-    # Transit-based adjustments
-    _LOVE_PLANETS = {"venus", "moon"}
-    _CAREER_PLANETS = {"saturn", "jupiter", "mars", "sun"}
-    _HEALTH_PLANETS = {"mars", "sun", "moon"}
-    _LUCK_PLANETS = {"jupiter", "sun"}
-
-    _POSITIVE_ASPECTS = {"trine", "sextile", "conjunction"}
-    _NEGATIVE_ASPECTS = {"square", "opposition"}
-
-    for t in transits:
-        tp = t["transit_planet"].lower()
-        aspect = t["aspect"]
-        delta = 5 if aspect in _POSITIVE_ASPECTS else -5
-        if tp in _LOVE_PLANETS:    scores["love"]   += delta
-        if tp in _CAREER_PLANETS:  scores["career"] += delta
-        if tp in _HEALTH_PLANETS:  scores["health"] += delta
-        if tp in _LUCK_PLANETS:    scores["luck"]   += delta
-
-    # Clamp 20–95
-    return {k: max(20, min(95, v)) for k, v in scores.items()}
 
 
 # ── Week / Month event scan ───────────────────────────────────────────────────
@@ -260,6 +221,11 @@ def calculate_period_events(
 
         synastry = SynastryAspects(natal_subject, transit_subject)
         for aspect in synastry.all_aspects:
+            if not (
+                is_classic_planet(str(aspect.p1_name))
+                and is_classic_planet(str(aspect.p2_name))
+            ):
+                continue
             aspect_raw = (
                 getattr(aspect, "aspect", None) or getattr(aspect, "aspect_name", "")
             )
@@ -279,7 +245,9 @@ def calculate_period_events(
             if cur is not None and cur["orb"] <= orb:
                 continue
             weight = (
-                PLANET_WEIGHT.get(tp, 1) + ASPECT_WEIGHT.get(aspect_name, 1)
+                PLANET_WEIGHT.get(tp, 1)
+                + PLANET_WEIGHT.get(np, 1)
+                + ASPECT_WEIGHT.get(aspect_name, 1)
             )
             triple_peaks[triple] = {
                 "kind": "aspect",

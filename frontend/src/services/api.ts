@@ -144,7 +144,10 @@ function promptOpenBotChat(message: string): void {
 }
 
 function shouldUseLocalDevFixtures(): boolean {
-  return import.meta.env.DEV && !WebApp.initData;
+  const fixtureFlag = String(
+    (import.meta.env.VITE_USE_LOCAL_FIXTURES as string | undefined) ?? "true",
+  ).toLowerCase();
+  return import.meta.env.DEV && fixtureFlag !== "false" && !WebApp.initData;
 }
 
 let localDevUser: UserProfile = {
@@ -163,6 +166,7 @@ let localDevUser: UserProfile = {
 
 const localDevSummary: NatalSummaryResponse = {
   has_chart: true,
+  chart_mode: "full",
   sun_sign: "Virgo",
   moon_sign: "Cancer",
   ascendant_sign: "Pisces",
@@ -281,6 +285,7 @@ const localDevSummary: NatalSummaryResponse = {
 };
 
 const localDevFull: NatalFullResponse = {
+  chart_mode: "full",
   sun_sign: "Virgo",
   moon_sign: "Cancer",
   ascendant_sign: "Pisces",
@@ -1082,6 +1087,11 @@ export interface DestinyChannels {
   ancestral_mother_karma: number[];
 }
 
+export interface DestinyKarmicProgram {
+  key: string;
+  arcana: number[];
+}
+
 export interface DestinyVarna {
   varnas: Record<string, number>; // {"Брахман": 40, "Кшатрий": 40, ...}
   expression: number;
@@ -1159,6 +1169,7 @@ export interface DestinyMatrixPositions {
   lines: DestinyLines;
   purposes: DestinyPurposes;
   channels: DestinyChannels;
+  karmic_program?: DestinyKarmicProgram;
   varna: DestinyVarna;
   /** Новые поля по спеке Ладини — опциональные на время миграции */
   centers?: DestinyCenters;

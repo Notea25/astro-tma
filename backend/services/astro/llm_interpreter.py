@@ -62,14 +62,17 @@ def _build_prompt(
     gender: str | None = None,
     nodes: dict | None = None,
 ) -> str:
+    birth_time_known = ascendant_sign is not None
     planet_lines: list[str] = []
     for key, ru_name in _PLANET_RU.items():
         if key in planets:
             p = planets[key]
             retro = " (ретроградный)" if p.get("retrograde") else ""
+            house = p.get("house")
+            house_suffix = f", {house}-й дом" if house is not None else ""
             planet_lines.append(
                 f"- {ru_name}: {p.get('sign_ru') or p.get('sign', '?')} "
-                f"{p.get('sign_degree', 0):.0f}°, {p.get('house', '?')}-й дом{retro}"
+                f"{p.get('sign_degree', 0):.0f}°{house_suffix}{retro}"
             )
 
     sorted_aspects = sorted(aspects, key=lambda a: a.get("orb", 99))[:6]
@@ -108,21 +111,20 @@ def _build_prompt(
     ):
         p = node_source.get(key)
         if p and label not in nodes_line:
+            house = p.get("house")
+            house_suffix = f", {house}-й дом" if house is not None else ""
             nodes_line += (
-                f"\n{label}: {p.get('sign_ru') or p.get('sign', '?')}, {p.get('house', '?')}-й дом"
+                f"\n{label}: {p.get('sign_ru') or p.get('sign', '?')}{house_suffix}"
             )
 
     node_section = ""
-    node_heading_count = "семь"
-    node_heading_rule = "Используй РОВНО эти семь заголовков и строго в этом порядке."
     if nodes_line:
-        node_heading_count = "восемь"
-        node_heading_rule = "Используй РОВНО эти восемь заголовков и строго в этом порядке."
         nodes_directive = (
             "Раху (Северный узел) — задача этой жизни, направление развития. "
             "Кету (Южный узел) — прошлый опыт, от чего уходить. Положения узлов "
             "даны во входных данных выше («Раху …», «Кету …») — опиши их по знаку "
-            "и дому конкретно, как вектор роста и точку опоры из прошлого. 1 абзац. "
+            f"{'и дому ' if birth_time_known else ''}конкретно, как символический "
+            "вектор роста и точку опоры. 1 абзац. "
             "Это платный отчёт: НЕ пиши, что узлы «не рассчитаны» — данные есть."
         )
         node_section = (
@@ -130,7 +132,30 @@ def _build_prompt(
             f"{nodes_directive}\n"
         )
 
-    return f"""Ты — опытный астролог, пишущий интерпретации натальной карты в стиле российского астрологического портала geocult.ru. Твоя задача — написать развёрнутое описание натальной карты на основе входных данных.
+    foundation = (
+        "Опиши триаду Асцендент + Солнце + Луна. Асцендент — маска и стиль "
+        "поведения. Солнце — ядро личности, Луна — эмоциональная природа."
+        if birth_time_known
+        else "Опиши только Солнце и Луну. Время рождения неизвестно: не упоминай "
+        "Асцендент, MC, дома, куспиды, внешность или управителя карты. Луна "
+        "рассчитана приблизительно на 12:00."
+    )
+    ruler_section = "" if not birth_time_known else """
+**Управитель гороскопа**
+Определи управителя Асцендента и опиши только по указанным знаку и дому. 1 абзац.
+"""
+    houses_section = "" if not birth_time_known else """
+**Дома гороскопа**
+Опиши только занятые планетами дома из входных данных. 2–3 предложения на ключевой дом.
+"""
+    section_count = 7 if birth_time_known else 5
+    if nodes_line:
+        section_count += 1
+    node_heading_rule = (
+        f"Используй РОВНО {section_count} разделов и только указанные ниже заголовки."
+    )
+
+    return f"""Ты — опытный астролог. Напиши развёрнутое описание натальной карты только на основе входных данных, используя понятную структуру разделов в духе geocult, но без копирования текста.
 {gender_directive}
 --- ВХОДНЫЕ ДАННЫЕ ---
 Солнце: {sun_sign}
@@ -147,19 +172,15 @@ def _build_prompt(
 Каждый раздел начинай с его названия, обёрнутого в **двойные звёздочки**, на отдельной строке, затем обычный текст полноценными абзацами. Парсер разбивает текст по `**Название**` — без звёздочек всё схлопнется в один блок. Кроме `**Заголовка**` никакого markdown: ни решёток (#), ни списков, ни звёздочек внутри текста. {node_heading_rule}
 
 **Основа личности**
-Опиши триаду Асцендент + Солнце + Луна. Асцендент — маска, стиль поведения, внешность. Солнце — ядро личности, воля, призвание, отец. Луна — эмоциональная природа, интуиция, мать, детство. По 1 абзацу на каждый элемент.
-
-**Управитель гороскопа**
-Определи планету-управитель Асцендента (Овен→Марс, Телец→Венера, Близнецы→Меркурий, Рак→Луна, Лев→Солнце, Дева→Меркурий, Весы→Венера, Скорпион→Плутон, Стрелец→Юпитер, Козерог→Сатурн, Водолей→Уран, Рыбы→Нептун). Опиши её положение в знаке и доме и что это значит для судьбы натива. 1 абзац.
+{foundation}
+{ruler_section}
 
 **Личные планеты**
-Меркурий (ум, общение), Венера (любовь, красота, деньги), Марс (действие, энергия). Для каждой — как качества проявляются через знак и в какой сфере жизни (дом) реализуется влияние. Образно, но кратко: 2–3 предложения на планету.
+Меркурий, Венера и Марс: интерпретируй указанные знаки{', затем указанные дома' if birth_time_known else ''}. 2–3 предложения на планету.
 
 **Высшие планеты**
-Юпитер (удача, расширение, статус) и Сатурн (ограничения, дисциплина, карьера) — влияние на карьеру и социальный статус. Уран, Нептун, Плутон — в контексте дома размещения. Кратко: 2–3 предложения на планету, один абзац на всё.
-
-**Дома гороскопа**
-Опиши занятые планетами дома. Названия: 1 «Точка Я», 2 «Точка возможностей», 3 «Точка коммуникации», 4 «Точка происхождения», 5 «Точка влечений», 6 «Точка силы», 7 «Точка Ты», 8 «Точка границ», 9 «Точка духа», 10 «Точка цели», 11 «Точка социальности», 12 «Точка одиночества». 2–3 предложения на ключевой дом с планетами, без воды.
+Юпитер, Сатурн, Уран, Нептун и Плутон: интерпретируй только указанные положения. Кратко, один абзац.
+{houses_section}
 {node_section}
 
 **Аспекты планет**
@@ -170,9 +191,11 @@ def _build_prompt(
 
 --- СТИЛЬ ---
 - Пиши по-русски, живым образным языком, чередуя конкретику и метафоры («актёры в театре жизни», «амплуа»). Авторитетно, но не пугающе.
-- Называй человека «натив». Используй термины: куспид дома, управитель, поражённая планета, гармоничный аспект.
-- Каждое предложение несёт факт об ЭТОМ нативе. Без абстрактных наполнителей ради объёма («просто баланс», «работа над собой»), без вступлений-подводок — сразу по сути.
-- Объём — около {"1200–1500" if nodes_line else "1050–1350"} слов: каждый из {node_heading_count} разделов плотный и по делу, без воды ради длины."""
+- Человека можно нейтрально называть «натив», не приписывая ему факты биографии.
+- Формулируй трактовки как возможности и вопросы для самонаблюдения, не как доказанные факты биографии.
+- Не выдумывай события детства, семью, зависимости, диагнозы и прошлые жизни. Не гарантируй будущие события.
+- Упоминай только аспекты из входного списка. {"Упоминай только явно указанные дома." if birth_time_known else "Запрещены любые упоминания ASC, MC, домов и куспидов."}
+- Объём — около {"1050–1350" if birth_time_known else "750–1000"} слов."""
 
 
 async def generate_natal_reading(
@@ -193,6 +216,11 @@ async def generate_natal_reading(
     the generated text. Caller is responsible for storing the value next
     to the cached reading so future requests can detect a stale gender.
     """
+    from services.astro.fact_context import (
+        FactContext,
+        safe_natal_fallback,
+        validate_generated_text,
+    )
     from services.llm_pool import llm_semaphore
     from services.quality_validator import Severity, TextValidator, ValidationContext
     from services.rate_limiter import LLMLimiter
@@ -205,14 +233,16 @@ async def generate_natal_reading(
     validator = TextValidator(use_spellchecker=False)
     ctx = ValidationContext(section_kind="synthesis", subject="Натальный разбор")
 
-    async def _call(max_tokens: int) -> tuple[str, str | None]:
+    async def _call(
+        max_tokens: int, request_prompt: str = prompt
+    ) -> tuple[str, str | None]:
         # 9000 (было 7000): на 8-разделочном ~1200-1500-словном тексте 7k токенов
         # упирались в потолок и обрывали последнюю секцию на полуслове («…строите карь»).
         async with llm_semaphore, LLMLimiter(max_tokens):
             message = await client.messages.create(
                 model=settings.LLM_MODEL,
                 max_tokens=max_tokens,
-                messages=[{"role": "user", "content": prompt}],
+                messages=[{"role": "user", "content": request_prompt}],
             )
         return first_text_block(message.content), getattr(message, "stop_reason", None)
 
@@ -245,6 +275,28 @@ async def generate_natal_reading(
     if not _has_lunar_nodes(nodes, planets):
         text = _strip_lunar_nodes_block(text)
 
+    fact_context = FactContext.from_chart(
+        planets=planets,
+        aspects=aspects,
+        birth_time_known=ascendant_sign is not None,
+    )
+    fact_errors = validate_generated_text(text, fact_context)
+    if fact_errors:
+        correction = (
+            prompt
+            + "\n\nПРЕДЫДУЩИЙ ОТВЕТ ОТКЛОНЁН. Исправь все ошибки и верни весь текст заново:\n- "
+            + "\n- ".join(fact_errors)
+        )
+        log.warning("llm_interpreter.fact_retry", errors=fact_errors)
+        retry_text, retry_stop = await _call(9000, correction)
+        retry_errors = validate_generated_text(retry_text, fact_context)
+        if retry_errors:
+            log.error("llm_interpreter.fact_fallback", errors=retry_errors)
+            text = safe_natal_fallback(sun_sign, moon_sign)
+            stop_reason = "fact_validation_fallback"
+        else:
+            text, stop_reason = retry_text, retry_stop
+
     from services.astro.text_polish import polish_natal_text
     text, typo_fixes = polish_natal_text(text)
     log.info(
@@ -271,7 +323,21 @@ def _build_mini_prompt(
         )
         gender_directive = f"\nПол читателя: {ru.upper()}. {forms.upper()}.\n"
 
-    return f"""Ты — опытный астролог, пишущий в стиле российского портала geocult.ru. Напиши КОРОТКОЕ ознакомительное описание натальной карты по триаде Солнце / Луна / Асцендент.
+    format_sections = """
+**Солнце**
+Ядро личности, воля, призвание — через знак Солнца. 2–3 предложения.
+
+**Луна**
+Эмоциональная природа, интуиция, внутренние потребности — через знак Луны. 2–3 предложения.
+"""
+    if ascendant_sign:
+        format_sections += """
+**Восходящий**
+Маска, стиль поведения, первое впечатление — через знак Асцендента. 2–3 предложения.
+"""
+    section_count = 3 if ascendant_sign else 2
+
+    return f"""Ты — опытный астролог. Напиши КОРОТКОЕ ознакомительное описание натальной карты по доступным данным.
 {gender_directive}
 --- ВХОДНЫЕ ДАННЫЕ ---
 Солнце: {sun_sign}
@@ -279,21 +345,15 @@ def _build_mini_prompt(
 {asc_line}
 
 --- ФОРМАТ ВЫВОДА (ВАЖНО) ---
-Ровно три раздела, каждый начинается с названия в **двойных звёздочках** на отдельной строке, затем один абзац обычного текста. Никакого другого markdown: ни решёток, ни списков, ни звёздочек внутри текста. Используй РОВНО эти три заголовка в этом порядке:
-
-**Солнце**
-Ядро личности, воля, призвание — через знак Солнца. 2–3 предложения.
-
-**Луна**
-Эмоциональная природа, интуиция, внутренние потребности — через знак Луны. 2–3 предложения.
-
-**Восходящий**
-{"Маска, стиль поведения, первое впечатление — через знак Асцендента. 2–3 предложения." if ascendant_sign else "Асцендент в этом разборе не рассчитан (нет точного времени рождения) — одной фразой отметь это и кратко опиши общий вектор личности по Солнцу и Луне."}
+Ровно {section_count} раздела, каждый начинается с названия в **двойных звёздочках**. Никакого другого markdown. Используй только эти заголовки:
+{format_sections}
 
 --- СТИЛЬ ---
 - Пиши по-русски, живым образным языком. Называй человека «натив».
-- Каждое предложение несёт факт об ЭТОМ нативе, без абстрактных наполнителей и вступлений.
-- Это ТИЗЕР: всего ~150–220 слов на все три раздела. Заверши лёгким намёком, что полный разбор раскрывает планеты, дома и аспекты подробнее."""
+- Это символические возможности для самонаблюдения, не факты биографии и не гарантии.
+- Не выдумывай семью, детство, диагнозы или события будущего.
+- {"Используй Асцендент только из входных данных." if ascendant_sign else "Не упоминай ASC, MC, дома, куспиды и время рождения."}
+- Это ТИЗЕР: всего ~120–220 слов."""
 
 
 async def generate_natal_mini_reading(
@@ -308,20 +368,36 @@ async def generate_natal_mini_reading(
     Shown on the natal screen before the user requests the full PDF reading.
     Raises on API error — caller should catch and handle gracefully.
     """
+    from services.astro.fact_context import (
+        FactContext,
+        safe_natal_fallback,
+        validate_generated_text,
+    )
     from services.llm_pool import llm_semaphore
     from services.rate_limiter import LLMLimiter
 
     prompt = _build_mini_prompt(sun_sign, moon_sign, ascendant_sign, gender)
 
     client = create_llm_client(api_key)
-    async with llm_semaphore, LLMLimiter(700):
-        message = await client.messages.create(
-            model=settings.LLM_MODEL,
-            max_tokens=700,
-            messages=[{"role": "user", "content": prompt}],
-        )
 
-    text = first_text_block(message.content)
+    async def _call(request_prompt: str) -> str:
+        async with llm_semaphore, LLMLimiter(700):
+            message = await client.messages.create(
+                model=settings.LLM_MODEL,
+                max_tokens=700,
+                messages=[{"role": "user", "content": request_prompt}],
+            )
+        return first_text_block(message.content)
+
+    text = await _call(prompt)
+    context = FactContext(birth_time_known=ascendant_sign is not None)
+    errors = validate_generated_text(text, context)
+    if errors:
+        text = await _call(
+            prompt + "\n\nИсправь отклонённый ответ:\n- " + "\n- ".join(errors)
+        )
+        if validate_generated_text(text, context):
+            text = safe_natal_fallback(sun_sign, moon_sign)
     from services.astro.text_polish import polish_natal_text
     text, typo_fixes = polish_natal_text(text)
     log.info(

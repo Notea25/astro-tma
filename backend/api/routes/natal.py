@@ -25,6 +25,7 @@ from core.cache import (
 from core.logging import get_logger
 from core.settings import settings
 from db.database import get_db
+from services.astro.aspect_policy import natal_or_synastry_orb_limit
 from services.astro.dominants import compute_dominants
 from services.astro.interpreter import get_natal_interpretation
 from services.astro.key_aspects import top_n_aspects
@@ -67,17 +68,67 @@ class WheelSvgPayload(BaseModel):
 
 # Bumped when description style rules change — old rows render as stale on
 # first read so they regenerate with current length, variety and gender rules.
-NATAL_DESCRIPTIONS_VERSION = 14
+NATAL_DESCRIPTIONS_VERSION = 15
 # Bumped when the full PDF reading contract changes. v2 makes lunar nodes
 # binary: render a concrete nodes section only when positions exist; otherwise
 # omit the section instead of showing a paid-report apology/fallback.
-NATAL_READING_VERSION = 2
+NATAL_READING_VERSION = 3
+NATAL_MINI_VERSION = 2
 MIN_EXPANDED_READING_HEADINGS = 7
 MIN_EXPANDED_READING_WORDS = 1050
 
 
 def _empty_descriptions() -> dict[str, Any]:
     return {"_version": NATAL_DESCRIPTIONS_VERSION, "planets": {}, "houses": {}, "aspects": []}
+
+
+def _chart_mode(user) -> str:
+    return "full" if _birth_time_known(user) else "date_only"
+
+
+def _birth_time_known(user) -> bool:
+    """ORM always has this field; True keeps older tests/fixtures compatible."""
+    return bool(getattr(user, "birth_time_known", True))
+
+
+def _allowed_natal_aspects(aspects: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Apply current 8°/6° policy to legacy chart JSON as well as new charts."""
+    return [
+        aspect
+        for aspect in aspects
+        if float(aspect.get("orb", 99))
+        <= natal_or_synastry_orb_limit(
+            str(aspect.get("p1", "")), str(aspect.get("p2", ""))
+        )
+    ]
+
+
+def _public_planets(user, planets: dict[str, Any]) -> dict[str, Any]:
+    """Strip time-dependent house assignments from date-only charts."""
+    if _birth_time_known(user):
+        return planets
+    return {name: {**data, "house": None} for name, data in planets.items()}
+
+
+def _public_nodes(user, nodes: dict[str, Any] | None) -> dict[str, Any]:
+    if _birth_time_known(user) or not nodes:
+        return nodes or {}
+    return {name: {**data, "house": None} for name, data in nodes.items()}
+
+
+def _public_full_payload(user, payload: dict[str, Any]) -> dict[str, Any]:
+    out = {
+        **payload,
+        "chart_mode": _chart_mode(user),
+        "ascendant_sign": (
+            payload.get("ascendant_sign") if _birth_time_known(user) else None
+        ),
+        "planets": _public_planets(user, payload.get("planets", {})),
+        "houses": payload.get("houses", []) if _birth_time_known(user) else [],
+    }
+    if not _birth_time_known(user) and payload.get("reading_version") != NATAL_READING_VERSION:
+        out["reading"] = None
+    return out
 
 
 def _has_any(descriptions: dict[str, Any]) -> bool:
@@ -166,9 +217,11 @@ async def _get_or_generate_descriptions(
     if not settings.LLM_API_KEY:
         return _empty_descriptions()
 
-    planets = chart_data.get("planets", {})
-    houses = chart_data.get("houses", [])
-    aspects = _pdf_description_aspects(chart_data.get("aspects", []))
+    planets = _public_planets(user, chart_data.get("planets", {}))
+    houses = chart_data.get("houses", []) if _birth_time_known(user) else []
+    aspects = _pdf_description_aspects(
+        _allowed_natal_aspects(chart_data.get("aspects", []))
+    )
 
     try:
         result = await generate_natal_descriptions(
@@ -262,16 +315,20 @@ def _mini_is_fresh(cached: Any, current_gender: str | None) -> str | None:
         return None
     if cached.get("mini_reading_gender") != current_gender:
         return None
+    if cached.get("mini_reading_version") != NATAL_MINI_VERSION:
+        return None
     from services.astro.text_polish import polish_natal_text
     mini, _ = polish_natal_text(mini)
     return mini
 
 
-async def _load_db_interpretations(db: AsyncSession, chart) -> list[dict[str, Any]]:
+async def _load_db_interpretations(
+    db: AsyncSession, user, chart, *, birth_time_known: bool
+) -> list[dict[str, Any]]:
     """DB-backed per-planet interpretation blocks (no LLM). Shared by the
     full-chart and mini endpoints so the on-screen slider has content
     without triggering the expensive reading generation."""
-    planets = chart.chart_data.get("planets", {})
+    planets = _public_planets(user, chart.chart_data.get("planets", {}))
     planet_signs = {
         planet: data["sign"].lower()
         for planet, data in planets.items()
@@ -279,15 +336,19 @@ async def _load_db_interpretations(db: AsyncSession, chart) -> list[dict[str, An
     }
     planet_houses = {
         planet: int(data["house"]) for planet, data in planets.items() if data.get("house")
-    }
+    } if birth_time_known else {}
     interp_blocks = await get_natal_interpretation(
         db,
         sun_sign=chart.sun_sign.lower(),
         moon_sign=chart.moon_sign.lower(),
-        asc_sign=chart.ascendant_sign.lower() if chart.ascendant_sign else None,
+        asc_sign=(
+            chart.ascendant_sign.lower()
+            if birth_time_known and chart.ascendant_sign
+            else None
+        ),
         planet_signs=planet_signs,
         planet_houses=planet_houses,
-        aspects=chart.chart_data.get("aspects", []),
+        aspects=_allowed_natal_aspects(chart.chart_data.get("aspects", [])),
     )
     return [{"planet": b.planet, "category": b.category, "text": b.text} for b in interp_blocks]
 
@@ -312,12 +373,14 @@ async def _get_or_generate_pdf_reading(
         reading = await generate_natal_reading(
             sun_sign=chart.sun_sign,
             moon_sign=chart.moon_sign,
-            ascendant_sign=chart.ascendant_sign,
+            ascendant_sign=chart.ascendant_sign if _birth_time_known(user) else None,
             planets=planets,
             aspects=aspects,
             api_key=settings.LLM_API_KEY,
             gender=current_gender,
-            nodes=(getattr(chart, "chart_data", None) or {}).get("nodes"),
+            nodes=_public_nodes(
+                user, (getattr(chart, "chart_data", None) or {}).get("nodes")
+            ),
         )
     except Exception as e:
         log.error("natal.pdf_reading_failed", user_id=user.id, error=str(e))
@@ -381,12 +444,14 @@ async def _build_natal_pdf_bytes(
     from services.natal_pdf_html import generate_natal_pdf_html
 
     chart = user.natal_chart
-    planets = chart.chart_data.get("planets", {})
-    houses = chart.chart_data.get("houses", [])
+    planets = _public_planets(user, chart.chart_data.get("planets", {}))
+    houses = chart.chart_data.get("houses", []) if _birth_time_known(user) else []
     # Рендерим ТОЛЬКО те аспекты, для которых генерится персональный текст
     # (top-N сильнейших). Иначе слабые аспекты без LLM-описания падали в
     # шаблонный _aspect_fallback — а шаблоны в платном PDF мы не показываем.
-    aspects_raw = _pdf_description_aspects(chart.chart_data.get("aspects", []))
+    aspects_raw = _pdf_description_aspects(
+        _allowed_natal_aspects(chart.chart_data.get("aspects", []))
+    )
     aspects = [
         {
             "p1": a.get("p1", ""),
@@ -416,27 +481,27 @@ async def _build_natal_pdf_bytes(
     cached_wheel = await cache_get(key_natal_wheel_svg(user.id))
     if isinstance(cached_wheel, dict):
         wheel_svg = cached_wheel.get("svg")
-    if not wheel_svg:
+    if _birth_time_known(user) and not wheel_svg:
         stored_wheel = (chart.chart_data or {}).get("wheel_svg")
         if isinstance(stored_wheel, str) and stored_wheel.startswith("<svg"):
             wheel_svg = stored_wheel
 
-    pdf_kwargs = dict(
+    pdf_kwargs: dict[str, Any] = dict(
         user_name=user.tg_first_name or "User",
         birth_date=str(user.birth_date) if user.birth_date else "",
         birth_time=(
-            user.birth_date.strftime("%H:%M") if user.birth_date and user.birth_time_known else None
+            user.birth_date.strftime("%H:%M") if user.birth_date and _birth_time_known(user) else None
         ),
         birth_city=user.birth_city or "",
         sun_sign=chart.sun_sign or "",
         moon_sign=chart.moon_sign or "",
-        asc_sign=chart.ascendant_sign,
+        asc_sign=chart.ascendant_sign if _birth_time_known(user) else None,
         planets=planets,
         houses=houses,
         aspects=aspects,
         reading=reading,
         descriptions=descriptions,
-        wheel_svg=wheel_svg,
+        wheel_svg=wheel_svg if _birth_time_known(user) else None,
     )
     try:
         pdf_bytes = await generate_natal_pdf_html(**pdf_kwargs)
@@ -554,21 +619,21 @@ async def get_natal_summary(
 
     # Full planet positions for wheel
     planets_for_wheel = {}
-    raw_planets = chart.chart_data.get("planets", {})
+    raw_planets = _public_planets(user, chart.chart_data.get("planets", {}))
     for name, data in raw_planets.items():
         planets_for_wheel[name] = {
             "degree": data.get("degree", 0),  # absolute 0–360
             "sign_degree": data.get("sign_degree", 0),  # within-sign 0–30
             "sign": data.get("sign", ""),
             "sign_ru": data.get("sign_ru", ""),
-            "house": data.get("house", 1),
+            "house": data.get("house"),
             "retrograde": data.get("retrograde", False),
             "speed": data.get("speed", 0),
         }
 
     # House cusps with sign
     houses_for_wheel = []
-    for h in chart.chart_data.get("houses", []):
+    for h in chart.chart_data.get("houses", []) if _birth_time_known(user) else []:
         houses_for_wheel.append(
             {
                 "number": h.get("number", 0),
@@ -582,15 +647,15 @@ async def get_natal_summary(
     birth_date_str = user.birth_date.strftime("%Y-%m-%d") if user.birth_date else None
     birth_time_str = (
         user.birth_date.strftime("%H:%M")
-        if (user.birth_date and user.birth_time_known)
-        else "12:00"
+        if (user.birth_date and _birth_time_known(user))
+        else None
     )
 
-    raw_aspects = chart.chart_data.get("aspects", [])
+    raw_aspects = _allowed_natal_aspects(chart.chart_data.get("aspects", []))
     try:
         dominants = compute_dominants(
             planets=raw_planets,
-            ascendant_sign=chart.ascendant_sign if user.birth_time_known else None,
+            ascendant_sign=chart.ascendant_sign if _birth_time_known(user) else None,
         )
     except Exception as e:  # noqa: BLE001
         log.warning("natal.dominants_failed", user_id=user.id, error=str(e))
@@ -608,7 +673,7 @@ async def get_natal_summary(
             hero_info = {
                 "elements": build_elements_hero(dominants),
                 "planets": build_planets_hero(raw_planets, dominants),
-                "houses": build_houses_hero(raw_planets),
+                "houses": build_houses_hero(raw_planets) if _birth_time_known(user) else [],
                 "aspects": build_aspects_hero(raw_aspects, key_aspects),
             }
         except Exception as e:  # noqa: BLE001
@@ -616,12 +681,13 @@ async def get_natal_summary(
 
     return {
         "has_chart": True,
+        "chart_mode": _chart_mode(user),
         "sun_sign": chart.sun_sign,
         "moon_sign": chart.moon_sign,
-        "ascendant_sign": chart.ascendant_sign,
-        "mc_sign": chart.chart_data.get("mc_sign"),
+        "ascendant_sign": chart.ascendant_sign if _birth_time_known(user) else None,
+        "mc_sign": chart.chart_data.get("mc_sign") if _birth_time_known(user) else None,
         "birth_city": user.birth_city,
-        "birth_time_known": user.birth_time_known,
+        "birth_time_known": _birth_time_known(user),
         "birth_lat": user.birth_lat,
         "birth_lng": user.birth_lng,
         "birth_tz": user.birth_tz,
@@ -661,7 +727,9 @@ async def get_natal_mini(
 
     chart = user.natal_chart
     current_gender = _user_gender(user)
-    interpretations = await _load_db_interpretations(db, chart)
+    interpretations = await _load_db_interpretations(
+        db, user, chart, birth_time_known=_birth_time_known(user)
+    )
 
     cache_key = key_natal(user.id)
     cached = await cache_get(cache_key)
@@ -670,6 +738,7 @@ async def get_natal_mini(
         return {
             "mini_reading": fresh,
             "mini_reading_gender": current_gender,
+            "chart_mode": _chart_mode(user),
             "interpretations": interpretations,
             "has_chart": True,
         }
@@ -681,7 +750,7 @@ async def get_natal_mini(
             mini_reading = await generate_natal_mini_reading(
                 sun_sign=chart.sun_sign,
                 moon_sign=chart.moon_sign,
-                ascendant_sign=chart.ascendant_sign,
+                ascendant_sign=chart.ascendant_sign if _birth_time_known(user) else None,
                 api_key=settings.LLM_API_KEY,
                 gender=current_gender,
             )
@@ -698,6 +767,7 @@ async def get_natal_mini(
                     **cached_payload,
                     "mini_reading": mini_reading,
                     "mini_reading_gender": current_gender,
+                    "mini_reading_version": NATAL_MINI_VERSION,
                 },
                 settings.CACHE_TTL_NATAL,
             )
@@ -705,6 +775,7 @@ async def get_natal_mini(
     return {
         "mini_reading": mini_reading,
         "mini_reading_gender": current_gender if mini_reading else None,
+        "chart_mode": _chart_mode(user),
         "interpretations": interpretations,
         "has_chart": True,
     }
@@ -737,7 +808,7 @@ async def get_natal_full(
 
     chart = user.natal_chart
     planets = chart.chart_data.get("planets", {})
-    aspects = chart.chart_data.get("aspects", [])
+    aspects = _allowed_natal_aspects(chart.chart_data.get("aspects", []))
 
     current_gender = _user_gender(user)
 
@@ -753,23 +824,23 @@ async def get_natal_full(
         if _reading_is_fresh(cached, current_gender) or (
             gender_matches and not settings.LLM_API_KEY
         ):
-            return cached
+            return _public_full_payload(user, cached)
         if not settings.LLM_API_KEY:
-            return cached
+            return _public_full_payload(user, cached)
         try:
             refreshed_reading = await generate_natal_reading(
                 sun_sign=chart.sun_sign,
                 moon_sign=chart.moon_sign,
-                ascendant_sign=chart.ascendant_sign,
+                ascendant_sign=chart.ascendant_sign if _birth_time_known(user) else None,
                 planets=planets,
                 aspects=aspects[:10],
                 api_key=settings.LLM_API_KEY,
                 gender=current_gender,
-                nodes=chart.chart_data.get("nodes"),
+                nodes=_public_nodes(user, chart.chart_data.get("nodes")),
             )
         except Exception as e:
             log.error("natal.llm_refresh_failed", user_id=user.id, error=str(e))
-            return cached
+            return _public_full_payload(user, cached)
         refreshed = {
             **cached,
             "reading": refreshed_reading,
@@ -777,11 +848,13 @@ async def get_natal_full(
             "reading_version": NATAL_READING_VERSION,
         }
         await cache_set(cache_key, refreshed, settings.CACHE_TTL_NATAL)
-        return refreshed
+        return _public_full_payload(user, refreshed)
     if cached:
         return cached
 
-    interpretations = await _load_db_interpretations(db, chart)
+    interpretations = await _load_db_interpretations(
+        db, user, chart, birth_time_known=_birth_time_known(user)
+    )
 
     # Generate LLM interpretation if API key is set
     llm_reading: str | None = None
@@ -790,12 +863,12 @@ async def get_natal_full(
             llm_reading = await generate_natal_reading(
                 sun_sign=chart.sun_sign,
                 moon_sign=chart.moon_sign,
-                ascendant_sign=chart.ascendant_sign,
+                ascendant_sign=chart.ascendant_sign if _birth_time_known(user) else None,
                 planets=planets,
-                aspects=chart.chart_data.get("aspects", [])[:10],
+                aspects=_allowed_natal_aspects(chart.chart_data.get("aspects", []))[:10],
                 api_key=settings.LLM_API_KEY,
                 gender=current_gender,
-                nodes=chart.chart_data.get("nodes"),
+                nodes=_public_nodes(user, chart.chart_data.get("nodes")),
             )
         except Exception as e:
             log.error("natal.llm_failed", user_id=user.id, error=str(e))
@@ -803,10 +876,11 @@ async def get_natal_full(
     result = {
         "sun_sign": chart.sun_sign,
         "moon_sign": chart.moon_sign,
-        "ascendant_sign": chart.ascendant_sign,
+        "chart_mode": _chart_mode(user),
+        "ascendant_sign": chart.ascendant_sign if _birth_time_known(user) else None,
         "planets": planets,
-        "houses": chart.chart_data.get("houses", []),
-        "aspects": chart.chart_data.get("aspects", [])[:10],
+        "houses": chart.chart_data.get("houses", []) if _birth_time_known(user) else [],
+        "aspects": _allowed_natal_aspects(chart.chart_data.get("aspects", []))[:10],
         "reading_version": NATAL_READING_VERSION,
         "reading_gender": current_gender,
         "interpretations": interpretations,
@@ -814,7 +888,7 @@ async def get_natal_full(
     }
 
     await cache_set(cache_key, result, settings.CACHE_TTL_NATAL)
-    return result
+    return _public_full_payload(user, result)
 
 
 @router.get("/descriptions")

@@ -46,14 +46,6 @@ class SynastryAspectOut(BaseModel):
     weight: int
 
 
-class SynastryScores(BaseModel):
-    love: int
-    communication: int
-    trust: int
-    passion: int
-    overall: int
-
-
 class SynastryPlanetInfo(BaseModel):
     name: str
     name_ru: str
@@ -61,7 +53,7 @@ class SynastryPlanetInfo(BaseModel):
     sign_ru: str
     degree: float
     sign_degree: float
-    house: int
+    house: int | None
     retrograde: bool
 
 
@@ -86,7 +78,6 @@ class SynastryAspectInterp(BaseModel):
 class SynastryResult(BaseModel):
     id: int | None = None
     aspects: list[SynastryAspectOut]
-    scores: SynastryScores
     total_aspects: int
     initiator_name: str | None = None
     partner_name: str | None = None
@@ -105,7 +96,6 @@ class SynastryHistoryItem(BaseModel):
     id: int
     partner_name: str | None  # the OTHER person from the current viewer's POV
     is_initiator: bool
-    scores: SynastryScores
     total_aspects: int
     created_at: datetime
 

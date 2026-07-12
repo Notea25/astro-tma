@@ -147,7 +147,12 @@ def _style_for_date(target_date: date) -> dict[str, str]:
     return _HOROSCOPE_STYLES[target_date.toordinal() % len(_HOROSCOPE_STYLES)]
 
 
-def _build_horoscope_prompt(sign: str, target_date: date, period: str = "today") -> str:
+def _build_horoscope_prompt(
+    sign: str,
+    target_date: date,
+    period: str = "today",
+    transit_context: list[dict] | None = None,
+) -> str:
     from datetime import timedelta
 
     sign_ru = _SIGN_RU.get(sign, sign)
@@ -183,10 +188,30 @@ def _build_horoscope_prompt(sign: str, target_date: date, period: str = "today")
         )
 
     style = _style_for_date(effective_date)
+    if transit_context:
+        facts = []
+        for item in transit_context[:8]:
+            if "transit_planet" in item:
+                facts.append(
+                    f"- {item['transit_planet']} {item['aspect']} "
+                    f"{item['natal_planet']} (орб {item['orb']}°)"
+                )
+            elif "sign" in item:
+                facts.append(
+                    f"- {item.get('planet', '?')}: {item['sign']} "
+                    f"{float(item.get('degree', 0)) % 30:.1f}°"
+                )
+        facts_block = "\n".join(facts) or "- нет значимых аспектов"
+    else:
+        facts_block = "- нет значимых аспектов"
 
     return f"""Ты пишешь короткие гороскопы для популярного приложения. Читатели — обычные люди, не астрологи.
 
 Гороскоп {period_desc} для знака {sign_ru} (стихия — {element}, управитель — {ruler}).{weekday_hint}
+
+ПРОВЕРЯЕМЫЙ АСТРОЛОГИЧЕСКИЙ КОНТЕКСТ:
+{facts_block}
+Используй только эти положения и аспекты. Не придумывай другие транзиты.
 
 СТИЛЬ ТЕКСТА СЕГОДНЯ ({style["name"]}):
 Тон: {style["tone"]}
@@ -214,6 +239,7 @@ async def generate_daily_horoscope(
     sign: str,
     target_date: date | None = None,
     period: str = "today",
+    transit_context: list[dict] | None = None,
 ) -> str | None:
     """Generate a single horoscope text. Returns None on failure."""
     if not settings.LLM_API_KEY:
@@ -227,71 +253,36 @@ async def generate_daily_horoscope(
         from services.llm_pool import llm_semaphore
 
         client = create_llm_client()
-        prompt = _build_horoscope_prompt(sign, target_date, period)
+        if transit_context is None:
+            from services.astro.transits import get_current_sky
 
-        async with llm_semaphore:
-            message = await client.messages.create(
-                model=settings.LLM_MODEL,
-                max_tokens=500,
-                messages=[{"role": "user", "content": prompt}],
+            sky = get_current_sky()
+            transit_context = [
+                {"planet": planet, **position} for planet, position in sky.items()
+            ]
+        prompt = _build_horoscope_prompt(sign, target_date, period, transit_context)
+
+        async def _call(request_prompt: str) -> str:
+            async with llm_semaphore:
+                message = await client.messages.create(
+                    model=settings.LLM_MODEL,
+                    max_tokens=500,
+                    messages=[{"role": "user", "content": request_prompt}],
+                )
+            return first_text_block(message.content).strip()
+
+        from services.astro.fact_context import AstroFactContext, validate_generated_text
+
+        text = await _call(prompt)
+        errors = validate_generated_text(text, AstroFactContext(birth_time_known=False))
+        if errors:
+            text = await _call(
+                prompt + "\n\nИсправь отклонённый текст:\n- " + "\n- ".join(errors)
             )
-        text = first_text_block(message.content).strip()
+            if validate_generated_text(text, AstroFactContext(birth_time_known=False)):
+                return None
         log.info("llm_horoscope.generated", sign=sign, period=period, chars=len(text))
         return text
     except Exception as e:
         log.error("llm_horoscope.failed", sign=sign, error=str(e))
         return None
-
-
-async def generate_energy_scores_llm(sign: str, target_date: date) -> dict[str, int]:
-    """Generate energy scores via LLM. Returns dict with love/career/health/luck (0-100)."""
-    if not settings.LLM_API_KEY:
-        return _fallback_scores(sign)
-
-    try:
-        from services.llm_client import create_llm_client
-        from services.llm_pool import llm_semaphore
-
-        client = create_llm_client()
-        sign_ru = _SIGN_RU.get(sign, sign)
-
-        async with llm_semaphore:
-            message = await client.messages.create(
-                model=settings.LLM_MODEL,
-                max_tokens=100,
-                messages=[{
-                    "role": "user",
-                    "content": (
-                        f"Оцени энергии для {sign_ru} на {target_date.strftime('%d.%m.%Y')} "
-                        f"по шкале 40-95. Ответь ТОЛЬКО в формате: "
-                        f"love:XX career:XX health:XX luck:XX"
-                    ),
-                }],
-            )
-        text = first_text_block(message.content).strip()
-        scores = {}
-        for pair in text.split():
-            if ":" in pair:
-                k, v = pair.split(":", 1)
-                k = k.strip().lower()
-                if k in ("love", "career", "health", "luck"):
-                    scores[k] = max(20, min(95, int(v.strip())))
-        if len(scores) == 4:
-            return scores
-    except Exception as e:
-        log.error("llm_scores.failed", sign=sign, error=str(e))
-
-    return _fallback_scores(sign)
-
-
-def _fallback_scores(sign: str) -> dict[str, int]:
-    """Deterministic fallback scores based on sign + date."""
-    import hashlib
-    h = hashlib.md5(f"{sign}{date.today().isoformat()}".encode()).hexdigest()
-    base = [int(h[i:i+2], 16) for i in range(0, 8, 2)]
-    return {
-        "love": 40 + base[0] % 50,
-        "career": 40 + base[1] % 50,
-        "health": 45 + base[2] % 45,
-        "luck": 35 + base[3] % 55,
-    }

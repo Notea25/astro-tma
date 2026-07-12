@@ -46,6 +46,7 @@ from db.models import (
     DestinyInterpretationV3,
     KarmicProgram,
 )
+from services.content_version import CONTENT_VERSION
 from services.destiny_matrix.arcana_names import ARCANA_NAMES_RU
 from services.destiny_matrix.extended import (
     PurposeTriple,
@@ -269,6 +270,9 @@ _BASE_SYSTEM = f"""Ты — практикующий мастер Матрицы
 - Без эзотерических штампов («высшее служение», «вселенский поток»).
 - Без медицинских, юридических, инвестиционных советов.
 - Без предсказаний дат и событий.
+- Числа и арканы — символическая рамка, а не доказательство реальной биографии.
+- Не утверждай как факт события семьи, детства, зависимости, диагнозы или прошлые жизни.
+- Спорные темы формулируй как образ, возможность или вопрос для самонаблюдения.
 
 ИМЕНА АРКАНОВ (КАНОН ЛАДИНИ — ИСПОЛЬЗОВАТЬ ТОЛЬКО ЭТИ):
 {_arcana_canon_block()}
@@ -358,8 +362,7 @@ def _format_cards(nums: list[int], arcana: dict[int, ArcanaDoc]) -> str:
         if n in seen:
             continue
         seen.add(n)
-        a = arcana.get(n)
-        nm = a.name if a else _name(n)
+        nm = _name(n)
         lines.append(f"• Аркан {n} — {nm}")
     return "\n".join(lines)
 
@@ -437,9 +440,8 @@ def _prompt_drk(ctx: V3Context) -> tuple[str, int]:
 def _prompt_karmic_tail(ctx: V3Context) -> tuple[str, int]:
     """Кармический хвост — bottom + bottom_1 + bottom_2 + canonical program."""
     pos = ctx.positions
-    bottom = pos["personality"]["bottom"]
-    bottom_1 = pos["channels"]["karmic_tail"][0]
-    bottom_2 = pos["specials"]["love"]
+    program = pos["karmic_program"]["arcana"]
+    bottom_2, bottom_1, bottom = program
     refs = "\n\n".join(
         _arc_brief(ctx.arcana[n], sections=("essence", "shadow", "healing"))
         for n in dict.fromkeys([bottom, bottom_1, bottom_2])
@@ -464,23 +466,23 @@ def _prompt_karmic_tail(ctx: V3Context) -> tuple[str, int]:
 
     return (
         _header(ctx, "karmic_tail")
-        + "Кармический хвост — самая глубокая, корневая программа разбора. Это "
-        "то, что душа принесла из прошлых воплощений и что важно прожить и "
-        "исцелить в этой жизни.\n\n"
+        + "Кармический хвост — символическая корневая программа разбора. Это "
+        "не описание доказанного прошлого, а образ повторяющихся тем для "
+        "самонаблюдения.\n\n"
         f"Тройка нижней оси:\n"
         f"• Низ (B): аркан {bottom} ({_name(bottom)}) — главная нота\n"
         f"• Низ-1: аркан {bottom_1} ({_name(bottom_1)}) — пересечение с центром\n"
         f"• Низ-2: аркан {bottom_2} ({_name(bottom_2)}) — мидпоинт между B и центром\n\n"
         f"Справка по арканам:\n\n{refs}\n\n"
         f"{canon}\n\n"
-        "Напиши 350-450 слов: что было в прошлом воплощении, как это "
-        "проявляется сейчас, и пронумерованный список из 3-4 конкретных "
+        "Напиши 350-450 слов: какой символический сюжет предлагает эта ось, как он "
+        "может проявляться сейчас, и пронумерованный список из 3-4 конкретных "
         "шагов проработки. Без расплывчатых формулировок.\n\n"
         "ВАЖНО (разведение с канон-страницей — это критично, чтобы "
         "27-страничный отчёт не звучал как набивка):\n"
-        "1) ПРОШЛОЕ ВОПЛОЩЕНИЕ — НЕ пересказывай каноническое описание "
-        "сюжетом. Канон даёт АРХЕТИП («целитель в изгнании», «маг "
-        "власти»). Твоя задача — показать прошлое через КОНКРЕТНЫЕ "
+        "1) СИМВОЛИЧЕСКИЙ СЮЖЕТ — НЕ выдавай каноническое описание за факт "
+        "биографии. Канон даёт метафору («целитель в изгнании», «маг "
+        "власти»). Твоя задача — раскрыть образ через КОНКРЕТНЫЕ "
         f"арканы тройки ({bottom_2}, {bottom_1}, {bottom}), а не "
         "пересказать сюжет. Архетип читатель увидит на канон-странице.\n"
         "2) «КАК ПРОЯВЛЯЕТСЯ» — здесь делай личный срез: что это значит "
@@ -491,7 +493,7 @@ def _prompt_karmic_tail(ctx: V3Context) -> tuple[str, int]:
         f"конкретным арканам тройки оси (аркан {bottom_2}, аркан "
         f"{bottom_1}, аркан {bottom}). НЕ копируй формулировки из "
         "канонического списка.\n\n"
-        "Канон — это смысловая опора для прошлого. Твоя секция — "
+        "Канон — это смысловая символическая опора. Твоя секция — "
         "живая интерпретация для этого читателя. Если читатель потом "
         "откроет канон-страницу, оба блока должны звучать как разные "
         "грани одной программы, а не как два пересказа."
@@ -802,7 +804,7 @@ class SectionSpec:
     title: str
     prompt: Callable[[V3Context], tuple[str, int]]   # → (user_prompt, target_words)
     # Conceptual group for ordered counters in the PDF eyebrow.
-    # "main"    — 15 narrative sections, render as «Раздел NN из 15»
+    # "main"    — 12 narrative sections; together with 8 purpose sections = 20.
     # "purpose" —  8 предназначений, render as «Предназначение N из 8»
     group: str = "main"
 
@@ -812,7 +814,7 @@ SECTIONS: list[SectionSpec] = [
     SectionSpec("drk",           SECTION_TITLES["drk"],           _prompt_drk),
     # higher_self / soul_tasks / realization removed — their content
     # was 1:1 with the dedicated purpose_* deep dives that follow.
-    # The 12 narrative sections now form group="main"; purpose_* the 8 deep dives.
+    # The 12 narrative sections plus 8 purpose deep dives form 20 sections.
     SectionSpec("karmic_tail",   SECTION_TITLES["karmic_tail"],   _prompt_karmic_tail),
     SectionSpec("relationships", SECTION_TITLES["relationships"], _prompt_relationships),
     SectionSpec("money",         SECTION_TITLES["money"],         _prompt_money),
@@ -826,8 +828,7 @@ SECTIONS: list[SectionSpec] = [
     # 8 per-purpose deep-dives — driven by the same `purposes` dict on
     # V3Context, registered as separate sections so each gets its own
     # Sonnet call and its own cached row. Marked group="purpose" so the
-    # PDF eyebrow renders «Предназначение N из 8» instead of continuing
-    # the «Раздел NN из 15» series.
+    # PDF eyebrow renders «Предназначение N из 8».
     *[
         SectionSpec(
             f"purpose_{k}",
@@ -899,6 +900,23 @@ async def _generate_one(
     t0 = time.monotonic()
     user_prompt, target = spec.prompt(ctx)
     content = await _call_llm(client, _BASE_SYSTEM, user_prompt, target)
+    from services.astro.fact_context import (
+        MatrixFactContext,
+        safe_symbolic_fallback,
+        validate_matrix_text,
+    )
+
+    fact_context = MatrixFactContext.from_positions(ctx.positions)
+    errors = validate_matrix_text(content, fact_context)
+    if errors:
+        content = await _call_llm(
+            client,
+            _BASE_SYSTEM,
+            user_prompt + "\n\nИсправь отклонённый текст:\n- " + "\n- ".join(errors),
+            target,
+        )
+        if validate_matrix_text(content, fact_context):
+            content = safe_symbolic_fallback(spec.title)
     content, stats = polish_section_text(content)
     elapsed = int((time.monotonic() - t0) * 1000)
     if any(stats.values()):
@@ -929,9 +947,12 @@ async def _upsert(
         section=section,
         content=content,
         model=MODEL_V3,
+        content_version=CONTENT_VERSION,
     )
     stmt = stmt.on_conflict_do_update(
-        index_elements=["user_id", "birth_date", "gender", "section"],
+        index_elements=[
+            "user_id", "birth_date", "gender", "section", "content_version"
+        ],
         set_=dict(content=stmt.excluded.content, model=stmt.excluded.model),
     )
     await session.execute(stmt)
@@ -949,6 +970,7 @@ async def load_cached_sections(
             DestinyInterpretationV3.user_id == user_id,
             DestinyInterpretationV3.birth_date == birth_date,
             DestinyInterpretationV3.gender == gender,
+            DestinyInterpretationV3.content_version == CONTENT_VERSION,
         )
     )
     return {r.section: r.content for r in rows.scalars()}
@@ -966,7 +988,7 @@ async def regenerate_sections(
     ctx: V3Context,
     keys: list[str] | None = None,
 ) -> dict[str, str]:
-    """Run the LLM for the requested section keys (or all 15), upsert
+    """Run the LLM for the requested section keys (or all 20), upsert
     each result independently, and return the dict. Sections that fail
     are skipped — others still get cached so the user can retry just
     the failing ones."""

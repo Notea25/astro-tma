@@ -32,7 +32,7 @@ export interface PlanetPosition {
   sign: ZodiacSign;
   degree: number;   // 0–29
   minute: number;   // 0–59
-  house: number;    // 1–12
+  house: number | null; // 1–12; null when birth time is unknown
   retrograde?: boolean;
   hidden?: boolean;
 }
@@ -82,4 +82,5 @@ export interface NatalChartProps {
   className?: string;
   onPlanetClick?: (planet: PlanetName) => void;
   onHouseClick?: (house: number) => void;
+  dateOnly?: boolean;
 }

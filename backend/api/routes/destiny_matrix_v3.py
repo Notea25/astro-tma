@@ -7,7 +7,7 @@ stay shared.
 
 Endpoints:
   GET  /destiny-matrix/v3/sections      — section metadata + free keys
-  GET  /destiny-matrix/v3/reading       — full reading (positions + 15 sections)
+  GET  /destiny-matrix/v3/reading       — full reading (positions + 20 sections)
   GET  /destiny-matrix/v3/year-energy   — current + upcoming year arcana
 
 Free preview: `visitka` + `karmic_tail`. Everything else is masked with
@@ -110,6 +110,18 @@ class V3ReadingResponse(BaseModel):
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
+
+
+def _symbolic_karmic(text: str) -> str:
+    """Keep canonical material, but never present it as verified biography."""
+    cleaned = str(text or "").replace(
+        "В прошлом воплощении", "Символический сюжет программы"
+    ).replace(
+        "в прошлом воплощении", "в символическом сюжете программы"
+    ).replace(
+        "прошлая жизнь", "символический прошлый опыт"
+    )
+    return f"В символической трактовке Матрицы: {cleaned}"
 
 
 async def _has_full_access(db: AsyncSession, user_id: int) -> bool:
@@ -218,7 +230,7 @@ async def get_reading(
         positions=reading.positions,
     )
 
-    # For premium readers, generate all 15. For free readers we still
+    # For premium readers, generate all 20. For free readers we still
     # generate just the free preview keys to avoid teasing empty UI
     # cards — the rest are filled lazily once they upgrade.
     if has_full:
@@ -244,9 +256,9 @@ async def get_reading(
             KarmicProgramOut(
                 key=ctx.karmic.key,
                 name=ctx.karmic.name,
-                description=ctx.karmic.description,
-                manifestations=ctx.karmic.manifestations,
-                how_to_heal=ctx.karmic.how_to_heal,
+                description=_symbolic_karmic(ctx.karmic.description),
+                manifestations=_symbolic_karmic(ctx.karmic.manifestations),
+                how_to_heal=_symbolic_karmic(ctx.karmic.how_to_heal),
             ) if ctx.karmic else None
         ),
         sections=_mask_sections(contents, has_full_access=has_full),
@@ -274,7 +286,7 @@ async def _build_v3_pdf_bytes(db: AsyncSession, user, reading) -> bytes:
         name=user.tg_first_name,
         positions=reading.positions,
     )
-    # PDF always needs all 15 sections — generate any missing on the fly.
+    # PDF always needs all 20 sections — generate any missing on the fly.
     sections_text = await get_or_generate(db, ctx=ctx)
 
     purposes_payload = {
@@ -284,9 +296,9 @@ async def _build_v3_pdf_bytes(db: AsyncSession, user, reading) -> bytes:
         {
             "key": ctx.karmic.key,
             "name": ctx.karmic.name,
-            "description": ctx.karmic.description,
-            "manifestations": ctx.karmic.manifestations,
-            "how_to_heal": ctx.karmic.how_to_heal,
+            "description": _symbolic_karmic(ctx.karmic.description),
+            "manifestations": _symbolic_karmic(ctx.karmic.manifestations),
+            "how_to_heal": _symbolic_karmic(ctx.karmic.how_to_heal),
         }
         if ctx.karmic else None
     )
@@ -334,7 +346,7 @@ async def get_v3_pdf(
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """Build + stream the V3 PDF (premium-only). Heavy: cold-start fires
-    all 15 LLM calls if the cache is empty, then Playwright renders ~22
+    all 20 LLM calls if the cache is empty, then Playwright renders the report.
     A4 pages. Subsequent requests hit cached sections — render takes
     ~5-8s."""
     user, reading = await _resolve_user_and_reading(db, tg_user)

@@ -267,7 +267,6 @@ def build_daily_message(
     user: User,
     sign_ru: str,
     text_ru: str,
-    energy: dict,
     *,
     message_date: date | None = None,
 ) -> str:

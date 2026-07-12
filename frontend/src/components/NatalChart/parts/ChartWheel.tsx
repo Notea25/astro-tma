@@ -19,6 +19,7 @@ interface Props {
   variant?: ChartVariant;
   onPlanetClick?: (planet: PlanetName) => void;
   onHouseClick?: (house: number) => void;
+  dateOnly?: boolean;
 }
 
 export function ChartWheel({
@@ -26,10 +27,11 @@ export function ChartWheel({
   variant = 'editorial',
   onPlanetClick,
   onHouseClick,
+  dateOnly = false,
 }: Props) {
   const ascendantDegree = useMemo(
-    () => positionToAbsoluteDegree(data.ascendant),
-    [data.ascendant],
+    () => dateOnly ? 0 : positionToAbsoluteDegree(data.ascendant),
+    [data.ascendant, dateOnly],
   );
 
   const isPoster = variant === 'zodiac-poster';
@@ -41,14 +43,15 @@ export function ChartWheel({
   );
   const referencePlanetSlotCount = Math.max(placed.length, 1);
   const bodyDegrees = useMemo(() => {
-    const ascendantAbs = positionToAbsoluteDegree(data.ascendant);
-    const midheavenAbs = positionToAbsoluteDegree(data.midheaven);
-    const out = {
-      ascendant: ascendantAbs,
-      descendant: (ascendantAbs + 180) % 360,
-      midheaven: midheavenAbs,
-      imumCoeli: (midheavenAbs + 180) % 360,
-    } as Record<ChartBodyName, number>;
+    const out = {} as Record<ChartBodyName, number>;
+    if (!dateOnly) {
+      const ascendantAbs = positionToAbsoluteDegree(data.ascendant);
+      const midheavenAbs = positionToAbsoluteDegree(data.midheaven);
+      out.ascendant = ascendantAbs;
+      out.descendant = (ascendantAbs + 180) % 360;
+      out.midheaven = midheavenAbs;
+      out.imumCoeli = (midheavenAbs + 180) % 360;
+    }
 
     (Object.keys(data.planets) as PlanetName[]).forEach((name) => {
       const planet = data.planets[name];
@@ -57,7 +60,7 @@ export function ChartWheel({
     });
 
     return out;
-  }, [data.ascendant, data.midheaven, data.planets]);
+  }, [data.ascendant, data.midheaven, data.planets, dateOnly]);
   const referenceAspectDegrees = useMemo(() => {
     const out = { ...bodyDegrees };
     if (!isReferenceWheel) return out;
@@ -121,12 +124,14 @@ export function ChartWheel({
 
       <TickMarks ascendantDegree={ascendantDegree} variant={variant} />
       <ZodiacRing ascendantDegree={ascendantDegree} variant={variant} />
-      <HouseRing
-        houses={data.houses}
-        ascendantDegree={ascendantDegree}
-        variant={variant}
-        onHouseClick={onHouseClick}
-      />
+      {!dateOnly && (
+        <HouseRing
+          houses={data.houses}
+          ascendantDegree={ascendantDegree}
+          variant={variant}
+          onHouseClick={onHouseClick}
+        />
+      )}
 
       {isReferenceWheel && (
         <g data-part="reference-aspect-field">
@@ -207,9 +212,11 @@ export function ChartWheel({
             strokeWidth={0.65}
             opacity={0.9}
           />
-          <g transform="translate(-34 -34)" className={styles.referenceCenterSymbol}>
-            <ZodiacSymbolIcon sign={data.ascendant.sign} size={68} strokeWidth={1.9} />
-          </g>
+          {!dateOnly && (
+            <g transform="translate(-34 -34)" className={styles.referenceCenterSymbol}>
+              <ZodiacSymbolIcon sign={data.ascendant.sign} size={68} strokeWidth={1.9} />
+            </g>
+          )}
         </g>
       ) : (
         <CenterGlyph />

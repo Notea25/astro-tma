@@ -148,6 +148,9 @@ def karmic_program_key(positions: dict[str, Any]) -> str:
 
     bottom_1 = near_corner of B = `channels.karmic_tail[0]` in our
     payload. bottom_2 = mid of B = `specials.love`."""
+    explicit = positions.get("karmic_program") or {}
+    if explicit.get("key"):
+        return str(explicit["key"])
     bottom = positions["personality"]["bottom"]
     bottom_1 = positions["channels"]["karmic_tail"][0]
     bottom_2 = positions["specials"]["love"]

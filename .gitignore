@@ -17,6 +17,8 @@ CLAUDE.md
 AGENTS.md
 ssh_run.py
 .playwright-mcp/
+frontend/test-results/
+frontend/playwright-report/
 
 # generated natal PDF artifacts
 natal-report.pdf

@@ -45,7 +45,10 @@ def parse_cards(md_text: str) -> dict[str, dict]:
                     sections[current_section] = ' '.join(current_text).strip()
                 current_section = line[4:].strip()
                 current_text = []
-            elif line.startswith('**') or line.startswith('---'):
+            # Service headings between suits used to leak into the previous
+            # card (World and three Kings). No markdown heading belongs to a
+            # card meaning returned by the API.
+            elif line.startswith('#') or line.startswith('**') or line.startswith('---'):
                 continue
             elif not line.strip():
                 continue
@@ -163,4 +166,5 @@ async def update_meanings():
         print(f"Not found in markdown: {not_found}")
 
 
-asyncio.run(update_meanings())
+if __name__ == "__main__":
+    asyncio.run(update_meanings())

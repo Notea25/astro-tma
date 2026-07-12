@@ -34,7 +34,7 @@ export function DestinyV3Narrative({ enabled, onUpgrade }: Props) {
   if (isLoading) {
     return (
       <div className="destiny-narrative__loading">
-        <p>Астролог пишет ваш разбор по 15 разделам…</p>
+        <p>Готовим ваш разбор по 20 разделам…</p>
         <p className="destiny-v3__hint">
           Это занимает 30–60 секунд при первом запуске.
         </p>
@@ -55,7 +55,7 @@ export function DestinyV3Narrative({ enabled, onUpgrade }: Props) {
 
   return (
     <section className="destiny-narrative destiny-v3">
-      <h3 className="destiny-narrative__title">Личный разбор · 15 разделов</h3>
+      <h3 className="destiny-narrative__title">Личный разбор · 20 разделов</h3>
 
       {data.year_energy && (
         <p className="destiny-v3__year-energy">
@@ -127,7 +127,7 @@ export function DestinyV3Narrative({ enabled, onUpgrade }: Props) {
           className="btn-stars destiny-narrative__upgrade"
           onClick={onUpgrade}
         >
-          Открыть полный разбор · 15 разделов
+          Открыть полный разбор · 20 разделов
         </button>
       )}
     </section>

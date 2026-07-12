@@ -1,0 +1,96 @@
+{
+  "source": {
+    "name": "GeoCult natal chart calculator",
+    "url": "https://geocult.ru/natalnaya-karta-onlayn-raschet?fn=Astro+QA&fd=20&fm=2&fy=2000&fh=14&fmn=30&c1=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0%2C+%D0%A0%D0%BE%D1%81%D1%81%D0%B8%D1%8F&ttz=3&tz=Europe%2FMoscow&tm=3&lt=55.7558&ln=37.6173&hs=P&sb=1",
+    "retrieved_at": "2026-07-12",
+    "house_system": "Placidus",
+    "excluded": ["nodes", "chiron", "lilith", "angles as aspect bodies", "quincunx"]
+  },
+  "profile": {
+    "name": "Astro QA",
+    "birth_local": "2000-02-20T14:30:00",
+    "timezone": "Europe/Moscow",
+    "latitude": 55.7558,
+    "longitude": 37.6173
+  },
+  "planets": {
+    "sun": {"longitude": 331.1316539, "house": 8, "retrograde": false},
+    "moon": {"longitude": 161.6031127, "house": 3, "retrograde": false},
+    "mercury": {"longitude": 347.0842686, "house": 9, "retrograde": false},
+    "venus": {"longitude": 302.8165456, "house": 7, "retrograde": false},
+    "mars": {"longitude": 6.4131346, "house": 10, "retrograde": false},
+    "jupiter": {"longitude": 30.9389416, "house": 10, "retrograde": false},
+    "saturn": {"longitude": 41.6876585, "house": 11, "retrograde": false},
+    "uranus": {"longitude": 317.6177348, "house": 8, "retrograde": false},
+    "neptune": {"longitude": 305.0456457, "house": 7, "retrograde": false},
+    "pluto": {"longitude": 252.7374170, "house": 5, "retrograde": false}
+  },
+  "houses": [120.1862761, 134.5335141, 153.0943465, 179.8216659, 219.8320996, 266.4545719, 300.1862761, 314.5335141, 333.0943465, 359.8216659, 39.8320996, 86.4545719],
+  "aspects": [
+    ["Sun", "Jupiter", "sextile", 0.19],
+    ["Moon", "Mercury", "opposition", 5.48],
+    ["Moon", "Saturn", "trine", 0.08],
+    ["Moon", "Pluto", "square", 1.13],
+    ["Mercury", "Saturn", "sextile", 5.40],
+    ["Mercury", "Pluto", "square", 4.35],
+    ["Venus", "Mars", "sextile", 3.60],
+    ["Venus", "Jupiter", "square", 1.88],
+    ["Venus", "Neptune", "conjunction", 2.23],
+    ["Mars", "Neptune", "sextile", 1.37],
+    ["Jupiter", "Neptune", "square", 4.11],
+    ["Saturn", "Uranus", "square", 5.93],
+    ["Uranus", "Pluto", "sextile", 4.88]
+  ],
+  "transits": {
+    "utc": "2026-07-12T12:30:00+00:00",
+    "planets": {
+      "sun": 110.1882916, "moon": 83.5322728, "mercury": 111.0496247,
+      "venus": 153.1063789, "mars": 69.6811403, "jupiter": 122.6598043,
+      "saturn": 14.5757945, "uranus": 64.2535184, "neptune": 4.4112939,
+      "pluto": 304.6271083
+    },
+    "displayed_major_aspects_under_2_degrees": [
+      ["Venus", "Sun", "opposition", 1.97],
+      ["Mars", "Moon", "square", 1.92],
+      ["Jupiter", "Venus", "opposition", 0.16],
+      ["Jupiter", "Jupiter", "square", 1.72],
+      ["Saturn", "Pluto", "trine", 1.84],
+      ["Uranus", "Venus", "trine", 1.44],
+      ["Uranus", "Neptune", "trine", 0.79],
+      ["Neptune", "Venus", "sextile", 1.59],
+      ["Neptune", "Neptune", "sextile", 0.63],
+      ["Pluto", "Venus", "conjunction", 1.81],
+      ["Pluto", "Mars", "sextile", 1.79],
+      ["Pluto", "Neptune", "conjunction", 0.42]
+    ]
+  },
+  "synastry": {
+    "partner": {
+      "birth_local": "1995-08-15T09:30:00",
+      "timezone": "Europe/Moscow",
+      "historical_utc_offset": "+04:00",
+      "latitude": 55.7558,
+      "longitude": 37.6173
+    },
+    "partner_planets": {
+      "sun": 141.9385829, "moon": 18.9928009, "mercury": 159.0990651,
+      "venus": 140.3494767, "mars": 195.1333707, "jupiter": 245.7698546,
+      "saturn": 353.4971999, "uranus": 297.5531777, "neptune": 293.4175577,
+      "pluto": 237.8284988
+    },
+    "top_12_aspects": [
+      ["Moon", "Mercury", "conjunction", 2.50],
+      ["Sun", "Mercury", "opposition", 7.97],
+      ["Venus", "Uranus", "conjunction", 5.26],
+      ["Mars", "Jupiter", "trine", 0.64],
+      ["Saturn", "Mercury", "trine", 2.59],
+      ["Pluto", "Moon", "trine", 6.26],
+      ["Sun", "Jupiter", "square", 4.64],
+      ["Venus", "Jupiter", "sextile", 2.95],
+      ["Uranus", "Moon", "sextile", 1.38],
+      ["Uranus", "Mars", "trine", 2.48],
+      ["Sun", "Pluto", "square", 3.30],
+      ["Venus", "Pluto", "sextile", 4.99]
+    ]
+  }
+}

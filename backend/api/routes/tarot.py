@@ -19,7 +19,7 @@ from core.logging import get_logger
 from core.periods import is_active_period, next_reset_at, now_utc, period_type_for_tarot
 from core.settings import settings
 from db.database import get_db
-from db.models import TarotCard, TarotPositionMeaning, TarotReading
+from db.models import TarotCard, TarotReading
 from services.tarot.engine import (
     PREMIUM_SPREADS,
     SPREADS,
@@ -37,6 +37,15 @@ router = APIRouter(prefix="/tarot", tags=["tarot"])
 log = get_logger(__name__)
 
 
+def _safe_card_meaning(text: str) -> str:
+    """Never expose seeded medical claims or leaked markdown headings."""
+    return "\n".join(
+        line
+        for line in str(text or "").splitlines()
+        if not line.lstrip().startswith(("#", "🩺"))
+    ).strip()
+
+
 async def _build_spread_response(
     db: AsyncSession,
     reading: TarotReading,
@@ -51,25 +60,15 @@ async def _build_spread_response(
     )
     cards_map: dict[int, TarotCard] = {c.id: c for c in cards_result.scalars()}
 
-    pos_result = await db.execute(
-        select(TarotPositionMeaning).where(
-            TarotPositionMeaning.spread_type == reading.spread_type,
-            TarotPositionMeaning.card_id.in_(drawn_ids),
-        )
-    )
-    pos_meanings: dict[tuple[int, int], str] = {}
-    pos_names: dict[tuple[int, int], str] = {}
-    for pm in pos_result.scalars():
-        pos_meanings[(pm.card_id, pm.position)] = pm.meaning_ru
-        pos_names[(pm.card_id, pm.position)] = pm.position_name_ru
-
     card_details: list[TarotCardDetail] = []
     for drawn in sorted(cards_json, key=lambda x: x.get("position", 0)):
         card = cards_map.get(drawn["card_id"])
         if not card:
             continue
         reversed_flag = bool(drawn.get("reversed"))
-        meaning = card.reversed_ru if reversed_flag else card.upright_ru
+        meaning = _safe_card_meaning(
+            card.reversed_ru if reversed_flag else card.upright_ru
+        )
         position = drawn["position"]
         fallback_position_name = ""
         spread_positions = SPREADS.get(reading.spread_type)
@@ -84,8 +83,7 @@ async def _build_spread_response(
                 arcana=card.arcana.value,
                 reversed=reversed_flag,
                 meaning_ru=meaning,
-                position_name_ru=fallback_position_name or pos_names.get((card.id, position), ""),
-                position_meaning_ru=pos_meanings.get((card.id, position)),
+                position_name_ru=fallback_position_name,
                 keywords_ru=card.keywords_ru or [],
                 image_url=(_IMAGE_BASE + card.image_key) if card.image_key else None,
             )
@@ -307,8 +305,14 @@ async def interpret_reading(
             continue
         prompt_cards.append(
             {
+                "card_id": card.id,
                 "name_ru": card.name_ru,
                 "reversed": bool(drawn.get("reversed")),
+                "meaning_ru": (
+                    _safe_card_meaning(
+                        card.reversed_ru if drawn.get("reversed") else card.upright_ru
+                    )
+                ),
                 "keywords_ru": card.keywords_ru or [],
             }
         )

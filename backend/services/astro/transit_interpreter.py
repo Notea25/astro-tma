@@ -17,6 +17,7 @@ from core.logging import get_logger
 from core.settings import settings
 from db.database import AsyncSessionLocal
 from db.models import TransitInterpretation
+from services.content_version import CONTENT_VERSION
 from services.llm_utils import first_text_block
 
 log = get_logger(__name__)
@@ -80,22 +81,27 @@ async def _llm_batch(
 - Не повторяй название планет и аспекта в начале — пользователь и так его видит сверху.
 
 ЧТО УЧИТЫВАТЬ:
-- О чём «работает» транзитная планета: Венера — отношения, удовольствие, деньги, эстетика; Марс — действия, спор, спорт, желания; Меркурий — мысли, разговоры, переписки, мелкие дела; Луна — настроение и быт; Солнце — самоощущение, признание; Юпитер — рост, возможности, оптимизм; Сатурн — ответственность, границы, дисциплина; Уран — внезапное и свободное; Нептун — мечты, иллюзии, творчество; Плутон — глубокие изменения; Хирон — старые раны и их исцеление.
-- Оси и точки карты: Асцендент — то, как вы выглядите для других и первое впечатление; Десцендент — близкие отношения и партнёры; Середина неба — карьера, публичный образ; Глубина неба — дом, семья, корни; Северный узел — направление роста; Южный узел — то, что пора отпустить; Лилит — теневая, неудобная сторона себя.
+- О чём «работает» транзитная планета: Венера — отношения, удовольствие, деньги, эстетика; Марс — действия, спор, спорт, желания; Меркурий — мысли, разговоры, переписки, мелкие дела; Луна — настроение и быт; Солнце — самоощущение, признание; Юпитер — рост, возможности, оптимизм; Сатурн — ответственность, границы, дисциплина; Уран — внезапное и свободное; Нептун — мечты, иллюзии, творчество; Плутон — глубокие изменения.
 - Какая натальная тема активируется (та же логика для натальной планеты).
 - Характер аспекта: трин/секстиль — поток и поддержка; квадрат/оппозиция — напряжение, выбор, трение; соединение — две темы сливаются в одну.
 
 Верни ТОЛЬКО JSON-массив строк в порядке списка, без обёртки. Пример: ["текст1", "текст2", ...]"""
 
-    try:
-        from services.llm_pool import llm_semaphore
+    from services.astro.fact_context import (
+        AstroFactContext,
+        safe_symbolic_fallback,
+        validate_generated_text,
+    )
+    from services.llm_pool import llm_semaphore
 
-        client = create_llm_client(api_key)
+    client = create_llm_client(api_key)
+
+    async def _call(request_prompt: str) -> list[str] | None:
         async with llm_semaphore:
             message = await client.messages.create(
                 model=settings.LLM_MODEL,
                 max_tokens=4000,
-                messages=[{"role": "user", "content": prompt}],
+                messages=[{"role": "user", "content": request_prompt}],
             )
         raw = first_text_block(message.content).strip()
         if raw.startswith("```"):
@@ -110,8 +116,35 @@ async def _llm_batch(
                 expected=len(missing),
                 got=len(texts) if isinstance(texts, list) else "non-list",
             )
+            return None
+        return [str(text).strip() for text in texts]
+
+    def _errors(texts: list[str]) -> list[str]:
+        errors: list[str] = []
+        for index, (triple, text) in enumerate(zip(missing, texts), start=1):
+            context = AstroFactContext.from_chart(
+                planets={},
+                aspects=[{"p1": triple[0], "p2": triple[1], "aspect": triple[2]}],
+                birth_time_known=False,
+            )
+            errors.extend(f"item {index}: {error}" for error in validate_generated_text(text, context))
+        return errors
+
+    try:
+        texts = await _call(prompt)
+        if texts is None:
             return {}
-        return {triple: str(text).strip() for triple, text in zip(missing, texts) if text}
+        errors = _errors(texts)
+        if errors:
+            texts = await _call(
+                prompt + "\n\nИсправь отклонённый ответ:\n- " + "\n- ".join(errors)
+            )
+        if texts is None or _errors(texts):
+            return {
+                triple: safe_symbolic_fallback("Тема транзита")
+                for triple in missing
+            }
+        return {triple: text for triple, text in zip(missing, texts) if text}
     except Exception as e:  # noqa: BLE001
         log.error("transit_interp.llm_failed", error=str(e), count=len(missing))
         return {}
@@ -150,6 +183,7 @@ async def _lookup_cached(
             TransitInterpretation.aspect,
             TransitInterpretation.text_ru,
         ).where(
+            TransitInterpretation.content_version == CONTENT_VERSION,
             tuple_(
                 TransitInterpretation.transit_planet,
                 TransitInterpretation.natal_planet,
@@ -181,6 +215,7 @@ async def _background_generate(
                             natal_planet=triple[1],
                             aspect=triple[2],
                             text_ru=text,
+                            content_version=CONTENT_VERSION,
                         )
                     )
                 try:
@@ -233,6 +268,7 @@ async def get_or_generate_transit_texts(
                         natal_planet=triple[1],
                         aspect=triple[2],
                         text_ru=text,
+                        content_version=CONTENT_VERSION,
                     )
                 )
                 cached[triple] = text
@@ -341,15 +377,17 @@ async def _llm_advice(
 Верни ТОЛЬКО JSON следующего вида:
 {{"do": "Совет 1\\nСовет 2", "avoid": "Предупреждение 1\\nПредупреждение 2", "affirmation": "Я …", "ritual": "Действие на 1-5 минут"{risk_json}}}"""
 
-    try:
-        from services.llm_pool import llm_semaphore
+    from services.astro.fact_context import AstroFactContext, validate_generated_text
+    from services.llm_pool import llm_semaphore
 
-        client = create_llm_client(api_key)
+    client = create_llm_client(api_key)
+
+    async def _call(request_prompt: str) -> dict[str, Any]:
         async with llm_semaphore:
             message = await client.messages.create(
                 model=settings.LLM_MODEL,
                 max_tokens=900,
-                messages=[{"role": "user", "content": prompt}],
+                messages=[{"role": "user", "content": request_prompt}],
             )
         raw = first_text_block(message.content).strip()
         if raw.startswith("```"):
@@ -357,16 +395,34 @@ async def _llm_advice(
             if raw.endswith("```"):
                 raw = raw.rsplit("```", 1)[0]
             raw = raw.strip()
-        data = json.loads(raw)
+        parsed = json.loads(raw)
         return {
-            "advice_do":    (str(data.get("do", "")).strip() or None),
-            "advice_avoid": (str(data.get("avoid", "")).strip() or None),
-            "affirmation":  (str(data.get("affirmation", "")).strip() or None),
-            "ritual":       (str(data.get("ritual", "")).strip() or None),
+            "advice_do":    (str(parsed.get("do", "")).strip() or None),
+            "advice_avoid": (str(parsed.get("avoid", "")).strip() or None),
+            "affirmation":  (str(parsed.get("affirmation", "")).strip() or None),
+            "ritual":       (str(parsed.get("ritual", "")).strip() or None),
             "risk_warning": (
-                str(data.get("risk_warning", "")).strip() or None
+                str(parsed.get("risk_warning", "")).strip() or None
             ) if needs_risk else None,
         }
+
+    try:
+        data = await _call(prompt)
+        joined = " ".join(str(value or "") for value in data.values())
+        fact_context = AstroFactContext.from_chart(
+            planets={},
+            aspects=[{"p1": tp, "p2": np, "aspect": aspect}],
+            birth_time_known=False,
+        )
+        errors = validate_generated_text(joined, fact_context)
+        if errors:
+            data = await _call(
+                prompt + "\n\nИсправь отклонённый ответ:\n- " + "\n- ".join(errors)
+            )
+            joined = " ".join(str(value or "") for value in data.values())
+            if validate_generated_text(joined, fact_context):
+                raise ValueError("transit advice failed fact validation twice")
+        return data
     except Exception as e:  # noqa: BLE001
         log.error("transit_advice.llm_failed", tp=tp, np=np, aspect=aspect, error=str(e))
         return {
@@ -397,6 +453,7 @@ async def get_transit_details(
             TransitInterpretation.transit_planet == tp,
             TransitInterpretation.natal_planet == np,
             TransitInterpretation.aspect == ap,
+            TransitInterpretation.content_version == CONTENT_VERSION,
         )
     )
     row = result.scalar_one_or_none()
@@ -436,6 +493,7 @@ async def get_transit_details(
                         advice_do=advice_do, advice_avoid=advice_avoid,
                         affirmation=affirmation, ritual=ritual,
                         risk_warning=risk_warning,
+                        content_version=CONTENT_VERSION,
                     )
                 )
             else:

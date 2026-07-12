@@ -30,6 +30,7 @@ from db.models import (
     DestinyMatrixInterpretation,
     DestinyMatrixReading,
 )
+from services.content_version import CONTENT_VERSION
 from services.destiny_matrix.arcana_names import (
     ARCANA_KEYWORDS_RU,
     CONTEXTS,
@@ -62,7 +63,11 @@ def _is_stale_positions(positions: dict) -> bool:
           (родовые линии добавлены вместе с новой формулой comfort)
       (c) `specials.love_diag_1` отсутствует — введён вместе с family_lines
     """
-    if "specials" not in positions or "money_diagonal" not in positions:
+    if (
+        "specials" not in positions
+        or "money_diagonal" not in positions
+        or "karmic_program" not in positions
+    ):
         return True
     if "family_lines" not in positions:
         return True
@@ -114,6 +119,7 @@ async def _pregenerate_interpretation(
             existing = await bg_db.execute(
                 select(DestinyMatrixInterpretation).where(
                     DestinyMatrixInterpretation.reading_id == reading_id,
+                    DestinyMatrixInterpretation.content_version == CONTENT_VERSION,
                 )
             )
             cached = existing.scalar_one_or_none()
@@ -139,6 +145,7 @@ async def _pregenerate_interpretation(
                 await bg_db.execute(
                     delete(DestinyMatrixInterpretation).where(
                         DestinyMatrixInterpretation.reading_id == reading_id,
+                        DestinyMatrixInterpretation.content_version == CONTENT_VERSION,
                     )
                 )
                 await bg_db.flush()
@@ -148,6 +155,7 @@ async def _pregenerate_interpretation(
                 sections=sections,
                 model=model,
                 gender_used=gender,
+                content_version=CONTENT_VERSION,
             )
             bg_db.add(interp)
             try:
@@ -412,6 +420,7 @@ async def get_interpretation(
     cached_result = await db.execute(
         select(DestinyMatrixInterpretation).where(
             DestinyMatrixInterpretation.reading_id == reading.id,
+            DestinyMatrixInterpretation.content_version == CONTENT_VERSION,
         )
     )
     cached = cached_result.scalar_one_or_none()
@@ -435,6 +444,7 @@ async def get_interpretation(
         await db.execute(
             delete(DestinyMatrixInterpretation).where(
                 DestinyMatrixInterpretation.reading_id == reading.id,
+                DestinyMatrixInterpretation.content_version == CONTENT_VERSION,
             )
         )
         await db.flush()
@@ -467,6 +477,7 @@ async def get_interpretation(
         sections=sections,
         model=model,
         gender_used=current_gender,
+        content_version=CONTENT_VERSION,
     )
     db.add(interp)
     try:
@@ -478,6 +489,7 @@ async def get_interpretation(
         cached_result = await db.execute(
             select(DestinyMatrixInterpretation).where(
                 DestinyMatrixInterpretation.reading_id == reading.id,
+                DestinyMatrixInterpretation.content_version == CONTENT_VERSION,
             )
         )
         interp = cached_result.scalar_one()
@@ -558,6 +570,7 @@ async def _get_or_generate_pdf_sections(
     cached_result = await db.execute(
         select(DestinyMatrixInterpretation).where(
             DestinyMatrixInterpretation.reading_id == reading.id,
+            DestinyMatrixInterpretation.content_version == CONTENT_VERSION,
         )
     )
     cached = cached_result.scalar_one_or_none()
@@ -567,6 +580,7 @@ async def _get_or_generate_pdf_sections(
         await db.execute(
             delete(DestinyMatrixInterpretation).where(
                 DestinyMatrixInterpretation.reading_id == reading.id,
+                DestinyMatrixInterpretation.content_version == CONTENT_VERSION,
             )
         )
         await db.flush()
@@ -586,6 +600,7 @@ async def _get_or_generate_pdf_sections(
             sections=sections,
             model=model,
             gender_used=current_gender,
+            content_version=CONTENT_VERSION,
         )
         db.add(interp)
         try:

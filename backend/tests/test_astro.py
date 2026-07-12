@@ -4,10 +4,11 @@ from datetime import datetime, timedelta
 
 import pytest
 
+from services.astro.aspect_policy import CLASSIC_PLANET_SET
 from services.astro.moon import get_moon_phase
 from services.astro.natal import calculate_natal, chart_to_json
 from services.astro.synastry import calculate_synastry
-from services.astro.transits import build_energy_scores
+from services.astro.transits import calculate_transits
 
 
 def test_natal_calculation_scorpio():
@@ -65,7 +66,8 @@ def test_natal_aspects_match_reference_planet_only_style():
     assert ("square", "Sun", "Moon") in aspects
     assert ("square", "Sun", "Neptune") in aspects
     assert ("sextile", "Moon", "Mars") in aspects
-    assert ("trine", "Jupiter", "Uranus") in aspects
+    # This wide non-luminary aspect is outside the 6° GeoCult-style limit.
+    assert ("trine", "Jupiter", "Uranus") not in aspects
     assert all("Node" not in a.p1 + a.p2 for a in chart.aspects)
     assert all("Lilith" not in a.p1 + a.p2 for a in chart.aspects)
 
@@ -92,7 +94,27 @@ def test_synastry_manual_like_calculation():
     )
 
     assert result["total_aspects"] > 0
-    assert 15 <= result["scores"]["overall"] <= 95
+    assert "scores" not in result
+    assert all(
+        aspect["p1_name"].lower() in CLASSIC_PLANET_SET
+        and aspect["p2_name"].lower() in CLASSIC_PLANET_SET
+        for aspect in result["aspects"]
+    )
+
+
+def test_transits_only_contain_classic_planets() -> None:
+    transits = calculate_transits(
+        birth_dt=datetime(2000, 2, 20, 12, 0),
+        lat=55.7558,
+        lng=37.6173,
+        tz_str="Europe/Moscow",
+        dt=datetime(2026, 7, 12, 12, 0),
+    )
+    assert all(
+        transit["transit_planet"].lower() in CLASSIC_PLANET_SET
+        and transit["natal_planet"].lower() in CLASSIC_PLANET_SET
+        for transit in transits
+    )
 
 
 def test_synastry_timezone_fallback_without_coordinates():
@@ -140,12 +162,6 @@ def test_synastry_manual_input_allows_14_plus_partner():
     )
 
     assert payload.birth_date == birthday_14_plus
-
-
-def test_energy_scores_clamped():
-    scores = build_energy_scores([], "scorpio")
-    for v in scores.values():
-        assert 20 <= v <= 95
 
 
 def test_moon_phase_returns():

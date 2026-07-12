@@ -169,7 +169,7 @@ cd frontend && vercel deploy --prod
 | GET  | `/api/natal/summary` | TG | Краткая натальная карта |
 | GET  | `/api/natal/full` | TG + Premium | Полная натальная карта |
 | GET  | `/api/natal/pdf` | TG + Premium | PDF натальной карты |
-| GET  | `/api/transits/current` | TG | Текущие транзиты + energy scores |
+| GET  | `/api/transits/current` | TG | Текущие транзиты без условных процентов |
 | GET  | `/api/transits/date?date=YYYY-MM-DD` | TG | Транзиты на произвольную дату |
 | POST | `/api/synastry/request` | TG + Purchase | Создать invite-токен |
 | POST | `/api/synastry/accept/{token}` | TG | Принять приглашение, рассчитать |
@@ -198,6 +198,45 @@ cd frontend && vercel deploy --prod
 
 Приглашение партнёра: `https://t.me/{TELEGRAM_BOT_USERNAME}?startapp=syn_<token>`.
 Фронтенд читает `WebApp.initDataUnsafe.start_param`, извлекает токен и автоматически открывает экран принятия.
+
+## Миграция контента safety-v1
+
+Поля `energy`, `scores` и `position_meaning_ru` удалены из клиентских
+контрактов. При раздельном деплое сначала выкатывается frontend, который их
+больше не читает, затем применяется миграция `022_content_version`, после неё
+перезапускаются backend и worker.
+
+Перед массовой регенерацией обязателен backup и ручная проверка dry-run:
+
+```bash
+docker compose exec backend python scripts/regenerate_content.py --dry-run
+pg_dump -Fc -d astro_tma -f /backups/astro-before-safety-v1.dump
+docker compose exec backend python scripts/regenerate_content.py --execute \
+  --backup-file /backups/astro-before-safety-v1.dump \
+  --confirm-version 2026-07-safety-v1
+```
+
+`--execute` обрабатывает только контент нецелевой версии, ограничивает LLM
+concurrency до `2` и поэтому безопасно продолжается после перезапуска.
+
+## Локальная сверка с GeoCult
+
+Синтетический профиль `Astro QA` (`777777777`) разрешено создавать только в
+development/staging. Команда с `--reset` пересчитывает его карту и удаляет
+только связанный с ним локальный generated content:
+
+```bash
+cd backend
+python scripts/seed_comparison_user.py --reset
+python scripts/compare_geocult.py
+```
+
+В сравнении зафиксированы профиль `20.02.2000 14:30 Europe/Moscow`, партнёр
+`15.08.1995 09:30 Europe/Moscow` (исторический offset `+04:00`) и транзиты
+`2026-07-12T12:30:00Z`. Команда ничего не пишет в БД и завершается с кодом `1`,
+если долготы расходятся больше чем на `0.001°`, а орбисы — больше чем на
+`0.01°`. Для UI-проверки скопируйте `frontend/.env.example` и установите
+`VITE_USE_LOCAL_FIXTURES=false`.
 
 ## Тесты
 

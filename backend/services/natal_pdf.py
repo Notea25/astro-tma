@@ -2321,15 +2321,18 @@ def generate_natal_pdf(
 
     # 2. Contents.
     y = title_page("Содержание", "Что внутри отчёта")
-    contents = (
+    contents = [
         ("I", "Ключевые точки карты", "3"),
-        ("II", "Натальное колесо", "4"),
+        ("II", "Натальное колесо" if asc_sign else "Космограмма планет", "4"),
         ("III", "Баланс стихий и характер", "5"),
         ("IV", "Планеты в знаках", str(planets_start)),
-        ("V", "Дома гороскопа", str(houses_start)),
+    ]
+    if houses:
+        contents.append(("V", "Дома гороскопа", str(houses_start)))
+    contents.extend([
         ("VI", "Аспекты — связи между планетами", str(aspects_start)),
         ("VII", "Персональная интерпретация", str(reading_start)),
-    )
+    ])
     for content_marker, content_title, content_page in contents:
         c.setStrokeColor(LINE)
         c.setLineWidth(0.25)
@@ -2347,9 +2350,13 @@ def generate_natal_pdf(
     finish_page()
 
     # 3. Key points.
-    y = title_page("Ключевые точки", "Три центра, через которые читается ваша карта")
+    y = title_page(
+        "Ключевые точки",
+        "Три центра, через которые читается ваша карта"
+        if asc_sign else "Положения Солнца и приблизительной Луны",
+    )
     card_w = 160
-    card_h = 245
+    card_h = 275
     cards = [
         (
             "☉",
@@ -2365,14 +2372,17 @@ def generate_natal_pdf(
             "Что я чувствую",
             "Луна описывает эмоции, привычные реакции и внутренний способ восстанавливаться.",
         ),
-        (
-            "↑",
-            "ВОСХОД",
-            _sign_ru(asc_sign) if asc_sign else "не рассчитан",
-            "Как меня видят",
-            "Асцендент показывает первое впечатление, стиль входа в мир и телесный образ.",
-        ),
     ]
+    if asc_sign:
+        cards.append(
+            (
+                "↑",
+                "ВОСХОД",
+                _sign_ru(asc_sign),
+                "Как меня видят",
+                "Асцендент показывает первое впечатление и стиль входа в мир.",
+            )
+        )
     for i, (glyph, card_label, card_value, quote, text) in enumerate(cards):
         card_x = 40 + i * (card_w + 18)
         c.setFillColor(SURFACE)
@@ -2429,7 +2439,11 @@ def generate_natal_pdf(
     finish_page()
 
     # 4. Wheel.
-    y = title_page("Натальное колесо", "Карта неба в момент вашего рождения")
+    y = title_page(
+        "Натальное колесо" if asc_sign else "Космограмма планет",
+        "Карта неба в момент вашего рождения"
+        if asc_sign else "Приблизительные положения на 12:00; Луна может смещаться",
+    )
     wheel_size = 488
     wheel_x = (w - wheel_size) / 2
     wheel_y = 160
@@ -2521,9 +2535,12 @@ def generate_natal_pdf(
             _draw_retro_badge(c, 58, y - 3)
         c.setFillColor(TEXT_DIM)
         _set_font(c, False, 10.5)
-        c.drawRightString(
-            w - 58, y, f"{_roman(int(planet.get('house') or 0))} дом · {_deg_str(sign_degree)}"
+        house = planet.get("house")
+        placement = (
+            f"{_roman(int(house))} дом · {_deg_str(sign_degree)}"
+            if house is not None else _deg_str(sign_degree)
         )
+        c.drawRightString(w - 58, y, placement)
         y -= 34
         text = _description(planet_desc.get(name), _planet_fallback(name, planet))
         y = draw_detail_text(
@@ -2667,14 +2684,15 @@ def generate_natal_pdf(
     # Reading.
     final_reading = str(reading or "").strip()
     if not final_reading:
+        placement_note = (
+            f" и асцендент {_sign_ru(asc_sign)}. Дома показывают сферы проявления."
+            if asc_sign else ". Доступна только планетная космограмма."
+        )
         final_reading = (
-            f"Ваша карта соединяет солнечный знак {_sign_ru(sun_sign)}, лунный знак {_sign_ru(moon_sign)}"
-            f"{' и асцендент ' + _sign_ru(asc_sign) if asc_sign else ''}. Солнце показывает главный "
-            "вектор личности, Луна описывает эмоциональные потребности, а дома показывают сферы, "
-            "где качества карты раскрываются заметнее всего. Аспекты связывают разные части характера: "
-            "одни дают талант и естественный поток, другие требуют взросления, честности и настройки поведения. "
-            "Читайте отчёт как карту внимания: он не фиксирует судьбу, а помогает увидеть сильные стороны, "
-            "зоны роста и темы, с которыми стоит обращаться бережно и осознанно."
+            f"Ваша карта соединяет солнечный знак {_sign_ru(sun_sign)} и лунный знак "
+            f"{_sign_ru(moon_sign)}{placement_note} Аспекты связывают разные части "
+            "характера. Читайте отчёт как символическую карту внимания: он не фиксирует "
+            "судьбу и не заменяет фактический, медицинский или финансовый прогноз."
         )
     y = title_page("Персональная интерпретация", "Написано специально для вас")
     c.setFillColor(GOLD_DIM)
@@ -2736,7 +2754,11 @@ def generate_natal_pdf(
     _set_font(c, True, 16)
     c.drawString(48, y, "Краткий справочник")
     y -= 42
-    for term, definition in GLOSSARY:
+    glossary = [
+        item for item in GLOSSARY
+        if houses or item[0] not in {"Дом", "Асцендент"}
+    ]
+    for term, definition in glossary:
         c.setFillColor(TEXT)
         _set_font(c, True, 12.5)
         c.drawString(58, y, term)

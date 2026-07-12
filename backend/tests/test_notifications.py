@@ -19,7 +19,6 @@ def test_daily_message_hides_energy_stats():
         _user(),
         sign_ru="Скорпион",
         text_ru="Сегодня лучше не спешить с выводами.",
-        energy={"love": 91, "career": 72, "luck": 64},
         message_date=date(2026, 5, 16),
     )
 
@@ -36,14 +35,12 @@ def test_daily_message_changes_by_date_even_with_same_horoscope():
         _user(),
         sign_ru="Скорпион",
         text_ru="Информация не изменилась, но подача должна быть живой.",
-        energy={},
         message_date=date(2026, 5, 16),
     )
     tomorrow = build_daily_message(
         _user(),
         sign_ru="Скорпион",
         text_ru="Информация не изменилась, но подача должна быть живой.",
-        energy={},
         message_date=date(2026, 5, 17),
     )
 
@@ -100,7 +97,6 @@ def test_daily_message_ends_with_cliffhanger_ellipsis():
         _user(),
         sign_ru="Скорпион",
         text_ru=long_text,
-        energy={},
         message_date=date(2026, 5, 17),
     )
 
@@ -123,7 +119,6 @@ def test_daily_message_short_horoscope_still_breaks_off():
         _user(),
         sign_ru="Лев",
         text_ru="Сегодня лучше не спешить с выводами. Дайте темам дозреть.",
-        energy={},
         message_date=date(2026, 5, 17),
     )
     assert message.rstrip().endswith("…")

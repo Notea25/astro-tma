@@ -60,6 +60,12 @@ class ChannelsBlock(BaseModel):
     ancestral_mother_karma: list[int]
 
 
+class KarmicProgramBlock(BaseModel):
+    """Canonical bottom_2 → bottom_1 → bottom program, separate from ray dots."""
+    key: str
+    arcana: list[int]
+
+
 class VarnaBlock(BaseModel):
     """§2.5 Варна — касты по числам кармы (1..9), четыре доли."""
     varnas: dict[str, int]   # {"Брахман": 40, "Кшатрий": 40, ...}
@@ -156,6 +162,7 @@ class DestinyMatrixPositions(BaseModel):
     lines: LinesBlock
     purposes: PurposesBlock
     channels: ChannelsBlock
+    karmic_program: KarmicProgramBlock | None = None
     varna: VarnaBlock
     # Новые блоки по спеке Ладини. Делаем опциональными — старые записи
     # без них (если такие случайно остались) не упадут на десериализации.

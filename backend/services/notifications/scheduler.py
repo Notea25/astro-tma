@@ -89,7 +89,6 @@ async def send_daily_pushes() -> None:
                 user,
                 sign_ru=_SIGN_RU.get(sign, sign),
                 text_ru=cached.get("text_ru", ""),
-                energy=cached.get("energy", {}),
             )
             ok = await send_message(
                 db,

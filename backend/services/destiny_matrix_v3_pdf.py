@@ -41,7 +41,7 @@ def _cover_page(user_name: str, birth_date: str) -> str:
     bd = _e(_format_birth_date(birth_date))
     nm = _e(user_name or "Без имени")
     # Derive the section count from the live SECTIONS registry — historically
-    # the cover-tag hard-coded «15 разделов»; that became wrong when 3
+    # the cover-tag used to hard-code an outdated section count; that became wrong when
     # sections were merged into the 8 purpose deep dives (now 12).
     main_count = sum(1 for s in SECTIONS if s.group == "main")
     purpose_count = sum(1 for s in SECTIONS if s.group == "purpose")
@@ -129,7 +129,7 @@ def _section_page(
 
     The eyebrow line is derived from the group/index/total triple, NOT
     from page_num arithmetic — historically `page_num - 3` collided
-    with `… из 15` once the section list grew past 15 entries.
+    with a stale denominator once the section registry grew.
 
     ``group``:
       * ``"main"``    → «Раздел NN из {group_total}» (15 narrative sections)
@@ -402,8 +402,8 @@ def build_destiny_matrix_v3_pdf_html(
     section_pages: dict[str, int] = {}
 
     # Pre-compute per-group totals so the eyebrow counter renders the
-    # correct denominator ("из 15" / "из 8") instead of the old hard-coded
-    # "из 15" that overflowed once the purpose sections were appended.
+    # correct denominator for narrative/purpose groups instead of a stale
+    # hard-coded count that overflowed once purpose sections were appended.
     group_totals: dict[str, int] = {}
     for spec in SECTIONS:
         group_totals[spec.group] = group_totals.get(spec.group, 0) + 1

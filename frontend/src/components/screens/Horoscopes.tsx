@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { EnergyBars } from "@/components/ui/EnergyBars";
 import { HoroscopeSkeleton } from "@/components/ui/Skeleton";
 import { HeaderAvatarButton } from "@/components/ui/HeaderAvatarButton";
 import { horoscopeApi } from "@/services/api";
@@ -137,7 +136,6 @@ export function Horoscopes() {
             <p className="horoscope-text">
               {cleanMarkdownText(horoscope?.text_ru)}
             </p>
-            {horoscope?.energy && <EnergyBars scores={horoscope.energy} />}
           </motion.div>
         )}
       </div>

@@ -57,20 +57,12 @@ export interface ApplyReferralResponse {
   message: string;
 }
 
-export interface EnergyScores {
-  love: number;
-  career: number;
-  health: number;
-  luck: number;
-}
-
 export interface HoroscopeResponse {
   sign: string;
   sign_ru: string;
   date: string;
   period: string;
   text_ru: string;
-  energy: EnergyScores;
   is_personalised: boolean;
 }
 
@@ -104,7 +96,6 @@ export interface TarotCardDetail {
   reversed: boolean;
   meaning_ru: string;
   position_name_ru: string;
-  position_meaning_ru: string | null;
   keywords_ru: string[];
   image_url?: string | null;
 }
@@ -144,7 +135,7 @@ export interface NatalPlanetData {
   sign_degree: number; // within-sign 0–30
   sign: string;
   sign_ru?: string;
-  house: number;
+  house: number | null;
   retrograde: boolean;
   speed?: number;
 }
@@ -245,6 +236,7 @@ export interface NatalSummaryResponse {
   birth_tz: string | null;
   birth_date: string | null;
   birth_time: string | null;
+  chart_mode: "full" | "date_only";
   planets?: Record<string, NatalPlanetData>;
   houses?: NatalHouseData[];
   aspects?: NatalAspectData[];
@@ -258,12 +250,13 @@ export interface PlanetData {
   sign_ru: string;
   degree: number;
   sign_degree: number;
-  house: number;
+  house: number | null;
   retrograde: boolean;
   speed: number;
 }
 
 export interface NatalFullResponse {
+  chart_mode: "full" | "date_only";
   sun_sign: string;
   moon_sign: string;
   ascendant_sign: string | null;
@@ -274,13 +267,14 @@ export interface NatalFullResponse {
     p2: string;
     aspect: string;
     orb: number;
-    applying: boolean;
+    applying: boolean | null;
   }[];
   interpretations: { planet: string; category: string; text: string }[];
   reading: string | null;
 }
 
 export interface NatalMiniResponse {
+  chart_mode: "full" | "date_only";
   mini_reading: string | null;
   mini_reading_gender: string | null;
   interpretations: { planet: string; category: string; text: string }[];
@@ -351,14 +345,6 @@ export interface SynastryAspectOut {
   weight: number;
 }
 
-export interface SynastryScores {
-  love: number;
-  communication: number;
-  trust: number;
-  passion: number;
-  overall: number;
-}
-
 export interface SynastryPlanetInfo {
   name: string;
   name_ru: string;
@@ -366,7 +352,7 @@ export interface SynastryPlanetInfo {
   sign_ru: string;
   degree: number;
   sign_degree: number;
-  house: number;
+  house: number | null;
   retrograde: boolean;
 }
 
@@ -391,7 +377,6 @@ export interface SynastryAspectInterp {
 export interface SynastryResult {
   id: number | null;
   aspects: SynastryAspectOut[];
-  scores: SynastryScores;
   total_aspects: number;
   initiator_name: string | null;
   partner_name: string | null;
@@ -409,7 +394,6 @@ export interface SynastryHistoryItem {
   id: number;
   partner_name: string | null;
   is_initiator: boolean;
-  scores: SynastryScores;
   total_aspects: number;
   created_at: string;
 }
@@ -489,7 +473,6 @@ export interface SkyPosition {
 export interface TransitsResponse {
   date: string;
   aspects: TransitAspect[];
-  energy: EnergyScores;
   sky: Record<string, SkyPosition>;
   retrogrades: RetrogradeInfo[];
 }

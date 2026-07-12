@@ -367,6 +367,7 @@ def to_dict(m: DestinyMatrix) -> dict[str, Any]:
     comfort = _comfort_pair(m.bottom, m.center)
     money_diag_1 = reduce(cross + money)
     love_diag_1 = reduce(cross + love)
+    karmic_program_arcana = [love, ray_dots(m.bottom, m.center)[0], m.bottom]
     # Линии рода — по 2 точки на полудиагонали, на цветных стрелках
     # (синяя = TL↔BR мужская, красная = TR↔BL женская).
     male_upper = _half_diag(m.anc_top_left, m.center)
@@ -424,6 +425,12 @@ def to_dict(m: DestinyMatrix) -> dict[str, Any]:
             "ancestral_father_karma": ray_dots(m.anc_bottom_right, m.center),
             "ancestral_mother_talents": ray_dots(m.anc_top_right, m.center),
             "ancestral_mother_karma": ray_dots(m.anc_bottom_left, m.center),
+        },
+        # Каноническая программа читается от центра нижней оси наружу.
+        # Луч [near_corner, mid, near_center] остаётся отдельной геометрией.
+        "karmic_program": {
+            "key": "-".join(str(n) for n in karmic_program_arcana),
+            "arcana": karmic_program_arcana,
         },
         # Семантические точки внутри октаграммы. talent/character/money/love
         # дублируют channels[*][1] (mid-ы лучей), но удобно иметь явные ключи.

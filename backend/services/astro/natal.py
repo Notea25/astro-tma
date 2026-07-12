@@ -13,6 +13,10 @@ from typing import Any
 from kerykeion import AstrologicalSubjectFactory
 
 from core.logging import get_logger
+from services.astro.aspect_policy import (
+    CLASSIC_PLANETS,
+    natal_or_synastry_orb_limit,
+)
 
 log = get_logger(__name__)
 
@@ -24,7 +28,7 @@ class PlanetPosition:
     sign_ru: str
     degree: float  # absolute degree 0–360
     sign_degree: float  # degree within sign 0–30
-    house: int  # 1–12
+    house: int | None  # 1–12; unknown without a reliable birth time
     retrograde: bool
     speed: float  # degrees/day
 
@@ -35,7 +39,7 @@ class AspectData:
     p2: str  # planet 2 name
     aspect: str  # "conjunction", "trine", "square", "opposition", "sextile"
     orb: float  # degrees of orb
-    applying: bool  # applying vs separating
+    applying: bool | None  # applying vs separating; None when not calculated
 
 
 @dataclass(frozen=True)
@@ -102,18 +106,7 @@ def _normalize_sign(raw: str | None) -> str:
     return _SIGN_ABBR_TO_FULL.get(raw, raw)
 
 
-_PLANET_ATTRS = [
-    "sun",
-    "moon",
-    "mercury",
-    "venus",
-    "mars",
-    "jupiter",
-    "saturn",
-    "uranus",
-    "neptune",
-    "pluto",
-]
+_PLANET_ATTRS = list(CLASSIC_PLANETS)
 
 _PLANET_DISPLAY_NAMES: dict[str, str] = {
     "sun": "Sun",
@@ -135,8 +128,6 @@ _MAJOR_ASPECTS: tuple[tuple[str, float], ...] = (
     ("trine", 120.0),
     ("opposition", 180.0),
 )
-
-_MAJOR_ASPECT_ORB = 8.0
 
 # Kerykeion v5 returns house as string; map to int 1–12
 _HOUSE_STR_TO_INT: dict[str, int] = {
@@ -194,14 +185,14 @@ def _calculate_major_planet_aspects(
 
             for aspect_name, target_angle in _MAJOR_ASPECTS:
                 orb = abs(distance - target_angle)
-                if orb <= _MAJOR_ASPECT_ORB:
+                if orb <= natal_or_synastry_orb_limit(left_key, right_key):
                     aspects.append(
                         AspectData(
                             p1=_PLANET_DISPLAY_NAMES[left_key],
                             p2=_PLANET_DISPLAY_NAMES[right_key],
                             aspect=aspect_name,
                             orb=round(orb, 2),
-                            applying=False,
+                            applying=None,
                         )
                     )
                     break
@@ -212,7 +203,9 @@ def _calculate_major_planet_aspects(
 _LUNAR_NODE_ATTRS = ("true_north_lunar_node", "true_south_lunar_node")
 
 
-def _extract_lunar_nodes(subject) -> dict[str, dict[str, Any]]:
+def _extract_lunar_nodes(
+    subject, *, include_houses: bool = True
+) -> dict[str, dict[str, Any]]:
     """Извлекает лунные узлы (Раху/Кету) из Kerykeion-субъекта.
 
     Возвращает dict {attr → planet-dict}. Узлы держим ОТДЕЛЬНО от _PLANET_ATTRS:
@@ -230,7 +223,7 @@ def _extract_lunar_nodes(subject) -> dict[str, dict[str, Any]]:
             "sign_ru": _SIGN_RU.get(sign, sign),
             "degree": round(getattr(p, "abs_pos", 0.0) or 0.0, 4),
             "sign_degree": round(getattr(p, "position", 0.0) or 0.0, 4),
-            "house": _parse_house(p),
+            "house": _parse_house(p) if include_houses else None,
             "retrograde": bool(getattr(p, "retrograde", False)),
             "speed": round(getattr(p, "speed", 0.0) or 0.0, 4),
         }
@@ -284,7 +277,7 @@ def calculate_natal(
             sign_ru=_SIGN_RU.get(sign, sign),
             degree=round(p.abs_pos or 0.0, 4),
             sign_degree=round(p.position or 0.0, 4),
-            house=_parse_house(p),
+            house=_parse_house(p) if birth_time_known else None,
             retrograde=bool(p.retrograde),
             speed=round(p.speed or 0.0, 4),
         )
@@ -292,7 +285,7 @@ def calculate_natal(
     # Houses — v5 uses houses_names_list + individual attrs (first_house, etc.)
     houses: list[dict] = []
     house_name_list = getattr(subject, "houses_names_list", None)
-    if house_name_list:
+    if birth_time_known and house_name_list:
         for i, house_name in enumerate(house_name_list):
             h = getattr(subject, house_name.lower(), None)
             if h:
@@ -311,7 +304,7 @@ def calculate_natal(
     # Лунные узлы — отдельный канал (chart.nodes), НЕ в planets: не участвуют ни
     # в аспектах, ни в круге, ни в подсчёте стихий. Читаются только блоком
     # «Лунные узлы» в reading.
-    nodes = _extract_lunar_nodes(subject)
+    nodes = _extract_lunar_nodes(subject, include_houses=birth_time_known)
 
     # Ascendant / MC — attribute names differ between kerykeion versions
     asc = getattr(subject, "ascendant", None) or getattr(subject, "first_house", None)
@@ -319,8 +312,8 @@ def calculate_natal(
 
     chart = NatalChartData(
         **planets,
-        ascendant_sign=_normalize_sign(asc.sign) if asc else None,
-        mc_sign=_normalize_sign(mc.sign) if mc else None,
+        ascendant_sign=_normalize_sign(asc.sign) if birth_time_known and asc else None,
+        mc_sign=_normalize_sign(mc.sign) if birth_time_known and mc else None,
         houses=houses,
         aspects=aspects,
         raw=subject.model_dump(),

@@ -9,16 +9,16 @@ from typing import Any
 from kerykeion import AstrologicalSubjectFactory, SynastryAspects
 
 from core.logging import get_logger
+from services.astro.aspect_policy import (
+    is_classic_planet,
+    natal_or_synastry_orb_limit,
+)
 
 log = get_logger(__name__)
 
-SYNASTRY_ORBS: dict[str, float] = {
-    "conjunction": 8.0,
-    "opposition": 7.0,
-    "trine": 6.0,
-    "square": 6.0,
-    "sextile": 4.0,
-}
+SYNASTRY_ASPECTS = frozenset(
+    {"conjunction", "opposition", "trine", "square", "sextile"}
+)
 
 PLANET_WEIGHT: dict[str, int] = {
     "sun": 10, "moon": 10, "venus": 9, "mars": 8, "mercury": 7,
@@ -29,14 +29,6 @@ ASPECT_WEIGHT: dict[str, int] = {
     "conjunction": 10, "trine": 9, "sextile": 7,
     "opposition": 6, "square": 6,
 }
-
-_LOVE_PLANETS = {"venus", "moon", "mars"}
-_COMM_PLANETS = {"mercury", "sun"}
-_TRUST_PLANETS = {"saturn", "sun", "moon"}
-_PASSION_PLANETS = {"mars", "pluto", "venus"}
-
-_POSITIVE = {"trine", "sextile", "conjunction"}
-
 
 def _build_subject(
     name: str,
@@ -57,29 +49,6 @@ def _build_subject(
     )
 
 
-def _compute_scores(aspects: list[dict[str, Any]]) -> dict[str, int]:
-    base = 50
-    scores = {"love": base, "communication": base, "trust": base, "passion": base, "overall": base}
-
-    for a in aspects[:20]:
-        p1 = a["p1_name"].lower()
-        p2 = a["p2_name"].lower()
-        aspect = a["aspect"]
-        delta = 3 if aspect in _POSITIVE else -2
-
-        if p1 in _LOVE_PLANETS or p2 in _LOVE_PLANETS:
-            scores["love"] += delta
-        if p1 in _COMM_PLANETS or p2 in _COMM_PLANETS:
-            scores["communication"] += delta
-        if p1 in _TRUST_PLANETS or p2 in _TRUST_PLANETS:
-            scores["trust"] += delta
-        if p1 in _PASSION_PLANETS or p2 in _PASSION_PLANETS:
-            scores["passion"] += delta
-        scores["overall"] += delta // 2
-
-    return {k: max(15, min(95, v)) for k, v in scores.items()}
-
-
 def calculate_synastry(
     user_a: dict[str, Any],
     user_b: dict[str, Any],
@@ -93,7 +62,7 @@ def calculate_synastry(
             lng: float
             tz_str: str
             birth_time_known: bool
-    Returns: {aspects: [...top 12], scores: {love, communication, trust, passion, overall}, total_aspects: int}
+    Returns: {aspects: [...top 12], total_aspects: int}
     """
     sub_a = _build_subject(
         user_a.get("name", "A"),
@@ -114,9 +83,14 @@ def calculate_synastry(
         if callable(aspect_raw):
             aspect_raw = aspect_raw()
         aspect_name = str(aspect_raw).lower()
-        if aspect_name not in SYNASTRY_ORBS:
+        if not (
+            is_classic_planet(str(a.p1_name))
+            and is_classic_planet(str(a.p2_name))
+        ):
             continue
-        if abs(a.orbit) > SYNASTRY_ORBS[aspect_name]:
+        if aspect_name not in SYNASTRY_ASPECTS:
+            continue
+        if abs(a.orbit) > natal_or_synastry_orb_limit(a.p1_name, a.p2_name):
             continue
         weight = (
             PLANET_WEIGHT.get(a.p1_name.lower(), 1)
@@ -132,12 +106,9 @@ def calculate_synastry(
         })
 
     aspects.sort(key=lambda x: x["weight"], reverse=True)
-    scores = _compute_scores(aspects)
-
     log.info("synastry.calculated", total=len(aspects), top_weight=aspects[0]["weight"] if aspects else 0)
 
     return {
         "aspects": aspects[:12],
-        "scores": scores,
         "total_aspects": len(aspects),
     }

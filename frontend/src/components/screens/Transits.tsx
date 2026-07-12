@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { EnergyBars } from "@/components/ui/EnergyBars";
 import { PremiumGate } from "@/components/ui/PremiumGate";
 import { HoroscopeSkeleton } from "@/components/ui/Skeleton";
 import { useAppStore } from "@/stores/app";
@@ -753,7 +752,6 @@ export function Transits() {
               >
                 Энергии дня
               </div>
-              <EnergyBars scores={data.energy} />
             </div>
 
             <div className="period-tabs">

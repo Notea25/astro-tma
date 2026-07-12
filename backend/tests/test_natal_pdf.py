@@ -1206,7 +1206,7 @@ async def test_get_natal_full_refreshes_short_cached_reading(monkeypatch):
         return True
 
     async def fake_cache_get(key):
-        assert key == "natal:1001"
+        assert key == "natal:2026-07-safety-v1:1001"
         return cached
 
     async def fake_cache_set(key, value, ttl):
@@ -1229,7 +1229,7 @@ async def test_get_natal_full_refreshes_short_cached_reading(monkeypatch):
     assert result["reading"] == refreshed_text
     assert result["planets"] == chart.chart_data["planets"]
     assert calls["reading_kwargs"]["aspects"] == chart.chart_data["aspects"]
-    assert calls["cache_set"][0] == "natal:1001"
+    assert calls["cache_set"][0] == "natal:2026-07-safety-v1:1001"
     assert calls["cache_set"][1]["reading"] == refreshed_text
     assert calls["cache_set"][1]["reading_version"] == natal.NATAL_READING_VERSION
 

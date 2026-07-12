@@ -32,6 +32,7 @@ export function NatalChart(props: NatalChartProps) {
     className,
     onPlanetClick,
     onHouseClick,
+    dateOnly = false,
   } = props;
 
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -57,8 +58,12 @@ export function NatalChart(props: NatalChartProps) {
 
   const subject = data.name ? ` для ${data.name}` : '';
   const dateReadable = formatBirthDate(data.birthDate);
-  const ariaLabel = `Натальная карта${subject}: рождение ${dateReadable} в ${data.birthTime}, ${data.birthLocation.city}, ${data.birthLocation.country}.`;
-  const ariaDesc = `Солнце в знаке ${ZODIAC_LABEL[data.sun.sign]}, асцендент в знаке ${ZODIAC_LABEL[data.ascendant.sign]}, середина неба в знаке ${ZODIAC_LABEL[data.midheaven.sign]}.`;
+  const ariaLabel = dateOnly
+    ? `Космограмма${subject}: дата рождения ${dateReadable}, ${data.birthLocation.city}, ${data.birthLocation.country}; время неизвестно.`
+    : `Натальная карта${subject}: рождение ${dateReadable} в ${data.birthTime}, ${data.birthLocation.city}, ${data.birthLocation.country}.`;
+  const ariaDesc = dateOnly
+    ? `Показаны только планеты и аспекты. Дома, асцендент и MC не рассчитаны.`
+    : `Солнце в знаке ${ZODIAC_LABEL[data.sun.sign]}, асцендент в знаке ${ZODIAC_LABEL[data.ascendant.sign]}, середина неба в знаке ${ZODIAC_LABEL[data.midheaven.sign]}.`;
   const viewBox = isReferenceWheel
     ? '88 88 824 824'
     : isSquareWheel
@@ -108,14 +113,14 @@ export function NatalChart(props: NatalChartProps) {
         />
       )}
 
-      {!isSquareWheel && (
+      {!isSquareWheel && !dateOnly && (
         <CornerMetadata sun={data.sun} ascendant={data.ascendant} />
       )}
 
       {!isSquareWheel && effectiveSideFigures && (
         <SideFigure sign={data.sun.sign} side="left" />
       )}
-      {!isSquareWheel && effectiveSideFigures && (
+      {!isSquareWheel && effectiveSideFigures && !dateOnly && (
         <SideFigure sign={data.ascendant.sign} side="right" />
       )}
 
@@ -125,6 +130,7 @@ export function NatalChart(props: NatalChartProps) {
           variant={variant}
           onPlanetClick={onPlanetClick}
           onHouseClick={onHouseClick}
+          dateOnly={dateOnly}
         />
       </g>
 

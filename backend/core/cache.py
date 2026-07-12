@@ -13,6 +13,7 @@ import redis.asyncio as aioredis
 
 from core.logging import get_logger
 from core.settings import settings
+from services.content_version import CONTENT_VERSION
 
 log = get_logger(__name__)
 
@@ -50,11 +51,15 @@ def get_redis() -> aioredis.Redis:
 
 
 def key_horoscope(sign: str, date: str, period: str) -> str:
-    return f"horoscope:{sign}:{date}:{period}"
+    return f"horoscope:{CONTENT_VERSION}:{sign}:{date}:{period}"
+
+
+def key_personal_horoscope(user_id: int, date: str, period: str) -> str:
+    return f"horoscope:{CONTENT_VERSION}:user:{user_id}:{date}:{period}"
 
 
 def key_natal(user_id: int) -> str:
-    return f"natal:{user_id}"
+    return f"natal:{CONTENT_VERSION}:{user_id}"
 
 
 def key_natal_pdf_download(token: str) -> str:
@@ -88,7 +93,7 @@ def key_user_premium(user_id: int) -> str:
 
 
 def key_tarot_interpret(reading_id: int) -> str:
-    return f"tarot:interpret:{reading_id}"
+    return f"tarot:interpret:{CONTENT_VERSION}:{reading_id}"
 
 
 # ── Generic helpers ───────────────────────────────────────────────────────────

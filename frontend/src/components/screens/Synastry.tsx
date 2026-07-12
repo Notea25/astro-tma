@@ -739,7 +739,7 @@ function SynastryHistorySection({
               {formatHistoryDate(item.created_at)}
             </div>
           </div>
-          <div className="syn-history-row__score">{item.scores.overall}%</div>
+          <div className="syn-history-row__score">{item.total_aspects} аспектов</div>
           <button
             type="button"
             className="syn-history-row__delete"

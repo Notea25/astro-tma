@@ -20,12 +20,15 @@ from api.schemas.synastry import (
     SynastryPlanetInfo,
     SynastryRequestOut,
     SynastryResult,
-    SynastryScores,
 )
 from core.logging import get_logger
 from core.settings import settings
 from db.database import get_db
 from db.models import SynastryRequest, SynastryRequestStatus, User
+from services.astro.aspect_policy import (
+    is_classic_planet,
+    natal_or_synastry_orb_limit,
+)
 from services.astro.synastry import calculate_synastry
 from services.astro.synastry_interpreter import (
     generate_pair_summary,
@@ -130,7 +133,9 @@ async def _require_user_with_chart(db: AsyncSession, user_id: int) -> User:
     return user
 
 
-def _planets_from_chart(chart_data: dict) -> list[SynastryPlanetInfo]:
+def _planets_from_chart(
+    chart_data: dict, *, include_houses: bool = True
+) -> list[SynastryPlanetInfo]:
     """Project NatalChart.chart_data['planets'] dict into the response schema."""
     raw = chart_data.get("planets") if chart_data else None
     if not isinstance(raw, dict):
@@ -148,14 +153,22 @@ def _planets_from_chart(chart_data: dict) -> list[SynastryPlanetInfo]:
                 sign_ru=str(p.get("sign_ru") or p.get("sign", "")),
                 degree=float(p.get("degree", 0) or 0),
                 sign_degree=float(p.get("sign_degree", p.get("degree", 0)) or 0),
-                house=int(p.get("house", 0) or 0),
+                house=(
+                    int(p["house"])
+                    if include_houses and p.get("house") is not None
+                    else None
+                ),
                 retrograde=bool(p.get("retrograde", False)),
             )
         )
     return out
 
 
-def _houses_from_chart(chart_data: dict) -> list[SynastryHouseInfo]:
+def _houses_from_chart(
+    chart_data: dict, *, include_houses: bool = True
+) -> list[SynastryHouseInfo]:
+    if not include_houses:
+        return []
     raw = chart_data.get("houses") if chart_data else None
     if not isinstance(raw, list):
         return []
@@ -200,6 +213,20 @@ def _interp_to_schema(
             )
         )
     return out
+
+
+def _allowed_aspects(aspects: list[dict]) -> list[dict]:
+    """Sanitize legacy result_json before it reaches current contracts."""
+    return [
+        aspect
+        for aspect in aspects
+        if is_classic_planet(str(aspect.get("p1_name", "")))
+        and is_classic_planet(str(aspect.get("p2_name", "")))
+        and float(aspect.get("orb", 99))
+        <= natal_or_synastry_orb_limit(
+            str(aspect.get("p1_name", "")), str(aspect.get("p2_name", ""))
+        )
+    ]
 
 
 @router.post("/request", response_model=SynastryRequestOut)
@@ -337,22 +364,32 @@ async def accept_request(
         data = req.result_json
         # Re-fetch interpretations from cache (cheap) — text bodies are not
         # stored in result_json so the table can be regenerated/edited later.
-        texts = await get_or_generate_aspect_texts(
-            db, data["aspects"], settings.LLM_API_KEY
-        )
+        aspects = _allowed_aspects(data["aspects"])
+        texts = await get_or_generate_aspect_texts(db, aspects, settings.LLM_API_KEY)
         return SynastryResult(
             id=req.id,
-            aspects=_aspects_to_schema(data["aspects"]),
-            scores=SynastryScores(**data["scores"]),
-            total_aspects=data["total_aspects"],
+            aspects=_aspects_to_schema(aspects),
+            total_aspects=len(aspects),
             initiator_name=initiator.tg_first_name if initiator else None,
             partner_name=partner.tg_first_name,
             is_initiator=False,
-            planets_a=_planets_from_chart(initiator.natal_chart.chart_data) if initiator and initiator.natal_chart else [],
-            planets_b=_planets_from_chart(partner.natal_chart.chart_data) if partner.natal_chart else [],
-            houses_a=_houses_from_chart(initiator.natal_chart.chart_data) if initiator and initiator.natal_chart else [],
-            houses_b=_houses_from_chart(partner.natal_chart.chart_data) if partner.natal_chart else [],
-            interpretations=_interp_to_schema(data["aspects"], texts),
+            planets_a=_planets_from_chart(
+                initiator.natal_chart.chart_data,
+                include_houses=initiator.birth_time_known,
+            ) if initiator and initiator.natal_chart else [],
+            planets_b=_planets_from_chart(
+                partner.natal_chart.chart_data,
+                include_houses=partner.birth_time_known,
+            ) if partner.natal_chart else [],
+            houses_a=_houses_from_chart(
+                initiator.natal_chart.chart_data,
+                include_houses=initiator.birth_time_known,
+            ) if initiator and initiator.natal_chart else [],
+            houses_b=_houses_from_chart(
+                partner.natal_chart.chart_data,
+                include_houses=partner.birth_time_known,
+            ) if partner.natal_chart else [],
+            interpretations=_interp_to_schema(aspects, texts),
             summary_ru=data.get("summary_ru"),
             created_at=req.created_at,
         )
@@ -407,7 +444,6 @@ async def accept_request(
         initiator.tg_first_name,
         partner.tg_first_name,
         raw["aspects"],
-        raw["scores"],
         settings.LLM_API_KEY,
     )
 
@@ -420,15 +456,22 @@ async def accept_request(
     return SynastryResult(
         id=req.id,
         aspects=_aspects_to_schema(raw["aspects"]),
-        scores=SynastryScores(**raw["scores"]),
         total_aspects=raw["total_aspects"],
         initiator_name=initiator.tg_first_name,
         partner_name=partner.tg_first_name,
         is_initiator=False,
-        planets_a=_planets_from_chart(initiator_chart.chart_data),
-        planets_b=_planets_from_chart(partner_chart.chart_data),
-        houses_a=_houses_from_chart(initiator_chart.chart_data),
-        houses_b=_houses_from_chart(partner_chart.chart_data),
+        planets_a=_planets_from_chart(
+            initiator_chart.chart_data, include_houses=initiator.birth_time_known
+        ),
+        planets_b=_planets_from_chart(
+            partner_chart.chart_data, include_houses=partner.birth_time_known
+        ),
+        houses_a=_houses_from_chart(
+            initiator_chart.chart_data, include_houses=initiator.birth_time_known
+        ),
+        houses_b=_houses_from_chart(
+            partner_chart.chart_data, include_houses=partner.birth_time_known
+        ),
         interpretations=_interp_to_schema(raw["aspects"], texts),
         summary_ru=summary,
         created_at=req.created_at,
@@ -560,13 +603,12 @@ async def manual_synastry(
         initiator.tg_first_name,
         payload.partner_name,
         raw["aspects"],
-        raw["scores"],
         settings.LLM_API_KEY,
     )
 
     # Persist as a SynastryRequest with no partner_user_id — this is the
     # marker for "manual entry". result_json carries everything the report
-    # needs: aspects, scores, summary, partner name and partner chart data.
+    # needs: aspects, summary, partner name and partner chart data.
     req = SynastryRequest(
         initiator_user_id=initiator.id,
         partner_user_id=None,
@@ -577,6 +619,7 @@ async def manual_synastry(
             "summary_ru": summary,
             "partner_name": payload.partner_name,
             "partner_chart_data": partner_chart_data,
+            "partner_birth_time_known": payload.birth_time_known,
             "manual": True,
         },
         expires_at=datetime.now(UTC) + timedelta(days=365 * 5),
@@ -597,15 +640,22 @@ async def manual_synastry(
     return SynastryResult(
         id=req.id,
         aspects=_aspects_to_schema(raw["aspects"]),
-        scores=SynastryScores(**raw["scores"]),
         total_aspects=raw["total_aspects"],
         initiator_name=initiator.tg_first_name,
         partner_name=payload.partner_name,
         is_initiator=True,
-        planets_a=_planets_from_chart(initiator_chart.chart_data),
-        planets_b=_planets_from_chart(partner_chart_data) if partner_chart_data else [],
-        houses_a=_houses_from_chart(initiator_chart.chart_data),
-        houses_b=_houses_from_chart(partner_chart_data) if partner_chart_data else [],
+        planets_a=_planets_from_chart(
+            initiator_chart.chart_data, include_houses=initiator.birth_time_known
+        ),
+        planets_b=_planets_from_chart(
+            partner_chart_data, include_houses=payload.birth_time_known
+        ) if partner_chart_data else [],
+        houses_a=_houses_from_chart(
+            initiator_chart.chart_data, include_houses=initiator.birth_time_known
+        ),
+        houses_b=_houses_from_chart(
+            partner_chart_data, include_houses=payload.birth_time_known
+        ) if partner_chart_data else [],
         interpretations=_interp_to_schema(raw["aspects"], texts),
         summary_ru=summary,
         created_at=req.created_at,
@@ -656,27 +706,37 @@ async def get_result(
         partner_name = data.get("partner_name")
         partner_chart_data = data.get("partner_chart_data")
 
-    texts = await get_or_generate_aspect_texts(
-        db, data["aspects"], settings.LLM_API_KEY
-    )
+    aspects = _allowed_aspects(data["aspects"])
+    texts = await get_or_generate_aspect_texts(db, aspects, settings.LLM_API_KEY)
 
     return SynastryResult(
         id=req.id,
-        aspects=_aspects_to_schema(data["aspects"]),
-        scores=SynastryScores(**data["scores"]),
-        total_aspects=data["total_aspects"],
+        aspects=_aspects_to_schema(aspects),
+        total_aspects=len(aspects),
         initiator_name=initiator.tg_first_name if initiator else None,
         partner_name=partner_name,
         is_initiator=is_initiator,
-        planets_a=_planets_from_chart(initiator.natal_chart.chart_data)
+        planets_a=_planets_from_chart(
+            initiator.natal_chart.chart_data,
+            include_houses=initiator.birth_time_known,
+        )
         if initiator and initiator.natal_chart
         else [],
-        planets_b=_planets_from_chart(partner_chart_data) if partner_chart_data else [],
-        houses_a=_houses_from_chart(initiator.natal_chart.chart_data)
+        planets_b=_planets_from_chart(
+            partner_chart_data,
+            include_houses=bool(data.get("partner_birth_time_known", True)),
+        ) if partner_chart_data else [],
+        houses_a=_houses_from_chart(
+            initiator.natal_chart.chart_data,
+            include_houses=initiator.birth_time_known,
+        )
         if initiator and initiator.natal_chart
         else [],
-        houses_b=_houses_from_chart(partner_chart_data) if partner_chart_data else [],
-        interpretations=_interp_to_schema(data["aspects"], texts),
+        houses_b=_houses_from_chart(
+            partner_chart_data,
+            include_houses=bool(data.get("partner_birth_time_known", True)),
+        ) if partner_chart_data else [],
+        interpretations=_interp_to_schema(aspects, texts),
         summary_ru=data.get("summary_ru"),
         created_at=req.created_at,
     )
@@ -736,15 +796,11 @@ async def get_history(
         # (no User row to look up).
         if not partner_name:
             partner_name = data.get("partner_name")
-        scores = SynastryScores(**data.get("scores", {
-            "love": 0, "communication": 0, "trust": 0, "passion": 0, "overall": 0,
-        }))
         out.append(
             SynastryHistoryItem(
                 id=req.id,
                 partner_name=partner_name,
                 is_initiator=is_initiator,
-                scores=scores,
                 total_aspects=int(data.get("total_aspects", 0)),
                 created_at=req.created_at,
             )

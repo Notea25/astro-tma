@@ -254,13 +254,10 @@ async def _generate_daily_horoscopes() -> None:
     from datetime import date
 
     from api.routes.horoscope import _GENERIC_TEXTS, _SIGN_RU
-    from api.schemas.horoscope import EnergyScores, HoroscopeResponse
+    from api.schemas.horoscope import HoroscopeResponse
     from core.cache import cache_set, key_horoscope
     from db.models import ZodiacSign
-    from services.astro.llm_horoscope import (
-        generate_daily_horoscope,
-        generate_energy_scores_llm,
-    )
+    from services.astro.llm_horoscope import generate_daily_horoscope
 
     today_date = date.today()
     today = today_date.isoformat()
@@ -273,16 +270,12 @@ async def _generate_daily_horoscopes() -> None:
             if not text:
                 text = _GENERIC_TEXTS.get(sign.value, "")
 
-            # Generate scores via LLM
-            scores = await generate_energy_scores_llm(sign.value, today_date)
-
             response = HoroscopeResponse(
                 sign=sign.value,
                 sign_ru=_SIGN_RU.get(sign.value, sign.value),
                 date=today_date,
                 period="today",
                 text_ru=text,
-                energy=EnergyScores(**scores),
                 is_personalised=False,
             )
             cache_key = key_horoscope(sign.value, today, "today")

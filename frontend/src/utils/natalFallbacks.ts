@@ -238,6 +238,6 @@ export const ASPECT_FALLBACK_DESC: Record<string, string> = {
 };
 
 // Slider teaser shown when no LLM mini-reading and no DB interpretations
-// are available (e.g. ANTHROPIC_API_KEY unset). Keeps the screen alive.
+// are available (e.g. LLM_API_KEY unset). Keeps the screen alive.
 export const MINI_READING_FALLBACK =
   "Ваша натальная карта — это снимок неба в момент рождения. Солнце показывает ядро личности и волю, Луна — эмоциональную природу и интуицию, а восходящий знак — то, как вы проявляетесь вовне. Скачайте полный PDF-отчёт, чтобы раскрыть планеты, дома и аспекты подробно и персонально.";

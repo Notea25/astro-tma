@@ -4,7 +4,7 @@
  * The button tap enqueues a job on the backend; the heavy LLM work runs in the
  * arq worker. We poll status until ready, then download the PDF by its one-shot
  * token. On a warm cache the backend returns `ready` immediately and we skip
- * polling. Generation can take minutes on a low Anthropic tier — that's fine,
+ * polling. Generation can take minutes on a rate-limited LLM tier — that's fine,
  * the request side never blocks.
  */
 

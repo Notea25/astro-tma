@@ -167,7 +167,12 @@ class Interpretation(Base):
 class DailyHoroscope(TimestampMixin, Base):
     """Generated nightly by APScheduler. DB copy is backup to Redis cache."""
     __tablename__ = "daily_horoscopes"
-    __table_args__ = (UniqueConstraint("sign", "date", "period"),)
+    __table_args__ = (
+        UniqueConstraint(
+            "sign", "date", "period", "content_version",
+            name="uq_daily_horoscope_period_version",
+        ),
+    )
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     sign: Mapped[ZodiacSign] = mapped_column(Enum(ZodiacSign, values_callable=lambda e: [x.value for x in e]), nullable=False)
     date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
@@ -178,6 +183,9 @@ class DailyHoroscope(TimestampMixin, Base):
     health_score: Mapped[int] = mapped_column(Integer, default=50)
     luck_score: Mapped[int] = mapped_column(Integer, default=50)
     aspects_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    content_version: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="legacy", server_default="legacy"
+    )
 
 
 # ── Tarot ─────────────────────────────────────────────────────────────────────
@@ -290,12 +298,20 @@ class SynastryInterpretation(TimestampMixin, Base):
     """Cached LLM-generated text for a (planet_a, planet_b, aspect) triple.
     Keys are normalized so planet_a is alphabetically <= planet_b."""
     __tablename__ = "synastry_interpretations"
-    __table_args__ = (UniqueConstraint("p1", "p2", "aspect"),)
+    __table_args__ = (
+        UniqueConstraint(
+            "p1", "p2", "aspect", "content_version",
+            name="uq_synastry_interp_triple_version",
+        ),
+    )
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     p1: Mapped[str] = mapped_column(String(40), nullable=False)
     p2: Mapped[str] = mapped_column(String(40), nullable=False)
     aspect: Mapped[str] = mapped_column(String(40), nullable=False)
     text_ru: Mapped[str] = mapped_column(Text, nullable=False)
+    content_version: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="legacy", server_default="legacy"
+    )
 
 
 class TransitInterpretation(TimestampMixin, Base):
@@ -314,7 +330,12 @@ class TransitInterpretation(TimestampMixin, Base):
     conjunction with Mars/Saturn/Pluto/outer planets).
     """
     __tablename__ = "transit_interpretations"
-    __table_args__ = (UniqueConstraint("transit_planet", "natal_planet", "aspect"),)
+    __table_args__ = (
+        UniqueConstraint(
+            "transit_planet", "natal_planet", "aspect", "content_version",
+            name="uq_transit_interp_triple_version",
+        ),
+    )
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     transit_planet: Mapped[str] = mapped_column(String(40), nullable=False)
     natal_planet: Mapped[str] = mapped_column(String(40), nullable=False)
@@ -325,6 +346,9 @@ class TransitInterpretation(TimestampMixin, Base):
     affirmation: Mapped[str | None] = mapped_column(Text, nullable=True)
     ritual: Mapped[str | None] = mapped_column(Text, nullable=True)
     risk_warning: Mapped[str | None] = mapped_column(Text, nullable=True)
+    content_version: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="legacy", server_default="legacy"
+    )
 
 
 class SynastryPairSummary(TimestampMixin, Base):
@@ -332,9 +356,19 @@ class SynastryPairSummary(TimestampMixin, Base):
     determining inputs (aspects + scores + names), so repeated requests
     for the same pair return the same text instead of new LLM-randomness."""
     __tablename__ = "synastry_pair_summaries"
+    __table_args__ = (
+        UniqueConstraint(
+            "key_hash",
+            "content_version",
+            name="uq_synastry_pair_summary_key_version",
+        ),
+    )
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    key_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    key_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     summary_ru: Mapped[str] = mapped_column(Text, nullable=False)
+    content_version: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="legacy", server_default="legacy"
+    )
 
 
 # ── Notifications ─────────────────────────────────────────────────────────────
@@ -506,7 +540,9 @@ class DestinyMatrixInterpretation(Base):
     on first /interpretation request, cached forever per reading_id."""
     __tablename__ = "destiny_matrix_interpretations"
     __table_args__ = (
-        UniqueConstraint("reading_id", name="uq_dm_interp_reading"),
+        UniqueConstraint(
+            "reading_id", "content_version", name="uq_dm_interp_reading_version"
+        ),
     )
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     reading_id: Mapped[int] = mapped_column(
@@ -521,9 +557,12 @@ class DestinyMatrixInterpretation(Base):
     # propagation existed» — route treats those as stale and regenerates
     # on the next call.
     gender_used: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    content_version: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="legacy", server_default="legacy"
+    )
 
 
-# ── Destiny Matrix V3 (15-section interpretation pipeline) ──────────────────
+# ── Destiny Matrix V3 (20-section interpretation pipeline) ──────────────────
 
 
 class ArcanaBase(Base):
@@ -569,7 +608,7 @@ class KarmicProgram(Base):
 
 class DestinyInterpretationV3(Base):
     """One LLM-generated section of the V3 destiny matrix report. The
-    full report is 15 rows per (user, birth_date, gender). Cached
+    full report is 20 rows per (user, birth_date, gender). Cached
     permanently — the matrix doesn't change with time.
 
     Section keys (snake_case): ``visitka``, ``drk``, ``higher_self``,
@@ -580,8 +619,8 @@ class DestinyInterpretationV3(Base):
     __tablename__ = "destiny_interpretations_v3"
     __table_args__ = (
         UniqueConstraint(
-            "user_id", "birth_date", "gender", "section",
-            name="uq_destiny_v3_user_section",
+            "user_id", "birth_date", "gender", "section", "content_version",
+            name="uq_destiny_v3_user_section_version",
         ),
         Index("idx_destiny_v3_user_bd", "user_id", "birth_date"),
     )
@@ -594,6 +633,9 @@ class DestinyInterpretationV3(Base):
     section: Mapped[str] = mapped_column(String(32))
     content: Mapped[str] = mapped_column(Text)
     model: Mapped[str] = mapped_column(String(64))
+    content_version: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="legacy", server_default="legacy"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(),
     )
@@ -619,6 +661,10 @@ class YearEnergyInterpretation(Base):
     year_arcana: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
     content: Mapped[str] = mapped_column(Text)
     model: Mapped[str] = mapped_column(String(64))
+    content_version: Mapped[str] = mapped_column(
+        String(32), primary_key=True, nullable=False,
+        default="legacy", server_default="legacy"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(),
     )

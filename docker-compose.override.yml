@@ -20,7 +20,7 @@ services:
     environment:
       APP_ENV: development
       APP_DEBUG: "true"
-      ANTHROPIC_OUTPUT_TPM: "0"   # local: disable throttle to measure raw gen time
+      LLM_OUTPUT_TPM: "0"   # local: disable throttle to measure raw gen time
 
   postgres:
     ports:

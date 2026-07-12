@@ -32,6 +32,15 @@ const SPREADS: SpreadOption[] = [
   { id: "relationship", name: "Отношения",                     cardCount: 5 },
 ];
 
+function TarotDisclaimer() {
+  return (
+    <p className="interpretation-disclaimer" role="note">
+      Таро — развлекательная символическая интерпретация, не медицинский,
+      финансовый или фактический прогноз.
+    </p>
+  );
+}
+
 export function Tarot() {
   const { setScreen } = useAppStore();
   const { impact } = useHaptic();
@@ -211,6 +220,7 @@ export function Tarot() {
               </div>
             </div>
           </motion.div>
+          <TarotDisclaimer />
         </div>
       </div>
     );
@@ -339,6 +349,7 @@ export function Tarot() {
               )}
             </>
           )}
+        <TarotDisclaimer />
       </div>
     </div>
   );

@@ -1322,9 +1322,11 @@ function NatalTopBar() {
 function NatalTabBar({
   tab,
   onChange,
+  showHouses,
 }: {
   tab: NatalTab;
   onChange: (next: NatalTab) => void;
+  showHouses: boolean;
 }) {
   return (
     <div
@@ -1332,7 +1334,7 @@ function NatalTabBar({
       role="tablist"
       aria-label="Разделы натальной карты"
     >
-      {NATAL_TABS.map((item) => (
+      {NATAL_TABS.filter((item) => showHouses || item.key !== "houses").map((item) => (
         <button
           key={item.key}
           type="button"
@@ -1520,13 +1522,17 @@ function NatalKeyChips({
     sign: string;
     degree: string;
   }[] = [
-    {
+    ...(
+      summary?.chart_mode === "full" && summary.ascendant_sign
+        ? [{
       key: "asc",
       glyph: ascSign ? <ZodiacIcon sign={ascSign} size={20} /> : "AC",
       title: "ASC",
       sign: toRu(summary?.ascendant_sign),
       degree: ascendantDegree,
-    },
+    }]
+        : []
+    ),
     {
       key: "sun",
       glyph: "☉",
@@ -1609,6 +1615,7 @@ function NatalHeroCard({
           variant="reference-wheel"
           size={650}
           className={styles.wheel}
+          dateOnly={summary?.chart_mode === "date_only"}
         />
       </div>
 
@@ -2036,7 +2043,9 @@ function NatalPlanetsPanel({
             planet.sign_ru ??
             SIGN_EN_TO_RU[normalizeSign(planet.sign)] ??
             planet.sign;
-          const subtitle = `${signRu} · ${degText} · Дом ${planet.house}`;
+          const subtitle = planet.house == null
+            ? `${signRu} · ${degText}`
+            : `${signRu} · ${degText} · Дом ${planet.house}`;
 
           return (
             <button
@@ -2073,10 +2082,14 @@ function NatalPlanetsPanel({
                   >
                     {degText}
                   </span>
-                  <span className={styles.planetMetaDot} aria-hidden="true" />
-                  <span className={styles.planetMetaHouse}>
-                    Дом {planet.house}
-                  </span>
+                  {planet.house != null && (
+                    <>
+                      <span className={styles.planetMetaDot} aria-hidden="true" />
+                      <span className={styles.planetMetaHouse}>
+                        Дом {planet.house}
+                      </span>
+                    </>
+                  )}
                 </span>
                 <p>{row.desc}</p>
               </span>
@@ -2474,6 +2487,7 @@ export function Natal() {
     () => (summary ? toNatalChartData(summary) : null),
     [summary],
   );
+  const dateOnly = summary?.chart_mode === "date_only";
   const pdfWheelStageRef = useRef<HTMLDivElement | null>(null);
   const pdfWheelName = user?.name?.trim() || "Моя карта";
 
@@ -2489,6 +2503,10 @@ export function Natal() {
     });
     return () => setNatalWheelSvgProvider(null);
   }, [chartData]);
+
+  useEffect(() => {
+    if (dateOnly && tab === "houses") setTab("circle");
+  }, [dateOnly, tab]);
   const interpretationSlides = useMemo<NatalInterpretationSlide[]>(() => {
     const readingSlides = mini?.mini_reading
       ? parseReadingSections(mini.mini_reading).map((section, index) => {
@@ -2764,6 +2782,7 @@ export function Natal() {
             theme="onyx-gold"
             variant="reference-wheel"
             size={650}
+            dateOnly={dateOnly}
           />
         </div>
       )}
@@ -2795,7 +2814,13 @@ export function Natal() {
           </motion.div>
         ) : (
           <>
-            <NatalTabBar tab={tab} onChange={setTab} />
+            <NatalTabBar tab={tab} onChange={setTab} showHouses={!dateOnly} />
+            {dateOnly && (
+              <div className={styles.dateOnlyNotice} role="note">
+                Время рождения неизвестно. Показана космограмма планет на 12:00:
+                положение Луны приблизительно, ASC, MC и дома не рассчитываются.
+              </div>
+            )}
             <div className={styles.tabContent}>{renderTabContent()}</div>
           </>
         )}

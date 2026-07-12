@@ -104,7 +104,9 @@ def _build_prompt(
         orient = "перевёрнута" if c.get("reversed") else "прямая"
         lines.append(
             f"Позиция {i} ({positions_meta[i]}):\n"
+            f"  card_id: {c['card_id']}\n"
             f"  Карта: {c['name_ru']} ({orient})\n"
+            f"  Базовое значение в этой ориентации: {c.get('meaning_ru', '')}\n"
             f"  Ключевые слова: {', '.join(c.get('keywords_ru') or [])}"
         )
     cards_block = "\n\n".join(lines)
@@ -118,7 +120,9 @@ def _build_prompt(
     )
 
     json_positions = ",\n    ".join(
-        f'{{"n": {i}, "narrative": "<2–3 предложения>"}}'
+        f'{{"n": {i}, "card_id": {cards[i - 1]["card_id"]}, '
+        f'"reversed": {str(bool(cards[i - 1].get("reversed"))).lower()}, '
+        '"narrative": "<2–3 предложения>"}'
         for i in range(1, expected_n + 1)
     )
 
@@ -164,6 +168,8 @@ def _build_prompt(
   • Прямые команды и пошаговые инструкции: «позвоните маме», «сделайте список», «откажитесь от X», «начните вести дневник». Это не текст-инструкция — это текст для саморефлексии.
   • Эзотерический жаргон: «энергии», «архетипы», «вибрации», «эманации», «послание вселенной», «карты предупреждают».
   • Пересказ описания карты вместо её смысла именно в этой позиции.
+- Строго сохраняй ориентацию: прямая карта трактуется по прямому базовому значению, перевёрнутая — по перевёрнутому. Не меняй ориентацию и не противоречь указанному значению.
+- Не утверждай как факт события биографии, состояние семьи, зависимость или диагноз. Будущее — только вероятный сценарий, не гарантия.
 - Используй конкретные образы обычной жизни: невысказанный разговор; решение, отложенное «на потом»; роль, которую больше не хочется играть; место, где вы давите на газ, хотя пора снять ногу. Без абстракций.
 - Где уместно — задавай вопрос, который читатель задаст сам себе («где вы сейчас держитесь сильнее, чем нужно?», «что вы перестали себе говорить вслух?»). Не больше одного такого вопроса на позицию.
 - Связывай карты в одну историю: начиная со 2-й позиции — отсылка к предыдущим.
@@ -231,16 +237,49 @@ async def generate_spread_interpretation(
     # (celtic 10 cards) without truncating the smaller ones.
     cap = 600 + expected_n * 180
 
-    client = create_llm_client(api_key)
-    async with llm_semaphore:
-        message = await client.messages.create(
-            model=settings.LLM_MODEL,
-            max_tokens=cap,
-            messages=[{"role": "user", "content": prompt}],
-        )
+    from services.astro.fact_context import TarotFactContext, validate_tarot_payload
 
-    text = first_text_block(message.content)
-    parsed = _extract_json(text)
+    client = create_llm_client(api_key)
+
+    async def _call(request_prompt: str) -> dict[str, Any]:
+        async with llm_semaphore:
+            message = await client.messages.create(
+                model=settings.LLM_MODEL,
+                max_tokens=cap,
+                messages=[{"role": "user", "content": request_prompt}],
+            )
+        return _extract_json(first_text_block(message.content))
+
+    def _safety_errors(payload: dict[str, Any]) -> list[str]:
+        return validate_tarot_payload(payload, TarotFactContext.from_cards(cards))
+
+    parsed = await _call(prompt)
+    errors = _safety_errors(parsed)
+    if errors:
+        parsed = await _call(
+            prompt + "\n\nПредыдущий ответ отклонён. Исправь:\n- " + "\n- ".join(errors)
+        )
+        if _safety_errors(parsed):
+            parsed = {
+                "positions": [
+                    {
+                        "n": index,
+                        "card_id": int(card["card_id"]),
+                        "reversed": bool(card.get("reversed")),
+                        "narrative": (
+                            f"{card['name_ru']} в этой позиции символически отражает "
+                            f"тему: {card.get('meaning_ru') or 'самонаблюдение'}. "
+                            "Это возможность для размышления, а не фактический прогноз."
+                        ),
+                    }
+                    for index, card in enumerate(cards, start=1)
+                ],
+                "summary": (
+                    "Расклад предлагает сопоставить темы карт с текущей ситуацией. "
+                    "Это развлекательная символическая интерпретация, а не "
+                    "медицинский, финансовый или фактический прогноз."
+                ),
+            }
 
     positions_raw = parsed.get("positions", [])
     by_n = {int(p["n"]): str(p.get("narrative", "")).strip() for p in positions_raw}

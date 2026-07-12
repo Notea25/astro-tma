@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.middleware.telegram_auth import get_tg_user
 from api.schemas.horoscope import (
-    EnergyScores,
     HoroscopeResponse,
     MoonCalendarDay,
     MoonCalendarResponse,
@@ -18,6 +17,7 @@ from core.cache import (
     cache_set,
     key_horoscope,
     key_moon,
+    key_personal_horoscope,
 )
 from core.logging import get_logger
 from core.settings import settings
@@ -94,22 +94,16 @@ async def get_today_horoscope(
         return HoroscopeResponse(**cached)
 
     # Try LLM generation
-    from services.astro.llm_horoscope import (
-        generate_daily_horoscope,
-        generate_energy_scores_llm,
-    )
+    from services.astro.llm_horoscope import generate_daily_horoscope
     text = await generate_daily_horoscope(sign, date.today(), "today")
     if not text:
         text = _GENERIC_TEXTS.get(sign, _GENERIC_TEXTS["aries"])
-    scores = await generate_energy_scores_llm(sign, date.today())
-
     response = HoroscopeResponse(
         sign=sign,
         sign_ru=_SIGN_RU.get(sign, sign),
         date=date.today(),
         period="today",
         text_ru=text,
-        energy=EnergyScores(**scores),
         is_personalised=False,
     )
     await cache_set(cache_key, response.model_dump(mode="json"), settings.CACHE_TTL_HOROSCOPE)
@@ -134,9 +128,14 @@ async def get_period_horoscope(
     requested = (sign or "").lower().strip()
     if requested and requested in _VALID_SIGNS:
         sign = requested
+        personalise = requested == (user.sun_sign.value if user.sun_sign else "aries")
     else:
         sign = user.sun_sign.value if user.sun_sign else "aries"
+        personalise = True
+
     today = date.today()
+    if personalise and user.natal_chart:
+        return await _personalised_horoscope(user, sign, today.isoformat(), period)
 
     # Check cache
     cache_key = key_horoscope(sign, today.isoformat(), period)
@@ -145,23 +144,17 @@ async def get_period_horoscope(
         return HoroscopeResponse(**cached)
 
     # Generate via LLM
-    from services.astro.llm_horoscope import (
-        generate_daily_horoscope,
-        generate_energy_scores_llm,
-    )
+    from services.astro.llm_horoscope import generate_daily_horoscope
     text = await generate_daily_horoscope(sign, today, period)
     if not text:
         text = _GENERIC_TEXTS.get(sign, "")
-    scores = await generate_energy_scores_llm(sign, today)
-
     response = HoroscopeResponse(
         sign=sign,
         sign_ru=_SIGN_RU.get(sign, sign),
         date=today,
         period=period,
         text_ru=text,
-        energy=EnergyScores(**scores),
-        is_personalised=bool(user.natal_chart),
+        is_personalised=False,
     )
     await cache_set(cache_key, response.model_dump(mode="json"), settings.CACHE_TTL_HOROSCOPE)
     return response
@@ -221,32 +214,39 @@ async def _personalised_horoscope(
     user, sign: str, today: str, period: str
 ) -> HoroscopeResponse:
     """Build a personalised horoscope via LLM, with transit fallback."""
-    from services.astro.llm_horoscope import (
-        generate_daily_horoscope,
-        generate_energy_scores_llm,
-    )
+    from services.astro.llm_horoscope import generate_daily_horoscope
 
     # Check cache first
-    cache_key = key_horoscope(sign, today, period)
+    cache_key = key_personal_horoscope(user.id, today, period)
     cached = await cache_get(cache_key)
     if cached:
         # Mark as personalised
         cached["is_personalised"] = True
         return HoroscopeResponse(**cached)
 
-    # Generate via LLM
-    text = await generate_daily_horoscope(sign, date.today(), period)
+    from services.astro.transits import calculate_transits
+
+    transit_context: list[dict] = []
+    if user.birth_date and user.birth_tz:
+        transit_context = calculate_transits(
+            birth_dt=user.birth_date,
+            lat=user.birth_lat or 0.0,
+            lng=user.birth_lng or 0.0,
+            tz_str=user.birth_tz,
+            birth_time_known=user.birth_time_known,
+        )
+    # Generate via LLM from concrete, user-specific transits.
+    text = await generate_daily_horoscope(
+        sign, date.today(), period, transit_context=transit_context
+    )
     if not text:
         text = _GENERIC_TEXTS.get(sign, _GENERIC_TEXTS["aries"])
-    scores = await generate_energy_scores_llm(sign, date.today())
-
     response = HoroscopeResponse(
         sign=sign,
         sign_ru=_SIGN_RU.get(sign, sign),
         date=date.today(),
         period=period,
         text_ru=text,
-        energy=EnergyScores(**scores),
         is_personalised=True,
     )
     await cache_set(cache_key, response.model_dump(mode="json"), settings.CACHE_TTL_HOROSCOPE)

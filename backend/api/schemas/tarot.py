@@ -14,7 +14,6 @@ class TarotCardDetail(BaseModel):
     reversed: bool
     meaning_ru: str      # upright or reversed based on drawn orientation
     position_name_ru: str
-    position_meaning_ru: str | None
     keywords_ru: list[str]
     image_url: str | None
 

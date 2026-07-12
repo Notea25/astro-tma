@@ -81,7 +81,7 @@ export function MyReports() {
     } else if (!m.has_content) {
       m_subtitle = "Откройте — разбор соберётся за минуту";
     } else {
-      m_subtitle = "Готов · 15 разделов";
+      m_subtitle = "Готов · 20 разделов";
     }
     rows.push({
       title: "Матрица Судьбы",

@@ -3,20 +3,12 @@ from datetime import date
 from pydantic import BaseModel
 
 
-class EnergyScores(BaseModel):
-    love: int
-    career: int
-    health: int
-    luck: int
-
-
 class HoroscopeResponse(BaseModel):
     sign: str
     sign_ru: str
     date: date
     period: str
     text_ru: str
-    energy: EnergyScores
     is_personalised: bool   # True if calculated against natal chart
 
 

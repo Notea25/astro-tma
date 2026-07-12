@@ -732,17 +732,22 @@ footer span {{ letter-spacing: 1px; margin-left: 8px; }}
 
 
 def _content_page(
-    *, planets_page: int, houses_page: int, aspects_page: int, reading_page: int
+    *, planets_page: int, houses_page: int | None, aspects_page: int, reading_page: int
 ) -> str:
     rows = [
         ("I", "Ключевые точки карты", "3"),
         ("II", "Натальное колесо", "4"),
         ("III", "Баланс стихий и характер", "5"),
         ("IV", "Планеты в знаках", str(planets_page)),
-        ("V", "Дома гороскопа", str(houses_page)),
-        ("VI", "Аспекты — связи между планетами", str(aspects_page)),
-        ("VII", "Персональная интерпретация", str(reading_page)),
     ]
+    if houses_page is not None:
+        rows.append(("V", "Дома гороскопа", str(houses_page)))
+    rows.extend(
+        [
+            ("VI", "Аспекты — связи между планетами", str(aspects_page)),
+            ("VII", "Персональная интерпретация", str(reading_page)),
+        ]
+    )
     body = _section_header("Содержание", "Что внутри отчёта")
     body += (
         '<div class="toc-list">'
@@ -768,8 +773,9 @@ def _cover_page(
     points = [
         ("☉", "СОЛНЦЕ", _sign_ru(sun_sign)),
         ("☽", "ЛУНА", _sign_ru(moon_sign)),
-        ("↑", "ВОСХОД", _sign_ru(asc_sign)),
     ]
+    if asc_sign:
+        points.append(("↑", "ВОСХОД", _sign_ru(asc_sign)))
     return _page(
         1,
         '<div class="mark">✦</div><h1>Натальная карта</h1>'
@@ -821,15 +827,16 @@ def _key_points_page(
                 _planet_fallback("moon", planets.get("moon", {"sign": moon_sign})),
             ),
         ),
-        (
+    ]
+    if asc_sign:
+        data.append((
             "asc",
             "↑",
             "ВОСХОД",
             asc_sign,
             "«Как меня видят»",
             f"Восходящий знак {_sign_ru(asc_sign)} показывает первое впечатление, стиль реакции и внешний ритм.",
-        ),
-    ]
+        ))
     body = _section_header("Ключевые точки", "Три центра, через которые читается ваша карта")
     body += (
         '<div class="cards-3">'
@@ -1034,7 +1041,9 @@ def _planet_section(
         desc = _full_description(planet_desc.get(name), _planet_fallback(name, planet))
         sign = planet.get("sign_ru") or planet.get("sign")
         retro = '<span class="retro">℞ РЕТРО</span>' if planet.get("retrograde") else ""
-        meta = f"{_roman(int(planet.get('house') or 0))} дом · {_deg_str(planet.get('sign_degree', planet.get('degree', 0)))}"
+        degree_meta = _deg_str(planet.get("sign_degree", planet.get("degree", 0)))
+        house = planet.get("house")
+        meta = f"{_roman(int(house))} дом · {degree_meta}" if house else degree_meta
         icon = f'<span style="color:{PLANET_COLORS.get(name, GOLD)}">{PLANET_SYMBOLS.get(name, "")}</span>'
         for chunk_index, text_chunk in enumerate(_split_words(desc, 520) or [desc]):
             continuation_cls = " continuation" if chunk_index else ""
@@ -1130,7 +1139,7 @@ def _aspect_section(aspects: list[dict[str, Any]], descriptions: dict[str, Any] 
     neutral = max(total - harm - chall, 0)
     metric_html = (
         '<div class="metrics">'
-        f'<div class="metric"><strong>{total}</strong><span>Всего</span></div>'
+        f'<div class="metric"><strong>{total}</strong><span>Выбранных</span></div>'
         f'<div class="metric" style="--metric-color:#1fa37c"><strong>{harm}</strong><span>Гармоничных</span></div>'
         f'<div class="metric" style="--metric-color:#f0673c"><strong>{chall}</strong><span>Напряжённых</span></div>'
         f'<div class="metric" style="--metric-color:{TEXT_DIM}"><strong>{neutral}</strong><span>Нейтральных</span></div>'
@@ -1140,7 +1149,7 @@ def _aspect_section(aspects: list[dict[str, Any]], descriptions: dict[str, Any] 
         empty = _SectionItem(
             '<article class="card detail-card"><h3>Основных аспектов не найдено</h3>'
             '<div class="mini-rule"></div>'
-            "<p>В карте нет основных аспектов из текущего набора расчёта. Остальные разделы отчёта можно читать как главные акценты натальной карты: планеты, знаки и дома покажут основной рисунок характера.</p></article>"
+            "<p>В карте нет основных аспектов из текущего набора расчёта. Остальные разделы можно читать как символические акценты положений планет и знаков.</p></article>"
         )
         return _Section(
             "Аспекты", "Связи между планетами вашей карты", [empty], prefix_html=metric_html
@@ -1266,7 +1275,7 @@ def _render_reading_pages(
     return pages
 
 
-def _final_page(page: int) -> str:
+def _final_page(page: int, *, include_houses: bool = True) -> str:
     glyph_map = {
         "Планета": "☉",
         "Знак зодиака": "♈",
@@ -1284,7 +1293,11 @@ def _final_page(page: int) -> str:
         '<div class="glossary-title">Краткий справочник</div>'
         '<div class="glossary-grid">'
     )
-    for term, definition in GLOSSARY:
+    glossary = [
+        item for item in GLOSSARY
+        if include_houses or item[0] not in {"Дом", "Асцендент"}
+    ]
+    for term, definition in glossary:
         glyph = glyph_map.get(term, "✦")
         body += (
             '<article class="glossary-card">'
@@ -1389,7 +1402,7 @@ def _assemble_natal_html(
         _cover_page(user_name, birth_date, birth_time, birth_city, sun_sign, moon_sign, asc_sign),
         _content_page(
             planets_page=planets_page,
-            houses_page=houses_start,
+            houses_page=houses_start if houses else None,
             aspects_page=aspects_start,
             reading_page=reading_start,
         ),
@@ -1401,7 +1414,7 @@ def _assemble_natal_html(
         *aspect_pages,
         *_render_reading_pages(reading_split, start_page=reading_start),
     ]
-    pages.append(_final_page(len(pages) + 1))
+    pages.append(_final_page(len(pages) + 1, include_houses=bool(houses)))
     body = "".join(pages).replace(TOTAL_PAGES_TOKEN, str(len(pages)))
     return f"<!doctype html><html><head><meta charset='utf-8'><style>{_css()}</style></head><body>{body}</body></html>"
 
@@ -1438,7 +1451,11 @@ def build_natal_pdf_html(
         descriptions=descriptions,
         wheel_svg=wheel_svg,
         planet_split=_pack_section_by_words(_planet_section(planets, descriptions)),
-        house_split=_pack_section_by_words(_houses_section(houses, descriptions)),
+        house_split=(
+            _pack_section_by_words(_houses_section(houses, descriptions))
+            if houses
+            else []
+        ),
         aspect_split=_pack_section_by_words(_aspect_section(aspects, descriptions)),
         reading_split=_pack_reading_by_words(reading_blocks),
     )
@@ -1625,7 +1642,11 @@ async def generate_natal_pdf_html(
                             s_idx, _mid = key.split(":")
                             per_section[int(s_idx)].append(float(h))
                         planet_split = _pack_section_by_heights(planet_sec, per_section[0])
-                        house_split = _pack_section_by_heights(house_sec, per_section[1])
+                        house_split = (
+                            _pack_section_by_heights(house_sec, per_section[1])
+                            if houses
+                            else []
+                        )
                         aspect_split = _pack_section_by_heights(aspect_sec, per_section[2])
 
                         await page.set_content(
@@ -1649,7 +1670,7 @@ async def generate_natal_pdf_html(
                     except Exception as me:  # noqa: BLE001
                         log.warning("natal.pdf_measure_failed_fallback", error=str(me))
                         planet_split = _pack_section_by_words(planet_sec)
-                        house_split = _pack_section_by_words(house_sec)
+                        house_split = _pack_section_by_words(house_sec) if houses else []
                         aspect_split = _pack_section_by_words(aspect_sec)
                         reading_split = _pack_reading_by_words(reading_blocks)
 

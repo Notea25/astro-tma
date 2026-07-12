@@ -2,7 +2,7 @@
  * Full synastry report — the celestial-styled equivalent of geocult's layout.
  *
  *   1. Pair summary (LLM-generated, single short paragraph)
- *   2. Sphere bars (love / communication / trust / passion / overall)
+ *   2. Exact cross-chart aspects without synthetic percentages
  *   3. Bi-wheel chart (SynastryBiWheel)
  *   4. Two planet tables (one per partner)
  *   5. Per-aspect interpretations grouped by planet, with aspect glyph + orb
@@ -60,14 +60,6 @@ const PLANET_ORDER = [
   "pluto",
 ];
 
-const SPHERE_LABELS: { key: keyof SynastryResult["scores"]; label: string }[] = [
-  { key: "overall", label: "Общая" },
-  { key: "love", label: "Любовь" },
-  { key: "communication", label: "Общение" },
-  { key: "trust", label: "Доверие" },
-  { key: "passion", label: "Страсть" },
-];
-
 interface Props {
   result: SynastryResult;
 }
@@ -87,23 +79,9 @@ export function SynastryReport({ result }: Props) {
           {result.partner_name ?? "—"}
         </div>
 
-        {/* Sphere bars */}
-        <div className="energy-bars">
-          {SPHERE_LABELS.map(({ key, label }) => (
-            <div key={key} className="energy-row">
-              <span className="energy-label">{label}</span>
-              <div className="energy-track">
-                <motion.div
-                  className="energy-fill"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${result.scores[key]}%` }}
-                  transition={{ duration: 0.8, ease: "easeOut", delay: 0.1 }}
-                />
-              </div>
-              <span className="energy-val">{result.scores[key]}%</span>
-            </div>
-          ))}
-        </div>
+        <p className="syn-summary__text">
+          Разбор основан на точных аспектах пары без условных процентов совместимости.
+        </p>
       </div>
 
       {/* ── Pair summary ── */}

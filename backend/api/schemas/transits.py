@@ -21,13 +21,6 @@ class TransitAspect(BaseModel):
     category: TransitCategory = "neutral"
 
 
-class EnergyScores(BaseModel):
-    love: int
-    career: int
-    health: int
-    luck: int
-
-
 class SkyPosition(BaseModel):
     sign: str
     sign_ru: str
@@ -47,7 +40,6 @@ class RetrogradeInfo(BaseModel):
 class TransitsResponse(BaseModel):
     date: date
     aspects: list[TransitAspect]
-    energy: EnergyScores
     sky: dict[str, SkyPosition]
     retrogrades: list[RetrogradeInfo] = []
 

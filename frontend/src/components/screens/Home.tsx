@@ -1,7 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { EnergyBars } from "@/components/ui/EnergyBars";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { HoroscopeSkeleton, MoonCardSkeleton } from "@/components/ui/Skeleton";
 import { MeaningText } from "@/components/ui/MeaningText";
@@ -467,7 +466,6 @@ export function Home() {
             >
               {horoscopeExpanded ? "Свернуть ↑" : "Читать дальше ↓"}
             </button>
-            {horoscope?.energy && <EnergyBars scores={horoscope.energy} />}
             <div className="power-emoji-row">
               <span
                 className="power-emoji-row__icon"
@@ -667,7 +665,7 @@ export function Home() {
               </div>
               <div className="home-tile__title">Матрица судьбы</div>
               <div className="home-tile__desc">
-                15 разделов по дате рождения
+                20 разделов по дате рождения
               </div>
               <div className="home-tile__arrow" aria-hidden="true">
                 ›

@@ -55,7 +55,7 @@ function fromSignDegree(signDegree: number): { degree: number; minute: number } 
 function makePlanet(data: {
   sign: string
   sign_degree: number
-  house: number
+  house: number | null
   retrograde: boolean
 }): PlanetPosition {
   const { degree, minute } = fromSignDegree(data.sign_degree)
@@ -143,7 +143,7 @@ export function toNatalChartData(
   return {
     name: undefined,
     birthDate: summary.birth_date?.split('T')[0] ?? '2000-01-01',
-    birthTime: summary.birth_time ?? '12:00',
+    birthTime: summary.birth_time ?? '—',
     birthLocation: {
       city: summary.birth_city ?? '',
       country: '',

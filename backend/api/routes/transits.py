@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.middleware.telegram_auth import get_tg_user
 from api.schemas.transits import (
-    EnergyScores,
     PeriodEvent,
     PeriodEventsResponse,
     RetrogradeInfo,
@@ -27,11 +26,11 @@ from services.astro.transit_interpreter import (
     get_transit_details,
 )
 from services.astro.transits import (
-    build_energy_scores,
     calculate_period_events,
     calculate_transits,
     get_current_sky,
 )
+from services.content_version import CONTENT_VERSION
 from services.users import repository as user_repo
 
 log = get_logger(__name__)
@@ -110,7 +109,7 @@ _TRANSITS_PARTIAL_TTL = 60  # 1 min — when LLM is still generating in backgrou
 
 
 def _key(user_id: int, d: str) -> str:
-    return f"transits:{user_id}:{d}"
+    return f"transits:{CONTENT_VERSION}:{user_id}:{d}"
 
 
 def _normalize_sign(raw: str) -> str:
@@ -129,7 +128,6 @@ async def _build_response(
     *,
     cache_key_to_invalidate: str | None = None,
 ) -> tuple[TransitsResponse, int]:
-    scores = build_energy_scores(raw_transits, sign)
     sky_raw = get_current_sky()
 
     # Per-pair interpretations — cached in transit_interpretations by
@@ -198,7 +196,6 @@ async def _build_response(
         TransitsResponse(
             date=response_date or date.today(),
             aspects=aspects,
-            energy=EnergyScores(**scores),
             sky=sky,
             retrogrades=retrogrades,
         ),
