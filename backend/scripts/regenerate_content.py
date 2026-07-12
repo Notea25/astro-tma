@@ -43,8 +43,8 @@ from db.models import (
 )
 from services.astro.llm_interpreter import (
     generate_natal_mini_reading,
-    generate_natal_reading,
 )
+from services.astro.natal_report import generate_natal_report
 from services.content_version import CONTENT_VERSION
 from services.destiny_matrix.interpreter import generate_interpretation
 from services.destiny_matrix.v3_interpreter import (
@@ -54,7 +54,7 @@ from services.destiny_matrix.v3_interpreter import (
 from services.tarot.interpreter import generate_spread_interpretation, is_supported_spread
 
 TOKEN_ESTIMATES = {
-    "natal": 25_200,
+    "natal": 13_000,
     "transit": 900,
     "synastry": 900,
     "synastry_summary": 900,
@@ -206,14 +206,15 @@ async def regenerate_natal(session: Any) -> int:
         }
         asc = chart.ascendant_sign if user.birth_time_known else None
         gender = user.gender.value if user.gender else None
-        reading = await generate_natal_reading(
-            chart.sun_sign,
-            chart.moon_sign,
-            asc,
-            planets,
-            (data.get("aspects") or [])[:10],
-            settings.LLM_API_KEY,
-            gender,
+        report = await generate_natal_report(
+            sun_sign=chart.sun_sign,
+            moon_sign=chart.moon_sign,
+            ascendant_sign=asc,
+            planets=planets,
+            houses=data.get("houses") or [],
+            aspects=data.get("aspects") or [],
+            api_key=settings.LLM_API_KEY,
+            gender=gender,
             nodes=data.get("nodes"),
         )
         mini = await generate_natal_mini_reading(
@@ -223,16 +224,28 @@ async def regenerate_natal(session: Any) -> int:
             key_natal(user.id),
             {
                 **payload,
-                "reading": reading,
+                "reading": report.text,
                 "mini_reading": mini,
                 "reading_gender": gender,
                 "mini_reading_gender": gender,
-                "reading_version": 3,
+                "reading_version": 4,
+                "reading_status": report.status,
+                "reading_payload": report.payload,
+                "reading_input_hash": report.input_hash,
+                "reading_content_version": CONTENT_VERSION,
                 "mini_reading_version": 2,
                 "content_version": CONTENT_VERSION,
             },
             settings.CACHE_TTL_NATAL,
         )
+        chart.reading_text = report.text
+        chart.reading_gender = gender
+        chart.reading_version = 4
+        chart.reading_status = report.status
+        chart.reading_payload = report.payload
+        chart.reading_input_hash = report.input_hash
+        chart.reading_content_version = CONTENT_VERSION
+        await session.commit()
         done += 1
         print(f"natal {done}/{len(rows)} user={user.id}")
     return done

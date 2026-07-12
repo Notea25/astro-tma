@@ -494,50 +494,59 @@ def test_validated_fallback_is_ready_even_when_legacy_cache_has_no_status():
 
 
 @pytest.mark.asyncio
-async def test_legacy_redis_fallback_is_migrated_to_postgres(monkeypatch):
+async def test_legacy_redis_fallback_is_not_promoted_without_structured_payload(monkeypatch):
     from api.routes import natal
     from services.astro.fact_context import safe_natal_fallback
 
     fallback = safe_natal_fallback("Рыбы", "Дева")
     chart = SimpleNamespace(
+        sun_sign="Рыбы",
+        moon_sign="Дева",
+        ascendant_sign=None,
+        chart_data={"planets": {}, "houses": [], "aspects": [], "nodes": {}},
         reading_text=None,
         reading_gender=None,
         reading_version=None,
         reading_status=None,
+        reading_payload=None,
+        reading_input_hash=None,
+        reading_content_version=None,
     )
-    user = SimpleNamespace(id=1001, gender=None, natal_chart=chart)
+    user = SimpleNamespace(
+        id=1001, gender=None, natal_chart=chart, birth_time_known=False
+    )
     db = _CommitDB()
+    expected_hash = natal._current_report_input_hash(user)
 
     async def fake_cache_get(_key):
         return {
             "reading": fallback,
             "reading_gender": None,
             "reading_version": natal.NATAL_READING_VERSION,
+            "reading_status": natal.READING_STATUS_FALLBACK,
+            "reading_input_hash": expected_hash,
+            "reading_content_version": natal.CONTENT_VERSION,
         }
 
     monkeypatch.setattr(natal, "cache_get", fake_cache_get)
 
-    assert await natal._get_ready_pdf_reading(db, user) == fallback
-    assert chart.reading_text == fallback
-    assert chart.reading_status == natal.READING_STATUS_FALLBACK
-    assert db.commits == 1
+    assert await natal._get_ready_pdf_reading(db, user) is None
+    assert chart.reading_text is None
+    assert db.commits == 0
 
 
 @pytest.mark.asyncio
-async def test_generate_natal_reading_uses_expanded_token_budget(monkeypatch):
-    planets, _houses, aspects = _sample_chart()
+async def test_generate_natal_reading_delegates_to_structured_report(monkeypatch):
+    from services.astro import natal_report
+
+    planets, houses, aspects = _sample_chart()
     calls = {}
 
-    class FakeMessages:
-        async def create(self, **kwargs):
-            calls.update(kwargs)
-            return SimpleNamespace(content=[SimpleNamespace(text="Развёрнутое чтение.")])
+    async def fake_report(**kwargs):
+        calls.update(kwargs)
+        return SimpleNamespace(text="Развёрнутое чтение.")
 
-    def fake_client(api_key):
-        calls["api_key"] = api_key
-        return SimpleNamespace(messages=FakeMessages())
-
-    monkeypatch.setattr(llm_interpreter, "create_llm_client", fake_client)
+    monkeypatch.setattr(natal_report, "generate_natal_report", fake_report)
 
     reading = await llm_interpreter.generate_natal_reading(
         sun_sign="Scorpio",
@@ -546,11 +555,12 @@ async def test_generate_natal_reading_uses_expanded_token_budget(monkeypatch):
         planets=planets,
         aspects=aspects,
         api_key="test-key",
+        houses=houses,
     )
 
     assert reading == "Развёрнутое чтение."
     assert calls["api_key"] == "test-key"
-    assert calls["max_tokens"] >= 6000
+    assert calls["houses"] == houses
 
 
 def test_planet_description_prompt_prioritises_sign_over_house():
@@ -1156,7 +1166,7 @@ async def test_repair_keeps_good_text_does_not_downgrade(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_get_or_generate_descriptions_regenerates_stale_cached_text(monkeypatch):
+async def test_get_or_generate_descriptions_is_read_only(monkeypatch):
     from api.routes import natal
 
     chart = SimpleNamespace(
@@ -1168,28 +1178,12 @@ async def test_get_or_generate_descriptions_regenerates_stale_cached_text(monkey
         }
     )
     user = SimpleNamespace(id=1001, natal_chart=chart, gender=None)
-    db = SimpleNamespace(committed=False)
-
-    async def fake_commit():
-        db.committed = True
-
-    async def fake_generate_natal_descriptions(**_kwargs):
-        return {
-            "planets": {"sun": {"full": "Новый полный справочный текст."}},
-            "houses": {},
-            "aspects": [],
-        }
-
-    db.commit = fake_commit
-    monkeypatch.setattr(natal.settings, "LLM_API_KEY", "test-key")
-    monkeypatch.setattr(natal, "generate_natal_descriptions", fake_generate_natal_descriptions)
+    db = SimpleNamespace()
 
     descriptions = await natal._get_or_generate_descriptions(db, user)
 
-    assert descriptions["planets"]["sun"]["full"] == "Новый полный справочный текст."
-    assert descriptions["_version"] == natal.NATAL_DESCRIPTIONS_VERSION
-    assert chart.chart_data["descriptions"] == descriptions
-    assert db.committed is True
+    assert descriptions == natal._empty_descriptions()
+    assert chart.chart_data["descriptions"]["planets"]["sun"]["full"] == "Старый короткий текст."
 
 
 @pytest.mark.asyncio
@@ -1212,26 +1206,11 @@ async def test_get_or_generate_descriptions_rejects_shifted_house_keys(monkeypat
         }
     )
     user = SimpleNamespace(id=1001, natal_chart=chart, gender=None)
-    db = SimpleNamespace(committed=False)
-
-    async def fake_commit():
-        db.committed = True
-
-    async def fake_generate_natal_descriptions(**_kwargs):
-        return {
-            "planets": {"sun": {"full": "Новый корректный текст."}},
-            "houses": {},
-            "aspects": [],
-        }
-
-    db.commit = fake_commit
-    monkeypatch.setattr(natal.settings, "LLM_API_KEY", "test-key")
-    monkeypatch.setattr(natal, "generate_natal_descriptions", fake_generate_natal_descriptions)
+    db = SimpleNamespace()
 
     descriptions = await natal._get_or_generate_descriptions(db, user)
 
-    assert descriptions["planets"]["sun"]["full"] == "Новый корректный текст."
-    assert db.committed is True
+    assert descriptions == natal._empty_descriptions()
 
 
 def test_stored_descriptions_rejects_shifted_house_keys():
@@ -1257,7 +1236,7 @@ def test_stored_descriptions_rejects_shifted_house_keys():
 
 
 @pytest.mark.asyncio
-async def test_get_natal_full_refreshes_short_cached_reading(monkeypatch):
+async def test_get_natal_full_does_not_generate_when_cache_is_stale(monkeypatch):
     from api.routes import natal
 
     chart = SimpleNamespace(
@@ -1271,7 +1250,6 @@ async def test_get_natal_full_refreshes_short_cached_reading(monkeypatch):
     )
     user = SimpleNamespace(id=1001, natal_chart=chart, gender=None)
     cached = {"reading": "**Ядро личности**\nКоротко.", "planets": chart.chart_data["planets"]}
-    refreshed_text = _expanded_reading()
     calls = {}
 
     async def fake_get_by_id(_db, user_id):
@@ -1289,10 +1267,6 @@ async def test_get_natal_full_refreshes_short_cached_reading(monkeypatch):
     async def fake_cache_set(key, value, ttl):
         calls["cache_set"] = (key, value, ttl)
 
-    async def fake_generate_natal_reading(**kwargs):
-        calls["reading_kwargs"] = kwargs
-        return refreshed_text
-
     async def fake_interpretations(*_args, **_kwargs):
         return []
 
@@ -1301,17 +1275,14 @@ async def test_get_natal_full_refreshes_short_cached_reading(monkeypatch):
     monkeypatch.setattr(natal.user_repo, "has_purchased", fake_true)
     monkeypatch.setattr(natal, "cache_get", fake_cache_get)
     monkeypatch.setattr(natal, "cache_set", fake_cache_set)
-    monkeypatch.setattr(natal.settings, "LLM_API_KEY", "test-key")
-    monkeypatch.setattr(natal, "generate_natal_reading", fake_generate_natal_reading)
     monkeypatch.setattr(natal, "_load_db_interpretations", fake_interpretations)
 
     result = await natal.get_natal_full(tg_user={"id": 1001}, db=_CommitDB())
 
-    assert result["reading"] == refreshed_text
+    assert result["reading"] is None
     assert result["planets"] == chart.chart_data["planets"]
-    assert calls["reading_kwargs"]["aspects"] == chart.chart_data["aspects"]
     assert calls["cache_set"][0] == "natal:2026-07-safety-v1:1001"
-    assert calls["cache_set"][1]["reading"] == refreshed_text
+    assert calls["cache_set"][1]["reading"] is None
     assert calls["cache_set"][1]["reading_version"] == natal.NATAL_READING_VERSION
 
 
@@ -1465,10 +1436,6 @@ async def test_build_natal_pdf_response_blocks_until_full_copy_ready(monkeypatch
     calls = {}
     full_descriptions = {"planets": {"sun": {"short": "s", "full": "f"}}}
 
-    async def fake_descriptions(_db, _user):
-        calls["descriptions_called"] = True
-        return full_descriptions
-
     async def fake_reading(_db, _user, _chart, _planets, _aspects):
         calls["reading_called"] = True
         return "Полный персональный разбор."
@@ -1484,7 +1451,7 @@ async def test_build_natal_pdf_response_blocks_until_full_copy_ready(monkeypatch
     async def fake_generate_natal_pdf_html(**_kwargs):
         raise RuntimeError("chromium unavailable")
 
-    monkeypatch.setattr(natal, "_get_or_generate_descriptions", fake_descriptions)
+    monkeypatch.setattr(natal, "_get_stored_descriptions", lambda _user: full_descriptions)
     monkeypatch.setattr(natal, "_get_or_generate_pdf_reading", fake_reading)
     monkeypatch.setattr(natal, "cache_get", fake_cache_get)
     monkeypatch.setattr(natal_pdf_html, "generate_natal_pdf_html", fake_generate_natal_pdf_html)
@@ -1493,7 +1460,6 @@ async def test_build_natal_pdf_response_blocks_until_full_copy_ready(monkeypatch
     response = await natal._build_natal_pdf_response(db=_CommitDB(), user=user)
 
     assert response.body == b"%PDF-full"
-    assert calls["descriptions_called"] is True
     assert calls["reading_called"] is True
     assert calls["pdf_kwargs"]["descriptions"] == full_descriptions
     assert calls["pdf_kwargs"]["reading"] == "Полный персональный разбор."
@@ -1625,12 +1591,17 @@ async def test_pdf_reading_is_generated_when_full_chart_cache_is_cold(monkeypatc
 
     async def fake_reading(**kwargs):
         calls["reading_kwargs"] = kwargs
-        return _expanded_reading()
+        return SimpleNamespace(
+            text=_expanded_reading(),
+            status=natal.READING_STATUS_FULL,
+            payload={"schema_version": 1},
+            input_hash="a" * 64,
+        )
 
     monkeypatch.setattr(natal, "cache_get", fake_cache_get)
     monkeypatch.setattr(natal, "cache_set", fake_cache_set)
     monkeypatch.setattr(natal.settings, "LLM_API_KEY", "test-key")
-    monkeypatch.setattr(natal, "generate_natal_reading", fake_reading)
+    monkeypatch.setattr(natal, "generate_natal_report", fake_reading)
 
     db = _CommitDB()
     reading = await natal._get_or_generate_pdf_reading(
@@ -1683,7 +1654,7 @@ async def test_start_pdf_fast_path_returns_ready_without_enqueue(monkeypatch):
         raise AssertionError("fast-path must not enqueue")
 
     monkeypatch.setattr(natal, "_get_pdf_user_or_error", fake_user)
-    monkeypatch.setattr(natal, "_get_stored_descriptions", lambda u: {"planets": {"sun": {}}})
+    monkeypatch.setattr(natal, "_current_structured_report", lambda u: {"schema_version": 1})
     monkeypatch.setattr(natal, "_get_ready_pdf_reading", fake_ready_reading)
     monkeypatch.setattr(natal, "cache_set", fake_cache_set)
     monkeypatch.setattr("services.arq_pool.get_arq_pool", fail_enqueue)
@@ -1857,79 +1828,3 @@ def test_compact_planet_not_sent_to_repair():
 
 
 # ── Layer 3: финальный synthesis — обрыв → один повтор ─────────────────
-
-
-@pytest.mark.asyncio
-async def test_reading_retries_on_truncation(monkeypatch):
-    """Обрыв на полуслове (stop_reason=max_tokens) → повтор с большим лимитом."""
-    planets, _houses, aspects = _sample_chart()
-    seq = [
-        # 1-й вызов: текст оборван на полуслове + stop_reason max_tokens
-        SimpleNamespace(
-            content=[SimpleNamespace(text="Главное противоречие вашей карты — вы строите карь")],
-            stop_reason="max_tokens",
-        ),
-        # 2-й вызов (retry): полноценный завершённый текст
-        SimpleNamespace(
-            content=[
-                SimpleNamespace(text=" ".join(f"слово{i}" for i in range(200)) + " финал завершён.")
-            ],
-            stop_reason="end_turn",
-        ),
-    ]
-    seen = []
-
-    class FakeMessages:
-        async def create(self, **kwargs):
-            seen.append(kwargs["max_tokens"])
-            return seq[len(seen) - 1]
-
-    monkeypatch.setattr(
-        llm_interpreter,
-        "create_llm_client",
-        lambda _api_key: SimpleNamespace(messages=FakeMessages()),
-    )
-
-    reading = await llm_interpreter.generate_natal_reading(
-        sun_sign="Scorpio",
-        moon_sign="Aquarius",
-        ascendant_sign="Aries",
-        planets=planets,
-        aspects=aspects,
-        api_key="k",
-    )
-
-    assert len(seen) == 2, "должен быть ровно один повтор"
-    assert seen[1] > seen[0], "повтор с увеличенным лимитом токенов"
-    assert reading.endswith("завершён.")
-
-
-@pytest.mark.asyncio
-async def test_reading_no_retry_when_complete(monkeypatch):
-    """Полноценный завершённый разбор → ровно один вызов, без лишнего повтора."""
-    planets, _houses, aspects = _sample_chart()
-    full = " ".join(f"слово{i}" for i in range(300)) + " финал."
-    seen = []
-
-    class FakeMessages:
-        async def create(self, **kwargs):
-            seen.append(kwargs["max_tokens"])
-            return SimpleNamespace(content=[SimpleNamespace(text=full)], stop_reason="end_turn")
-
-    monkeypatch.setattr(
-        llm_interpreter,
-        "create_llm_client",
-        lambda _api_key: SimpleNamespace(messages=FakeMessages()),
-    )
-
-    reading = await llm_interpreter.generate_natal_reading(
-        sun_sign="Scorpio",
-        moon_sign="Aquarius",
-        ascendant_sign="Aries",
-        planets=planets,
-        aspects=aspects,
-        api_key="k",
-    )
-
-    assert len(seen) == 1, "завершённый текст не должен вызывать повтор"
-    assert reading == full

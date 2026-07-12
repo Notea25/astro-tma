@@ -152,7 +152,10 @@ class NatalChart(TimestampMixin, Base):
     reading_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     reading_gender: Mapped[str | None] = mapped_column(String(16), nullable=True)
     reading_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    reading_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    reading_status: Mapped[str | None] = mapped_column(String(24), nullable=True)
+    reading_payload: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    reading_input_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    reading_content_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
     user: Mapped["User"] = relationship(back_populates="natal_chart")
 
 

@@ -188,8 +188,6 @@ async def get_my_reports(
     each product. No LLM calls — pure DB reads, cheap enough to refresh
     on every Profile tap.
     """
-    from core.cache import cache_get
-
     user_id = tg_user["id"]
     user = await user_repo.get_by_id(db, user_id)
     if not user:
@@ -210,18 +208,16 @@ async def get_my_reports(
     if user.natal_chart:
         natal_block["sun_sign"] = user.natal_chart.sun_sign
         natal_block["moon_sign"] = user.natal_chart.moon_sign
-        # Cached reading in Redis OR persisted descriptions on the chart row
-        # both count as «something to show».
-        cached = await cache_get(key_natal(user_id))
-        cached_reading = (
-            isinstance(cached, dict) and bool((cached.get("reading") or "").strip())
+        # PostgreSQL is the source of truth. Redis eviction and legacy
+        # per-item descriptions must not change whether the report exists.
+        natal_block["has_content"] = bool(
+            (user.natal_chart.reading_text or "").strip()
+            and user.natal_chart.reading_status in {
+                "ready",
+                "ready_with_fallback",
+                "full",  # readable legacy report while a new version is pending
+            }
         )
-        chart_data = user.natal_chart.chart_data or {}
-        desc = chart_data.get("descriptions") or {}
-        has_desc = isinstance(desc, dict) and (
-            bool(desc.get("planets")) or bool(desc.get("houses")) or bool(desc.get("aspects"))
-        )
-        natal_block["has_content"] = cached_reading or has_desc
 
     # ── Destiny Matrix V3 ───────────────────────────────────
     from db.models import DestinyInterpretationV3, SynastryRequest, SynastryRequestStatus

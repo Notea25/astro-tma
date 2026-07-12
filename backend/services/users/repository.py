@@ -114,6 +114,9 @@ async def save_natal_chart(
         chart.reading_gender = None
         chart.reading_version = None
         chart.reading_status = None
+        chart.reading_payload = None
+        chart.reading_input_hash = None
+        chart.reading_content_version = None
     else:
         chart = NatalChart(
             user_id=user_id,

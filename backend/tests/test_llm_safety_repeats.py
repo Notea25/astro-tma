@@ -14,7 +14,7 @@ from typing import Any
 
 import pytest
 
-from services.astro import llm_interpreter, synastry_interpreter, transit_interpreter
+from services.astro import synastry_interpreter, transit_interpreter
 from services.destiny_matrix import interpreter as matrix_interpreter
 from services.destiny_matrix.calculator import calculate_matrix
 from services.tarot import interpreter as tarot_interpreter
@@ -83,39 +83,6 @@ def _tarot_payload(cards: list[dict[str, Any]], *, wrong: bool) -> dict[str, Any
         "positions": positions,
         "summary": "Расклад оставляет пространство для самостоятельного размышления.",
     }
-
-
-@pytest.mark.asyncio
-async def test_three_natal_generations_retry_fact_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    safe = _long_safe_natal()
-    invalid = safe + " У вас диабет."
-    messages = _QueuedMessages(
-        [response for _ in range(3) for response in (_text_message(invalid), _text_message(safe))]
-    )
-    monkeypatch.setattr(
-        llm_interpreter,
-        "create_llm_client",
-        lambda _api_key: SimpleNamespace(messages=messages),
-    )
-
-    for _ in range(3):
-        result = await llm_interpreter.generate_natal_reading(
-            sun_sign="Рыбы",
-            moon_sign="Дева",
-            ascendant_sign=None,
-            planets={
-                "sun": {"sign": "Pisces", "sign_ru": "Рыбы", "house": None},
-                "moon": {"sign": "Virgo", "sign_ru": "Дева", "house": None},
-            },
-            aspects=[],
-            api_key="test-key",
-        )
-        assert result == safe
-    assert len(messages.calls) == 6
-    assert all(
-        "medical_diagnosis" in call["messages"][0]["content"]
-        for call in messages.calls[1::2]
-    )
 
 
 @pytest.mark.asyncio
@@ -215,22 +182,6 @@ async def test_all_domains_use_safe_fallback_after_second_invalid_response(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     unsafe_text = _long_safe_natal() + " У вас диабет."
-
-    natal_messages = _QueuedMessages([_text_message(unsafe_text), _text_message(unsafe_text)])
-    monkeypatch.setattr(
-        llm_interpreter,
-        "create_llm_client",
-        lambda _api_key: SimpleNamespace(messages=natal_messages),
-    )
-    natal = await llm_interpreter.generate_natal_reading(
-        "Рыбы",
-        "Дева",
-        None,
-        {"sun": {"sign": "Pisces", "house": None}},
-        [],
-        "test-key",
-    )
-    assert "медицинский" in natal and "диабет" not in natal
 
     import services.llm_client as llm_client
 

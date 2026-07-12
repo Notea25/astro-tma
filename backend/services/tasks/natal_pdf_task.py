@@ -44,7 +44,6 @@ async def generate_natal_pdf_task(ctx: dict, user_id: int, job_id: str) -> dict:
     # Imported here (not at module top) to avoid importing the FastAPI route
     # layer at worker startup before settings/logging are wired.
     from api.routes.natal import (
-        _get_or_generate_descriptions,
         _get_or_generate_pdf_reading,
         _natal_pdf_filename,
     )
@@ -63,9 +62,8 @@ async def generate_natal_pdf_task(ctx: dict, user_id: int, job_id: str) -> dict:
             planets = chart.chart_data.get("planets", {})
             aspects = chart.chart_data.get("aspects", [])
 
-            # Both short-circuit on a warm cache; otherwise hit the LLM (rate-
-            # limited by the global token bucket).
-            await _get_or_generate_descriptions(db, user)
+            # One canonical report owns all core/planet/house/aspect copy.
+            # The four structured groups run in parallel inside this call.
             reading = await _get_or_generate_pdf_reading(
                 db, user, chart, planets, aspects
             )

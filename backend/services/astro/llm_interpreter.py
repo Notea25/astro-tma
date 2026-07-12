@@ -207,103 +207,23 @@ async def generate_natal_reading(
     api_key: str,
     gender: str | None = None,
     nodes: dict | None = None,
+    houses: list[dict] | None = None,
 ) -> str:
-    """
-    Call the configured LLM to generate a natal chart reading in Russian.
-    Raises on API error — caller should catch and handle gracefully.
+    """Compatibility wrapper around the canonical structured report."""
+    from services.astro.natal_report import generate_natal_report
 
-    ``gender`` ('male' / 'female' / None) anchors the grammatical forms in
-    the generated text. Caller is responsible for storing the value next
-    to the cached reading so future requests can detect a stale gender.
-    """
-    from services.astro.fact_context import (
-        FactContext,
-        safe_natal_fallback,
-        validate_generated_text,
-    )
-    from services.llm_pool import llm_semaphore
-    from services.quality_validator import Severity, TextValidator, ValidationContext
-    from services.rate_limiter import LLMLimiter
-
-    prompt = _build_prompt(
-        sun_sign, moon_sign, ascendant_sign, planets, aspects, gender, nodes=nodes
-    )
-
-    client = create_llm_client(api_key)
-    validator = TextValidator(use_spellchecker=False)
-    ctx = ValidationContext(section_kind="synthesis", subject="Натальный разбор")
-
-    async def _call(
-        max_tokens: int, request_prompt: str = prompt
-    ) -> tuple[str, str | None]:
-        # 9000 (было 7000): на 8-разделочном ~1200-1500-словном тексте 7k токенов
-        # упирались в потолок и обрывали последнюю секцию на полуслове («…строите карь»).
-        async with llm_semaphore, LLMLimiter(max_tokens):
-            message = await client.messages.create(
-                model=settings.LLM_MODEL,
-                max_tokens=max_tokens,
-                messages=[{"role": "user", "content": request_prompt}],
-            )
-        return first_text_block(message.content), getattr(message, "stop_reason", None)
-
-    text, stop_reason = await _call(9000)
-
-    # Финальный разбор обрезанным/коротким уходить не должен (Layer 3). Если
-    # модель упёрлась в лимит или валидатор увидел обрыв/критическую короткость —
-    # один повтор с увеличенным лимитом. Чаще всего хватает: обрыв был из-за
-    # max_tokens, а не из-за контента.
-    issues = validator.validate(text, ctx)
-    truncated = any(i.code == "TRUNCATED" for i in issues)
-    too_short = any(
-        i.code == "TOO_SHORT_CRITICAL" and i.severity == Severity.CRITICAL for i in issues
-    )
-    if stop_reason == "max_tokens" or truncated or too_short:
-        log.warning(
-            "llm_interpreter.synthesis_defect_retry",
-            chars=len(text),
-            stop_reason=stop_reason,
-            truncated=truncated,
-            too_short=too_short,
-        )
-        retry_text, retry_stop = await _call(12000)
-        retry_issues = validator.validate(retry_text, ctx)
-        retry_bad = any(i.code in ("TRUNCATED", "TOO_SHORT_CRITICAL") for i in retry_issues)
-        # Берём повтор, если он не хуже исходного (иначе оставляем что было).
-        if not retry_bad or retry_stop != "max_tokens":
-            text, stop_reason = retry_text, retry_stop
-
-    if not _has_lunar_nodes(nodes, planets):
-        text = _strip_lunar_nodes_block(text)
-
-    fact_context = FactContext.from_chart(
+    report = await generate_natal_report(
+        sun_sign=sun_sign,
+        moon_sign=moon_sign,
+        ascendant_sign=ascendant_sign,
         planets=planets,
+        houses=houses or [],
         aspects=aspects,
-        birth_time_known=ascendant_sign is not None,
+        api_key=api_key,
+        gender=gender,
+        nodes=nodes,
     )
-    fact_errors = validate_generated_text(text, fact_context)
-    if fact_errors:
-        correction = (
-            prompt
-            + "\n\nПРЕДЫДУЩИЙ ОТВЕТ ОТКЛОНЁН. Исправь все ошибки и верни весь текст заново:\n- "
-            + "\n- ".join(fact_errors)
-        )
-        log.warning("llm_interpreter.fact_retry", errors=fact_errors)
-        retry_text, retry_stop = await _call(9000, correction)
-        retry_errors = validate_generated_text(retry_text, fact_context)
-        if retry_errors:
-            log.error("llm_interpreter.fact_fallback", errors=retry_errors)
-            text = safe_natal_fallback(sun_sign, moon_sign)
-            stop_reason = "fact_validation_fallback"
-        else:
-            text, stop_reason = retry_text, retry_stop
-
-    from services.astro.text_polish import polish_natal_text
-    text, typo_fixes = polish_natal_text(text)
-    log.info(
-        "llm_interpreter.done",
-        chars=len(text), stop_reason=stop_reason, typo_fixes=typo_fixes,
-    )
-    return text
+    return report.text
 
 
 def _build_mini_prompt(

@@ -9,6 +9,7 @@
  */
 
 import { useCallback, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { natalApi } from "@/services/api";
 
 export type PdfDeliveryMode = "download" | "telegram";
@@ -26,6 +27,7 @@ const POLL_INTERVAL_MS = 1500;
 const POLL_MAX_ATTEMPTS = 160; // ~4 min — a slow free-tier run still completes
 
 export function usePdfGeneration(): UsePdfGenerationResult {
+  const queryClient = useQueryClient();
   const [phase, setPhase] = useState<PdfPhase>("idle");
   const [error, setError] = useState<string | null>(null);
   const inflight = useRef(false);
@@ -45,6 +47,13 @@ export function usePdfGeneration(): UsePdfGenerationResult {
     [],
   );
 
+  const refreshReportScreens = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["natal-full"] }),
+      queryClient.invalidateQueries({ queryKey: ["my-reports"] }),
+    ]);
+  }, [queryClient]);
+
   const start = useCallback(async (mode: PdfDeliveryMode = "download") => {
     if (inflight.current) return;
     inflight.current = true;
@@ -59,6 +68,7 @@ export function usePdfGeneration(): UsePdfGenerationResult {
 
       if (res.status === "ready" && res.download_token) {
         setPhase("ready");
+        await refreshReportScreens();
         await deliverReadyPdf(mode, res.download_token, res.filename ?? undefined);
         return;
       }
@@ -78,6 +88,7 @@ export function usePdfGeneration(): UsePdfGenerationResult {
           setPhase("processing");
         } else if (st.status === "ready" && st.download_token) {
           setPhase("ready");
+          await refreshReportScreens();
           await deliverReadyPdf(mode, st.download_token, st.filename ?? undefined);
           return;
         } else if (st.status === "failed") {
@@ -95,7 +106,7 @@ export function usePdfGeneration(): UsePdfGenerationResult {
     } finally {
       inflight.current = false;
     }
-  }, [deliverReadyPdf]);
+  }, [deliverReadyPdf, refreshReportScreens]);
 
   return {
     start,

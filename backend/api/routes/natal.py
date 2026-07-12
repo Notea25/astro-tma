@@ -35,16 +35,20 @@ from services.astro.aspect_policy import natal_or_synastry_orb_limit
 from services.astro.dominants import compute_dominants
 from services.astro.interpreter import get_natal_interpretation
 from services.astro.key_aspects import top_n_aspects
-from services.astro.llm_interpreter import (
-    generate_natal_mini_reading,
-    generate_natal_reading,
-)
-from services.astro.natal_descriptions import generate_natal_descriptions
+from services.astro.llm_interpreter import generate_natal_mini_reading
 from services.astro.natal_hero import (
     build_aspects_hero,
     build_elements_hero,
     build_houses_hero,
     build_planets_hero,
+)
+from services.astro.natal_report import (
+    NATAL_REPORT_SCHEMA_VERSION,
+    NatalReportPayload,
+    build_natal_report_input_hash,
+    generate_natal_report,
+    render_natal_core_text,
+    report_descriptions,
 )
 from services.content_version import CONTENT_VERSION
 from services.users import repository as user_repo
@@ -79,13 +83,13 @@ NATAL_DESCRIPTIONS_VERSION = 15
 # Bumped when the full PDF reading contract changes. v2 makes lunar nodes
 # binary: render a concrete nodes section only when positions exist; otherwise
 # omit the section instead of showing a paid-report apology/fallback.
-NATAL_READING_VERSION = 3
+NATAL_READING_VERSION = 4
 NATAL_MINI_VERSION = 2
 MIN_EXPANDED_READING_HEADINGS = 7
 MIN_EXPANDED_READING_WORDS = 1050
 NATAL_PDF_RENDER_VERSION = 1
-READING_STATUS_FULL = "full"
-READING_STATUS_FALLBACK = "fallback"
+READING_STATUS_FULL = "ready"
+READING_STATUS_FALLBACK = "ready_with_fallback"
 
 
 def _empty_descriptions() -> dict[str, Any]:
@@ -138,8 +142,14 @@ def _public_full_payload(user, payload: dict[str, Any]) -> dict[str, Any]:
     }
     if not _birth_time_known(user) and payload.get("reading_version") != NATAL_READING_VERSION:
         out["reading"] = None
-    # Internal persistence marker; not part of the frontend API contract.
-    out.pop("reading_status", None)
+    # Internal persistence markers; not part of the frontend API contract.
+    for internal_key in (
+        "reading_status",
+        "reading_payload",
+        "reading_input_hash",
+        "reading_content_version",
+    ):
+        out.pop(internal_key, None)
     return out
 
 
@@ -202,68 +212,14 @@ async def _get_or_generate_descriptions(
     db: AsyncSession,
     user,
 ) -> dict[str, Any]:
+    """Compatibility helper: descriptions are views of the canonical report.
+
+    This path intentionally never calls the LLM. Generation has one trigger —
+    the queued report/PDF job — so opening a detail endpoint cannot multiply
+    provider requests.
     """
-    Persistent (DB-backed) descriptions for the user's chart.
-
-    Stored inside ``user.natal_chart.chart_data["descriptions"]`` so that
-    they live alongside the chart itself: when birth data changes, the
-    whole chart_data is replaced via ``save_natal_chart`` and descriptions
-    are naturally invalidated, triggering a fresh LLM generation.
-    """
-    if not user.natal_chart:
-        return _empty_descriptions()
-
-    chart = user.natal_chart
-    chart_data = chart.chart_data or {}
-    stored = chart_data.get("descriptions")
-    current_gender = _user_gender(user)
-    if (
-        isinstance(stored, dict)
-        and stored.get("_version") == NATAL_DESCRIPTIONS_VERSION
-        and stored.get("_gender_used") == current_gender
-        and _descriptions_shape_valid(stored)
-        and _has_any(stored)
-    ):
-        return stored
-
-    if not settings.LLM_API_KEY:
-        return _empty_descriptions()
-
-    planets = _public_planets(user, chart_data.get("planets", {}))
-    houses = chart_data.get("houses", []) if _birth_time_known(user) else []
-    aspects = _pdf_description_aspects(
-        _allowed_natal_aspects(chart_data.get("aspects", []))
-    )
-
-    try:
-        result = await generate_natal_descriptions(
-            planets=planets,
-            houses=houses,
-            aspects=aspects,
-            api_key=settings.LLM_API_KEY,
-            gender=current_gender,
-        )
-    except Exception as e:
-        log.error("natal.descriptions_failed", user_id=user.id, error=str(e))
-        return _empty_descriptions()
-
-    if _has_any(result):
-        result = {
-            "_version": NATAL_DESCRIPTIONS_VERSION,
-            "_gender_used": current_gender,
-            **result,
-        }
-        # Reassign the whole dict so SQLAlchemy detects the change (default
-        # JSON columns don't track mutations to nested keys).
-        chart.chart_data = {**chart_data, "descriptions": result}
-        await db.commit()
-        log.info(
-            "natal.descriptions_persisted",
-            user_id=user.id,
-            gender=current_gender,
-        )
-
-    return result
+    del db
+    return _get_stored_descriptions(user)
 
 
 async def _get_pdf_user_or_error(db: AsyncSession, user_id: int):
@@ -291,7 +247,11 @@ def _user_gender(user) -> str | None:
     return user.gender.value if user.gender else None
 
 
-def _reading_is_fresh(cached: Any, current_gender: str | None) -> str | None:
+def _reading_is_fresh(
+    cached: Any,
+    current_gender: str | None,
+    expected_hash: str | None = None,
+) -> str | None:
     """Return the cached reading text only if it matches the reader's
     current gender. The cache payload is a dict with `reading` plus a
     `reading_gender` marker recorded at write time; mismatch ⇒ stale.
@@ -308,6 +268,18 @@ def _reading_is_fresh(cached: Any, current_gender: str | None) -> str | None:
     if cached.get("reading_version") != NATAL_READING_VERSION:
         return None
     if cached.get("reading_gender") != current_gender:
+        return None
+    if expected_hash is not None:
+        if cached.get("reading_content_version") != CONTENT_VERSION:
+            return None
+        if cached.get("reading_input_hash") != expected_hash:
+            return None
+    elif cached.get("reading_content_version") not in (None, CONTENT_VERSION):
+        return None
+    if cached.get("reading_status") in {
+        READING_STATUS_FULL,
+        READING_STATUS_FALLBACK,
+    } and not isinstance(cached.get("reading_payload"), dict):
         return None
     reading_status = _classify_ready_reading(
         reading, explicit_status=cached.get("reading_status")
@@ -340,11 +312,14 @@ def _classify_ready_reading(
     This prevents an invalid 200-word provider response from being cached as a
     successful report while stopping validated fallback loops.
     """
-    if explicit_status == READING_STATUS_FULL and _is_expanded_reading(reading):
+    if explicit_status == READING_STATUS_FULL and reading.strip():
         return READING_STATUS_FULL
-    if explicit_status == READING_STATUS_FALLBACK and _looks_like_safe_natal_fallback(
-        reading
-    ):
+    if explicit_status == READING_STATUS_FALLBACK and reading.strip():
+        return READING_STATUS_FALLBACK
+    # Backwards-compatible classification for rows written by migration 023.
+    if explicit_status == "full" and _is_expanded_reading(reading):
+        return READING_STATUS_FULL
+    if explicit_status == "fallback" and _looks_like_safe_natal_fallback(reading):
         return READING_STATUS_FALLBACK
     if _is_expanded_reading(reading):
         return READING_STATUS_FULL
@@ -363,7 +338,51 @@ def _stored_reading_payload(user) -> dict[str, Any] | None:
         "reading_gender": getattr(chart, "reading_gender", None),
         "reading_version": getattr(chart, "reading_version", None),
         "reading_status": getattr(chart, "reading_status", None),
+        "reading_payload": getattr(chart, "reading_payload", None),
+        "reading_input_hash": getattr(chart, "reading_input_hash", None),
+        "reading_content_version": getattr(chart, "reading_content_version", None),
     }
+
+
+def _current_report_input_hash(user) -> str:
+    chart = user.natal_chart
+    chart_data = getattr(chart, "chart_data", None) or {}
+    birth_time_known = _birth_time_known(user)
+    return build_natal_report_input_hash(
+        sun_sign=getattr(chart, "sun_sign", ""),
+        moon_sign=getattr(chart, "moon_sign", ""),
+        ascendant_sign=getattr(chart, "ascendant_sign", None)
+        if birth_time_known
+        else None,
+        planets=_public_planets(user, chart_data.get("planets", {})),
+        houses=chart_data.get("houses", []) if birth_time_known else [],
+        aspects=_allowed_natal_aspects(chart_data.get("aspects", [])),
+        gender=_user_gender(user),
+        nodes=_public_nodes(user, chart_data.get("nodes")),
+    )
+
+
+def _current_structured_report(user) -> dict[str, Any] | None:
+    chart = getattr(user, "natal_chart", None)
+    payload = getattr(chart, "reading_payload", None)
+    if not isinstance(payload, dict):
+        return None
+    if getattr(chart, "reading_version", None) != NATAL_READING_VERSION:
+        return None
+    if getattr(chart, "reading_gender", None) != _user_gender(user):
+        return None
+    if getattr(chart, "reading_content_version", None) != CONTENT_VERSION:
+        return None
+    if getattr(chart, "reading_input_hash", None) != _current_report_input_hash(user):
+        return None
+    try:
+        report = NatalReportPayload.model_validate(payload)
+    except Exception as exc:  # noqa: BLE001
+        log.error("natal.report_payload_invalid", user_id=user.id, error=str(exc)[:300])
+        return None
+    if report.schema_version != NATAL_REPORT_SCHEMA_VERSION:
+        return None
+    return report.model_dump(mode="json")
 
 
 async def _persist_natal_reading(
@@ -371,20 +390,27 @@ async def _persist_natal_reading(
     user,
     reading: str,
     reading_status: str,
+    *,
+    reading_payload: dict[str, Any] | None = None,
+    reading_input_hash: str | None = None,
 ) -> None:
     chart = user.natal_chart
     chart.reading_text = reading
     chart.reading_gender = _user_gender(user)
     chart.reading_version = NATAL_READING_VERSION
     chart.reading_status = reading_status
+    chart.reading_payload = reading_payload
+    chart.reading_input_hash = reading_input_hash
+    chart.reading_content_version = CONTENT_VERSION
     await db.commit()
 
 
 async def _get_ready_pdf_reading(db: AsyncSession, user) -> str | None:
     """Read Redis first, then PostgreSQL, migrating a hot legacy value to DB."""
     current_gender = _user_gender(user)
+    expected_hash = _current_report_input_hash(user)
     cached = await cache_get(key_natal(user.id))
-    cached_reading = _reading_is_fresh(cached, current_gender)
+    cached_reading = _reading_is_fresh(cached, current_gender, expected_hash)
     if cached_reading:
         status = _classify_ready_reading(
             cached_reading,
@@ -393,12 +419,19 @@ async def _get_ready_pdf_reading(db: AsyncSession, user) -> str | None:
             else None,
         )
         stored = _stored_reading_payload(user)
-        if status and _reading_is_fresh(stored, current_gender) != cached_reading:
-            await _persist_natal_reading(db, user, cached_reading, status)
+        if status and _reading_is_fresh(stored, current_gender, expected_hash) != cached_reading:
+            await _persist_natal_reading(
+                db,
+                user,
+                cached_reading,
+                status,
+                reading_payload=(cached or {}).get("reading_payload"),
+                reading_input_hash=expected_hash,
+            )
         return cached_reading
 
     stored = _stored_reading_payload(user)
-    return _reading_is_fresh(stored, current_gender)
+    return _reading_is_fresh(stored, current_gender, expected_hash)
 
 
 def _mini_is_fresh(cached: Any, current_gender: str | None) -> str | None:
@@ -468,12 +501,15 @@ async def _get_or_generate_pdf_reading(
         return None
 
     try:
-        reading = await generate_natal_reading(
+        generated = await generate_natal_report(
             sun_sign=chart.sun_sign,
             moon_sign=chart.moon_sign,
             ascendant_sign=chart.ascendant_sign if _birth_time_known(user) else None,
             planets=planets,
-            aspects=aspects,
+            houses=(getattr(chart, "chart_data", None) or {}).get("houses", [])
+            if _birth_time_known(user)
+            else [],
+            aspects=_allowed_natal_aspects(aspects),
             api_key=settings.LLM_API_KEY,
             gender=current_gender,
             nodes=_public_nodes(
@@ -484,16 +520,17 @@ async def _get_or_generate_pdf_reading(
         log.error("natal.pdf_reading_failed", user_id=user.id, error=str(e))
         return None
 
+    reading = generated.text
     if reading and reading.strip():
-        reading_status = _classify_ready_reading(reading)
-        if reading_status is None:
-            log.error(
-                "natal.pdf_reading_not_publishable",
-                user_id=user.id,
-                words=len(reading.split()),
-            )
-            return None
-        await _persist_natal_reading(db, user, reading, reading_status)
+        reading_status = generated.status
+        await _persist_natal_reading(
+            db,
+            user,
+            reading,
+            reading_status,
+            reading_payload=generated.payload,
+            reading_input_hash=generated.input_hash,
+        )
         cached_payload = cached if isinstance(cached, dict) else {}
         await cache_set(
             cache_key,
@@ -503,6 +540,9 @@ async def _get_or_generate_pdf_reading(
                 "reading_gender": current_gender,
                 "reading_version": NATAL_READING_VERSION,
                 "reading_status": reading_status,
+                "reading_payload": generated.payload,
+                "reading_input_hash": generated.input_hash,
+                "reading_content_version": CONTENT_VERSION,
             },
             settings.CACHE_TTL_NATAL,
         )
@@ -527,6 +567,10 @@ def _get_stored_descriptions(user) -> dict[str, Any]:
     /natal/descriptions."""
     if not user.natal_chart:
         return _empty_descriptions()
+
+    structured = _current_structured_report(user)
+    if structured:
+        return report_descriptions(structured)
 
     chart_data = user.natal_chart.chart_data or {}
     stored = chart_data.get("descriptions")
@@ -625,12 +669,8 @@ async def _build_natal_pdf_bytes(
     chart = user.natal_chart
     planets = _public_planets(user, chart.chart_data.get("planets", {}))
     houses = chart.chart_data.get("houses", []) if _birth_time_known(user) else []
-    # Рендерим ТОЛЬКО те аспекты, для которых генерится персональный текст
-    # (top-N сильнейших). Иначе слабые аспекты без LLM-описания падали в
-    # шаблонный _aspect_fallback — а шаблоны в платном PDF мы не показываем.
-    aspects_raw = _pdf_description_aspects(
-        _allowed_natal_aspects(chart.chart_data.get("aspects", []))
-    )
+    # The structured report owns copy for the complete filtered aspect set.
+    aspects_raw = _allowed_natal_aspects(chart.chart_data.get("aspects", []))
     aspects = [
         {
             "p1": a.get("p1", ""),
@@ -641,21 +681,36 @@ async def _build_natal_pdf_bytes(
         for a in aspects_raw
     ]
 
-    descriptions = _get_stored_descriptions(user)
-    reading = await _get_cached_pdf_reading(db, user)
+    structured = _current_structured_report(user)
+    descriptions = (
+        report_descriptions(structured)
+        if structured
+        else _get_stored_descriptions(user)
+    )
+    full_reading = await _get_cached_pdf_reading(db, user)
+    reading = render_natal_core_text(structured) if structured else full_reading
 
-    if require_ready_cache and (not _has_any(descriptions) or not reading):
+    if require_ready_cache and (not structured or not full_reading):
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             "PDF report is still being generated",
         )
 
     if not require_ready_cache:
-        if not _has_any(descriptions):
-            descriptions = await _get_or_generate_descriptions(db, user)
-        if not reading:
-            reading = await _get_or_generate_pdf_reading(
+        if not full_reading:
+            full_reading = await _get_or_generate_pdf_reading(
                 db, user, chart, planets, aspects
+            )
+            structured = _current_structured_report(user)
+            descriptions = (
+                report_descriptions(structured)
+                if structured
+                else _get_stored_descriptions(user)
+            )
+            reading = (
+                render_natal_core_text(structured)
+                if structured
+                else full_reading
             )
 
     pdf_cache_key = _natal_pdf_input_hash(
@@ -1022,12 +1077,16 @@ async def get_natal_full(
     cached = await cache_get(cache_key)
     ready_reading = await _get_ready_pdf_reading(db, user)
     if isinstance(cached, dict) and cached.get("planets") and ready_reading:
+        structured = _current_structured_report(user)
         refreshed = {
             **cached,
             "reading": ready_reading,
             "reading_gender": current_gender,
             "reading_version": NATAL_READING_VERSION,
             "reading_status": _classify_ready_reading(ready_reading),
+            "reading_payload": structured,
+            "reading_input_hash": _current_report_input_hash(user),
+            "reading_content_version": CONTENT_VERSION,
         }
         await cache_set(cache_key, refreshed, settings.CACHE_TTL_NATAL)
         return _public_full_payload(user, refreshed)
@@ -1038,38 +1097,17 @@ async def get_natal_full(
         db, user, chart, birth_time_known=_birth_time_known(user)
     )
 
-    # Generate LLM interpretation if API key is set
+    # Read-only endpoint: report generation is owned by the queued PDF job.
+    # A legacy expanded report remains visible while the new version is built,
+    # but it is never considered a fresh generation/cache hit.
     llm_reading: str | None = ready_reading
+    if not llm_reading:
+        legacy = getattr(chart, "reading_text", None)
+        if isinstance(legacy, str) and _is_expanded_reading(legacy):
+            llm_reading = legacy
     reading_status = (
         _classify_ready_reading(llm_reading) if llm_reading else None
     )
-    if not llm_reading and settings.LLM_API_KEY:
-        try:
-            llm_reading = await generate_natal_reading(
-                sun_sign=chart.sun_sign,
-                moon_sign=chart.moon_sign,
-                ascendant_sign=chart.ascendant_sign if _birth_time_known(user) else None,
-                planets=planets,
-                aspects=aspects[:10],
-                api_key=settings.LLM_API_KEY,
-                gender=current_gender,
-                nodes=_public_nodes(user, chart.chart_data.get("nodes")),
-            )
-        except Exception as e:
-            log.error("natal.llm_failed", user_id=user.id, error=str(e))
-        if llm_reading:
-            reading_status = _classify_ready_reading(llm_reading)
-            if reading_status:
-                await _persist_natal_reading(
-                    db, user, llm_reading, reading_status
-                )
-            else:
-                log.error(
-                    "natal.llm_not_publishable",
-                    user_id=user.id,
-                    words=len(llm_reading.split()),
-                )
-                llm_reading = None
 
     result = {
         "sun_sign": chart.sun_sign,
@@ -1078,10 +1116,15 @@ async def get_natal_full(
         "ascendant_sign": chart.ascendant_sign if _birth_time_known(user) else None,
         "planets": planets,
         "houses": chart.chart_data.get("houses", []) if _birth_time_known(user) else [],
-        "aspects": aspects[:10],
+        "aspects": aspects,
         "reading_version": NATAL_READING_VERSION,
         "reading_gender": current_gender,
         "reading_status": reading_status,
+        "reading_payload": _current_structured_report(user),
+        "reading_input_hash": (
+            _current_report_input_hash(user) if ready_reading else None
+        ),
+        "reading_content_version": CONTENT_VERSION if ready_reading else None,
         "interpretations": interpretations,
         "reading": llm_reading,
     }
@@ -1096,9 +1139,7 @@ async def get_natal_descriptions(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Personal short+full descriptions for every planet, house and aspect.
-    Persisted in the natal chart row — regenerated only when the user
-    updates their birth data (which replaces the whole chart_data blob).
+    Read-only planet/house/aspect view of the canonical structured report.
     """
     user = await user_repo.get_by_id(db, tg_user["id"])
     if not user:
@@ -1107,7 +1148,7 @@ async def get_natal_descriptions(
     if not user.natal_chart:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "No birth data")
 
-    return await _get_or_generate_descriptions(db, user)
+    return _get_stored_descriptions(user)
 
 
 @router.post("/wheel-svg")
@@ -1241,9 +1282,9 @@ async def start_natal_pdf(
     user = await _get_pdf_user_or_error(db, tg_user["id"])
 
     # Fast-path: texts already fresh → mint a token and report ready, no queue.
-    descriptions = _get_stored_descriptions(user)
+    structured = _current_structured_report(user)
     cached_reading = await _get_ready_pdf_reading(db, user)
-    if _has_any(descriptions) and cached_reading:
+    if structured and cached_reading:
         token = token_urlsafe(24)
         await cache_set(
             key_natal_pdf_download(token),
