@@ -82,21 +82,27 @@ def _chart() -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]], list[dict
 def _narrative(group: str, item_id: str) -> str:
     word_counts = {
         "core": {
-            "foundation": 100,
-            "dominants": 75,
-            "lunar_nodes": 65,
-            "synthesis": 130,
-            "recommendations": 75,
+            "foundation": 140,
+            "dominants": 100,
+            "lunar_nodes": 90,
+            "synthesis": 190,
+            "recommendations": 110,
         },
-        "planets": 65,
-        "houses": 55,
-        "aspects": 65,
+        "planets": 90,
+        "houses": 80,
+        "aspects": 100,
     }
     if group == "core":
         count = word_counts[group].get(item_id, 80)  # type: ignore[union-attr]
     else:
         count = int(word_counts[group])
-    return f"Сюжет{item_id} " + " ".join("наблюдение" for _ in range(count - 1)) + "."
+    prefix = (
+        f"Сюжет{item_id} описывает возможное проявление. "
+        "Сильная сторона поддерживает выбор. Риск требует внимания. "
+        "Практический ориентир помогает наблюдать."
+    )
+    filler = max(0, count - natal_report._word_count(prefix))
+    return prefix[:-1] + " " + " ".join("наблюдение" for _ in range(filler)) + "."
 
 
 def _response(group: str, facts: list[Any]) -> Any:
@@ -269,14 +275,83 @@ def test_report_hash_changes_with_birth_facts_and_not_provider():
     )
 
 
-def test_validator_rejects_repeated_fact_and_medical_claim():
-    context = natal_report.AstroFactContext(birth_time_known=True)
-    text = "Солнце в Рыбах показывает характер. У вас диабет. " + " ".join(
-        "наблюдение" for _ in range(60)
+def test_validator_allows_exact_item_fact_but_rejects_medical_claim():
+    planets, houses, aspects = _chart()
+    context = natal_report.AstroFactContext.from_chart(
+        planets=planets,
+        aspects=aspects,
+        birth_time_known=True,
+    )
+    fact = natal_report._build_fact_groups(
+        sun_sign="Рыбы",
+        moon_sign="Дева",
+        ascendant_sign="Лев",
+        planets=planets,
+        houses=houses,
+        aspects=aspects,
+        nodes=None,
+        birth_time_known=True,
+    )["planets"][0]
+    text = "Солнце в Рыбах показывает возможный внутренний мотив. У вас диабет. " + " ".join(
+        "наблюдение" for _ in range(80)
     ) + "."
-    errors = natal_report._quality_errors("planets", "sun", text, context)
-    assert "narrative repeats or invents an astrology fact" in errors
+    errors = natal_report._quality_errors("planets", "sun", text, context, fact)
+    assert not any(error.startswith("facts outside item scope") for error in errors)
     assert "medical_diagnosis" in errors
+
+
+def test_validator_rejects_fact_from_another_item_and_short_text():
+    planets, houses, aspects = _chart()
+    context = natal_report.AstroFactContext.from_chart(
+        planets=planets,
+        aspects=aspects,
+        birth_time_known=True,
+    )
+    fact = natal_report._build_fact_groups(
+        sun_sign="Рыбы",
+        moon_sign="Дева",
+        ascendant_sign="Лев",
+        planets=planets,
+        houses=houses,
+        aspects=aspects,
+        nodes=None,
+        birth_time_known=True,
+    )["planets"][0]
+    text = "Луна в Деве описывает другой элемент. " + " ".join(
+        "наблюдение" for _ in range(30)
+    ) + "."
+    errors = natal_report._quality_errors("planets", "sun", text, context, fact)
+    assert "too short: 36 words, minimum 75" in errors
+    assert "facts outside item scope (planets): moon" in errors
+    assert "facts outside item scope (signs): virgo" in errors
+
+
+def test_house_scope_allows_its_cusp_and_occupant_without_false_sign_error():
+    planets, houses, aspects = _chart()
+    context = natal_report.AstroFactContext.from_chart(
+        planets=planets,
+        aspects=aspects,
+        birth_time_known=True,
+    )
+    fact = natal_report._build_fact_groups(
+        sun_sign="Рыбы",
+        moon_sign="Дева",
+        ascendant_sign="Лев",
+        planets=planets,
+        houses=houses,
+        aspects=aspects,
+        nodes=None,
+        birth_time_known=True,
+    )["houses"][4]
+    text = (
+        "Куспид 5 дома в Стрельце задаёт символическую тему, а Марс показывает "
+        "возможный способ её проявления. Сильная сторона поддерживает выбор. "
+        "Риск требует внимания. Практический ориентир помогает наблюдать. "
+        + " ".join("наблюдение" for _ in range(70))
+        + "."
+    )
+    errors = natal_report._quality_errors("houses", "5", text, context, fact)
+    assert errors == []
 
 
 @pytest.mark.asyncio

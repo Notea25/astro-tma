@@ -49,12 +49,24 @@ def test_fact_context_rejects_false_aspect_and_wrong_house() -> None:
         ("Гарантированно произойдёт свадьба.", "guaranteed_event"),
         ("В детстве вы часто были одни.", "invented_biography"),
         ("В прошлой жизни вы были врачом.", "invented_biography"),
+        ("В прошлом вы могли полагаться только на друзей.", "invented_biography"),
+        ("Вам предстоит научиться доверять интуиции.", "guaranteed_future_wording"),
         ("Недавнее предательство изменило вас.", "invented_biography"),
         ("Боли в спине станут сильнее.", "medical_diagnosis"),
     ],
 )
 def test_fact_context_rejects_unsafe_claims(text: str, code: str) -> None:
     assert code in validate_generated_text(text, FactContext())
+
+
+def test_cusp_validator_rejects_planet_claim_but_allows_cusp_theme() -> None:
+    context = FactContext(birth_time_known=True)
+    assert "unsupported cusp claim" in validate_generated_text(
+        "Меркурий находится на куспиде.", context
+    )
+    assert "unsupported cusp claim" not in validate_generated_text(
+        "Знак на куспиде задаёт символическую тему этой сферы.", context
+    )
 
 
 def test_unknown_birth_time_has_no_angles_houses_or_planet_houses() -> None:

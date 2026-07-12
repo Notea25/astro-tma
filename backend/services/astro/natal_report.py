@@ -31,7 +31,7 @@ from services.rate_limiter import LLMLimiter
 log = get_logger(__name__)
 
 NATAL_REPORT_SCHEMA_VERSION = 1
-NATAL_REPORT_PROMPT_VERSION = 1
+NATAL_REPORT_PROMPT_VERSION = 2
 
 _PLANET_ORDER = (
     "sun",
@@ -69,19 +69,82 @@ _ROMAN_HOUSES = {
     12: "XII",
 }
 
-_FACT_RE = re.compile(
-    r"\b(?:солнц\w*|лун\w*|меркур\w*|венер\w*|марс\w*|юпитер\w*|"
-    r"сатурн\w*|уран\w*|нептун\w*|плутон\w*|асцендент\w*|куспид\w*|"
-    r"овн\w*|тельц\w*|близнец\w*|рак(?:а|е|ом)?|льв\w*|дев\w*|"
-    r"вес(?:ы|ах|ов|ам|ами)|скорпион\w*|стрельц\w*|козерог\w*|водоле\w*|рыб\w*|"
-    r"соединени\w*|секстил\w*|квадрат\w*|трин\w*|оппозиц\w*)\b|"
-    r"\b(?:1[0-2]|[1-9])(?:-?[а-я]*)?\s+дом\w*|\d+(?:[.,]\d+)?\s*°",
+_PLANET_MENTION_PATTERNS = {
+    "sun": re.compile(r"\bсолнц\w*", re.IGNORECASE),
+    "moon": re.compile(r"\bлун\w*", re.IGNORECASE),
+    "mercury": re.compile(r"\bмеркур\w*", re.IGNORECASE),
+    "venus": re.compile(r"\bвенер\w*", re.IGNORECASE),
+    "mars": re.compile(r"\bмарс\w*", re.IGNORECASE),
+    "jupiter": re.compile(r"\bюпитер\w*", re.IGNORECASE),
+    "saturn": re.compile(r"\bсатурн\w*", re.IGNORECASE),
+    "uranus": re.compile(r"\bуран\w*", re.IGNORECASE),
+    "neptune": re.compile(r"\bнептун\w*", re.IGNORECASE),
+    "pluto": re.compile(r"\bплутон\w*", re.IGNORECASE),
+}
+
+_SIGN_MENTION_PATTERNS = {
+    "aries": re.compile(r"\bовн(?:а|е|ом|у|ы)?\b", re.IGNORECASE),
+    "taurus": re.compile(r"\bтельц(?:а|е|ом|у|ы)?\b", re.IGNORECASE),
+    "gemini": re.compile(r"\bблизнец(?:ы|ов|ах|ам|ами)?\b", re.IGNORECASE),
+    "cancer": re.compile(r"\bрак(?:а|е|ом|у)?\b", re.IGNORECASE),
+    "leo": re.compile(r"\b(?:лев|льв(?:а|е|ом|у|ы))\b", re.IGNORECASE),
+    "virgo": re.compile(r"\bдев(?:а|ы|е|ой|у)?\b", re.IGNORECASE),
+    "libra": re.compile(r"\bвес(?:ы|ов|ах|ам|ами)?\b", re.IGNORECASE),
+    "scorpio": re.compile(r"\bскорпион\w*", re.IGNORECASE),
+    "sagittarius": re.compile(r"\bстрельц\w*", re.IGNORECASE),
+    "capricorn": re.compile(r"\bкозерог\w*", re.IGNORECASE),
+    "aquarius": re.compile(r"\bводоле\w*", re.IGNORECASE),
+    "pisces": re.compile(r"\bрыб(?:ы|ах|ам|ами)?\b", re.IGNORECASE),
+}
+
+_SIGN_ALIASES = {
+    "aries": {"aries", "овен", "овна", "овне"},
+    "taurus": {"taurus", "телец", "тельца", "тельце"},
+    "gemini": {"gemini", "близнецы", "близнецов", "близнецах"},
+    "cancer": {"cancer", "рак", "рака", "раке"},
+    "leo": {"leo", "лев", "льва", "льве"},
+    "virgo": {"virgo", "дева", "девы", "деве"},
+    "libra": {"libra", "весы", "весов", "весах"},
+    "scorpio": {"scorpio", "скорпион", "скорпиона", "скорпионе"},
+    "sagittarius": {"sagittarius", "стрелец", "стрельца", "стрельце"},
+    "capricorn": {"capricorn", "козерог", "козерога", "козероге"},
+    "aquarius": {"aquarius", "водолей", "водолея", "водолее"},
+    "pisces": {"pisces", "рыбы", "рыб", "рыбах"},
+}
+
+_ASPECT_MENTION_PATTERNS = {
+    "conjunction": re.compile(r"\bсоединени\w*", re.IGNORECASE),
+    "sextile": re.compile(r"\bсекстил\w*", re.IGNORECASE),
+    "square": re.compile(r"\bквадрат\w*", re.IGNORECASE),
+    "trine": re.compile(r"\bтрин\w*", re.IGNORECASE),
+    "opposition": re.compile(r"\bоппозиц\w*", re.IGNORECASE),
+}
+
+_HOUSE_MENTION_RE = re.compile(r"\b(1[0-2]|[1-9])(?:-?[а-я]*)?\s+дом\w*", re.IGNORECASE)
+_ROMAN_HOUSE_MENTION_RE = re.compile(
+    r"\b(XII|XI|IX|VIII|VII|VI|IV|III|II|X|V|I)\s+дом\w*",
     re.IGNORECASE,
 )
+_ROMAN_TO_HOUSE = {roman: number for number, roman in _ROMAN_HOUSES.items()}
+_DEGREE_MENTION_RE = re.compile(r"\d+(?:[.,]\d+)?\s*°")
+_SPECIAL_MENTION_PATTERNS = {
+    "ascendant": re.compile(r"\bасцендент\w*", re.IGNORECASE),
+    "cusp": re.compile(r"\bкуспид\w*", re.IGNORECASE),
+    "north_node": re.compile(r"\bсеверн\w*\s+уз\w*", re.IGNORECASE),
+    "south_node": re.compile(r"\bюжн\w*\s+уз\w*", re.IGNORECASE),
+}
 
 _WORD_RE = re.compile(r"[A-Za-zА-Яа-яЁё0-9-]+")
 _CYRILLIC_RE = re.compile(r"[А-Яа-яЁё]")
 _LETTER_RE = re.compile(r"[A-Za-zА-Яа-яЁё]")
+_SECTION_MARKERS = {
+    "strength": re.compile(r"\b(?:сильн\w*\s+сторон\w*|ресурс\w*|преимуществ\w*)", re.I),
+    "risk": re.compile(r"\b(?:риск\w*|уязвим\w*|сложност\w*|напряжени\w*)", re.I),
+    "practice": re.compile(
+        r"\b(?:ориентир\w*|полезно|попробуйте|наблюдайте|обратите\s+внимание)",
+        re.I,
+    ),
+}
 
 
 class _NarrativeItem(BaseModel):
@@ -135,6 +198,19 @@ class _FactItem:
     heading: str
     fact_line: str
     prompt_fact: str
+    allowed_planets: tuple[str, ...] = ()
+    allowed_signs: tuple[str, ...] = ()
+    allowed_houses: tuple[int, ...] = ()
+    allowed_aspects: tuple[str, ...] = ()
+    allowed_specials: tuple[str, ...] = ()
+
+
+def _canonical_sign(value: Any) -> str:
+    normalized = str(value or "").strip().lower()
+    for canonical, aliases in _SIGN_ALIASES.items():
+        if normalized in aliases:
+            return canonical
+    return normalized
 
 
 def _safe_float(value: Any) -> float:
@@ -159,7 +235,15 @@ def _planet_fact(key: str, data: dict[str, Any], *, include_house: bool) -> _Fac
         f"{name}: знак {sign}; градус внутри знака {degree:.2f}; "
         f"дом {house if house else 'не используется'}; ретроградность {bool(data.get('retrograde'))}"
     )
-    return _FactItem(key, heading, fact_line, prompt_fact)
+    return _FactItem(
+        key,
+        heading,
+        fact_line,
+        prompt_fact,
+        allowed_planets=(key,),
+        allowed_signs=(_canonical_sign(sign),),
+        allowed_houses=(int(house),) if house else (),
+    )
 
 
 def _build_fact_groups(
@@ -174,25 +258,34 @@ def _build_fact_groups(
     birth_time_known: bool,
 ) -> dict[str, list[_FactItem]]:
     asc = ascendant_sign if birth_time_known else None
-    foundation_parts = [f"Солнце — {sun_sign}", f"Луна — {moon_sign}"]
+    foundation_parts = [
+        f"Солнце — {sign_ru(sun_sign)}",
+        f"Луна — {sign_ru(moon_sign)}",
+    ]
     if asc:
-        foundation_parts.append(f"Асцендент — {asc}")
+        foundation_parts.append(f"Асцендент — {sign_ru(asc)}")
     core = [
         _FactItem(
             "foundation",
             "Основа личности",
             "; ".join(foundation_parts) + ".",
             "; ".join(foundation_parts),
-        ),
-        _FactItem(
-            "dominants",
-            "Главные темы карты",
-            "",
-            "Сопоставь повторяющиеся темы всех переданных положений, не называя их заново",
+            allowed_planets=("sun", "moon"),
+            allowed_signs=tuple(
+                dict.fromkeys(
+                    _canonical_sign(value)
+                    for value in (sun_sign, moon_sign, asc)
+                    if value
+                )
+            ),
+            allowed_specials=("ascendant",) if asc else (),
         ),
     ]
 
     node_rows: list[str] = []
+    node_signs: list[str] = []
+    node_houses: list[int] = []
+    node_specials: list[str] = []
     for key, label in (
         ("true_north_lunar_node", "Северный узел"),
         ("mean_north_lunar_node", "Северный узел"),
@@ -206,6 +299,10 @@ def _build_fact_groups(
         house = data.get("house") if birth_time_known else None
         suffix = f", {_ROMAN_HOUSES.get(int(house), house)} дом" if house else ""
         node_rows.append(f"{label}: {sign}{suffix}")
+        node_signs.append(_canonical_sign(sign))
+        if house:
+            node_houses.append(int(house))
+        node_specials.append("north_node" if "Северный" in label else "south_node")
     if node_rows:
         core.append(
             _FactItem(
@@ -213,22 +310,62 @@ def _build_fact_groups(
                 "Лунные узлы",
                 "; ".join(node_rows) + ".",
                 "; ".join(node_rows),
+                allowed_signs=tuple(dict.fromkeys(node_signs)),
+                allowed_houses=tuple(dict.fromkeys(node_houses)),
+                allowed_specials=tuple(dict.fromkeys(node_specials)),
             )
         )
 
+    shared_core_signs = tuple(
+        dict.fromkeys(
+            [
+                *(
+                    _canonical_sign(value)
+                    for value in (sun_sign, moon_sign, asc)
+                    if value
+                ),
+                *node_signs,
+            ]
+        )
+    )
+    shared_core_specials = tuple(
+        dict.fromkeys(
+            [*(['ascendant'] if asc else []), *node_specials]
+        )
+    )
+    shared_core_planets = ("sun", "moon")
+    shared_core_houses = tuple(dict.fromkeys(node_houses))
     core.extend(
         [
+            _FactItem(
+                "dominants",
+                "Главные темы карты",
+                "",
+                "Сопоставь повторяющиеся темы всех переданных положений",
+                allowed_planets=shared_core_planets,
+                allowed_signs=shared_core_signs,
+                allowed_houses=shared_core_houses,
+                allowed_specials=shared_core_specials,
+            ),
             _FactItem(
                 "synthesis",
                 "Заключительный синтез",
                 "",
                 "Собери главные сильные стороны, внутренние противоречия и общий вектор карты",
+                allowed_planets=shared_core_planets,
+                allowed_signs=shared_core_signs,
+                allowed_houses=shared_core_houses,
+                allowed_specials=shared_core_specials,
             ),
             _FactItem(
                 "recommendations",
                 "Практические ориентиры",
                 "",
                 "Дай конкретные, негарантирующие рекомендации для самонаблюдения",
+                allowed_planets=shared_core_planets,
+                allowed_signs=shared_core_signs,
+                allowed_houses=shared_core_houses,
+                allowed_specials=shared_core_specials,
             ),
         ]
     )
@@ -244,7 +381,7 @@ def _build_fact_groups(
         for key in _PLANET_ORDER:
             data = planets.get(key) or {}
             if data.get("house"):
-                occupied.setdefault(int(data["house"]), []).append(PLANET_RU.get(key, key))
+                occupied.setdefault(int(data["house"]), []).append(key)
     house_items: list[_FactItem] = []
     if birth_time_known:
         for house in sorted(houses, key=lambda item: int(item.get("number") or 99)):
@@ -253,8 +390,12 @@ def _build_fact_groups(
                 continue
             sign = sign_ru(house.get("sign_ru") or house.get("sign"))
             degree = _safe_float(house.get("degree")) % 30
-            planets_here = occupied.get(number, [])
-            occupied_text = ", ".join(planets_here) if planets_here else "нет классических планет"
+            planet_keys = occupied.get(number, [])
+            occupied_text = (
+                ", ".join(PLANET_RU.get(key, key) for key in planet_keys)
+                if planet_keys
+                else "нет классических планет"
+            )
             heading = f"{_ROMAN_HOUSES[number]} дом: куспид в {sign_ru(sign, 'prep')}"
             fact_line = f"Куспид: {degree:.2f}° внутри знака; планеты: {occupied_text}."
             house_items.append(
@@ -263,6 +404,10 @@ def _build_fact_groups(
                     heading,
                     fact_line,
                     f"Дом {number}; знак куспида {sign}; планеты внутри: {occupied_text}",
+                    allowed_planets=tuple(planet_keys),
+                    allowed_signs=(_canonical_sign(sign),),
+                    allowed_houses=(number,),
+                    allowed_specials=("cusp",),
                 )
             )
 
@@ -289,6 +434,8 @@ def _build_fact_groups(
                 heading,
                 "",
                 f"{PLANET_RU[p1]}; {_ASPECT_RU[kind]}; {PLANET_RU[p2]}; орб {orb:.2f}",
+                allowed_planets=(p1, p2),
+                allowed_aspects=(kind,),
             )
         )
 
@@ -379,10 +526,14 @@ def _group_prompt(
         for item in facts
     ]
     target_lengths = {
-        "core": "foundation 130–190 слов, dominants 90–140, synthesis 180–260, recommendations 100–160; lunar_nodes 80–120",
-        "planets": "80–120 слов на каждый элемент",
-        "houses": "70–100 слов на каждый элемент",
-        "aspects": "90–130 слов на каждый элемент",
+        "core": (
+            "foundation 150–200 слов (минимум 130), dominants 110–150 (минимум 90), "
+            "synthesis 210–270 (минимум 180), recommendations 120–170 (минимум 100); "
+            "lunar_nodes 100–130 (минимум 80)"
+        ),
+        "planets": "100–130 слов на каждый элемент; меньше 80 слов недопустимо",
+        "houses": "90–115 слов на каждый элемент; меньше 70 слов недопустимо",
+        "aspects": "110–145 слов на каждый элемент; меньше 90 слов недопустимо",
     }[group]
     repair = ""
     if repair_errors:
@@ -396,8 +547,12 @@ def _group_prompt(
 {_gender_instruction(gender)}
 
 Backend уже рассчитает и напечатает точные заголовки, планеты, знаки, дома,
-градусы и аспекты. В narrative НЕ повторяй и НЕ переименовывай эти факты:
-пиши «это положение», «эта сфера», «эта связка», «такой внутренний мотив».
+градусы и аспекты. Предпочтительно не повторяй их и используй формулировки
+«это положение», «эта сфера», «эта связка», «такой внутренний мотив».
+Если факт нужен для связности, разрешено повторить только calculated_fact
+текущего id и только без изменений. Не переноси факты из соседних id.
+Исключение: dominants, synthesis и recommendations могут обобщать только те
+факты, которые уже перечислены во входных элементах группы core.
 Не добавляй других планет, знаков, домов, градусов или аспектов.
 
 Для каждого входного id верни ровно один содержательный narrative.
@@ -407,7 +562,11 @@ Backend уже рассчитает и напечатает точные заг�
 ориентир. Это символическая интерпретация, а не факт биографии.
 
 Запрещены диагнозы, утверждения о семье/детстве/зависимостях/прошлых жизнях,
-гарантированные события, запугивание и финансовые обещания.
+формулировки «в прошлом вы…» и «вам предстоит…», гарантированные события,
+запугивание и финансовые обещания.
+
+Перед вызовом инструмента проверь объём КАЖДОГО narrative отдельно. Не сокращай
+последние элементы массива и не компенсируй короткий элемент длиной другого.
 
 Входные элементы:
 {json.dumps(targets, ensure_ascii=False, indent=2)}
@@ -432,26 +591,73 @@ def _word_count(text: str) -> int:
     return len(_WORD_RE.findall(text))
 
 
+def _fact_scope_errors(text: str, fact: _FactItem | None) -> list[str]:
+    """Reject astrology facts that were not supplied for this report item."""
+    if fact is None:
+        return []
+    mentioned_planets = {
+        key for key, pattern in _PLANET_MENTION_PATTERNS.items() if pattern.search(text)
+    }
+    mentioned_signs = {
+        key for key, pattern in _SIGN_MENTION_PATTERNS.items() if pattern.search(text)
+    }
+    raw_aspects = {
+        key for key, pattern in _ASPECT_MENTION_PATTERNS.items() if pattern.search(text)
+    }
+    mentioned_aspects = (
+        raw_aspects
+        if fact.allowed_aspects or len(mentioned_planets) >= 2
+        else set()
+    )
+    mentioned_houses = {int(match.group(1)) for match in _HOUSE_MENTION_RE.finditer(text)}
+    mentioned_houses.update(
+        _ROMAN_TO_HOUSE[match.group(1).upper()]
+        for match in _ROMAN_HOUSE_MENTION_RE.finditer(text)
+    )
+    mentioned_specials = {
+        key for key, pattern in _SPECIAL_MENTION_PATTERNS.items() if pattern.search(text)
+    }
+
+    errors: list[str] = []
+    checks = (
+        ("planets", mentioned_planets, set(fact.allowed_planets)),
+        ("signs", mentioned_signs, set(fact.allowed_signs)),
+        ("houses", mentioned_houses, set(fact.allowed_houses)),
+        ("aspects", mentioned_aspects, set(fact.allowed_aspects)),
+        ("special points", mentioned_specials, set(fact.allowed_specials)),
+    )
+    for label, mentioned, allowed in checks:
+        unexpected = sorted(mentioned - allowed, key=str)
+        if unexpected:
+            errors.append(f"facts outside item scope ({label}): {', '.join(map(str, unexpected))}")
+    if _DEGREE_MENTION_RE.search(text):
+        errors.append("degrees must remain in the backend fact line")
+    return errors
+
+
 def _quality_errors(
     group: str,
     item_id: str,
     narrative: str,
     context: AstroFactContext,
+    fact: _FactItem | None = None,
 ) -> list[str]:
     text = " ".join(str(narrative or "").split()).strip()
     errors: list[str] = []
     bounds = {
-        "planets": (50, 180),
-        "houses": (40, 160),
-        "aspects": (50, 190),
+        "planets": (75, 150),
+        "houses": (60, 130),
+        "aspects": (75, 160),
     }
     if group == "core":
         bounds_for_core = {
-            "foundation": (80, 260),
-            "dominants": (60, 220),
-            "lunar_nodes": (50, 180),
-            "synthesis": (110, 360),
-            "recommendations": (60, 240),
+            # Per-item floors include a small provider word-count tolerance.
+            # Together they still guarantee at least 500 words for full core.
+            "foundation": (115, 240),
+            "dominants": (90, 190),
+            "lunar_nodes": (75, 170),
+            "synthesis": (125, 320),
+            "recommendations": (95, 210),
         }
         minimum, maximum = bounds_for_core.get(item_id, (60, 260))
     else:
@@ -463,11 +669,14 @@ def _quality_errors(
         errors.append(f"too long: {words} words, maximum {maximum}")
     if text and text[-1] not in ".!?…»”":
         errors.append("text is not complete")
+    if group in {"planets", "houses", "aspects"}:
+        for marker, pattern in _SECTION_MARKERS.items():
+            if not pattern.search(text):
+                errors.append(f"missing semantic section: {marker}")
     letters = _LETTER_RE.findall(text)
     if letters and len(_CYRILLIC_RE.findall(text)) / len(letters) < 0.65:
         errors.append("text is not predominantly Russian")
-    if _FACT_RE.search(text):
-        errors.append("narrative repeats or invents an astrology fact")
+    errors.extend(_fact_scope_errors(text, fact))
     errors.extend(validate_generated_text(text, context))
     return list(dict.fromkeys(errors))
 
@@ -506,7 +715,7 @@ async def _call_group(
         message = await client.messages.create(
             model=settings.LLM_MODEL,
             max_tokens=max_tokens,
-            temperature=0.5,
+            temperature=0.2,
             messages=[
                 {
                     "role": "user",
@@ -587,7 +796,7 @@ async def _generate_group(
                 ]
                 continue
             narrative = values[0]
-            item_errors = _quality_errors(group, fact.id, narrative, context)
+            item_errors = _quality_errors(group, fact.id, narrative, context, fact)
             normalized = " ".join(narrative.lower().split())
             if normalized in seen_texts:
                 item_errors.append("duplicate narrative")

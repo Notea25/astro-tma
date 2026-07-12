@@ -72,9 +72,14 @@ _UNSAFE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
             r"твоя? (?:мать|отец|семья) (?:был|была)|у (?:вас|тебя) зависимость|"
             r"(?:вы|ты) (?:пережили|недавно пережили) (?:предательство|разрыв|горе)|"
             r"недавн\w* (?:предательств\w*|разрыв\w*)|"
-            r"в прошл(?:ой жизни|ом воплощении) (?:вы|ты))\b",
+            r"в прошл(?:ой жизни|ом воплощении) (?:вы|ты)|"
+            r"в прошлом (?:вы|ты) (?:могли|были|жили|полагались|стремились))\b",
             re.IGNORECASE,
         ),
+    ),
+    (
+        "guaranteed_future_wording",
+        re.compile(r"\bвам предстоит\b|\bтебе предстоит\b", re.IGNORECASE),
     ),
 )
 
@@ -188,34 +193,39 @@ def validate_generated_text(text: str, context: AstroFactContext) -> list[str]:
         if _HOUSE_RE.search(text):
             errors.append("houses are forbidden without birth time")
     else:
-        for match in _HOUSE_RE.finditer(text):
-            mentioned_house = int(match.group(1))
-            sentence_start = max(lowered.rfind(".", 0, match.start()), 0)
-            sentence_end = lowered.find(".", match.end())
-            sentence = lowered[sentence_start : sentence_end if sentence_end >= 0 else None]
-            mentioned_planets = [
-                key for key, pattern in _PLANET_STEMS.items() if re.search(pattern, sentence)
-            ]
-            for planet in mentioned_planets:
+        for planet, planet_pattern in _PLANET_STEMS.items():
+            direct_house = re.compile(
+                rf"\b(?:{planet_pattern})\b\s+"
+                rf"(?:(?:наход\w*|располож\w*|стоит)\s+)?в\s+"
+                rf"(1[0-2]|[1-9])(?:-?[а-я]*)?\s+дом\w*",
+                re.IGNORECASE,
+            )
+            for match in direct_house.finditer(text):
+                mentioned_house = int(match.group(1))
                 actual = context.planet_houses.get(planet)
                 if actual is not None and actual != mentioned_house:
                     errors.append(
                         f"wrong house for {planet}: stated {mentioned_house}, actual {actual}"
                     )
 
+    for planet, planet_pattern in _PLANET_STEMS.items():
+        for sign, aliases in _SIGN_ALIASES.items():
+            aliases_pattern = "|".join(re.escape(alias) for alias in aliases)
+            direct_sign = re.compile(
+                rf"\b(?:{planet_pattern})\b\s+"
+                rf"(?:(?:наход\w*|располож\w*|стоит)\s+)?в\s+"
+                rf"(?:знак\w*\s+)?(?:{aliases_pattern})\b",
+                re.IGNORECASE,
+            )
+            if direct_sign.search(text):
+                actual_sign = context.planet_signs.get(planet, "").lower()
+                if actual_sign and actual_sign != sign:
+                    errors.append(
+                        f"wrong sign for {planet}: stated {sign}, actual {actual_sign}"
+                    )
+
     for sentence in re.split(r"(?<=[.!?])\s+", lowered):
         planets = [key for key, pattern in _PLANET_STEMS.items() if re.search(pattern, sentence)]
-        mentioned_signs = [
-            key
-            for key, aliases in _SIGN_ALIASES.items()
-            if any(re.search(rf"\b{re.escape(alias)}\b", sentence) for alias in aliases)
-        ]
-        if len(planets) == 1 and len(mentioned_signs) == 1:
-            actual_sign = context.planet_signs.get(planets[0], "").lower()
-            if actual_sign and actual_sign != mentioned_signs[0]:
-                errors.append(
-                    f"wrong sign for {planets[0]}: stated {mentioned_signs[0]}, actual {actual_sign}"
-                )
         aspect_types = [
             kind for kind, pattern in _ASPECT_STEMS.items() if re.search(pattern, sentence)
         ]
@@ -230,8 +240,17 @@ def validate_generated_text(text: str, context: AstroFactContext) -> list[str]:
         if pattern.search(text):
             errors.append(code)
 
-    if re.search(r"\b(?:на|у)\s+куспид\w*\b", text, re.IGNORECASE):
-        errors.append("unsupported cusp claim")
+    for planet_pattern in _PLANET_STEMS.values():
+        planet_on_cusp = re.compile(
+            rf"\b(?:{planet_pattern})\b\s+"
+            rf"(?:(?:наход\w*|располож\w*|стоит)\s+)?(?:на|у)\s+куспид\w*\b|"
+            rf"\b(?:на|у)\s+куспид\w*\b\s+"
+            rf"(?:(?:наход\w*|располож\w*|стоит)\s+)(?:{planet_pattern})\b",
+            re.IGNORECASE,
+        )
+        if planet_on_cusp.search(text):
+            errors.append("unsupported cusp claim")
+            break
 
     return list(dict.fromkeys(errors))
 
