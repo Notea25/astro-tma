@@ -51,9 +51,12 @@ jobs:
           script: |
             cd /opt/astro-tma
             git pull origin main
-            docker compose pull
-            docker compose up -d --build backend
-            docker compose exec -T backend alembic upgrade head
+            # Never load docker-compose.override.yml on production: it enables
+            # APP_ENV=development, APP_DEBUG and uvicorn --reload.
+            docker compose -f docker-compose.yml pull
+            docker compose -f docker-compose.yml up -d --build backend worker
+            docker compose -f docker-compose.yml exec -T backend alembic upgrade head
+            docker restart astro-tma-nginx-1
             echo "Backend deployed: ${{ github.sha }}"
 
   deploy-frontend:
