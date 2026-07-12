@@ -8,6 +8,9 @@ on:
 jobs:
   deploy-backend:
     name: Deploy Backend
+    # API contracts remove fields consumed by the previous frontend.  Keep the
+    # production rollout ordered so Vercel is updated before backend/worker.
+    needs: deploy-frontend
     runs-on: ubuntu-latest
     env:
       VPS_HOST: ${{ secrets.VPS_HOST }}
