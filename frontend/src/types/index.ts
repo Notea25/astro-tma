@@ -567,6 +567,11 @@ export interface ProductInfo {
   type: string;
 }
 
+export interface ProductsCatalogue {
+  products: ProductInfo[];
+  card_payments_available: boolean;
+}
+
 export type ZodiacSign =
   | "aries"
   | "taurus"

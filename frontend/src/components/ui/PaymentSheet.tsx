@@ -73,11 +73,12 @@ export function PaymentSheet({
 
   const handleCardTap = () => {
     impact("light");
-    if (!cardExpanded) {
-      setStarsExpanded(false);
-      setCardExpanded(true);
-      return;
-    }
+    setStarsExpanded(false);
+    setCardExpanded(true);
+  };
+
+  const handleCardConfirm = () => {
+    impact("medium");
     setTouched(true);
     if (!emailValid) return;
     onPayCard(email.trim());
@@ -161,7 +162,7 @@ export function PaymentSheet({
               )}
             </AnimatePresence>
 
-            {rubPrice != null && (
+            {rubPrice != null && rubPrice > 0 && (
               <>
                 <button
                   type="button"
@@ -239,6 +240,13 @@ export function PaymentSheet({
                           Введите корректный email
                         </p>
                       )}
+                      <button
+                        type="button"
+                        className="payment-sheet__confirm-cta"
+                        onClick={handleCardConfirm}
+                      >
+                        Оплатить {rubPrice} ₽ картой
+                      </button>
                     </motion.div>
                   )}
                 </AnimatePresence>

@@ -10,36 +10,11 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import WebApp from "@twa-dev/sdk";
 import { usePayment } from "@/hooks/usePayment";
 import { useEntitlement } from "@/hooks/useEntitlement";
 import { useProductPrice, useProductPriceRub } from "@/hooks/useProductPrice";
-import { paymentsApi } from "@/services/api";
+import { payWithCard } from "@/utils/yukassaPayment";
 import { PaymentSheet } from "@/components/ui/PaymentSheet";
-
-/** Create a YuKassa hosted-payment session and open the URL outside the
- *  Mini App — Telegram WebView struggles with 3DS popups. Email is the
- *  buyer's receipt address (54-ФЗ). */
-async function payWithCard(productId: string, email: string): Promise<void> {
-  try {
-    const { confirmation_url } = await paymentsApi.createYukassaInvoice(
-      productId,
-      email,
-    );
-    WebApp.openLink(confirmation_url);
-  } catch (e: unknown) {
-    const message =
-      e instanceof Error && e.message
-        ? e.message
-        : "Не удалось открыть оплату картой. Попробуйте звёзды или повторите позже.";
-    if (WebApp.showAlert) {
-      WebApp.showAlert(message);
-    } else {
-      // eslint-disable-next-line no-alert
-      alert(message);
-    }
-  }
-}
 
 interface PremiumGateProps {
   productId: string;

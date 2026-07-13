@@ -11,6 +11,8 @@ import { motion, type PanInfo } from "framer-motion";
 import { NatalBasicSkeleton } from "@/components/ui/Skeleton";
 import { useAppStore } from "@/stores/app";
 import { natalApi, setNatalWheelSvgProvider } from "@/services/api";
+import { PaymentSheet } from "@/components/ui/PaymentSheet";
+import { payWithCard } from "@/utils/yukassaPayment";
 import {
   ZODIAC_SIGNS,
   type NatalDescriptionsResponse,
@@ -1712,6 +1714,7 @@ function NatalPdfCard({
   const price = useProductPrice("natal_full") ?? 149;
   const priceRub = useProductPriceRub("natal_full");
   const { purchase, activating, phase, error: payError } = usePayment();
+  const [sheetOpen, setSheetOpen] = useState(false);
   const paying = phase === "opening" || phase === "activating";
   const canSendToTelegramChat = Boolean(WebApp.initData);
 
@@ -1813,20 +1816,28 @@ function NatalPdfCard({
         <button
           type="button"
           className={`btn-rub ${styles.pdfButtonRub ?? ""}`}
-          onClick={() => {
-            const message =
-              "Оплата рублями скоро будет доступна. Пока используйте звёзды Telegram.";
-            if (WebApp.showAlert) {
-              WebApp.showAlert(message);
-            } else {
-              // eslint-disable-next-line no-alert
-              alert(message);
-            }
-          }}
+          onClick={() => setSheetOpen(true)}
         >
           Оплатить {priceRub} ₽
         </button>
       )}
+
+      <PaymentSheet
+        isOpen={sheetOpen}
+        item="Полный натальный отчёт PDF"
+        starsPrice={price}
+        rubPrice={priceRub ?? null}
+        defaultExpandCard
+        onClose={() => setSheetOpen(false)}
+        onPayStars={() => {
+          setSheetOpen(false);
+          void handlePurchase();
+        }}
+        onPayCard={(email) => {
+          setSheetOpen(false);
+          void payWithCard("natal_full", email);
+        }}
+      />
       {!entitled && hasChart && !paying && (
         <p className={styles.pdfHint}>
           Премиум-доступ ко всей карте + полный отчёт PDF. Также входит в

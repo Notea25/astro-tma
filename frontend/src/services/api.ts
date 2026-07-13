@@ -1023,7 +1023,7 @@ export const referralsApi = {
 
 export const paymentsApi = {
   getProducts: () =>
-    request<import("@/types").ProductInfo[]>("GET", "/payments/products"),
+    request<import("@/types").ProductsCatalogue>("GET", "/payments/products"),
   createInvoice: (product_id: string) =>
     request<{ invoice_url: string; product_id: string; stars_amount: number }>(
       "POST",

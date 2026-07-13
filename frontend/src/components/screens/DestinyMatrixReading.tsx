@@ -1,32 +1,12 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import { ApiError, destinyApi, destinyV3Api, paymentsApi } from "@/services/api";
-import WebApp from "@twa-dev/sdk";
+import { ApiError, destinyApi, destinyV3Api } from "@/services/api";
 import { usePayment } from "@/hooks/usePayment";
 import { useProductPrice, useProductPriceRub } from "@/hooks/useProductPrice";
+import { payWithCard } from "@/utils/yukassaPayment";
 import { PaymentSheet } from "@/components/ui/PaymentSheet";
 
-async function payWithCard(productId: string, email: string): Promise<void> {
-  try {
-    const { confirmation_url } = await paymentsApi.createYukassaInvoice(
-      productId,
-      email,
-    );
-    WebApp.openLink(confirmation_url);
-  } catch (e: unknown) {
-    const message =
-      e instanceof Error && e.message
-        ? e.message
-        : "Не удалось открыть оплату картой. Попробуйте звёзды или повторите позже.";
-    if (WebApp.showAlert) {
-      WebApp.showAlert(message);
-    } else {
-      // eslint-disable-next-line no-alert
-      alert(message);
-    }
-  }
-}
 import { useAppStore } from "@/stores/app";
 import { useHaptic, useTelegramBackButton } from "@/hooks/useTelegram";
 import {

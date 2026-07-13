@@ -241,7 +241,17 @@ create_admin(app)
 @app.get("/health")
 async def health():
     """Load balancer health check."""
-    return {"status": "ok", "env": settings.APP_ENV}
+    from services.payments import yukassa as yk
+
+    receipt_email = bool(settings.YUKASSA_RECEIPT_DEFAULT_EMAIL.strip())
+    return {
+        "status": "ok",
+        "env": settings.APP_ENV,
+        "payments": {
+            "yukassa_configured": yk.is_configured(),
+            "yukassa_receipt_ready": receipt_email,
+        },
+    }
 
 
 # ── Scheduled jobs ─────────────────────────────────────────────────────────────

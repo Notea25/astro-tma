@@ -13,6 +13,7 @@ from api.schemas.payments import (
     CreateInvoiceRequest,
     CreateInvoiceResponse,
     ProductInfo,
+    ProductsCatalogue,
 )
 from core.logging import get_logger
 from core.settings import settings
@@ -50,12 +51,11 @@ class YukassaCreateResponse(BaseModel):
     rub_amount: int
 
 
-@router.get("/products", response_model=list[ProductInfo])
+@router.get("/products", response_model=ProductsCatalogue)
 async def list_products(tg_user: dict = Depends(get_tg_user)):
     """Return all purchasable products with current effective prices
     (Stars + rubles). Both sides honour the per-product Redis override
-    set from the admin UI; ruble price is informational for now (no
-    YuKassa flow yet)."""
+    set from the admin UI."""
     out: list[ProductInfo] = []
     for pid, p in PRODUCTS.items():
         stars = await get_product_price(pid, default=p["stars"])
@@ -70,7 +70,10 @@ async def list_products(tg_user: dict = Depends(get_tg_user)):
                 type=p["type"],
             )
         )
-    return out
+    return ProductsCatalogue(
+        products=out,
+        card_payments_available=yk.is_configured(),
+    )
 
 
 @router.post("/invoice", response_model=CreateInvoiceResponse)

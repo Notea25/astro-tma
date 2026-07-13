@@ -1,38 +1,13 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import WebApp from "@twa-dev/sdk";
 import { HeaderAvatarButton } from "@/components/ui/HeaderAvatarButton";
 import { PaymentSheet } from "@/components/ui/PaymentSheet";
 import { paymentsApi } from "@/services/api";
+import { payWithCard } from "@/utils/yukassaPayment";
 import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
 import { usePayment } from "@/hooks/usePayment";
-
-/** Create a YuKassa hosted-payment session and open the URL outside the
- *  Mini App. Telegram WebView struggles with 3DS popups, so we always
- *  redirect to the system browser via openLink. The buyer's email is
- *  required so YuKassa can issue the 54-ФЗ fiscal receipt. */
-async function payWithCard(productId: string, email: string): Promise<void> {
-  try {
-    const { confirmation_url } = await paymentsApi.createYukassaInvoice(
-      productId,
-      email,
-    );
-    WebApp.openLink(confirmation_url);
-  } catch (e: unknown) {
-    const message =
-      e instanceof Error && e.message
-        ? e.message
-        : "Не удалось открыть оплату картой. Попробуйте звёзды или повторите позже.";
-    if (WebApp.showAlert) {
-      WebApp.showAlert(message);
-    } else {
-      // eslint-disable-next-line no-alert
-      alert(message);
-    }
-  }
-}
 
 const BENEFITS = [
   "Все гороскопы: сегодня, завтра, неделя, месяц",
@@ -61,11 +36,13 @@ export function Premium() {
   const { purchase, loading } = usePayment();
   const [sheet, setSheet] = useState<SheetTarget | null>(null);
 
-  const { data: products = [], isLoading } = useQuery({
+  const { data: catalogue, isLoading } = useQuery({
     queryKey: ["payments-products"],
     queryFn: paymentsApi.getProducts,
     staleTime: 1000 * 60 * 5,
   });
+  const products = catalogue?.products ?? [];
+  const cardPaymentsAvailable = catalogue?.card_payments_available ?? false;
 
   const monthly = products.find((p) => p.id === "subscription_month");
   const yearly = products.find((p) => p.id === "subscription_year");
@@ -77,6 +54,9 @@ export function Premium() {
     monthly && yearly
       ? Math.max(0, Math.round((1 - yearly.stars / (monthly.stars * 12)) * 100))
       : 0;
+
+  const rubFor = (priceRub?: number) =>
+    cardPaymentsAvailable && priceRub && priceRub > 0 ? priceRub : null;
 
   const openSheet = (t: SheetTarget) => {
     impact("light");
@@ -140,7 +120,7 @@ export function Premium() {
                       productId: monthly.id,
                       item: "Премиум · Месяц",
                       stars: monthly.stars,
-                      rub: monthly.price_rub ?? null,
+                      rub: rubFor(monthly.price_rub),
                     })
                   }
                   disabled={loading}
@@ -148,11 +128,11 @@ export function Premium() {
                   <div className="pf-card__name">Месяц</div>
                   <div className="pf-card__price">
                     <span className="pf-card__stars">⭐ {monthly.stars}</span>
-                    {monthly.price_rub != null && (
+                    {rubFor(monthly.price_rub) != null && (
                       <>
                         <span className="pf-card__sep">/</span>
                         <span className="pf-card__rub">
-                          {monthly.price_rub} ₽
+                          {rubFor(monthly.price_rub)} ₽
                         </span>
                       </>
                     )}
@@ -169,7 +149,7 @@ export function Premium() {
                       productId: yearly.id,
                       item: "Премиум · Год",
                       stars: yearly.stars,
-                      rub: yearly.price_rub ?? null,
+                      rub: rubFor(yearly.price_rub),
                     })
                   }
                   disabled={loading}
@@ -182,11 +162,11 @@ export function Premium() {
                   <div className="pf-card__name">Год</div>
                   <div className="pf-card__price">
                     <span className="pf-card__stars">⭐ {yearly.stars}</span>
-                    {yearly.price_rub != null && (
+                    {rubFor(yearly.price_rub) != null && (
                       <>
                         <span className="pf-card__sep">/</span>
                         <span className="pf-card__rub">
-                          {yearly.price_rub} ₽
+                          {rubFor(yearly.price_rub)} ₽
                         </span>
                       </>
                     )}
@@ -196,7 +176,9 @@ export function Premium() {
               )}
             </div>
             <p className="pf-pay-note">
-              Оплата звёздами Telegram или картой в рублях
+              {cardPaymentsAvailable
+                ? "Оплата звёздами Telegram или картой в рублях"
+                : "Оплата звёздами Telegram"}
             </p>
           </>
         )}
@@ -248,7 +230,7 @@ export function Premium() {
                       productId: p.id,
                       item: p.name,
                       stars: p.stars,
-                      rub: p.price_rub ?? null,
+                      rub: rubFor(p.price_rub),
                     })
                   }
                   disabled={loading || user?.is_premium}
