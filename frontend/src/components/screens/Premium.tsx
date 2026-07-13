@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { HeaderAvatarButton } from "@/components/ui/HeaderAvatarButton";
 import { PaymentSheet } from "@/components/ui/PaymentSheet";
 import { paymentsApi } from "@/services/api";
-import { payWithCard } from "@/utils/yukassaPayment";
+import { payWithYukassa, type YukassaPaymentMethod } from "@/utils/yukassaPayment";
 import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
 import { usePayment } from "@/hooks/usePayment";
@@ -70,11 +70,11 @@ export function Premium() {
     setSheet(null);
     await purchase(id);
   };
-  const handlePayCard = async (email: string) => {
+  const handlePayRub = async (email: string, method: YukassaPaymentMethod) => {
     if (!sheet) return;
     const id = sheet.productId;
     setSheet(null);
-    await payWithCard(id, email);
+    await payWithYukassa(id, email, method);
   };
 
   return (
@@ -270,7 +270,7 @@ export function Premium() {
         rubPrice={sheet?.rub ?? null}
         onClose={closeSheet}
         onPayStars={handlePayStars}
-        onPayCard={handlePayCard}
+        onPayRub={handlePayRub}
       />
     </div>
   );

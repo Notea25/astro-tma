@@ -12,7 +12,7 @@ import { NatalBasicSkeleton } from "@/components/ui/Skeleton";
 import { useAppStore } from "@/stores/app";
 import { natalApi, setNatalWheelSvgProvider } from "@/services/api";
 import { PaymentSheet } from "@/components/ui/PaymentSheet";
-import { payWithCard } from "@/utils/yukassaPayment";
+import { payWithYukassa } from "@/utils/yukassaPayment";
 import {
   ZODIAC_SIGNS,
   type NatalDescriptionsResponse,
@@ -1827,15 +1827,15 @@ function NatalPdfCard({
         item="Полный натальный отчёт PDF"
         starsPrice={price}
         rubPrice={priceRub ?? null}
-        defaultExpandCard
+        defaultRubMethod="bank_card"
         onClose={() => setSheetOpen(false)}
         onPayStars={() => {
           setSheetOpen(false);
           void handlePurchase();
         }}
-        onPayCard={(email) => {
+        onPayRub={(email, method) => {
           setSheetOpen(false);
-          void payWithCard("natal_full", email);
+          void payWithYukassa("natal_full", email, method);
         }}
       />
       {!entitled && hasChart && !paying && (

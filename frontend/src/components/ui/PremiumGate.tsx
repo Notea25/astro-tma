@@ -13,7 +13,7 @@ import { motion } from "framer-motion";
 import { usePayment } from "@/hooks/usePayment";
 import { useEntitlement } from "@/hooks/useEntitlement";
 import { useProductPrice, useProductPriceRub } from "@/hooks/useProductPrice";
-import { payWithCard } from "@/utils/yukassaPayment";
+import { payWithYukassa } from "@/utils/yukassaPayment";
 import { PaymentSheet } from "@/components/ui/PaymentSheet";
 
 interface PremiumGateProps {
@@ -128,15 +128,15 @@ export function PremiumGate({
         item={productName}
         starsPrice={displayStars}
         rubPrice={priceRub ?? null}
-        defaultExpandCard
+        defaultRubMethod="bank_card"
         onClose={() => setSheetOpen(false)}
         onPayStars={() => {
           setSheetOpen(false);
           void purchase(productId);
         }}
-        onPayCard={(email) => {
+        onPayRub={(email, method) => {
           setSheetOpen(false);
-          void payWithCard(productId, email);
+          void payWithYukassa(productId, email, method);
         }}
       />
 

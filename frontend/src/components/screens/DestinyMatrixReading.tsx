@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ApiError, destinyApi, destinyV3Api } from "@/services/api";
 import { usePayment } from "@/hooks/usePayment";
 import { useProductPrice, useProductPriceRub } from "@/hooks/useProductPrice";
-import { payWithCard } from "@/utils/yukassaPayment";
+import { payWithYukassa } from "@/utils/yukassaPayment";
 import { PaymentSheet } from "@/components/ui/PaymentSheet";
 
 import { useAppStore } from "@/stores/app";
@@ -493,15 +493,15 @@ export function DestinyMatrixReading() {
         item="Матрица Судьбы — полный разбор"
         starsPrice={price}
         rubPrice={priceRub ?? null}
-        defaultExpandCard
+        defaultRubMethod="bank_card"
         onClose={() => setPaymentSheetOpen(false)}
         onPayStars={() => {
           setPaymentSheetOpen(false);
           void handlePurchase();
         }}
-        onPayCard={(email) => {
+        onPayRub={(email, method) => {
           setPaymentSheetOpen(false);
-          void payWithCard("destiny_matrix_full", email);
+          void payWithYukassa("destiny_matrix_full", email, method);
         }}
       />
     </div>

@@ -1,19 +1,18 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import WebApp from "@twa-dev/sdk";
 import { useHaptic } from "@/hooks/useTelegram";
+import type { YukassaPaymentMethod } from "@/utils/yukassaPayment";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function isIosDevice(): boolean {
+  if (WebApp.platform === "ios") return true;
+  return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
 /**
- * Bottom payment-method sheet — shown when the user taps a Premium plan or
- * a one-off product. Lets them pick Telegram Stars or a Russian bank card.
- *
- * When the user picks "Bank card" the sheet expands an inline form with an
- * email input — the fiscal receipt mandated by 54-ФЗ is sent there. We
- * never submit a card payment without a valid email.
- *
- * The component is presentation-only — buying logic lives in usePayment
- * (Stars) and payWithCard() callers (YuKassa).
+ * Bottom payment-method sheet — Stars, bank card, or SBP (rubles).
  */
 export function PaymentSheet({
   isOpen,
@@ -22,46 +21,49 @@ export function PaymentSheet({
   rubPrice,
   defaultEmail,
   defaultExpandCard = false,
+  defaultRubMethod = null,
   onClose,
   onPayStars,
-  onPayCard,
+  onPayRub,
 }: {
   isOpen: boolean;
   item: string;
   starsPrice: number;
   rubPrice: number | null;
-  /** Pre-fills the receipt-email field (e.g. last email the user gave us). */
   defaultEmail?: string;
-  /** When the sheet opens, expand the card-payment subform straight away
-   *  (used by gates whose dedicated RUB button opens the sheet — the
-   *  user already picked card, no point asking them to tap again). */
+  /** @deprecated Use defaultRubMethod */
   defaultExpandCard?: boolean;
+  defaultRubMethod?: YukassaPaymentMethod | null;
   onClose: () => void;
   onPayStars: () => void;
-  onPayCard: (email: string) => void;
+  onPayRub: (email: string, method: YukassaPaymentMethod) => void;
 }) {
+  const initialRubMethod: YukassaPaymentMethod | null =
+    defaultRubMethod ?? (defaultExpandCard ? "bank_card" : null);
+
   const { impact } = useHaptic();
-  const [cardExpanded, setCardExpanded] = useState(defaultExpandCard);
+  const [rubMethod, setRubMethod] = useState<YukassaPaymentMethod | null>(
+    initialRubMethod,
+  );
   const [starsExpanded, setStarsExpanded] = useState(false);
   const [email, setEmail] = useState(defaultEmail ?? "");
   const [touched, setTouched] = useState(false);
 
-  // Reset local state when the sheet closes — next time it opens fresh.
   useEffect(() => {
     if (!isOpen) {
-      setCardExpanded(defaultExpandCard);
+      setRubMethod(initialRubMethod);
       setStarsExpanded(false);
       setEmail(defaultEmail ?? "");
       setTouched(false);
     }
-  }, [isOpen, defaultEmail, defaultExpandCard]);
+  }, [isOpen, defaultEmail, initialRubMethod]);
 
   const emailValid = EMAIL_RE.test(email.trim());
+  const showIosSbpHint = rubMethod === "sbp" && isIosDevice();
 
   const handleStarsTap = () => {
     impact("medium");
-    // Mutex with the card sub-form so only one "selected" block is visible.
-    setCardExpanded(false);
+    setRubMethod(null);
     setStarsExpanded((v) => !v);
   };
 
@@ -71,18 +73,69 @@ export function PaymentSheet({
     onPayStars();
   };
 
-  const handleCardTap = () => {
+  const handleRubTap = (method: YukassaPaymentMethod) => {
     impact("light");
     setStarsExpanded(false);
-    setCardExpanded(true);
+    setRubMethod(method);
   };
 
-  const handleCardConfirm = () => {
+  const handleRubConfirm = () => {
+    if (!rubMethod) return;
     impact("medium");
     setTouched(true);
     if (!emailValid) return;
-    onPayCard(email.trim());
+    onPayRub(email.trim(), rubMethod);
   };
+
+  const rubEmailBlock = rubMethod && rubPrice != null && rubPrice > 0 && (
+    <motion.div
+      className="payment-sheet__email"
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: "auto" }}
+      exit={{ opacity: 0, height: 0 }}
+      transition={{ duration: 0.2 }}
+    >
+      <label className="payment-sheet__email-label" htmlFor="payment-sheet-email">
+        Email для чека
+      </label>
+      <input
+        id="payment-sheet-email"
+        className={`payment-sheet__email-input${
+          touched && !emailValid ? " payment-sheet__email-input--error" : ""
+        }`}
+        type="email"
+        inputMode="email"
+        autoComplete="email"
+        placeholder="you@example.com"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        onBlur={() => setTouched(true)}
+        autoFocus
+      />
+      <p className="payment-sheet__email-hint">
+        Фискальный чек по 54-ФЗ придёт на этот адрес
+      </p>
+      {touched && !emailValid && (
+        <p className="payment-sheet__email-error">Введите корректный email</p>
+      )}
+      {showIosSbpHint && (
+        <p className="payment-sheet__confirm-hint">
+          На iPhone переход в приложение банка иногда не срабатывает. Если
+          увидите ошибку Safari — вернитесь и оплатите{" "}
+          <strong>банковской картой</strong>.
+        </p>
+      )}
+      <button
+        type="button"
+        className="payment-sheet__confirm-cta"
+        onClick={handleRubConfirm}
+      >
+        {rubMethod === "sbp"
+          ? `Оплатить ${rubPrice} ₽ через СБП`
+          : `Оплатить ${rubPrice} ₽ картой`}
+      </button>
+    </motion.div>
+  );
 
   return (
     <AnimatePresence>
@@ -117,12 +170,7 @@ export function PaymentSheet({
               aria-expanded={starsExpanded}
             >
               <span className="payment-sheet__option-ic" aria-hidden="true">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M12 3l2.5 5.6 6.1.6-4.6 4 1.4 6L12 16.9 6.6 19.2l1.4-6-4.6-4 6.1-.6z" />
                 </svg>
               </span>
@@ -132,9 +180,7 @@ export function PaymentSheet({
                   Оплата звёздами Telegram
                 </span>
               </span>
-              <span className="payment-sheet__option-price">
-                ⭐ {starsPrice}
-              </span>
+              <span className="payment-sheet__option-price">⭐ {starsPrice}</span>
             </button>
 
             <AnimatePresence initial={false}>
@@ -167,10 +213,10 @@ export function PaymentSheet({
                 <button
                   type="button"
                   className={`payment-sheet__option${
-                    cardExpanded ? " payment-sheet__option--active" : ""
+                    rubMethod === "bank_card" ? " payment-sheet__option--active" : ""
                   }`}
-                  onClick={handleCardTap}
-                  aria-expanded={cardExpanded}
+                  onClick={() => handleRubTap("bank_card")}
+                  aria-expanded={rubMethod === "bank_card"}
                 >
                   <span className="payment-sheet__option-ic" aria-hidden="true">
                     <svg
@@ -190,66 +236,50 @@ export function PaymentSheet({
                   </span>
                   <span className="payment-sheet__option-main">
                     <span className="payment-sheet__option-name">
-                      {cardExpanded ? "Оплатить картой" : "Банковской картой"}
+                      Банковской картой
                     </span>
                     <span className="payment-sheet__option-desc">
-                      Ввод номера карты · Visa / MC / МИР
+                      Visa / MC / МИР — ввод номера карты
                     </span>
                   </span>
-                  <span className="payment-sheet__option-price">
-                    {rubPrice} ₽
-                  </span>
+                  <span className="payment-sheet__option-price">{rubPrice} ₽</span>
                 </button>
 
-                <AnimatePresence initial={false}>
-                  {cardExpanded && (
-                    <motion.div
-                      className="payment-sheet__email"
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.2 }}
+                <button
+                  type="button"
+                  className={`payment-sheet__option${
+                    rubMethod === "sbp" ? " payment-sheet__option--active" : ""
+                  }`}
+                  onClick={() => handleRubTap("sbp")}
+                  aria-expanded={rubMethod === "sbp"}
+                >
+                  <span className="payment-sheet__option-ic" aria-hidden="true">
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                     >
-                      <label
-                        className="payment-sheet__email-label"
-                        htmlFor="payment-sheet-email"
-                      >
-                        Email для чека
-                      </label>
-                      <input
-                        id="payment-sheet-email"
-                        className={`payment-sheet__email-input${
-                          touched && !emailValid
-                            ? " payment-sheet__email-input--error"
-                            : ""
-                        }`}
-                        type="email"
-                        inputMode="email"
-                        autoComplete="email"
-                        placeholder="you@example.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        onBlur={() => setTouched(true)}
-                        autoFocus
-                      />
-                      <p className="payment-sheet__email-hint">
-                        Фискальный чек по 54-ФЗ придёт на этот адрес
-                      </p>
-                      {touched && !emailValid && (
-                        <p className="payment-sheet__email-error">
-                          Введите корректный email
-                        </p>
-                      )}
-                      <button
-                        type="button"
-                        className="payment-sheet__confirm-cta"
-                        onClick={handleCardConfirm}
-                      >
-                        Оплатить {rubPrice} ₽ картой
-                      </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                      <path d="M4 7h6l2 3h8" />
+                      <path d="M5 7l2 10h10l2-7" />
+                      <circle cx="9" cy="19" r="1.5" />
+                      <circle cx="17" cy="19" r="1.5" />
+                    </svg>
+                  </span>
+                  <span className="payment-sheet__option-main">
+                    <span className="payment-sheet__option-name">СБП</span>
+                    <span className="payment-sheet__option-desc">
+                      Система быстрых платежей · приложение банка
+                    </span>
+                  </span>
+                  <span className="payment-sheet__option-price">{rubPrice} ₽</span>
+                </button>
+
+                <AnimatePresence initial={false}>{rubEmailBlock}</AnimatePresence>
               </>
             )}
 

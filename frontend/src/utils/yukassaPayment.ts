@@ -1,25 +1,27 @@
 import WebApp from "@twa-dev/sdk";
 import { paymentsApi } from "@/services/api";
 
-/** Open YuKassa hosted checkout in the system browser (not the WebView).
- *  Telegram WebView cannot complete 3-D Secure / SBP bank-app handoffs. */
-export async function payWithCard(
+export type YukassaPaymentMethod = "bank_card" | "sbp";
+
+/** Open YuKassa hosted checkout in the system browser (not the WebView). */
+export async function payWithYukassa(
   productId: string,
   email: string,
+  paymentMethod: YukassaPaymentMethod = "bank_card",
 ): Promise<void> {
   try {
     const { confirmation_url } = await paymentsApi.createYukassaInvoice(
       productId,
       email,
+      paymentMethod,
     );
     if (typeof WebApp.openLink === "function") {
-      // Never use Instant View for payment pages — bank redirects break.
       WebApp.openLink(confirmation_url, { try_instant_view: false });
     } else {
       window.open(confirmation_url, "_blank", "noopener");
     }
   } catch (e: unknown) {
-    const message = formatYukassaError(e);
+    const message = formatYukassaError(e, paymentMethod);
     if (WebApp.showAlert) {
       WebApp.showAlert(message);
     } else {
@@ -29,13 +31,24 @@ export async function payWithCard(
   }
 }
 
-function formatYukassaError(e: unknown): string {
+/** @deprecated Use payWithYukassa(..., "bank_card") */
+export async function payWithCard(
+  productId: string,
+  email: string,
+): Promise<void> {
+  return payWithYukassa(productId, email, "bank_card");
+}
+
+function formatYukassaError(
+  e: unknown,
+  paymentMethod: YukassaPaymentMethod,
+): string {
   if (e && typeof e === "object" && "status" in e && "message" in e) {
     const status = (e as { status: number }).status;
     const message = String((e as { message: string }).message);
     if (status === 503) {
       if (message.toLowerCase().includes("not configured")) {
-        return "Оплата картой временно недоступна — на сервере не настроена ЮKassa. Попробуйте звёзды Telegram или напишите в поддержку.";
+        return "Оплата в рублях временно недоступна — на сервере не настроена ЮKassa. Попробуйте звёзды Telegram или напишите в поддержку.";
       }
       if (message.toLowerCase().includes("ruble price")) {
         return "Для этого продукта не задана цена в рублях. Попробуйте оплату звёздами.";
@@ -45,5 +58,7 @@ function formatYukassaError(e: unknown): string {
     if (message) return message;
   }
   if (e instanceof Error && e.message) return e.message;
-  return "Не удалось открыть оплату картой. Попробуйте звёзды или повторите позже.";
+  return paymentMethod === "sbp"
+    ? "Не удалось открыть оплату через СБП. Попробуйте карту или звёзды."
+    : "Не удалось открыть оплату картой. Попробуйте СБП или звёзды.";
 }

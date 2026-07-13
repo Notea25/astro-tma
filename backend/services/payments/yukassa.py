@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import base64
 import uuid
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 
@@ -29,6 +29,8 @@ from core.logging import get_logger
 from core.settings import settings
 
 log = get_logger(__name__)
+
+YukassaPaymentMethod = Literal["bank_card", "sbp"]
 
 _API_BASE = "https://api.yookassa.ru/v3"
 
@@ -111,6 +113,7 @@ async def create_payment(
     description: str,
     metadata: dict[str, str],
     customer_email: str | None = None,
+    payment_method: YukassaPaymentMethod = "bank_card",
 ) -> dict[str, Any]:
     """Create a YuKassa payment and return the parsed response.
 
@@ -121,6 +124,9 @@ async def create_payment(
 
     ``customer_email`` is the buyer's address for the fiscal receipt.
     When omitted we fall back to ``YUKASSA_RECEIPT_DEFAULT_EMAIL``.
+
+    ``payment_method`` — ``bank_card`` opens card entry directly;
+    ``sbp`` opens the Faster Payments System flow (bank picker / QR).
 
     Returns the full payment object; callers usually only need
     ``response["id"]`` (UUID) and ``response["confirmation"]["confirmation_url"]``.
@@ -134,10 +140,7 @@ async def create_payment(
             "currency": "RUB",
         },
         "capture": True,  # auto-capture on successful payment
-        # Skip YuKassa's SBP bank-picker on mobile — iOS Safari cannot
-        # open many bank-app universal links and shows "invalid address".
-        # Our UI says "pay by card"; send buyers straight to card entry.
-        "payment_method_data": {"type": "bank_card"},
+        "payment_method_data": {"type": payment_method},
         "confirmation": {
             "type": "redirect",
             "return_url": effective_return_url(),

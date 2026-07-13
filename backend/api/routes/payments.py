@@ -2,6 +2,7 @@
 
 
 import re
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse
@@ -43,6 +44,8 @@ class YukassaCreateRequest(BaseModel):
     # wire (older clients may not send it); when absent we fall back to
     # YUKASSA_RECEIPT_DEFAULT_EMAIL.
     email: str | None = None
+    # ``bank_card`` — direct card entry; ``sbp`` — Faster Payments System.
+    payment_method: Literal["bank_card", "sbp"] = "bank_card"
 
 
 class YukassaCreateResponse(BaseModel):
@@ -249,6 +252,7 @@ async def create_yukassa_payment(
                 "product_id": body.product_id,
             },
             customer_email=customer_email,
+            payment_method=body.payment_method,
         )
     except Exception as e:  # noqa: BLE001
         log.error("yukassa.create_exception", error=str(e))
