@@ -43,8 +43,9 @@ class Settings(BaseSettings):
     YUKASSA_SHOP_ID: str = ""
     YUKASSA_SECRET_KEY: str = ""
     # User-facing return URL after the YuKassa hosted-payment page.
-    # Deep-links back into the Telegram Mini App.
-    YUKASSA_RETURN_URL: str = "https://t.me/astrologiyatut_bot/app"
+    # Prefer an HTTPS URL on our API (/api/payments/return). Bare t.me
+    # deep-links break iOS Safari during SBP hand-offs.
+    YUKASSA_RETURN_URL: str = ""
     # Fiscal-receipt defaults (54-ФЗ compliance). YuKassa rejects
     # live-mode payments without a receipt object that names a customer
     # (email or phone) and at least one line-item. Until we collect the

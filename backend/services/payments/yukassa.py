@@ -43,6 +43,29 @@ def is_configured() -> bool:
     return bool(settings.YUKASSA_SHOP_ID and settings.YUKASSA_SECRET_KEY)
 
 
+def effective_return_url() -> str:
+    """HTTPS landing page after YuKassa checkout.
+
+  The bare ``t.me/.../app`` deep-link breaks iOS Safari when YuKassa
+  hands off to SBP bank apps — Safari reports "address is invalid".
+  We route through our own /api/payments/return page which then opens
+  Telegram via a normal user tap.
+    """
+    explicit = settings.YUKASSA_RETURN_URL.strip()
+    if explicit and "t.me/" not in explicit:
+        return explicit
+
+    webhook = settings.TELEGRAM_WEBHOOK_URL.rstrip("/")
+    if webhook.endswith("/api/payments/webhook"):
+        return webhook.replace("/api/payments/webhook", "/api/payments/return")
+
+    if explicit:
+        return explicit
+
+    bot = (settings.TELEGRAM_BOT_USERNAME or "astrologiyatut_bot").lstrip("@")
+    return f"https://t.me/{bot}/app"
+
+
 def _build_receipt(
     *,
     amount_rub: int,
@@ -111,9 +134,13 @@ async def create_payment(
             "currency": "RUB",
         },
         "capture": True,  # auto-capture on successful payment
+        # Skip YuKassa's SBP bank-picker on mobile — iOS Safari cannot
+        # open many bank-app universal links and shows "invalid address".
+        # Our UI says "pay by card"; send buyers straight to card entry.
+        "payment_method_data": {"type": "bank_card"},
         "confirmation": {
             "type": "redirect",
-            "return_url": settings.YUKASSA_RETURN_URL,
+            "return_url": effective_return_url(),
         },
         "description": description[:128],
         "metadata": {k: str(v)[:128] for k, v in metadata.items()},

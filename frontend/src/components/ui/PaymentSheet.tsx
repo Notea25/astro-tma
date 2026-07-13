@@ -193,7 +193,7 @@ export function PaymentSheet({
                       {cardExpanded ? "Оплатить картой" : "Банковской картой"}
                     </span>
                     <span className="payment-sheet__option-desc">
-                      ЮKassa · Visa / MC / МИР / СБП
+                      Ввод номера карты · Visa / MC / МИР
                     </span>
                   </span>
                   <span className="payment-sheet__option-price">

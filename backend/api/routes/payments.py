@@ -4,6 +4,7 @@
 import re
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -49,6 +50,57 @@ class YukassaCreateResponse(BaseModel):
     payment_id: str
     product_id: str
     rub_amount: int
+
+
+@router.get("/return", response_class=HTMLResponse)
+async def yukassa_return_page():
+    """Landing page after YuKassa hosted checkout.
+
+    YuKassa redirects here on success/cancel. We show a human message
+    and a button back into the Telegram Mini App — safer on iOS Safari
+    than using ``t.me/...`` as the raw ``return_url``.
+    """
+    bot = (settings.TELEGRAM_BOT_USERNAME or "astrologiyatut_bot").lstrip("@")
+    app_url = f"https://t.me/{bot}/app"
+    webapp_url = settings.TELEGRAM_WEBAPP_URL.rstrip("/") or "https://astro-tma.vercel.app"
+    return f"""<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Оплата · Astro</title>
+  <style>
+    body {{
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0b0d17; color: #f4f4f8; margin: 0; min-height: 100vh;
+      display: flex; align-items: center; justify-content: center; padding: 24px;
+    }}
+    .card {{
+      max-width: 420px; width: 100%; background: #15192b; border-radius: 20px;
+      padding: 28px 24px; text-align: center; box-shadow: 0 12px 40px rgba(0,0,0,.35);
+    }}
+    h1 {{ font-size: 1.35rem; margin: 0 0 12px; }}
+    p {{ color: #b8bdd4; line-height: 1.5; margin: 0 0 20px; font-size: .95rem; }}
+    a {{
+      display: block; background: linear-gradient(135deg,#7c5cff,#5b8def);
+      color: #fff; text-decoration: none; padding: 14px 18px; border-radius: 14px;
+      font-weight: 600; margin-bottom: 10px;
+    }}
+    .secondary {{
+      display: block; color: #9aa3c7; font-size: .85rem; text-decoration: none;
+    }}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Спасибо!</h1>
+    <p>Если оплата прошла успешно, доступ откроется в приложении в течение минуты.
+       Вернитесь в Telegram и обновите экран.</p>
+    <a href="{app_url}">Вернуться в приложение</a>
+    <a class="secondary" href="{webapp_url}">Открыть в браузере</a>
+  </div>
+</body>
+</html>"""
 
 
 @router.get("/products", response_model=ProductsCatalogue)
