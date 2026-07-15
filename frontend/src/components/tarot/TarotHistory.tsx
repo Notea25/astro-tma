@@ -1,7 +1,8 @@
-import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { tarotApi } from '@/services/api'
 import { useHaptic } from '@/hooks/useTelegram'
+import { MeaningText } from '@/components/ui/MeaningText'
+import type { TarotCardDetail } from '@/types'
 import { SpreadReading } from './SpreadReading'
 import styles from './TarotHistory.module.css'
 
@@ -12,6 +13,12 @@ const SPREAD_NAMES: Record<string, string> = {
   celtic_cross: 'Кельтский крест',
   week: 'Карты на неделю',
   relationship: 'Отношения',
+  single: 'Карта дня',
+}
+
+interface Props {
+  openId: number | null
+  onOpenIdChange: (readingId: number | null) => void
 }
 
 function formatDate(iso: string): string {
@@ -26,9 +33,46 @@ function formatDate(iso: string): string {
   return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
 }
 
-export function TarotHistory() {
+function DailyCardDetail({ card }: { card: TarotCardDetail | undefined }) {
+  if (!card) {
+    return <div className={styles.loading}>Не удалось загрузить карту дня.</div>
+  }
+
+  return (
+    <div className={styles.dailyCard}>
+      <div
+        className={`${styles.dailyCardVisual} ${card.reversed ? styles.dailyCardVisualReversed : ''}`}
+      >
+        {card.image_url ? (
+          <img src={card.image_url} alt={card.name_ru} />
+        ) : (
+          <div className={styles.dailyCardEmoji}>{card.emoji}</div>
+        )}
+      </div>
+
+      <div className={styles.dailyCardContent}>
+        <div className={styles.dailyCardMeta}>
+          <span>{card.arcana === 'major' ? 'Старший аркан' : 'Младший аркан'}</span>
+          <span className={card.reversed ? styles.dailyCardReversed : undefined}>
+            {card.reversed ? '↓ Перевёрнутое' : '↑ Прямое'}
+          </span>
+        </div>
+        <h4 className={styles.dailyCardName}>{card.name_ru}</h4>
+        {card.keywords_ru.length > 0 && (
+          <p className={styles.dailyCardKeywords}>
+            {card.keywords_ru.slice(0, 3).join(' · ')}
+          </p>
+        )}
+        <div className={styles.dailyCardMeaning}>
+          <MeaningText text={card.meaning_ru} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function TarotHistory({ openId, onOpenIdChange }: Props) {
   const { impact } = useHaptic()
-  const [openId, setOpenId] = useState<number | null>(null)
 
   const listQuery = useQuery({
     queryKey: ['tarot', 'history'],
@@ -50,7 +94,7 @@ export function TarotHistory() {
           className={styles.backLink}
           onClick={() => {
             impact('light')
-            setOpenId(null)
+            onOpenIdChange(null)
           }}
         >
           ← К списку
@@ -76,11 +120,15 @@ export function TarotHistory() {
                 </div>
               )}
             </div>
-            <SpreadReading
-              spreadType={readingQuery.data.spread_type as SpreadType}
-              readingId={readingQuery.data.reading_id}
-              cards={readingQuery.data.cards}
-            />
+            {readingQuery.data.spread_type === 'single' ? (
+              <DailyCardDetail card={readingQuery.data.cards[0]} />
+            ) : (
+              <SpreadReading
+                spreadType={readingQuery.data.spread_type as SpreadType}
+                readingId={readingQuery.data.reading_id}
+                cards={readingQuery.data.cards}
+              />
+            )}
           </>
         )}
       </div>
@@ -107,7 +155,7 @@ export function TarotHistory() {
           className={styles.item}
           onClick={() => {
             impact('light')
-            setOpenId(h.reading_id)
+            onOpenIdChange(h.reading_id)
           }}
         >
           <div className={styles.itemHeader}>

@@ -40,6 +40,7 @@ export function Tarot() {
   const [showInfo, setShowInfo] = useState(true);
   const [allFlipped, setAllFlipped] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [historyReadingId, setHistoryReadingId] = useState<number | null>(null);
 
   const drawMutation = useMutation({
     mutationFn: tarotApi.draw,
@@ -51,7 +52,11 @@ export function Tarot() {
   });
 
   const handleBack = useCallback(() => {
-    if (reading) {
+    if (showHistory && historyReadingId !== null) {
+      setHistoryReadingId(null);
+    } else if (showHistory) {
+      setShowHistory(false);
+    } else if (reading) {
       setReading(null);
       setAllFlipped(false);
       setSelectedSpread(null);
@@ -62,12 +67,18 @@ export function Tarot() {
     } else if (selectedSpread) {
       setSelectedSpread(null);
       setShowInfo(true);
-    } else if (showHistory) {
-      setShowHistory(false);
     } else {
       setScreen("discover", "back");
     }
-  }, [reading, selectedSpread, showInfo, showHistory, setScreen, drawMutation]);
+  }, [
+    reading,
+    selectedSpread,
+    showInfo,
+    showHistory,
+    historyReadingId,
+    setScreen,
+    drawMutation,
+  ]);
 
   const isSpreadInProgress = !!reading || drawMutation.isPending;
 
@@ -117,7 +128,7 @@ export function Tarot() {
         <div className="screen-header screen-header--with-back">
           <button
             className="back-btn"
-            onClick={() => setShowHistory(false)}
+            onClick={handleBack}
             aria-label="Назад"
           >
             <svg
@@ -136,7 +147,10 @@ export function Tarot() {
           <h2 className="screen-title">История раскладов</h2>
         </div>
         <div className="screen-content">
-          <TarotHistory />
+          <TarotHistory
+            openId={historyReadingId}
+            onOpenIdChange={setHistoryReadingId}
+          />
         </div>
       </div>
     );
@@ -186,6 +200,7 @@ export function Tarot() {
             className="spread-option"
             onClick={() => {
               impact("light");
+              setHistoryReadingId(null);
               setShowHistory(true);
             }}
             whileTap={{ scale: 0.97 }}
