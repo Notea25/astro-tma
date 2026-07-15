@@ -9630,12 +9630,91 @@ body::before {
   text-align: left;
 }
 .destiny-legend__head-title {
+  flex: 1;
   min-width: 0;
   color: var(--gold-soft, #c4a35a);
   font-family: "Playfair Display", serif;
   font-size: 0.96rem;
   line-height: 1.3;
   overflow-wrap: anywhere;
+}
+.destiny-legend__axis-description {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 0 10px;
+}
+.destiny-legend__axis-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.destiny-legend__axis-row strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.destiny-legend__axis-arrow {
+  display: block;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  overflow: visible;
+}
+.destiny-legend__lineage-description {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 0 10px;
+}
+.destiny-legend__lineage-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.destiny-legend__lineage-row strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.destiny-legend__lineage-arrow {
+  display: block;
+  flex: 0 0 26px;
+  width: 26px;
+  height: 18px;
+  overflow: visible;
+}
+.destiny-legend__lineage-description .destiny-legend__text {
+  padding-bottom: 0;
+}
+.destiny-legend__visual-description {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 0 10px;
+}
+.destiny-legend__visual-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.destiny-legend__visual-row strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.destiny-legend__visual-icon {
+  display: block;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  overflow: visible;
 }
 .destiny-legend__row.is-open .destiny-legend__head-title {
   color: var(--gold);
