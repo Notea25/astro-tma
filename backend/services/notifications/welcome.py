@@ -1,4 +1,4 @@
-"""First-launch welcome card for the main Telegram bot."""
+"""Mini App entry card for private messages to the main Telegram bot."""
 
 from __future__ import annotations
 
@@ -19,14 +19,6 @@ WELCOME_TEXT = (
     "и другие персональные разборы уже ждут вас.\n\n"
     "Нажмите кнопку ниже, чтобы начать 👇"
 )
-
-
-def is_start_command(text: object) -> bool:
-    """Recognize regular, addressed and deep-link /start commands."""
-    if not isinstance(text, str) or not text.strip():
-        return False
-    command = text.strip().split(maxsplit=1)[0]
-    return command.split("@", 1)[0].lower() == "/start"
 
 
 def build_welcome_markup() -> dict[str, Any] | None:

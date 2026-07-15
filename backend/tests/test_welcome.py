@@ -1,4 +1,4 @@
-"""Tests for the main bot's first-launch welcome card."""
+"""Tests for the main bot's Mini App entry card."""
 
 from unittest.mock import AsyncMock
 
@@ -8,21 +8,8 @@ from services.notifications.welcome import (
     WELCOME_BUTTON_LABEL,
     build_welcome_photo_payload,
     build_welcome_text_payload,
-    is_start_command,
     send_welcome_card,
 )
-
-
-def test_start_command_recognizes_regular_and_deep_links():
-    assert is_start_command("/start")
-    assert is_start_command(" /start referral-token ")
-    assert is_start_command("/start@astrologiyatut_bot")
-
-
-def test_start_command_rejects_other_messages():
-    assert not is_start_command("start")
-    assert not is_start_command("/help")
-    assert not is_start_command(None)
 
 
 def test_welcome_photo_payload_contains_image_and_webapp_button(monkeypatch):
@@ -74,7 +61,19 @@ async def test_welcome_falls_back_to_text_when_photo_is_rejected(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_main_webhook_sends_welcome_for_private_start(monkeypatch):
+@pytest.mark.parametrize(
+    "message_content",
+    [
+        {"text": "/start referral-token"},
+        {"text": "Куда нажимать?"},
+        {"photo": [{"file_id": "photo-id"}]},
+        {"sticker": {"file_id": "sticker-id"}},
+    ],
+)
+async def test_main_webhook_sends_welcome_for_every_private_message(
+    monkeypatch,
+    message_content,
+):
     from api.routes.payments import telegram_webhook
     from core.settings import settings
 
@@ -82,17 +81,55 @@ async def test_main_webhook_sends_welcome_for_private_start(monkeypatch):
     send_welcome = AsyncMock(return_value=True)
     monkeypatch.setattr("api.routes.payments.send_welcome_card", send_welcome)
 
-    class StartRequest:
+    class PrivateMessageRequest:
         headers = {"X-Telegram-Bot-Api-Secret-Token": "test-secret"}
 
         async def json(self):
             return {
                 "message": {
-                    "text": "/start referral-token",
+                    **message_content,
                     "chat": {"id": 12345, "type": "private"},
-                    "from": {"id": 12345},
+                    "from": {"id": 12345, "is_bot": False},
                 }
             }
 
-    assert await telegram_webhook(StartRequest(), AsyncMock()) == {"ok": True}
+    assert await telegram_webhook(PrivateMessageRequest(), AsyncMock()) == {"ok": True}
     send_welcome.assert_awaited_once_with(12345)
+
+
+@pytest.mark.asyncio
+async def test_successful_payment_does_not_send_welcome(monkeypatch):
+    from api.routes.payments import telegram_webhook
+    from core.settings import settings
+
+    monkeypatch.setattr(settings, "TELEGRAM_WEBHOOK_SECRET", "test-secret")
+    send_welcome = AsyncMock(return_value=True)
+    grant_access = AsyncMock(return_value=None)
+    monkeypatch.setattr("api.routes.payments.send_welcome_card", send_welcome)
+    monkeypatch.setattr("api.routes.payments.grant_product_access", grant_access)
+
+    class PaymentRequest:
+        headers = {"X-Telegram-Bot-Api-Secret-Token": "test-secret"}
+
+        async def json(self):
+            return {
+                "message": {
+                    "chat": {"id": 12345, "type": "private"},
+                    "from": {"id": 12345, "is_bot": False},
+                    "successful_payment": {
+                        "invoice_payload": "12345:natal_full:1234567890",
+                        "telegram_payment_charge_id": "charge-id",
+                    },
+                }
+            }
+
+    db = AsyncMock()
+    assert await telegram_webhook(PaymentRequest(), db) == {"ok": True}
+    send_welcome.assert_not_awaited()
+    grant_access.assert_awaited_once_with(
+        db,
+        12345,
+        "natal_full",
+        "charge-id",
+        "12345:natal_full:1234567890",
+    )

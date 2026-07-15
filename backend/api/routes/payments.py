@@ -20,7 +20,7 @@ from api.schemas.payments import (
 from core.logging import get_logger
 from core.settings import settings
 from db.database import get_db
-from services.notifications.welcome import is_start_command, send_welcome_card
+from services.notifications.welcome import send_welcome_card
 from services.payments import refunds
 from services.payments import yukassa as yk
 from services.payments.pricing import get_product_price, get_product_price_rub
@@ -151,7 +151,7 @@ async def create_invoice(
 async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     """
     Telegram Bot API webhook receiver.
-    Handles: /start welcome, pre_checkout_query, successful_payment.
+    Handles: private-chat welcome, pre_checkout_query, successful_payment.
 
     Security: Telegram signs the webhook URL secret in the header.
     We verify X-Telegram-Bot-Api-Secret-Token matches our configured secret.
@@ -165,14 +165,16 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
     body = await request.json()
     log.debug("webhook.received", update_keys=list(body.keys()))
 
-    # First bot launch: show an explicit Mini App entry point.
+    # Every regular private message gets an explicit Mini App entry point.
+    # Payment service messages must continue through the payment flow below.
     message = body.get("message") or {}
     chat = message.get("chat") or {}
     sender = message.get("from") or {}
     if (
         chat.get("type") == "private"
         and sender.get("id")
-        and is_start_command(message.get("text"))
+        and not sender.get("is_bot", False)
+        and "successful_payment" not in message
     ):
         await send_welcome_card(int(sender["id"]))
         return {"ok": True}
