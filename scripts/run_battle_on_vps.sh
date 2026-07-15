@@ -26,6 +26,7 @@ echo "== Battle load: 50 users, concurrency 20 (docker network) =="
 docker run --rm --network "$NET" \
   -e TELEGRAM_BOT_TOKEN \
   -e LOAD_BASE=http://backend:8000 \
+  -e LOAD_ALLOW_REMOTE=1 \
   -e LOAD_USERS=50 \
   -e LOAD_CONCURRENCY=20 \
   -e LOAD_USER_BASE=9100000000 \
@@ -36,6 +37,7 @@ echo "== Battle load: 100 users, concurrency 40 =="
 docker run --rm --network "$NET" \
   -e TELEGRAM_BOT_TOKEN \
   -e LOAD_BASE=http://backend:8000 \
+  -e LOAD_ALLOW_REMOTE=1 \
   -e LOAD_USERS=100 \
   -e LOAD_CONCURRENCY=40 \
   -e LOAD_USER_BASE=9200000000 \
@@ -46,6 +48,7 @@ echo "== Public HTTPS spot-check (10 users through nginx) =="
 docker run --rm --network "$NET" \
   -e TELEGRAM_BOT_TOKEN \
   -e LOAD_BASE=https://ip-194-99-21-53-142250.vps.hosted-by-mvps.net \
+  -e LOAD_ALLOW_REMOTE=1 \
   -e LOAD_USERS=10 \
   -e LOAD_CONCURRENCY=5 \
   -e LOAD_USER_BASE=9300000000 \

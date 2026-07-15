@@ -2,11 +2,8 @@
 """Production load test — safe endpoints only (no payments create, no LLM)."""
 from __future__ import annotations
 
-import json
 import os
 import subprocess
-import sys
-import time
 
 KEY = os.path.expanduser("~/.ssh/astro_tma_deploy")
 HOST = "194.99.21.53"
@@ -40,6 +37,12 @@ def section(title: str) -> None:
 
 
 def main() -> None:
+    if os.environ.get("ALLOW_PRODUCTION_LOAD") != "1":
+        raise SystemExit(
+            "Refusing the hard-coded production target. "
+            "Set ALLOW_PRODUCTION_LOAD=1 only during an approved load-test window."
+        )
+
     section("0. Preflight — hey + docker stats")
     print(ssh("hey -n 1 -c 1 http://127.0.0.1:8000/health 2>&1 | tail -20"))
     print(ssh("docker stats --no-stream --format 'table {{.Name}}\\t{{.CPUPerc}}\\t{{.MemUsage}}'"))

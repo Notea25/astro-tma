@@ -43,7 +43,12 @@ def verify_init_data(init_data: str) -> dict:
 
     # Check timestamp freshness
     auth_date = params.get("auth_date", "0")
-    if int(time.time()) - int(auth_date) >= _MAX_AGE_SECONDS:
+    try:
+        auth_timestamp = int(auth_date)
+    except (TypeError, ValueError):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Malformed auth_date")
+
+    if int(time.time()) - auth_timestamp >= _MAX_AGE_SECONDS:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "initData expired")
 
     # Build data-check string: sorted key=value pairs joined by \n
@@ -67,6 +72,8 @@ def verify_init_data(init_data: str) -> dict:
     try:
         user = json.loads(unquote(user_json))
     except json.JSONDecodeError:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Malformed user data")
+    if not isinstance(user, dict):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Malformed user data")
 
     return {"user": user, "params": params}

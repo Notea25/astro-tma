@@ -3,40 +3,33 @@ set -euo pipefail
 NET=$(docker inspect astro-tma-backend-1 --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}')
 echo "NETWORK=$NET"
 
-# Patch targets: backend service on compose network
-sed 's|http://127.0.0.1:8000|http://backend:8000|g' /tmp/load_test_async.py > /tmp/load_direct.py
+run_probe() {
+  docker run --rm --network "$NET" \
+    -v /tmp/load_test_async.py:/load.py:ro \
+    python:3.12-slim python /load.py \
+    --base http://backend:8000 --allow-remote "$@"
+}
 
-# Only run direct backend scenarios (1-5) + skip broken public postflight
-python3 - <<'PY'
-from pathlib import Path
-src = Path("/tmp/load_direct.py").read_text()
-# trim scenarios to direct-only by editing the list start marker
-old = '''scenarios = [
-        ("1. Direct /health c=50 n=2000", f"{BASE}/health", 2000, 50, "GET", None),
-        ("2. Direct /health c=100 n=5000", f"{BASE}/health", 5000, 100, "GET", None),
-        ("3. Direct /api/payments/return c=40 n=1000", f"{BASE}/api/payments/return", 1000, 40, "GET", None),
-        ("4. Direct POST /api/users/me (401) c=50 n=2000", f"{BASE}/api/users/me", 2000, 50, "POST", b"{}"),
-        ("5. Direct GET /api/glossary (401) c=50 n=2000", f"{BASE}/api/glossary", 2000, 50, "GET", None),
-        ("6. Nginx HTTPS /health c=30 n=1000", f"{PUBLIC}/health", 1000, 30, "GET", None),
-        ("7. Nginx HTTPS /api/glossary (rate-limit) c=40 n=200", f"{PUBLIC}/api/glossary", 200, 40, "GET", None),
-    ]'''
-new = '''scenarios = [
-        ("1. Direct /health c=50 n=2000", f"{BASE}/health", 2000, 50, "GET", None),
-        ("2. Direct /health c=100 n=5000", f"{BASE}/health", 5000, 100, "GET", None),
-        ("3. Direct /health sustained c=150 n=10000", f"{BASE}/health", 10000, 150, "GET", None),
-        ("4. Direct /api/payments/return c=40 n=1000", f"{BASE}/api/payments/return", 1000, 40, "GET", None),
-        ("5. Direct POST /api/users/me (401) c=50 n=2000", f"{BASE}/api/users/me", 2000, 50, "POST", b"{}"),
-        ("6. Direct GET /api/glossary (401) c=50 n=2000", f"{BASE}/api/glossary", 2000, 50, "GET", None),
-        ("7. Direct GET /api/news (401) c=80 n=3000", f"{BASE}/api/news", 3000, 80, "GET", None),
-    ]'''
-if old not in src:
-    raise SystemExit("scenario block not found")
-Path("/tmp/load_direct.py").write_text(src.replace(old, new))
-print("scenarios patched")
-PY
+echo "=== 1. /health c=50 n=2000 ==="
+run_probe --path /health -n 2000 -c 50 --expect 200
 
-echo "=== RUNNING IN-NETWORK LOAD ==="
-docker run --rm --network "$NET" -v /tmp/load_direct.py:/load.py:ro python:3.12-slim python /load.py
+echo "=== 2. /health c=100 n=5000 ==="
+run_probe --path /health -n 5000 -c 100 --expect 200
+
+echo "=== 3. /health sustained c=150 n=10000 ==="
+run_probe --path /health -n 10000 -c 150 --expect 200
+
+echo "=== 4. /api/payments/return c=40 n=1000 ==="
+run_probe --path /api/payments/return -n 1000 -c 40 --expect 200
+
+echo "=== 5. POST /api/users/me without auth c=50 n=2000 ==="
+run_probe --path /api/users/me --method POST --body '{}' -n 2000 -c 50 --expect 401
+
+echo "=== 6. GET /api/glossary without auth c=50 n=2000 ==="
+run_probe --path /api/glossary -n 2000 -c 50 --expect 401
+
+echo "=== 7. GET /api/news without auth c=80 n=3000 ==="
+run_probe --path /api/news -n 3000 -c 80 --expect 401
 
 echo "=== AFTER STATS ==="
 docker stats --no-stream --format 'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}'
