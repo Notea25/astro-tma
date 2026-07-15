@@ -1,9 +1,10 @@
+import os
 import paramiko, sys, time
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 HOST = '194.99.21.53'
 USER = 'root'
-PASS = 'HbqSgXEkc834Wy'
+PASS = os.environ.get('VPS_PASS', '')
 COMPOSE = 'docker compose -f /opt/astro-tma/docker-compose.yml'
 
 def ssh_run(client, cmd, timeout=120):
@@ -14,6 +15,9 @@ def ssh_run(client, cmd, timeout=120):
     return out
 
 def main():
+    if not PASS:
+        print('Set VPS_PASS environment variable')
+        sys.exit(1)
     t0 = time.time()
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())

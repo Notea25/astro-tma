@@ -1,4 +1,5 @@
-# Local development overrides — NOT committed to production
+# Local development overrides — do NOT place this file on the VPS.
+# Production must run: docker compose -f docker-compose.yml up -d
 version: '3.9'
 services:
   backend:
@@ -8,6 +9,8 @@ services:
     environment:
       APP_ENV: development
       APP_DEBUG: "true"
+    volumes:
+      - ./backend:/app
 
   # nginx — продовый сервис (TLS, /opt/astro-tma/static, /etc/letsencrypt).
   # Локально не нужен и ломается о несуществующие на хосте пути.
@@ -21,6 +24,8 @@ services:
       APP_ENV: development
       APP_DEBUG: "true"
       LLM_OUTPUT_TPM: "0"   # local: disable throttle to measure raw gen time
+    volumes:
+      - ./backend:/app
 
   postgres:
     ports:

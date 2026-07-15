@@ -56,6 +56,10 @@ jobs:
             git pull origin main
             # Never load docker-compose.override.yml on production: it enables
             # APP_ENV=development, APP_DEBUG and uvicorn --reload.
+            if [ -f docker-compose.override.yml ]; then
+              mv -f docker-compose.override.yml \
+                "docker-compose.override.yml.disabled_$(date -u +%Y%m%d_%H%M%S)"
+            fi
             docker compose -f docker-compose.yml pull
             docker compose -f docker-compose.yml up -d --build backend worker
             docker compose -f docker-compose.yml exec -T backend alembic upgrade head

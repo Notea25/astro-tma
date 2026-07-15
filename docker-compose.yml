@@ -59,8 +59,8 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       redis:    { condition: service_healthy }
-    volumes:
-      - ./backend:/app          # remove in production
+    # No bind-mount in production — code lives in the image. Local reload
+    # mounts are provided by docker-compose.override.yml only.
     networks: [astro-net]
     labels:
       - "traefik.enable=false"  # managed by nginx
@@ -82,8 +82,6 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       redis:    { condition: service_healthy }
-    volumes:
-      - ./backend:/app          # remove in production
     networks: [astro-net]
 
   # ── Nginx ───────────────────────────────────────────────────────────────────
