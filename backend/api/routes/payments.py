@@ -20,6 +20,7 @@ from api.schemas.payments import (
 from core.logging import get_logger
 from core.settings import settings
 from db.database import get_db
+from services.notifications.welcome import is_start_command, send_welcome_card
 from services.payments import refunds
 from services.payments import yukassa as yk
 from services.payments.pricing import get_product_price, get_product_price_rub
@@ -150,7 +151,7 @@ async def create_invoice(
 async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     """
     Telegram Bot API webhook receiver.
-    Handles: pre_checkout_query, successful_payment.
+    Handles: /start welcome, pre_checkout_query, successful_payment.
 
     Security: Telegram signs the webhook URL secret in the header.
     We verify X-Telegram-Bot-Api-Secret-Token matches our configured secret.
@@ -164,6 +165,18 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
     body = await request.json()
     log.debug("webhook.received", update_keys=list(body.keys()))
 
+    # First bot launch: show an explicit Mini App entry point.
+    message = body.get("message") or {}
+    chat = message.get("chat") or {}
+    sender = message.get("from") or {}
+    if (
+        chat.get("type") == "private"
+        and sender.get("id")
+        and is_start_command(message.get("text"))
+    ):
+        await send_welcome_card(int(sender["id"]))
+        return {"ok": True}
+
     # ── Pre-checkout query: must answer within 10 seconds ──────────────────
     if "pre_checkout_query" in body:
         pcq = body["pre_checkout_query"]
@@ -171,7 +184,6 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
         return {"ok": True}
 
     # ── Successful payment ─────────────────────────────────────────────────
-    message = body.get("message", {})
     if "successful_payment" in message:
         sp = message["successful_payment"]
         user_id = message["from"]["id"]
