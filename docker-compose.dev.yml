@@ -1,0 +1,10 @@
+# Extra local override for the Telegram dev bot.
+# Run together with docker-compose.yml and docker-compose.override.yml.
+services:
+  backend:
+    env_file:
+      - .env.dev
+
+  worker:
+    env_file:
+      - .env.dev
