@@ -184,8 +184,9 @@ cd frontend && vercel deploy --prod
 | GET  | `/api/news/{id}` | TG | Детали новости |
 | POST | `/api/tarot/draw` | TG | Расклад таро |
 | POST | `/api/compatibility` | TG | Совместимость знаков |
-| GET  | `/api/payments/products` | TG | Список продуктов |
+| GET  | `/api/payments/products` | TG | Список продуктов и персональная доступность ЮKassa |
 | POST | `/api/payments/invoice` | TG | Создать инвойс Stars |
+| POST | `/api/payments/yukassa/create` | TG | Создать платёж картой/СБП, если разрешён payment policy |
 | POST | `/api/payments/webhook` | HMAC | Вебхук Telegram |
 | GET  | `/health` | — | Health check |
 

@@ -25,5 +25,6 @@ class ProductInfo(BaseModel):
 
 class ProductsCatalogue(BaseModel):
     products: list[ProductInfo]
-    # True when YuKassa shop credentials are present on the backend.
+    # Per-user YuKassa availability. False when credentials are absent or
+    # the user's confirmed birth country is not eligible for ruble payments.
     card_payments_available: bool = False

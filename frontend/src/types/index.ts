@@ -569,6 +569,7 @@ export interface ProductInfo {
 
 export interface ProductsCatalogue {
   products: ProductInfo[];
+  /** Per-user YuKassa availability (bank card and SBP). */
   card_payments_available: boolean;
 }
 
