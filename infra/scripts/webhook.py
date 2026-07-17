@@ -7,6 +7,8 @@ from a .env in the current directory (or pass --env <path>).
 Usage:
     python webhook.py info       # print getWebhookInfo + getMe
     python webhook.py set        # register/refresh webhook
+    python webhook.py menu       # set the bot's Mini App menu button
+    python webhook.py configure  # set webhook and Mini App menu button
     python webhook.py delete     # unregister webhook
 
 Designed to be run from the project root (or /opt/astro-tma on the VPS).
@@ -50,10 +52,13 @@ def _http(method: str, url: str, body: dict | None = None) -> dict:
 def info(token: str) -> None:
     me = _http("GET", f"https://api.telegram.org/bot{token}/getMe")
     hook = _http("GET", f"https://api.telegram.org/bot{token}/getWebhookInfo")
+    menu = _http("GET", f"https://api.telegram.org/bot{token}/getChatMenuButton")
     print("=== getMe ===")
     print(json.dumps(me, indent=2, ensure_ascii=False))
     print("\n=== getWebhookInfo ===")
     print(json.dumps(hook, indent=2, ensure_ascii=False))
+    print("\n=== getChatMenuButton ===")
+    print(json.dumps(menu, indent=2, ensure_ascii=False))
 
 
 def set_webhook(token: str, url: str, secret: str) -> None:
@@ -81,9 +86,27 @@ def delete_webhook(token: str) -> None:
     print(json.dumps(result, indent=2, ensure_ascii=False))
 
 
+def set_menu_button(token: str, webapp_url: str) -> None:
+    result = _http(
+        "POST",
+        f"https://api.telegram.org/bot{token}/setChatMenuButton",
+        {
+            "menu_button": {
+                "type": "web_app",
+                "text": "Открыть приложение",
+                "web_app": {"url": webapp_url},
+            }
+        },
+    )
+    print("=== setChatMenuButton ===")
+    print(json.dumps(result, indent=2, ensure_ascii=False))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=["info", "set", "delete"])
+    parser.add_argument(
+        "command", choices=["info", "set", "menu", "configure", "delete"]
+    )
     parser.add_argument("--env", default=".env", help="Path to .env (default: ./.env)")
     args = parser.parse_args()
 
@@ -98,12 +121,18 @@ def main() -> None:
     if args.command == "delete":
         delete_webhook(token)
         return
-    # set
-    url = env.get("TELEGRAM_WEBHOOK_URL")
-    secret = env.get("TELEGRAM_WEBHOOK_SECRET")
-    if not url or not secret:
-        sys.exit("TELEGRAM_WEBHOOK_URL and TELEGRAM_WEBHOOK_SECRET required in .env")
-    set_webhook(token, url, secret)
+    if args.command in {"set", "configure"}:
+        url = env.get("TELEGRAM_WEBHOOK_URL")
+        secret = env.get("TELEGRAM_WEBHOOK_SECRET")
+        if not url or not secret:
+            sys.exit("TELEGRAM_WEBHOOK_URL and TELEGRAM_WEBHOOK_SECRET required in .env")
+        set_webhook(token, url, secret)
+
+    if args.command in {"menu", "configure"}:
+        webapp_url = env.get("TELEGRAM_WEBAPP_URL")
+        if not webapp_url:
+            sys.exit("TELEGRAM_WEBAPP_URL required in .env")
+        set_menu_button(token, webapp_url)
 
 
 if __name__ == "__main__":

@@ -22,15 +22,15 @@ export function useProductPrice(
   return data.products.find((p) => p.id === productId)?.stars;
 }
 
-/** True when the backend has YuKassa credentials — ruble buttons may show. */
+/** Per-user YuKassa eligibility — ruble buttons may show only when true. */
 export function useCardPaymentsAvailable(): boolean {
   const { data } = useQuery(PRODUCTS_QUERY);
   return data?.card_payments_available ?? false;
 }
 
 /**
- * Ruble price counterpart. Returns undefined when card payments are
- * disabled on the backend or no positive ruble price is configured.
+ * Ruble price counterpart. Returns undefined when YuKassa payments are
+ * unavailable for this user or no positive ruble price is configured.
  */
 export function useProductPriceRub(
   productId: string | undefined | null,

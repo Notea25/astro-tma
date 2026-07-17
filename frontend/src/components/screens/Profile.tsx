@@ -321,6 +321,7 @@ export function Profile() {
       setUser(updated);
       queryClient.invalidateQueries({ queryKey: ["natal-summary"] });
       queryClient.invalidateQueries({ queryKey: ["natal-full"] });
+      queryClient.invalidateQueries({ queryKey: ["payments-products"] });
     },
     onError: (err: any) => {
       notification("error");

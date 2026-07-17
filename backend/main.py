@@ -156,6 +156,11 @@ app.add_middleware(
 # ── CORS ───────────────────────────────────────────────────────────────────────
 # Telegram Mini Apps are served from *.telegram.org in production
 # Allow localhost for development
+development_origin_regex = (
+    None
+    if settings.is_production
+    else r"https://[a-z0-9-]+\.trycloudflare\.com"
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -166,6 +171,7 @@ app.add_middleware(
         "http://localhost:5173",  # Vite dev server
         "http://localhost:3000",
     ],
+    allow_origin_regex=development_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

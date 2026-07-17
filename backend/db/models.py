@@ -112,6 +112,7 @@ class User(TimestampMixin, Base):
     birth_lat: Mapped[float | None] = mapped_column(Float)
     birth_lng: Mapped[float | None] = mapped_column(Float)
     birth_tz: Mapped[str | None] = mapped_column(String(64))
+    birth_country_code: Mapped[str | None] = mapped_column(String(2))
     sun_sign: Mapped[ZodiacSign | None] = mapped_column(Enum(ZodiacSign, values_callable=lambda e: [x.value for x in e]))
     push_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
 

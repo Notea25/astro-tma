@@ -102,6 +102,7 @@ async def seed(*, reset: bool) -> None:
         user.birth_lat = 55.7558
         user.birth_lng = 37.6173
         user.birth_tz = "Europe/Moscow"
+        user.birth_country_code = "RU"
         user.sun_sign = ZodiacSign.PISCES
 
         natal = (

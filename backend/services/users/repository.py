@@ -32,6 +32,12 @@ async def get_by_id(db: AsyncSession, user_id: int) -> User | None:
     return result.scalar_one_or_none()
 
 
+async def get_for_payment_policy(db: AsyncSession, user_id: int) -> User | None:
+    """Load only the User row needed by payment eligibility checks."""
+    result = await db.execute(select(User).where(User.id == user_id))
+    return result.scalar_one_or_none()
+
+
 async def get_or_create(
     db: AsyncSession,
     tg_user_id: int,
@@ -78,6 +84,7 @@ async def update_birth_data(
     lat: float,
     lng: float,
     tz_str: str,
+    country_code: str | None,
     sun_sign: ZodiacSign,
 ) -> User:
     user.birth_date = birth_date
@@ -86,6 +93,7 @@ async def update_birth_data(
     user.birth_lat = lat
     user.birth_lng = lng
     user.birth_tz = tz_str
+    user.birth_country_code = country_code
     user.sun_sign = sun_sign
     await db.flush()
     log.info("user.birth_updated", user_id=user.id, sign=sun_sign)

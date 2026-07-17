@@ -23,6 +23,7 @@ from db.database import get_db
 from services.notifications.welcome import send_welcome_card
 from services.payments import refunds
 from services.payments import yukassa as yk
+from services.payments.policy import is_yukassa_allowed
 from services.payments.pricing import get_product_price, get_product_price_rub
 from services.payments.stars import (
     PRODUCTS,
@@ -31,6 +32,7 @@ from services.payments.stars import (
     grant_yukassa_access,
     handle_pre_checkout,
 )
+from services.users import repository as user_repo
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 log = get_logger(__name__)
@@ -108,10 +110,18 @@ async def yukassa_return_page():
 
 
 @router.get("/products", response_model=ProductsCatalogue)
-async def list_products(tg_user: dict = Depends(get_tg_user)):
+async def list_products(
+    tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Return all purchasable products with current effective prices
     (Stars + rubles). Both sides honour the per-product Redis override
     set from the admin UI."""
+    user = await user_repo.get_for_payment_policy(db, tg_user["id"])
+    yukassa_available = bool(
+        yk.is_configured() and user is not None and is_yukassa_allowed(user)
+    )
+
     out: list[ProductInfo] = []
     for pid, p in PRODUCTS.items():
         stars = await get_product_price(pid, default=p["stars"])
@@ -128,7 +138,7 @@ async def list_products(tg_user: dict = Depends(get_tg_user)):
         )
     return ProductsCatalogue(
         products=out,
-        card_payments_available=yk.is_configured(),
+        card_payments_available=yukassa_available,
     )
 
 
@@ -223,6 +233,7 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
 async def create_yukassa_payment(
     body: YukassaCreateRequest,
     tg_user: dict = Depends(get_tg_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """Create a YuKassa payment and return the hosted-payment URL.
 
@@ -230,13 +241,23 @@ async def create_yukassa_payment(
     their card on YuKassa's PCI-compliant page. Access is provisioned on
     the webhook callback (`/yukassa/webhook`), not here.
     """
+    if body.product_id not in PRODUCTS:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unknown product")
+
+    user = await user_repo.get_for_payment_policy(db, tg_user["id"])
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    if not is_yukassa_allowed(user):
+        log.info("yukassa.blocked_by_birth_country", user_id=user.id)
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Оплата картой и через СБП недоступна. Используйте Telegram Stars.",
+        )
     if not yk.is_configured():
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE,
             "YuKassa payments are not configured",
         )
-    if body.product_id not in PRODUCTS:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unknown product")
 
     product = PRODUCTS[body.product_id]
     rub_amount = await get_product_price_rub(

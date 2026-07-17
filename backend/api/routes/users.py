@@ -1,5 +1,6 @@
 """User profile endpoints."""
 
+import asyncio
 from typing import Any, TypedDict
 
 import httpx
@@ -22,6 +23,10 @@ from db.models import Gender, Purchase, Subscription, SubscriptionStatus, Zodiac
 from services.astro.natal import calculate_natal, chart_to_json
 from services.payments.stars import LEGACY_PRODUCT_NAMES_RU, PRODUCTS
 from services.users import repository as user_repo
+from services.users.birth_location import (
+    country_code_from_nominatim,
+    reverse_country_code,
+)
 
 router = APIRouter(prefix="/users", tags=["users"])
 log = get_logger(__name__)
@@ -32,6 +37,7 @@ class GeoResult(TypedDict):
     lat: float
     lng: float
     tz: str
+    country_code: str | None
 
 
 # Sun sign → ZodiacSign enum mapping (Kerykeion returns English names)
@@ -316,8 +322,17 @@ async def setup_birth_data(
 
     # Use pre-resolved coordinates if provided, otherwise geocode
     if body.lat is not None and body.lng is not None:
-        tz = await _get_timezone(body.lat, body.lng)
-        geo: GeoResult = {"city": body.birth_city, "lat": body.lat, "lng": body.lng, "tz": tz}
+        tz, country_code = await asyncio.gather(
+            _get_timezone(body.lat, body.lng),
+            reverse_country_code(body.lat, body.lng),
+        )
+        geo: GeoResult = {
+            "city": body.birth_city,
+            "lat": body.lat,
+            "lng": body.lng,
+            "tz": tz,
+            "country_code": country_code,
+        }
         log.info("geocode.from_client", city=body.birth_city, lat=body.lat, lng=body.lng)
     else:
         geo = await _geocode_city(body.birth_city)
@@ -351,6 +366,7 @@ async def setup_birth_data(
         lat=geo["lat"],
         lng=geo["lng"],
         tz_str=geo["tz"],
+        country_code=geo["country_code"],
         sun_sign=sun_sign_enum,
     )
 
@@ -467,6 +483,7 @@ async def _geocode_city(city: str) -> GeoResult:
             lat = float(place["lat"])
             lng = float(place["lon"])
             name = _place_name(place, city)
+            country_code = country_code_from_nominatim(place)
             tz = await _get_timezone(lat, lng)
             log.info(
                 "geocode.ok",
@@ -477,10 +494,22 @@ async def _geocode_city(city: str) -> GeoResult:
                 candidates=len(data),
                 score=_place_score(place),
             )
-            return {"city": name, "lat": lat, "lng": lng, "tz": tz}
+            return {
+                "city": name,
+                "lat": lat,
+                "lng": lng,
+                "tz": tz,
+                "country_code": country_code,
+            }
     except Exception as e:
         log.warning("geocode.failed", city=city, error=str(e))
 
     # Default fallback
     log.warning("geocode.fallback_moscow", city=city)
-    return {"city": city, "lat": 55.7558, "lng": 37.6176, "tz": "Europe/Moscow"}
+    return {
+        "city": city,
+        "lat": 55.7558,
+        "lng": 37.6176,
+        "tz": "Europe/Moscow",
+        "country_code": None,
+    }
