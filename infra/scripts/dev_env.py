@@ -94,6 +94,19 @@ def set_urls(output_path: Path, backend_url: str, frontend_url: str) -> None:
     print(f"Updated public URLs in {output_path}")
 
 
+def enable_yukassa_ui_test(output_path: Path) -> None:
+    """Expose ruble methods in the UI without using real provider credentials."""
+    if not output_path.is_file():
+        raise SystemExit(f"Dev env file not found: {output_path}")
+    values = {
+        "YUKASSA_SHOP_ID": "local-ui-test-shop",
+        "YUKASSA_SECRET_KEY": "local-ui-test-secret",
+        "YUKASSA_RETURN_URL": "https://example.invalid/payments/return",
+    }
+    _write_env(output_path, _upsert(output_path.read_text().splitlines(True), values))
+    print(f"Enabled YuKassa UI test mode in {output_path}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--env", type=Path, default=Path(".env.dev"))
@@ -107,11 +120,15 @@ def main() -> None:
     urls_parser.add_argument("--backend-url", required=True)
     urls_parser.add_argument("--frontend-url", required=True)
 
+    subparsers.add_parser("enable-yukassa-ui-test")
+
     args = parser.parse_args()
     if args.command == "init":
         init_env(args.base, args.env, args.bot_username)
-    else:
+    elif args.command == "set-urls":
         set_urls(args.env, args.backend_url, args.frontend_url)
+    else:
+        enable_yukassa_ui_test(args.env)
 
 
 if __name__ == "__main__":
