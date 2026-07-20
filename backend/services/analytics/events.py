@@ -71,6 +71,95 @@ FUNNELS: dict[str, list[str]] = {
     ],
 }
 
+# Russian labels for admin analytics (screens, funnel steps, products).
+SCREEN_LABELS_RU: dict[str, str] = {
+    "onboarding": "Онбординг",
+    "home": "Главная",
+    "horoscopes": "Гороскопы",
+    "discover": "Обзор",
+    "premium": "Premium / тарифы",
+    "tarot": "Таро",
+    "moon": "Луна",
+    "natal": "Натальная карта",
+    "mac": "МАК-карты",
+    "profile": "Профиль",
+    "transits": "Транзиты",
+    "synastry": "Синастрия",
+    "synastry_invite": "Синастрия — приглашение",
+    "glossary": "Глоссарий",
+    "glossary_term": "Глоссарий — термин",
+    "news": "Новости",
+    "news_detail": "Новости — статья",
+    "referral": "Рефералка",
+    "purchases": "Мои покупки",
+    "destiny_matrix_info": "Матрица Судьбы — инфо",
+    "destiny_matrix_reading": "Матрица Судьбы — разбор",
+    "my_reports": "Мои отчёты",
+    "natal_full_reading": "Натал — полный разбор",
+}
+
+EVENT_LABELS_RU: dict[str, str] = {
+    "app_open": "Открыл приложение",
+    "onboarding_start": "Начал онбординг",
+    "birth_saved": "Сохранил дату рождения",
+    "home_ready": "Дошёл до главной",
+    "screen_view": "Просмотр экрана",
+    "paywall_view": "Увидел paywall",
+    "checkout_click": "Нажал оплату",
+    "payment_ok": "Оплатил",
+    "payment_cancel": "Отменил оплату",
+    "natal_open": "Открыл натал",
+    "natal_pdf_cta": "Нажал CTA PDF натала",
+    "matrix_open": "Открыл Матрицу",
+    "matrix_lock_cta": "Нажал «открыть полный разбор»",
+    "synastry_open": "Открыл синастрию",
+    "synastry_invite_create": "Создал приглашение",
+    "synastry_invite_accept": "Принял приглашение",
+    "tarot_draw": "Сделал расклад Таро",
+    "premium_open": "Открыл Premium",
+}
+
+FUNNEL_LABELS_RU: dict[str, str] = {
+    "onboarding": "Онбординг",
+    "pay_generic": "Оплата (общая)",
+    "natal": "Натальная карта",
+    "matrix": "Матрица Судьбы",
+    "synastry": "Синастрия",
+}
+
+PRODUCT_LABELS_RU: dict[str, str] = {
+    "natal_full": "Натал PDF",
+    "destiny_matrix_full": "Матрица Судьбы",
+    "synastry": "Синастрия",
+    "subscription_month": "Premium — месяц",
+    "subscription_year": "Premium — год",
+}
+
+
+def label_screen(key: str | None) -> str:
+    if not key:
+        return "—"
+    return SCREEN_LABELS_RU.get(key, key)
+
+
+def label_event(key: str | None) -> str:
+    if not key:
+        return "—"
+    return EVENT_LABELS_RU.get(key, key)
+
+
+def label_funnel(key: str | None) -> str:
+    if not key:
+        return "—"
+    return FUNNEL_LABELS_RU.get(key, key)
+
+
+def label_product(key: str | None) -> str:
+    if not key:
+        return "—"
+    return PRODUCT_LABELS_RU.get(key, key)
+
+
 
 async def record_event(
     db: AsyncSession,

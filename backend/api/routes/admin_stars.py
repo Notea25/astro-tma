@@ -40,7 +40,15 @@ from services.payments.pricing import (
     set_product_price_rub,
 )
 from services.payments.stars import PRODUCTS, grant_product_access
-from services.analytics.events import FUNNELS, activity_summary, funnel_counts
+from services.analytics.events import (
+    FUNNELS,
+    activity_summary,
+    funnel_counts,
+    label_event,
+    label_funnel,
+    label_product,
+    label_screen,
+)
 from services.analytics.acquisition import acquisition_breakdown
 
 log = get_logger(__name__)
@@ -957,9 +965,28 @@ async def admin_analytics_json(
         )
     return {
         "days": days,
-        "summary": summary,
-        "funnels": funnels,
-        "pay_by_product": by_product,
+        "summary": {
+            **summary,
+            "top_screens_7d": [
+                {
+                    **row,
+                    "screen_ru": label_screen(row.get("screen")),
+                }
+                for row in (summary.get("top_screens_7d") or [])
+            ],
+        },
+        "funnels": {
+            label_funnel(name): [
+                {**step, "event_ru": label_event(step["event"])} for step in steps
+            ]
+            for name, steps in funnels.items()
+        },
+        "pay_by_product": {
+            label_product(pid): [
+                {**step, "event_ru": label_event(step["event"])} for step in steps
+            ]
+            for pid, steps in by_product.items()
+        },
         "acquisition": await acquisition_breakdown(db, days=days),
     }
 
@@ -992,7 +1019,8 @@ async def admin_analytics_html(
     def _funnel_table(title: str, steps: list[dict[str, Any]]) -> str:
         rows = "".join(
             "<tr>"
-            f"<td>{_esc_html(s['event'])}</td>"
+            f"<td>{_esc_html(label_event(s['event']))}"
+            f"<div class='code-sub'>{_esc_html(s['event'])}</div></td>"
             f"<td class='num'>{s['users']}</td>"
             f"<td class='num'>{'—' if s['drop_pct'] is None else str(s['drop_pct']) + '%'}</td>"
             "</tr>"
@@ -1000,20 +1028,25 @@ async def admin_analytics_html(
         )
         return (
             f"<section class='card'><h2>{_esc_html(title)}</h2>"
-            "<table><thead><tr><th>Шаг</th><th>Юзеры</th><th>Drop</th></tr></thead>"
+            "<table><thead><tr><th>Шаг</th><th class='num'>Юзеры</th>"
+            "<th class='num'>Drop</th></tr></thead>"
             f"<tbody>{rows}</tbody></table></section>"
         )
 
     funnel_html = "".join(
-        _funnel_table(name, steps) for name, steps in funnels.items()
+        _funnel_table(label_funnel(name), steps) for name, steps in funnels.items()
     )
     product_html = "".join(
-        _funnel_table(pid, steps) for pid, steps in by_product.items()
+        _funnel_table(label_product(pid), steps) for pid, steps in by_product.items()
     )
     screens = "".join(
-        f"<tr><td>{_esc_html(s['screen'])}</td><td class='num'>{s['users']}</td></tr>"
+        "<tr>"
+        f"<td>{_esc_html(label_screen(s['screen']))}"
+        f"<div class='code-sub'>{_esc_html(s['screen'])}</div></td>"
+        f"<td class='num'>{s['users']}</td>"
+        "</tr>"
         for s in summary.get("top_screens_7d") or []
-    ) or "<tr><td colspan='2' class='muted'>Пока нет screen_view</td></tr>"
+    ) or "<tr><td colspan='2' class='muted'>Пока нет открытий экранов</td></tr>"
 
     acq_rows = "".join(
         "<tr>"
@@ -1080,6 +1113,7 @@ async def admin_analytics_html(
     background: rgba(212,178,84,0.08); padding: 2px 6px; border-radius: 4px;
   }}
   .pct {{ display: block; font-size: 11px; color: var(--muted); font-weight: 400; }}
+  .code-sub {{ font-size: 11px; color: var(--muted); margin-top: 2px; font-family: ui-monospace, monospace; }}
   .muted {{ color: var(--muted); }}
   code {{ font-size: 12px; }}
   .tabs a {{
@@ -1135,8 +1169,9 @@ async def admin_analytics_html(
 <div class="grid">{product_html}</div>
 
 <section class="card" style="margin-top:16px">
-  <h2>Топ экранов (7д)</h2>
-  <table><thead><tr><th>Экран</th><th>Юзеры</th></tr></thead>
+  <h2>Куда заходили (7д)</h2>
+  <p class="hint" style="margin-top:0">Уникальные юзеры по экранам Mini App.</p>
+  <table><thead><tr><th>Экран</th><th class="num">Юзеры</th></tr></thead>
   <tbody>{screens}</tbody></table>
 </section>
 
