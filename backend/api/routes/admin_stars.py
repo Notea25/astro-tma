@@ -1019,9 +1019,11 @@ async def admin_analytics_html(
         "<tr>"
         f"<td><code>{_esc_html(r['source'])}</code></td>"
         f"<td class='num'>{r['users']}</td>"
-        f"<td class='num'>{r['onboarded']} <span class='muted'>({r['onboard_pct']}%)</span></td>"
+        f"<td class='num'>{r['onboarded']}"
+        f"<span class='pct'>{r['onboard_pct']}%</span></td>"
         f"<td class='num'>{r['active_7d']}</td>"
-        f"<td class='num'>{r['paid']} <span class='muted'>({r['paid_pct']}%)</span></td>"
+        f"<td class='num'>{r['paid']}"
+        f"<span class='pct'>{r['paid_pct']}%</span></td>"
         "</tr>"
         for r in acquisition
     ) or (
@@ -1065,10 +1067,21 @@ async def admin_analytics_html(
     border-radius: 12px; padding: 14px;
   }}
   table {{ width: 100%; border-collapse: collapse; font-size: 13px; }}
-  th, td {{ padding: 6px 4px; border-bottom: 0.5px solid var(--border); text-align: left; }}
+  th, td {{ padding: 8px 10px; border-bottom: 0.5px solid var(--border); text-align: left; vertical-align: middle; }}
   th {{ color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; }}
-  .num {{ text-align: right; font-variant-numeric: tabular-nums; }}
+  .num {{ text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }}
+  th.num {{ text-align: right; }}
+  table.acq {{ table-layout: fixed; }}
+  table.acq th:nth-child(1), table.acq td:nth-child(1) {{ width: 28%; }}
+  table.acq th:nth-child(n+2), table.acq td:nth-child(n+2) {{ width: 18%; }}
+  table.acq code {{
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px; color: var(--gold);
+    background: rgba(212,178,84,0.08); padding: 2px 6px; border-radius: 4px;
+  }}
+  .pct {{ display: block; font-size: 11px; color: var(--muted); font-weight: 400; }}
   .muted {{ color: var(--muted); }}
+  code {{ font-size: 12px; }}
   .tabs a {{
     color: var(--muted); text-decoration: none; margin-right: 10px; font-size: 13px;
   }}
@@ -1099,12 +1112,16 @@ async def admin_analytics_html(
 <section class="card" style="margin-bottom:16px">
   <h2>Источники трафика ({days}д)</h2>
   <p class="hint" style="margin-top:0">First-touch: ссылки
-    <code>https://t.me/&lt;bot&gt;?start=ad_vk_group1</code> или
+    <code>t.me/bot?start=ad_vk_group1</code> или
     <code>?startapp=ad_vk_group1</code>. Без метки → <code>organic</code>.
   </p>
-  <table>
+  <table class="acq">
     <thead><tr>
-      <th>Источник</th><th>Юзеры</th><th>Онбординг</th><th>Active 7д</th><th>Купили</th>
+      <th>Источник</th>
+      <th class="num">Юзеры</th>
+      <th class="num">Онбординг</th>
+      <th class="num">Active 7д</th>
+      <th class="num">Купили</th>
     </tr></thead>
     <tbody>{acq_rows}</tbody>
   </table>
