@@ -95,7 +95,7 @@ export function Onboarding() {
     !inviteInfoQuery.data.is_expired;
 
   const upsertMutation = useMutation({
-    mutationFn: usersApi.upsertMe,
+    mutationFn: () => usersApi.upsertMe(),
     onSuccess: (user) => setUser(user),
   });
 

@@ -117,6 +117,13 @@ class User(TimestampMixin, Base):
     last_seen_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, index=True,
     )
+    # First-touch ad / campaign attribution from Telegram start / startapp.
+    acquisition_source: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, index=True,
+    )
+    acquisition_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+    )
 
     # Launch monetization v1.1 — referral programme (Model B)
     referral_code: Mapped[str | None] = mapped_column(String(16), unique=True, nullable=True)

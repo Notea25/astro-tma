@@ -41,6 +41,7 @@ from services.payments.pricing import (
 )
 from services.payments.stars import PRODUCTS, grant_product_access
 from services.analytics.events import FUNNELS, activity_summary, funnel_counts
+from services.analytics.acquisition import acquisition_breakdown
 
 log = get_logger(__name__)
 
@@ -959,6 +960,7 @@ async def admin_analytics_json(
         "summary": summary,
         "funnels": funnels,
         "pay_by_product": by_product,
+        "acquisition": await acquisition_breakdown(db, days=days),
     }
 
 
@@ -985,6 +987,7 @@ async def admin_analytics_html(
         pid: await funnel_counts(db, FUNNELS["pay_generic"], days=days, product_id=pid)
         for pid in products
     }
+    acquisition = await acquisition_breakdown(db, days=days)
 
     def _funnel_table(title: str, steps: list[dict[str, Any]]) -> str:
         rows = "".join(
@@ -1011,6 +1014,22 @@ async def admin_analytics_html(
         f"<tr><td>{_esc_html(s['screen'])}</td><td class='num'>{s['users']}</td></tr>"
         for s in summary.get("top_screens_7d") or []
     ) or "<tr><td colspan='2' class='muted'>Пока нет screen_view</td></tr>"
+
+    acq_rows = "".join(
+        "<tr>"
+        f"<td><code>{_esc_html(r['source'])}</code></td>"
+        f"<td class='num'>{r['users']}</td>"
+        f"<td class='num'>{r['onboarded']} <span class='muted'>({r['onboard_pct']}%)</span></td>"
+        f"<td class='num'>{r['active_7d']}</td>"
+        f"<td class='num'>{r['paid']} <span class='muted'>({r['paid_pct']}%)</span></td>"
+        "</tr>"
+        for r in acquisition
+    ) or (
+        "<tr><td colspan='5' class='muted'>"
+        "Пока нет данных — используйте ссылки "
+        "<code>?start=ad_имя</code> / <code>?startapp=ad_имя</code>"
+        "</td></tr>"
+    )
 
     s = summary
     html = f"""<!DOCTYPE html>
@@ -1076,6 +1095,20 @@ async def admin_analytics_html(
   <div class="kpi"><div class="v">{s['active_premium']}</div><div class="l">Active Premium</div></div>
   <div class="kpi"><div class="v">{s['purchases_7d']}</div><div class="l">Покупки 7д</div></div>
 </div>
+
+<section class="card" style="margin-bottom:16px">
+  <h2>Источники трафика ({days}д)</h2>
+  <p class="hint" style="margin-top:0">First-touch: ссылки
+    <code>https://t.me/&lt;bot&gt;?start=ad_vk_group1</code> или
+    <code>?startapp=ad_vk_group1</code>. Без метки → <code>organic</code>.
+  </p>
+  <table>
+    <thead><tr>
+      <th>Источник</th><th>Юзеры</th><th>Онбординг</th><th>Active 7д</th><th>Купили</th>
+    </tr></thead>
+    <tbody>{acq_rows}</tbody>
+  </table>
+</section>
 
 <div class="grid">
 {funnel_html}

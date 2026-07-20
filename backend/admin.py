@@ -86,6 +86,7 @@ class UserAdmin(ModelView, model=User):
         User.id,
         User.tg_first_name,
         User.tg_username,
+        User.acquisition_source,
         User.sun_sign,
         User.birth_city,
         User.tg_is_premium,
@@ -95,6 +96,7 @@ class UserAdmin(ModelView, model=User):
     column_labels = {
         "app_premium": "Premium доступ",
         User.tg_is_premium: "Telegram Premium",
+        User.acquisition_source: "Источник",
     }
     column_formatters = {"app_premium": _app_premium_badge}
     column_searchable_list = [User.tg_first_name, User.tg_username]

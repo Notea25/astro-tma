@@ -31,6 +31,7 @@ from services.payments.stars import (
     grant_yukassa_access,
     handle_pre_checkout,
 )
+from services.users import repository as user_repo
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 log = get_logger(__name__)
@@ -176,7 +177,30 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
         and not sender.get("is_bot", False)
         and "successful_payment" not in message
     ):
-        await send_welcome_card(int(sender["id"]))
+        user_id = int(sender["id"])
+        # Capture /start <payload> for ad attribution before opening the app.
+        text = (message.get("text") or "").strip()
+        start_payload: str | None = None
+        if text.startswith("/start"):
+            parts = text.split(maxsplit=1)
+            if len(parts) > 1:
+                start_payload = parts[1].strip()
+        if start_payload:
+            from services.analytics.acquisition import apply_acquisition_source
+
+            user, _ = await user_repo.get_or_create(
+                db,
+                tg_user_id=user_id,
+                first_name=sender.get("first_name") or "User",
+                username=sender.get("username"),
+                last_name=sender.get("last_name"),
+                language_code=sender.get("language_code") or "ru",
+                is_premium=bool(sender.get("is_premium")),
+            )
+            apply_acquisition_source(user, start_payload)
+            await db.commit()
+
+        await send_welcome_card(user_id)
         return {"ok": True}
 
     # ── Pre-checkout query: must answer within 10 seconds ──────────────────

@@ -554,7 +554,10 @@ async function requestBlob(path: string): Promise<Blob> {
 
 // ── Users ──────────────────────────────────────────────────────────────────────
 export const usersApi = {
-  upsertMe: () => request<import("@/types").UserProfile>("POST", "/users/me"),
+  upsertMe: (startParam?: string | null) =>
+    request<import("@/types").UserProfile>("POST", "/users/me", {
+      start_param: startParam ?? null,
+    }),
   setGender: (gender: string) =>
     request<import("@/types").UserProfile>("POST", "/users/me/gender", {
       gender,

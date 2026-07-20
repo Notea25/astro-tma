@@ -13,6 +13,7 @@ from api.schemas.user import (
     SetPushRequest,
     SetupBirthDataRequest,
     SetupBirthDataResponse,
+    UpsertMeRequest,
     UserProfile,
 )
 from core.cache import cache_delete, key_natal
@@ -73,12 +74,14 @@ def _build_user_profile(user, is_prem: bool) -> UserProfile:
 
 @router.post("/me", response_model=UserProfile)
 async def upsert_me(
+    body: UpsertMeRequest = UpsertMeRequest(),
     tg_user: dict = Depends(get_tg_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Called on every Mini App launch to sync Telegram user data.
     Creates user on first launch, updates Telegram fields on subsequent ones.
+    Optional start_param sets acquisition_source once (first-touch ads).
     """
     user, created = await user_repo.get_or_create(
         db,
@@ -89,9 +92,12 @@ async def upsert_me(
         language_code=tg_user.get("language_code", "ru"),
         is_premium=tg_user.get("is_premium", False),
     )
+    from services.analytics.acquisition import apply_acquisition_source
     from services.analytics.events import touch_last_seen
 
     await touch_last_seen(db, user)
+    if body.start_param:
+        apply_acquisition_source(user, body.start_param)
     await db.commit()
 
     is_prem = await user_repo.is_premium(db, user.id)

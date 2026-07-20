@@ -160,11 +160,13 @@ export default function App() {
   const queryClient = useQueryClient();
 
   const syncUser = useMutation({
-    mutationFn: usersApi.upsertMe,
+    mutationFn: () => usersApi.upsertMe(startParam),
     onSuccess: (u) => {
       setUser(u);
       identifyAnalyticsUser(u.id);
-      track("app_open");
+      track("app_open", {
+        props: startParam ? { start_param: startParam } : undefined,
+      });
       // If user has no gender/sign — they were deleted or never completed onboarding
       if (!u.gender && !u.sun_sign) {
         setOnboardingComplete(false);

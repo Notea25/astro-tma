@@ -28,6 +28,15 @@ class SetPushRequest(BaseModel):
     enabled: bool
 
 
+class UpsertMeRequest(BaseModel):
+    """Optional payload on POST /users/me — used for first-touch attribution."""
+    start_param: str | None = Field(default=None, max_length=64)
+
+
+class SetAcquisitionRequest(BaseModel):
+    source: str = Field(..., min_length=1, max_length=64)
+
+
 class SetupBirthDataRequest(BaseModel):
     birth_date: datetime
     birth_time_known: bool = False
