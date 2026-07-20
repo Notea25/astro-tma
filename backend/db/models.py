@@ -114,6 +114,9 @@ class User(TimestampMixin, Base):
     birth_tz: Mapped[str | None] = mapped_column(String(64))
     sun_sign: Mapped[ZodiacSign | None] = mapped_column(Enum(ZodiacSign, values_callable=lambda e: [x.value for x in e]))
     push_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_seen_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True,
+    )
 
     # Launch monetization v1.1 — referral programme (Model B)
     referral_code: Mapped[str | None] = mapped_column(String(16), unique=True, nullable=True)
@@ -392,6 +395,22 @@ class SynastryPairSummary(TimestampMixin, Base):
     summary_ru: Mapped[str] = mapped_column(Text, nullable=False)
     content_version: Mapped[str] = mapped_column(
         String(32), nullable=False, default="legacy", server_default="legacy"
+    )
+
+
+# ── Product analytics ─────────────────────────────────────────────────────────
+class UserEvent(Base):
+    """Funnel / product events from the Mini App (and server-side payment_ok)."""
+    __tablename__ = "user_events"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True,
+    )
+    event: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    product_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    props: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True,
     )
 
 

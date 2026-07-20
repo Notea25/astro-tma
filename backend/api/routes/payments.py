@@ -201,6 +201,16 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
 
         try:
             await grant_product_access(db, user_id, product_id, charge_id, payload)
+            from services.analytics.events import record_event
+
+            await record_event(
+                db,
+                user_id,
+                "payment_ok",
+                product_id=product_id,
+                props={"provider": "stars"},
+            )
+            await db.commit()
             log.info("webhook.payment_processed", user_id=user_id, product=product_id)
         except IntegrityError:
             # SECURITY_AUDIT.md H2 — Telegram retries successful_payment on
@@ -424,6 +434,16 @@ async def yukassa_webhook(request: Request, db: AsyncSession = Depends(get_db)):
             rub_amount_kopecks=rub_amount_kopecks,
             payload=f"yukassa:{payment_id}",
         )
+        from services.analytics.events import record_event
+
+        await record_event(
+            db,
+            user_id,
+            "payment_ok",
+            product_id=product_id,
+            props={"provider": "yukassa"},
+        )
+        await db.commit()
         log.info("yukassa.webhook.granted", payment_id=payment_id, user_id=user_id)
     except IntegrityError:
         # Duplicate webhook for the same payment — already granted.

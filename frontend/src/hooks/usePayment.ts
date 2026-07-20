@@ -10,6 +10,7 @@
 import { useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { paymentsApi, usersApi } from "@/services/api";
+import { track } from "@/services/analytics";
 import { useStarsPayment } from "./useTelegram";
 
 export type PaymentPhase = "idle" | "opening" | "activating" | "done";
@@ -58,10 +59,18 @@ export function usePayment(): UsePaymentResult {
       try {
         // 1. Get invoice URL from our backend
         const { invoice_url } = await paymentsApi.createInvoice(productId);
+        track("checkout_click", {
+          productId,
+          props: { method: "stars" },
+        });
 
         // 2. Open Telegram native payment sheet
         const paid = await pay(invoice_url);
         if (!paid) {
+          track("payment_cancel", {
+            productId,
+            props: { method: "stars" },
+          });
           setPhase("idle");
           return false;
         }

@@ -8,13 +8,14 @@
  * When omitted, the gate locks based purely on entitlement to productId.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { usePayment } from "@/hooks/usePayment";
 import { useEntitlement } from "@/hooks/useEntitlement";
 import { useProductPrice, useProductPriceRub } from "@/hooks/useProductPrice";
 import { payWithYukassa } from "@/utils/yukassaPayment";
 import { PaymentSheet } from "@/components/ui/PaymentSheet";
+import { track } from "@/services/analytics";
 
 interface PremiumGateProps {
   productId: string;
@@ -60,8 +61,16 @@ export function PremiumGate({
   // can supply their receipt email before we hit YuKassa.
   const [sheetOpen, setSheetOpen] = useState(false);
 
+  const showPaywall = !(locked === false || entitled);
+
+  useEffect(() => {
+    if (showPaywall) {
+      track("paywall_view", { productId });
+    }
+  }, [productId, showPaywall]);
+
   // Caller forced free access OR user is entitled → show the real content.
-  if (locked === false || entitled) {
+  if (!showPaywall) {
     return <>{children}</>;
   }
 
@@ -139,7 +148,6 @@ export function PremiumGate({
           void payWithYukassa(productId, email, method);
         }}
       />
-
 
       {activating && (
         <motion.div

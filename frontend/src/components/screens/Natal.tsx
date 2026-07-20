@@ -13,6 +13,7 @@ import { useAppStore } from "@/stores/app";
 import { natalApi, setNatalWheelSvgProvider } from "@/services/api";
 import { PaymentSheet } from "@/components/ui/PaymentSheet";
 import { payWithYukassa } from "@/utils/yukassaPayment";
+import { track } from "@/services/analytics";
 import {
   ZODIAC_SIGNS,
   type NatalDescriptionsResponse,
@@ -1720,6 +1721,8 @@ function NatalPdfCard({
 
   const handlePurchase = async () => {
     if (!hasChart) return;
+    track("natal_pdf_cta", { productId: "natal_full" });
+    track("paywall_view", { productId: "natal_full" });
     const ok = await purchase("natal_full");
     if (ok) onDownload();
   };
@@ -1816,7 +1819,11 @@ function NatalPdfCard({
         <button
           type="button"
           className={`btn-rub ${styles.pdfButtonRub ?? ""}`}
-          onClick={() => setSheetOpen(true)}
+          onClick={() => {
+            track("natal_pdf_cta", { productId: "natal_full" });
+            track("paywall_view", { productId: "natal_full" });
+            setSheetOpen(true);
+          }}
         >
           Оплатить {priceRub} ₽
         </button>

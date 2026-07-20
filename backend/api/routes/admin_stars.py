@@ -40,11 +40,23 @@ from services.payments.pricing import (
     set_product_price_rub,
 )
 from services.payments.stars import PRODUCTS, grant_product_access
+from services.analytics.events import FUNNELS, activity_summary, funnel_counts
 
 log = get_logger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 _security = HTTPBasic()
+
+
+def _esc_html(s: Any) -> str:
+    if s is None:
+        return "—"
+    return (
+        str(s)
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )
 
 
 def _require_admin(credentials: HTTPBasicCredentials = Depends(_security)) -> str:
@@ -83,9 +95,10 @@ def _parse_product(payload: str | None) -> str | None:
 
 
 _NAV_LINKS = (
-    ("База",  "/admin/",                   "db"),
-    ("Stars", "/api/admin/stars.html",     "stars"),
-    ("Цены",  "/api/admin/products.html",  "prices"),
+    ("База",       "/admin/",                      "db"),
+    ("Аналитика",  "/api/admin/analytics.html",    "analytics"),
+    ("Stars",      "/api/admin/stars.html",        "stars"),
+    ("Цены",       "/api/admin/products.html",     "prices"),
 )
 
 
@@ -910,4 +923,176 @@ document.querySelectorAll('tr[data-product-id]').forEach(row => {{
 </p>
 </body>
 </html>"""
+    return HTMLResponse(html)
+
+
+# ── Product analytics ────────────────────────────────────────────────────────
+
+
+@router.get("/analytics")
+async def admin_analytics_json(
+    days: int = 7,
+    _: str = Depends(_require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    days = max(1, min(days, 90))
+    summary = await activity_summary(db)
+    funnels = {
+        name: await funnel_counts(db, steps, days=days)
+        for name, steps in FUNNELS.items()
+    }
+    # Product-scoped pay funnel for the main paid SKUs
+    products = [
+        "natal_full",
+        "destiny_matrix_full",
+        "synastry",
+        "subscription_month",
+        "subscription_year",
+    ]
+    by_product = {}
+    for pid in products:
+        by_product[pid] = await funnel_counts(
+            db, FUNNELS["pay_generic"], days=days, product_id=pid,
+        )
+    return {
+        "days": days,
+        "summary": summary,
+        "funnels": funnels,
+        "pay_by_product": by_product,
+    }
+
+
+@router.get("/analytics.html", response_class=HTMLResponse)
+async def admin_analytics_html(
+    days: int = 7,
+    _: str = Depends(_require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    days = max(1, min(days, 90))
+    summary = await activity_summary(db)
+    funnels = {
+        name: await funnel_counts(db, steps, days=days)
+        for name, steps in FUNNELS.items()
+    }
+    products = [
+        "natal_full",
+        "destiny_matrix_full",
+        "synastry",
+        "subscription_month",
+        "subscription_year",
+    ]
+    by_product = {
+        pid: await funnel_counts(db, FUNNELS["pay_generic"], days=days, product_id=pid)
+        for pid in products
+    }
+
+    def _funnel_table(title: str, steps: list[dict[str, Any]]) -> str:
+        rows = "".join(
+            "<tr>"
+            f"<td>{_esc_html(s['event'])}</td>"
+            f"<td class='num'>{s['users']}</td>"
+            f"<td class='num'>{'—' if s['drop_pct'] is None else str(s['drop_pct']) + '%'}</td>"
+            "</tr>"
+            for s in steps
+        )
+        return (
+            f"<section class='card'><h2>{_esc_html(title)}</h2>"
+            "<table><thead><tr><th>Шаг</th><th>Юзеры</th><th>Drop</th></tr></thead>"
+            f"<tbody>{rows}</tbody></table></section>"
+        )
+
+    funnel_html = "".join(
+        _funnel_table(name, steps) for name, steps in funnels.items()
+    )
+    product_html = "".join(
+        _funnel_table(pid, steps) for pid, steps in by_product.items()
+    )
+    screens = "".join(
+        f"<tr><td>{_esc_html(s['screen'])}</td><td class='num'>{s['users']}</td></tr>"
+        for s in summary.get("top_screens_7d") or []
+    ) or "<tr><td colspan='2' class='muted'>Пока нет screen_view</td></tr>"
+
+    s = summary
+    html = f"""<!DOCTYPE html>
+<html lang="ru"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Аналитика — Astro Admin</title>
+<style>
+  :root {{
+    --bg:#0e0c12; --surface:#17141e; --border:#2a2433;
+    --text:#f2ebe3; --muted:#9a8f9f; --gold:#d4b254;
+  }}
+  * {{ box-sizing: border-box; }}
+  body {{
+    margin: 0; padding: 20px; font-family: system-ui, sans-serif;
+    background: var(--bg); color: var(--text); max-width: 1100px; margin-inline: auto;
+  }}
+  h1 {{ font-family: Georgia, serif; font-weight: 500; margin: 0 0 8px; }}
+  h2 {{ font-size: 15px; color: var(--gold); margin: 0 0 10px; font-weight: 500; }}
+  .hint {{ color: var(--muted); font-size: 13px; margin-bottom: 18px; }}
+  .kpis {{
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 10px; margin-bottom: 18px;
+  }}
+  .kpi {{
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: 12px; padding: 14px;
+  }}
+  .kpi .v {{ font-size: 22px; font-weight: 600; }}
+  .kpi .l {{ font-size: 11px; color: var(--muted); margin-top: 4px; }}
+  .grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }}
+  .card {{
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: 12px; padding: 14px;
+  }}
+  table {{ width: 100%; border-collapse: collapse; font-size: 13px; }}
+  th, td {{ padding: 6px 4px; border-bottom: 0.5px solid var(--border); text-align: left; }}
+  th {{ color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; }}
+  .num {{ text-align: right; font-variant-numeric: tabular-nums; }}
+  .muted {{ color: var(--muted); }}
+  .tabs a {{
+    color: var(--muted); text-decoration: none; margin-right: 10px; font-size: 13px;
+  }}
+  .tabs a.active {{ color: var(--gold); }}
+  {_NAV_CSS}
+</style>
+</head>
+<body>
+{_admin_nav_html("analytics")}
+<h1>Аналитика</h1>
+<p class="hint">Уникальные юзеры на шаге за окно (не строгая когорта). Drop = падение к предыдущему шагу.</p>
+<div class="tabs">
+  <a href="/api/admin/analytics.html?days=1" class="{'active' if days==1 else ''}">1д</a>
+  <a href="/api/admin/analytics.html?days=7" class="{'active' if days==7 else ''}">7д</a>
+  <a href="/api/admin/analytics.html?days=30" class="{'active' if days==30 else ''}">30д</a>
+</div>
+
+<div class="kpis">
+  <div class="kpi"><div class="v">{s['dau']}</div><div class="l">DAU (24ч)</div></div>
+  <div class="kpi"><div class="v">{s['wau']}</div><div class="l">WAU (7д)</div></div>
+  <div class="kpi"><div class="v">{s['mau']}</div><div class="l">MAU (30д)</div></div>
+  <div class="kpi"><div class="v">{s['users_total']}</div><div class="l">Всего юзеров</div></div>
+  <div class="kpi"><div class="v">{s['users_onboarded']}</div><div class="l">С онбордингом</div></div>
+  <div class="kpi"><div class="v">{s['active_premium']}</div><div class="l">Active Premium</div></div>
+  <div class="kpi"><div class="v">{s['purchases_7d']}</div><div class="l">Покупки 7д</div></div>
+</div>
+
+<div class="grid">
+{funnel_html}
+</div>
+
+<h2 style="margin:22px 0 10px">Оплата по продуктам ({days}д)</h2>
+<div class="grid">{product_html}</div>
+
+<section class="card" style="margin-top:16px">
+  <h2>Топ экранов (7д)</h2>
+  <table><thead><tr><th>Экран</th><th>Юзеры</th></tr></thead>
+  <tbody>{screens}</tbody></table>
+</section>
+
+<p class="footer muted" style="margin-top:18px;font-size:12px">
+  JSON: <a href="/api/admin/analytics?days={days}">/api/admin/analytics?days={days}</a>
+  · окно воронок: {days}д
+</p>
+</body></html>"""
     return HTMLResponse(html)

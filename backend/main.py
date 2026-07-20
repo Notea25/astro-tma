@@ -21,6 +21,7 @@ from api.routes import (
     admin_stars,
     destiny_matrix,
     destiny_matrix_v3,
+    events,
     glossary,
     horoscope,
     mac,
@@ -229,6 +230,7 @@ app.include_router(referrals.router, prefix="/api")
 app.include_router(destiny_matrix.router, prefix="/api")
 app.include_router(destiny_matrix_v3.router, prefix="/api")
 app.include_router(admin_stars.router, prefix="/api")
+app.include_router(events.router, prefix="/api")
 app.include_router(support.router, prefix="/api")
 
 

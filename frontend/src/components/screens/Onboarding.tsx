@@ -110,6 +110,8 @@ export function Onboarding() {
       const updated = await usersApi.upsertMe();
       setUser(updated);
       notification("success");
+      const { track } = await import("@/services/analytics");
+      track("birth_saved");
       setOnboardingComplete(true);
       setScreen(inviteUsable ? "synastry_invite" : "home");
     },

@@ -1,5 +1,6 @@
 import WebApp from "@twa-dev/sdk";
 import { paymentsApi } from "@/services/api";
+import { track } from "@/services/analytics";
 
 export type YukassaPaymentMethod = "bank_card" | "sbp";
 
@@ -9,6 +10,10 @@ export async function payWithYukassa(
   email: string,
   paymentMethod: YukassaPaymentMethod = "bank_card",
 ): Promise<void> {
+  track("checkout_click", {
+    productId,
+    props: { method: paymentMethod },
+  });
   try {
     const { confirmation_url } = await paymentsApi.createYukassaInvoice(
       productId,

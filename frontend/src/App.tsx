@@ -4,6 +4,12 @@ import { AnimatePresence, motion, MotionConfig } from "framer-motion";
 import { BottomNav } from "@/components/ui/BottomNav";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { referralsApi, usersApi } from "@/services/api";
+import {
+  flushAnalytics,
+  identifyAnalyticsUser,
+  track,
+  trackScreen,
+} from "@/services/analytics";
 import { useAppStore } from "@/stores/app";
 import { useStartParam, useTelegramReady } from "@/hooks/useTelegram";
 import { LoadingScreenZodiac } from "@/components/screens/LoadingScreenZodiac";
@@ -157,6 +163,8 @@ export default function App() {
     mutationFn: usersApi.upsertMe,
     onSuccess: (u) => {
       setUser(u);
+      identifyAnalyticsUser(u.id);
+      track("app_open");
       // If user has no gender/sign — they were deleted or never completed onboarding
       if (!u.gender && !u.sun_sign) {
         setOnboardingComplete(false);
@@ -167,6 +175,33 @@ export default function App() {
       setSynced(true);
     },
   });
+
+  useEffect(() => {
+    if (!synced) return;
+    trackScreen(screen);
+    if (screen === "home" && onboardingComplete) {
+      track("home_ready");
+    }
+    if (screen === "onboarding") {
+      track("onboarding_start");
+    }
+    if (screen === "premium") {
+      track("premium_open");
+    }
+    if (screen === "natal") {
+      track("natal_open");
+    }
+    if (screen === "destiny_matrix_reading" || screen === "destiny_matrix_info") {
+      track("matrix_open");
+    }
+    if (screen === "synastry" || screen === "synastry_invite") {
+      track("synastry_open");
+    }
+  }, [screen, synced, onboardingComplete]);
+
+  useEffect(() => {
+    return () => flushAnalytics();
+  }, []);
 
   useEffect(() => {
     syncUser.mutate();

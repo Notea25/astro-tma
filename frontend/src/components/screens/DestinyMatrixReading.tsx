@@ -6,6 +6,7 @@ import { usePayment } from "@/hooks/usePayment";
 import { useProductPrice, useProductPriceRub } from "@/hooks/useProductPrice";
 import { payWithYukassa } from "@/utils/yukassaPayment";
 import { PaymentSheet } from "@/components/ui/PaymentSheet";
+import { track } from "@/services/analytics";
 
 import { useAppStore } from "@/stores/app";
 import { useHaptic, useTelegramBackButton } from "@/hooks/useTelegram";
@@ -196,6 +197,8 @@ export function DestinyMatrixReading() {
 
   const handlePurchase = async () => {
     impact("medium");
+    track("matrix_lock_cta", { productId: "destiny_matrix_full" });
+    track("paywall_view", { productId: "destiny_matrix_full" });
     const ok = await purchase("destiny_matrix_full");
     if (ok) void refetchCalc();
   };
@@ -347,7 +350,11 @@ export function DestinyMatrixReading() {
                     <button
                       type="button"
                       className="btn-rub destiny-reading__upsell-rub"
-                      onClick={() => setPaymentSheetOpen(true)}
+                      onClick={() => {
+                        track("matrix_lock_cta", { productId: "destiny_matrix_full" });
+                        track("paywall_view", { productId: "destiny_matrix_full" });
+                        setPaymentSheetOpen(true);
+                      }}
                       disabled={paying}
                     >
                       Оплатить {priceRub} ₽
@@ -471,7 +478,11 @@ export function DestinyMatrixReading() {
                       <button
                         type="button"
                         className="btn-rub destiny-sheet__rub"
-                        onClick={() => setPaymentSheetOpen(true)}
+                        onClick={() => {
+                          track("matrix_lock_cta", { productId: "destiny_matrix_full" });
+                          track("paywall_view", { productId: "destiny_matrix_full" });
+                          setPaymentSheetOpen(true);
+                        }}
                         disabled={paying}
                       >
                         Оплатить {priceRub} ₽

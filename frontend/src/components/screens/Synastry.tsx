@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/CityAutocomplete";
 import { useAppStore } from "@/stores/app";
 import { synastryApi, ApiError } from "@/services/api";
+import { track } from "@/services/analytics";
 import { useHaptic } from "@/hooks/useTelegram";
 import { SynastryReport } from "@/components/synastry/SynastryReport";
 import { IconEdit, IconLink } from "@/components/ui/Icons";
@@ -159,7 +160,10 @@ export function Synastry() {
 
   const requestMutation = useMutation({
     mutationFn: synastryApi.createRequest,
-    onSuccess: () => notification("success"),
+    onSuccess: () => {
+      track("synastry_invite_create");
+      notification("success");
+    },
     onError: () => notification("error"),
   });
 
@@ -172,6 +176,7 @@ export function Synastry() {
   const acceptMutation = useMutation({
     mutationFn: (token: string) => synastryApi.accept(token),
     onSuccess: (data) => {
+      track("synastry_invite_accept");
       setLocalResult(data);
       notification("success");
       queryClient.invalidateQueries({ queryKey: ["synastry-history"] });

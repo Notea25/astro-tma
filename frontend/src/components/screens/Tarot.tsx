@@ -11,6 +11,7 @@ import { DrawSpreadFlow } from "@/components/tarot/DrawSpreadFlow";
 import { SpreadReading } from "@/components/tarot/SpreadReading";
 import { TarotHistory } from "@/components/tarot/TarotHistory";
 import { ApiError, tarotApi } from "@/services/api";
+import { track } from "@/services/analytics";
 import { useAppStore } from "@/stores/app";
 import { useHaptic } from "@/hooks/useTelegram";
 import { useTelegramBackButton } from "@/hooks/useTelegram";
@@ -46,6 +47,7 @@ export function Tarot() {
     mutationFn: tarotApi.draw,
     onSuccess: (data) => {
       impact("success" as any);
+      track("tarot_draw", { props: { spread: data.spread_type ?? "unknown" } });
       setReading(data);
       setAllFlipped(false);
     },

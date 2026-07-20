@@ -89,6 +89,10 @@ async def upsert_me(
         language_code=tg_user.get("language_code", "ru"),
         is_premium=tg_user.get("is_premium", False),
     )
+    from services.analytics.events import touch_last_seen
+
+    await touch_last_seen(db, user)
+    await db.commit()
 
     is_prem = await user_repo.is_premium(db, user.id)
     return _build_user_profile(user, is_prem)
