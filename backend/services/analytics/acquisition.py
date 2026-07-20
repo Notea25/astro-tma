@@ -68,14 +68,14 @@ async def acquisition_breakdown(
                 """
                 SELECT
                   COALESCE(u.acquisition_source, 'organic') AS source,
-                  COUNT(*) AS users,
-                  COUNT(*) FILTER (WHERE u.sun_sign IS NOT NULL) AS onboarded,
-                  COUNT(*) FILTER (
+                  COUNT(DISTINCT u.id) AS users,
+                  COUNT(DISTINCT u.id) FILTER (WHERE u.sun_sign IS NOT NULL) AS onboarded,
+                  COUNT(DISTINCT u.id) FILTER (
                     WHERE u.last_seen_at IS NOT NULL
                       AND u.last_seen_at >= NOW() - INTERVAL '7 days'
                   ) AS active_7d,
-                  COUNT(DISTINCT p.user_id) FILTER (
-                    WHERE p.status = 'completed'
+                  COUNT(DISTINCT u.id) FILTER (
+                    WHERE p.user_id IS NOT NULL
                   ) AS paid
                 FROM users u
                 LEFT JOIN purchases p
